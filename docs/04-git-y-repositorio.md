@@ -185,3 +185,11 @@ git checkout main && git pull origin main
 ```
 
 Con esto tenés el alta del repo y reglas duras de conexión para mantener siempre robustez y estabilidad prioritaria. Si en algún paso te pide login o token, lo resolvemos en el siguiente mensaje.
+
+---
+
+## Deuda técnica (registro)
+
+| Tema | Estado | Revisar cuando |
+|------|--------|----------------|
+| **Repo público** | Repo público temporalmente para que las reglas de branch protection (Rulesets) se apliquen. GitHub Free no aplica Rulesets en repos privados. | Avance el proyecto y haya datos sensibles o IP relevante. Valorar pasar a privado con plan Team o alternativas (GitLab, Bitbucket) si se necesita enforcement en privado. |
