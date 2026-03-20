@@ -1,7 +1,7 @@
-import { pgTable, uuid, varchar, text, boolean, timestamp, jsonb, index } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
+import { pgTable, uuid, varchar, text, boolean, timestamp, jsonb, index } from 'drizzle-orm/pg-core'
 
-import { organizations, organizationMemberships } from './organizations'
+import { organizationMemberships } from './organizations'
 
 /**
  * Usuarios del sistema

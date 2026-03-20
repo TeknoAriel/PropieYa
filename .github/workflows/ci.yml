@@ -1,5 +1,5 @@
-# CI: typecheck (y luego tests) para mantener main estable.
-# Obligatorio que pase antes de merge a main si activás "Require status checks".
+# CI: lint + typecheck + build para mantener main estable.
+# Simula que el proyecto compila y está listo para deploy.
 
 name: CI
 
@@ -9,7 +9,35 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  # Valores mínimos para build (no se usan en runtime en CI)
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/propieya
+  NEXT_PUBLIC_APP_URL: https://example.com
+  NEXT_PUBLIC_PANEL_URL: https://panel.example.com
+  NEXT_PUBLIC_WEB_APP_URL: https://example.com
+
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
   typecheck:
     name: Typecheck
     runs-on: ubuntu-latest
@@ -30,3 +58,25 @@ jobs:
 
       - name: Typecheck
         run: pnpm typecheck
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build

@@ -7,7 +7,7 @@ import {
   organizations,
   organizationMemberships,
 } from '@propieya/database'
-import { createListingSchema, updateListingSchema } from '@propieya/shared'
+import { createListingSchema, updateListingSchema, LISTING_VALIDITY } from '@propieya/shared'
 
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
 
@@ -80,6 +80,41 @@ export const listingRouter = createTRPCRouter({
         .returning()
 
       return created
+    }),
+
+  publish: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ input, ctx }) => {
+      const existing = await ctx.db.query.listings.findFirst({
+        where: and(
+          eq(listings.id, input.id),
+          eq(listings.publisherId, ctx.session.userId)
+        ),
+      })
+
+      if (!existing) {
+        throw new Error('Propiedad no encontrada')
+      }
+
+      const publishedAt = new Date()
+      const expiresAt = new Date(
+        publishedAt.getTime() +
+          LISTING_VALIDITY.MANUAL_VALIDITY_DAYS * 24 * 60 * 60 * 1000
+      )
+
+      const [updated] = await ctx.db
+        .update(listings)
+        .set({
+          status: 'active',
+          publishedAt,
+          lastValidatedAt: new Date(),
+          expiresAt,
+          updatedAt: new Date(),
+        })
+        .where(eq(listings.id, input.id))
+        .returning()
+
+      return updated ?? null
     }),
 
   listMine: protectedProcedure

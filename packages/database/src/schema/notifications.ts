@@ -1,3 +1,4 @@
+import { relations } from 'drizzle-orm'
 import {
   pgTable,
   uuid,
@@ -8,7 +9,6 @@ import {
   jsonb,
   index,
 } from 'drizzle-orm/pg-core'
-import { relations } from 'drizzle-orm'
 
 import { users } from './users'
 

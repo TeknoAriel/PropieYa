@@ -1,3 +1,4 @@
+import { relations } from 'drizzle-orm'
 import {
   pgTable,
   uuid,
@@ -9,12 +10,11 @@ import {
   integer,
   index,
 } from 'drizzle-orm/pg-core'
-import { relations } from 'drizzle-orm'
 
-import { users } from './users'
-import { organizations } from './organizations'
 import { listings } from './listings'
+import { organizations } from './organizations'
 import { conversations, demandProfiles } from './search'
+import { users } from './users'
 
 /**
  * Leads

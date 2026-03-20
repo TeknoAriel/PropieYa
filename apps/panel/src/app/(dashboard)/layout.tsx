@@ -1,6 +1,6 @@
+import { AuthGuard } from '@/components/auth-guard'
 import { Sidebar } from '@/components/layout/sidebar'
 import { TopBar } from '@/components/layout/top-bar'
-import { AuthGuard } from '@/components/auth-guard'
 
 export default function DashboardLayout({
   children,

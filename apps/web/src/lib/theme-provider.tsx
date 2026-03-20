@@ -80,10 +80,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('displayMode', newMode)
   }
 
-  if (!mounted) {
-    return <>{children}</>
-  }
-
   return (
     <ThemeContext.Provider
       value={{ theme, setTheme, resolvedTheme, displayMode, setDisplayMode }}

@@ -2,50 +2,29 @@
 
 import Link from 'next/link'
 
+import { trpc } from '@/lib/trpc'
+
 import { Button, Card, Badge, Skeleton, ArrowRight } from '@propieya/ui'
 import { formatPrice } from '@propieya/shared'
+import type { Currency, OperationType } from '@propieya/shared'
 
-// Mock data for now
-const MOCK_LISTINGS = [
-  {
-    id: '1',
-    title: 'Departamento 3 amb con balcón en Palermo',
-    propertyType: 'apartment',
-    operationType: 'sale',
-    price: { amount: 185000, currency: 'USD' as const },
-    surface: { total: 75, covered: 70 },
-    rooms: { bedrooms: 2, bathrooms: 1 },
-    address: { neighborhood: 'Palermo', city: 'Buenos Aires' },
-    primaryImageUrl: 'https://placehold.co/600x400/e0ddd8/666660?text=Depto+Palermo',
-  },
-  {
-    id: '2',
-    title: 'Casa con jardín en Olivos',
-    propertyType: 'house',
-    operationType: 'sale',
-    price: { amount: 320000, currency: 'USD' as const },
-    surface: { total: 180, covered: 150 },
-    rooms: { bedrooms: 4, bathrooms: 3 },
-    address: { neighborhood: 'Olivos', city: 'Vicente López' },
-    primaryImageUrl: 'https://placehold.co/600x400/e0ddd8/666660?text=Casa+Olivos',
-  },
-  {
-    id: '3',
-    title: 'Monoambiente moderno en Belgrano',
-    propertyType: 'apartment',
-    operationType: 'rent',
-    price: { amount: 450000, currency: 'ARS' as const },
-    surface: { total: 35, covered: 35 },
-    rooms: { bedrooms: 0, bathrooms: 1 },
-    address: { neighborhood: 'Belgrano', city: 'Buenos Aires' },
-    primaryImageUrl: 'https://placehold.co/600x400/e0ddd8/666660?text=Mono+Belgrano',
-  },
-]
+type FeaturedListingCardData = {
+  id: string
+  title: string
+  operationType: OperationType
+  priceAmount: number
+  priceCurrency: Currency
+  address?: { neighborhood?: string; city?: string } | null
+  surfaceTotal: number
+  bedrooms: number | null
+  bathrooms: number | null
+  primaryImageUrl: string | null
+}
 
 export function FeaturedListings() {
-  // const { data: listings, isLoading } = trpc.listing.getFeatured.useQuery({ limit: 6 })
-  const listings = MOCK_LISTINGS
-  const isLoading = false
+  const { data: listingsRaw = [], isLoading } =
+    trpc.listing.getFeatured.useQuery({ limit: 6 })
+  const listings = listingsRaw as unknown as FeaturedListingCardData[]
 
   return (
     <section className="py-16 md:py-24">
@@ -101,8 +80,10 @@ export function FeaturedListings() {
   )
 }
 
-function ListingCard({ listing }: { listing: typeof MOCK_LISTINGS[0] }) {
+function ListingCard({ listing }: { listing: FeaturedListingCardData }) {
   const operationLabel = listing.operationType === 'sale' ? 'Venta' : 'Alquiler'
+  const neighborhood = listing.address?.neighborhood ?? '—'
+  const city = listing.address?.city ?? '—'
 
   return (
     <Link href={`/propiedad/${listing.id}`}>
@@ -110,7 +91,10 @@ function ListingCard({ listing }: { listing: typeof MOCK_LISTINGS[0] }) {
         {/* Image */}
         <div className="relative h-48 overflow-hidden bg-surface-secondary">
           <img
-            src={listing.primaryImageUrl || ''}
+            src={
+              listing.primaryImageUrl ||
+              'https://placehold.co/600x400/e0ddd8/666660?text=Propiedad'
+            }
             alt={listing.title}
             className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
@@ -122,7 +106,10 @@ function ListingCard({ listing }: { listing: typeof MOCK_LISTINGS[0] }) {
         {/* Content */}
         <div className="p-4">
           <div className="text-xl font-bold text-brand-primary">
-            {formatPrice(listing.price.amount, listing.price.currency)}
+            {formatPrice(
+              listing.priceAmount,
+              listing.priceCurrency as Currency
+            )}
           </div>
 
           <h3 className="mt-2 font-medium text-text-primary line-clamp-2">
@@ -130,16 +117,19 @@ function ListingCard({ listing }: { listing: typeof MOCK_LISTINGS[0] }) {
           </h3>
 
           <p className="mt-1 text-sm text-text-secondary">
-            {listing.address.neighborhood}, {listing.address.city}
+            {neighborhood}, {city}
           </p>
 
           <div className="mt-3 flex items-center gap-4 text-sm text-text-tertiary">
-            <span>{listing.surface.total} m²</span>
-            {listing.rooms.bedrooms !== null && listing.rooms.bedrooms > 0 && (
-              <span>{listing.rooms.bedrooms} dorm.</span>
+            <span>{listing.surfaceTotal} m²</span>
+            {listing.bedrooms !== null && listing.bedrooms > 0 && (
+              <span>{listing.bedrooms} dorm.</span>
             )}
-            {listing.rooms.bathrooms !== null && (
-              <span>{listing.rooms.bathrooms} baño{listing.rooms.bathrooms > 1 ? 's' : ''}</span>
+            {listing.bathrooms !== null && (
+              <span>
+                {listing.bathrooms} baño
+                {listing.bathrooms > 1 ? 's' : ''}
+              </span>
             )}
           </div>
         </div>

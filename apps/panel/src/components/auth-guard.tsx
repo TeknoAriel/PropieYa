@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
-import { trpc } from '@/lib/trpc'
 import { getAccessToken } from '@/lib/auth-store'
+import { trpc } from '@/lib/trpc'
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()

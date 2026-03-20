@@ -16,8 +16,6 @@ import {
   verifyPassword,
   createAccessToken,
   getRefreshExpiresAt,
-  verifyAccessToken,
-  payloadToSession,
 } from '../auth'
 
 const REFRESH_TOKEN_BYTES = 32

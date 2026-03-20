@@ -1,17 +1,26 @@
 'use client'
 
+import { formatPrice } from '@propieya/shared'
+import type { Currency } from '@propieya/shared'
+import { Button, Input, Card, Badge, Plus, Search, Filter } from '@propieya/ui'
 import Link from 'next/link'
 import { useState } from 'react'
 
-import { Button, Input, Card, Badge, Plus, Search, Filter } from '@propieya/ui'
 import { trpc } from '@/lib/trpc'
-import { formatPrice } from '@propieya/shared'
+
 
 export default function PropiedadesPage() {
   const [search, setSearch] = useState('')
-  const { data: listings = [], isLoading } = trpc.listing.listMine.useQuery({
+  const { data: listings = [], isLoading, refetch } =
+    trpc.listing.listMine.useQuery({
     search: search || undefined,
     limit: 50,
+  })
+
+  const publishMutation = trpc.listing.publish.useMutation({
+    onSuccess: () => {
+      refetch()
+    },
   })
 
   return (
@@ -114,14 +123,28 @@ export default function PropiedadesPage() {
                     </Badge>
                   </td>
                   <td className="p-4 text-text-primary">
-                    {formatPrice(listing.priceAmount, listing.priceCurrency as 'ARS' | 'USD')}
+                    {formatPrice(listing.priceAmount, listing.priceCurrency as Currency)}
                   </td>
                   <td className="p-4 text-text-secondary">{listing.viewCount}</td>
                   <td className="p-4 text-text-secondary">{listing.contactCount}</td>
                   <td className="p-4 text-right">
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/propiedades/${listing.id}`}>Editar</Link>
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      {listing.status === 'draft' ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            publishMutation.mutate({ id: listing.id })
+                          }
+                          disabled={publishMutation.isPending}
+                        >
+                          {publishMutation.isPending ? 'Publicando...' : 'Publicar'}
+                        </Button>
+                      ) : null}
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/propiedades/${listing.id}`}>Editar</Link>
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))

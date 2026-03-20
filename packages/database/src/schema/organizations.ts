@@ -1,3 +1,4 @@
+import { relations } from 'drizzle-orm'
 import {
   pgTable,
   uuid,
@@ -9,11 +10,10 @@ import {
   integer,
   index,
 } from 'drizzle-orm/pg-core'
-import { relations } from 'drizzle-orm'
 
-import { users } from './users'
-import { listings } from './listings'
 import { leads } from './leads'
+import { listings } from './listings'
+import { users } from './users'
 
 /**
  * Organizaciones (inmobiliarias, desarrollistas, etc.)

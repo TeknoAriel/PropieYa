@@ -60,7 +60,6 @@ export async function verifyAccessToken(token: string): Promise<JWTPayload | nul
     const sub = payload.sub
     if (!sub || typeof sub !== 'string') return null
     const role = (payload.role as UserRole) ?? 'user'
-    const permissions = ROLE_PERMISSIONS[role] ?? []
     return {
       sub,
       email: (payload.email as string) ?? '',

@@ -1,5 +1,7 @@
-import type { SearchFilters } from '../types/search'
+import type { Currency } from '../types/common'
 import type { PropertyType, OperationType } from '../types/listing'
+import type { SearchFilters } from '../types/search'
+
 import { slugify } from './format'
 
 /**
@@ -93,7 +95,7 @@ export function parseFiltersFromUrl(searchParams: URLSearchParams): Partial<Sear
 
   const precioMin = searchParams.get('precio_min')
   const precioMax = searchParams.get('precio_max')
-  const moneda = searchParams.get('moneda') as 'USD' | 'ARS' | null
+  const moneda = searchParams.get('moneda') as Currency | null
 
   if (precioMin || precioMax) {
     filters.price = {

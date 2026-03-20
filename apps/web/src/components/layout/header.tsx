@@ -6,7 +6,7 @@ import { Button, Menu, Moon, Sun } from '@propieya/ui'
 import { useTheme } from '@/lib/theme-provider'
 
 export function Header() {
-  const { resolvedTheme, setTheme, theme } = useTheme()
+  const { resolvedTheme, setTheme } = useTheme()
 
   const toggleTheme = () => {
     setTheme(resolvedTheme === 'light' ? 'dark' : 'light')

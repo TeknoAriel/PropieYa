@@ -1,22 +1,28 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-
 import { Button, Input, Card } from '@propieya/ui'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
-import { trpc } from '@/lib/trpc'
 import { setTokens } from '@/lib/auth-store'
+import { safeInternalPath } from '@/lib/safe-redirect'
+import { trpc } from '@/lib/trpc'
 
 export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirect') ?? '/dashboard'
+  const [redirectTo, setRedirectTo] = useState('/dashboard')
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const redirect = new URLSearchParams(window.location.search).get('redirect')
+    if (redirect) {
+      setRedirectTo(safeInternalPath(redirect))
+    }
+  }, [])
 
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: (result) => {

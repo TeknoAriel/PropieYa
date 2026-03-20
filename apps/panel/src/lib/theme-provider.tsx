@@ -64,10 +64,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('panel-theme', newTheme)
   }
 
-  if (!mounted) {
-    return <>{children}</>
-  }
-
   return (
     <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
       {children}

@@ -13,7 +13,7 @@ const propertyTypes = [
 
 const operationTypes = ['sale', 'rent', 'temporary_rent'] as const
 
-const currencies = ['ARS', 'USD'] as const
+const currencies = ['ARS', 'USD', 'CLP', 'UF', 'MXN'] as const
 
 const sortFields = [
   'relevance',
