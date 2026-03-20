@@ -89,10 +89,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   )
 }
 
+const defaultThemeValue: ThemeContextValue = {
+  theme: 'system',
+  setTheme: () => {},
+  resolvedTheme: 'light',
+  displayMode: 'simple',
+  setDisplayMode: () => {},
+}
+
 export function useTheme() {
   const context = useContext(ThemeContext)
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider')
-  }
-  return context
+  // Durante SSG/prerender puede no haber contexto; devolver defaults
+  return context ?? defaultThemeValue
 }
