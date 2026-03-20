@@ -16,8 +16,9 @@ export async function GET() {
   // 1. Database
   try {
     const dbStart = Date.now()
-    // Panel no depende directamente de `drizzle-orm`; ejecutamos sin el helper `sql` tipado.
-    await (getDb() as any).execute('SELECT 1')
+    // Raw query: evita importar `sql` de drizzle-orm en el panel.
+    const db = getDb() as { execute: (query: string) => Promise<unknown> }
+    await db.execute('SELECT 1')
     checks.database = { status: 'ok', latencyMs: Date.now() - dbStart }
   } catch (err) {
     checks.database = {
