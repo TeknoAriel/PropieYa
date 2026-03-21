@@ -17,6 +17,14 @@ NEXT_PUBLIC_WEB_APP_URL=https://propieyaweb.vercel.app
 
 Sin barra final. Mismo valor en Production, Preview y Development si el panel debe apuntar siempre al mismo portal.
 
+En el proyecto **Web** (Vercel → Environment Variables), CORS para que el panel llame a `/api/trpc`:
+
+```text
+TRUSTED_PANEL_ORIGINS=https://URL-EXACTA-DEL-PANEL.vercel.app
+```
+
+Si usás previews del panel, agregá varias URLs separadas por coma.
+
 ## Verificación rápida
 
 - Abrí **https://propieyaweb.vercel.app** → debe cargar el home de Propieya.

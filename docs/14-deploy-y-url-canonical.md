@@ -23,6 +23,10 @@ Detalle y variables: **`docs/CANONICAL-URLS.md`**.
 Guía detallada: **`docs/06-despliegue-vercel.md`**.  
 Copiar/pegar env: **`docs/09-CONFIGURACION-COPIAR-PEGAR.md`**.
 
+## Prioridad de esta etapa
+
+**`docs/15-etapa-actual-prioridad.md`** — Panel ↔ web (CORS + env).
+
 ## Reglas del agente / calidad
 
 - **`AGENTS.md`**

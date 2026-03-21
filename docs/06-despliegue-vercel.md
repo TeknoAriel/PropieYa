@@ -27,6 +27,7 @@ Para que el `Panel` llame al `tRPC` del `Web`, necesitás configurar `NEXT_PUBLI
 5. Node version: 20.
 
 Variables de entorno mínimas (en el proyecto Web):
+- `TRUSTED_PANEL_ORIGINS` — URL(s) del panel para CORS en `/api/trpc` (ver `docs/CANONICAL-URLS.md`)
 - `DATABASE_URL`
 - `ELASTICSEARCH_URL`
 - `REDIS_URL`
