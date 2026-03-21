@@ -10,4 +10,6 @@
 
 **Reglas Cursor:** `automacion-propietario.mdc`, `control-produccion.mdc`, `produccion-escala.mdc`.
 
+**Sprints y hitos:** `docs/24-sprints-y-hitos.md` — ejecutar en orden, sin preguntar cada paso.
+
 **GitHub bypass (una vez):** `docs/12-bypass-github-actions.md`.

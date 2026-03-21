@@ -7,6 +7,7 @@ alwaysApply: true
 
 - **El usuario no ejecuta** terminales ni pasos manuales de deploy/Git/Vercel salvo pruebas en la URL pública.
 - **El agente** hace commits, push, workflows, documentación y deja el repo listo.
+- **Sprints:** seguir `docs/24-sprints-y-hitos.md` en orden; ejecutar tareas sin preguntar cada paso.
 - **Respuestas:** cortas, claras; **preguntas:** mínimas y directas.
 - **Deploy:** push a `deploy/infra` dispara `.github/workflows/promote-deploy-infra.yml` → merge a `main` → Vercel (si está enlazado a `main`).
 - **Control:** ver `.cursor/rules/control-produccion.mdc` y `docs/13-control-calidad-agente.md`.
