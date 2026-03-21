@@ -1,0 +1,11 @@
+---
+description: El usuario no ejecuta comandos; el agente automatiza deploy y tareas.
+alwaysApply: true
+---
+
+# Automatización Propieya
+
+- **El usuario no ejecuta** terminales ni pasos manuales de deploy/Git/Vercel salvo pruebas en la URL pública.
+- **El agente** hace commits, push, workflows, documentación y deja el repo listo.
+- **Respuestas:** cortas, claras; **preguntas:** mínimas y directas.
+- **Deploy:** push a `deploy/infra` dispara `.github/workflows/promote-deploy-infra.yml` → merge a `main` → Vercel (si está enlazado a `main`).
