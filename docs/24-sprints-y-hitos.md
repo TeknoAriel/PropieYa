@@ -33,16 +33,16 @@
 
 ---
 
-## Sprint 1 — Pulido portal (imágenes y lint)
+## Sprint 1 — Pulido portal (imágenes y lint) ✅
 
 **Objetivo:** eliminar warnings de lint en web y unificar uso de `next/image`.
 
-- [ ] 1.1 `apps/web`: reemplazar `<img>` por `next/image` en `buscar/page.tsx`
-- [ ] 1.2 `apps/web`: reemplazar `<img>` por `next/image` en `propiedad/[id]/page.tsx` (galería + thumbnails)
-- [ ] 1.3 `apps/web`: reemplazar `<img>` por `next/image` en `components/home/featured-listings.tsx`
-- [ ] 1.4 `apps/web`: corregir import `type NextRequest` si queda algún warning
-- [ ] 1.5 Verificar: `pnpm lint` sin warnings en web
-- [ ] 1.6 Commit + push
+- [x] 1.1 `apps/web`: reemplazar `<img>` por `next/image` en `buscar/page.tsx`
+- [x] 1.2 `apps/web`: reemplazar `<img>` por `next/image` en `propiedad/[id]/page.tsx` (galería + thumbnails)
+- [x] 1.3 `apps/web`: reemplazar `<img>` por `next/image` en `components/home/featured-listings.tsx`
+- [x] 1.4 `apps/web`: corregir import `type NextRequest` si queda algún warning
+- [x] 1.5 Verificar: `pnpm lint` sin warnings en web
+- [x] 1.6 Commit + push
 
 **Criterios:** portal sin warnings `no-img-element`, imágenes optimizadas donde aplique.
 

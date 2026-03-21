@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
@@ -197,20 +198,32 @@ export default function PropiedadPage() {
           <Card className="p-4">
             {images.length ? (
               <div className="space-y-3">
-                <img
-                  src={mainImage?.url}
-                  alt={mainImage?.alt ?? listing.title}
-                  className="h-[420px] w-full rounded object-cover bg-surface-secondary"
-                />
+                <div className="relative h-[420px] w-full rounded overflow-hidden bg-surface-secondary">
+                  <Image
+                    src={mainImage?.url ?? ''}
+                    alt={mainImage?.alt ?? listing.title}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 66vw"
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
                 {images.length > 1 ? (
                   <div className="flex gap-3 overflow-x-auto">
                     {images.slice(1, 6).map((img, idx) => (
-                      <img
+                      <div
                         key={img.id ?? idx}
-                        src={img.url}
-                        alt={img.alt ?? listing.title}
-                        className="h-20 w-20 rounded object-cover bg-surface-secondary flex-none"
-                      />
+                        className="relative h-20 w-20 rounded overflow-hidden bg-surface-secondary flex-none"
+                      >
+                        <Image
+                          src={img.url}
+                          alt={img.alt ?? listing.title}
+                          fill
+                          sizes="80px"
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
                     ))}
                   </div>
                 ) : null}
