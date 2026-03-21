@@ -16,8 +16,8 @@ export async function GET() {
   // 1. Database
   try {
     const dbStart = Date.now()
-    // Raw query: evita importar `sql` de drizzle-orm en el panel.
-    const db = getDb() as { execute: (query: string) => Promise<unknown> }
+    // Raw: getDb() tipa execute(SQLWrapper); forzamos firma mínima para health.
+    const db = getDb() as unknown as { execute: (q: string) => Promise<unknown> }
     await db.execute('SELECT 1')
     checks.database = { status: 'ok', latencyMs: Date.now() - dbStart }
   } catch (err) {

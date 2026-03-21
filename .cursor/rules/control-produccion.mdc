@@ -1,0 +1,28 @@
+---
+description: Control de calidad, errores y producción sin revisión humana del repo.
+alwaysApply: true
+---
+
+# Control y producción (sin que el usuario revise GitHub)
+
+## Antes de cada push
+
+1. Ejecutar **`pnpm lint`** y **`pnpm typecheck`**; si falla, corregir y no pushear hasta pasar.
+2. Si el cambio toca build/deploy: ejecutar **`pnpm build`** o al menos el paquete afectado.
+3. No asumir que el usuario mirará Actions ni logs de Vercel.
+
+## Si CI o promote falla
+
+- Reproducir localmente, corregir, volver a pushear a `deploy/infra`.
+- Si el fallo es **externo** (permisos GitHub, secretos Vercel, cuota): documentar en `docs/REGISTRO-BLOQUEOS.md` con fecha, causa y paso único de desbloqueo (si existe).
+
+## Código y errores
+
+- **APIs / server:** respuestas con códigos HTTP correctos; mensajes claros en JSON; no tragar errores sin log en servidor.
+- **Cliente:** estados de carga y error visibles o manejables; evitar `any` que oculte fallos.
+- **Cambios riesgosos:** health checks o rutas de prueba existentes deben seguir respondiendo.
+
+## Producción
+
+- Solo subir cambios que pasen la verificación anterior.
+- Tras push, el agente **no pide** al usuario que revise el repo; si hace falta confirmación externa, queda en `docs/REGISTRO-BLOQUEOS.md`.
