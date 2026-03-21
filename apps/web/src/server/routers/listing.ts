@@ -130,6 +130,48 @@ export const listingRouter = createTRPCRouter({
       return updated ?? null
     }),
 
+  renew: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ input, ctx }) => {
+      const existing = await ctx.db.query.listings.findFirst({
+        where: and(
+          eq(listings.id, input.id),
+          eq(listings.publisherId, ctx.session.userId)
+        ),
+      })
+
+      if (!existing) {
+        throw new Error('Propiedad no encontrada')
+      }
+
+      const allowedStatuses = ['expiring_soon', 'suspended']
+      if (!allowedStatuses.includes(existing.status)) {
+        throw new Error(
+          'Solo se pueden renovar propiedades por vencer o suspendidas'
+        )
+      }
+
+      const now = new Date()
+      const expiresAt = new Date(
+        now.getTime() +
+          LISTING_VALIDITY.MANUAL_VALIDITY_DAYS * 24 * 60 * 60 * 1000
+      )
+
+      const [updated] = await ctx.db
+        .update(listings)
+        .set({
+          status: 'active',
+          lastValidatedAt: now,
+          expiresAt,
+          renewalCount: (existing.renewalCount ?? 0) + 1,
+          updatedAt: now,
+        })
+        .where(eq(listings.id, input.id))
+        .returning()
+
+      return updated ?? null
+    }),
+
   /** Detalle para el publicador (cualquier estado). */
   getMineById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))

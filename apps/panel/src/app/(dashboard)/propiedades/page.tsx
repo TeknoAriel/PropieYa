@@ -1,26 +1,32 @@
 'use client'
 
-import { formatPrice } from '@propieya/shared'
-import type { Currency } from '@propieya/shared'
+import {
+  formatPrice,
+  LISTING_STATUS_LABELS,
+  type Currency,
+  type ListingStatus,
+} from '@propieya/shared'
 import { Button, Input, Card, Badge, Plus, Search, Filter } from '@propieya/ui'
 import Link from 'next/link'
 import { useState } from 'react'
 
 import { trpc } from '@/lib/trpc'
 
-
 export default function PropiedadesPage() {
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('')
   const { data: listings = [], isLoading, refetch } =
     trpc.listing.listMine.useQuery({
-    search: search || undefined,
-    limit: 50,
-  })
+      search: search || undefined,
+      status: statusFilter || undefined,
+      limit: 50,
+    })
 
   const publishMutation = trpc.listing.publish.useMutation({
-    onSuccess: () => {
-      refetch()
-    },
+    onSuccess: () => refetch(),
+  })
+  const renewMutation = trpc.listing.renew.useMutation({
+    onSuccess: () => refetch(),
   })
 
   return (
@@ -51,10 +57,18 @@ export default function PropiedadesPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <Button variant="outline">
-          <Filter className="h-4 w-4 mr-2" />
-          Filtros
-        </Button>
+        <select
+          className="rounded-md border border-border bg-background px-3 py-2 text-sm min-w-[140px]"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="">Todos los estados</option>
+          <option value="active">Activo</option>
+          <option value="expiring_soon">Por vencer</option>
+          <option value="suspended">Suspendido</option>
+          <option value="draft">Borrador</option>
+          <option value="archived">Archivado</option>
+        </select>
       </div>
 
       {/* Listings table/cards */}
@@ -117,9 +131,18 @@ export default function PropiedadesPage() {
                   </td>
                   <td className="p-4">
                     <Badge
-                      variant={listing.status === 'active' ? 'default' : 'secondary'}
+                      variant={
+                        listing.status === 'active'
+                          ? 'default'
+                          : listing.status === 'expiring_soon'
+                            ? 'secondary'
+                            : listing.status === 'suspended'
+                              ? 'destructive'
+                              : 'secondary'
+                      }
                     >
-                      {listing.status === 'active' ? 'Activa' : listing.status}
+                      {LISTING_STATUS_LABELS[listing.status as ListingStatus] ??
+                        listing.status}
                     </Badge>
                   </td>
                   <td className="p-4 text-text-primary">
@@ -139,6 +162,19 @@ export default function PropiedadesPage() {
                           disabled={publishMutation.isPending}
                         >
                           {publishMutation.isPending ? 'Publicando...' : 'Publicar'}
+                        </Button>
+                      ) : null}
+                      {(listing.status === 'expiring_soon' ||
+                        listing.status === 'suspended') ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            renewMutation.mutate({ id: listing.id })
+                          }
+                          disabled={renewMutation.isPending}
+                        >
+                          {renewMutation.isPending ? 'Renovando...' : 'Renovar'}
                         </Button>
                       ) : null}
                       <Button variant="ghost" size="sm" asChild>

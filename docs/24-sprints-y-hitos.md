@@ -48,17 +48,17 @@
 
 ---
 
-## Sprint 2 — Sistema de vigencia
+## Sprint 2 — Sistema de vigencia ✅
 
 **Objetivo:** job que revise vigencia de avisos y permita renovar.
 
-- [ ] 2.1 Setup BullMQ (o cron interno) para job diario de vigencia
-- [ ] 2.2 Job: transición `active` → `expiring_soon` (X días antes)
-- [ ] 2.3 Job: transición `expiring_soon` o `active` → `suspended` si `expiresAt` pasó
-- [ ] 2.4 Endpoint `listing.renew` (protegido, solo propias)
-- [ ] 2.5 Botón "Renovar" en panel (propiedades expiring_soon / suspended)
-- [ ] 2.6 Estado `expiring_soon` en schema si no existe
-- [ ] 2.7 Verificar lint/typecheck, commit + push
+- [x] 2.1 Setup BullMQ (o cron interno) para job diario de vigencia
+- [x] 2.2 Job: transición `active` → `expiring_soon` (X días antes)
+- [x] 2.3 Job: transición `expiring_soon` o `active` → `suspended` si `expiresAt` pasó
+- [x] 2.4 Endpoint `listing.renew` (protegido, solo propias)
+- [x] 2.5 Botón "Renovar" en panel (propiedades expiring_soon / suspended)
+- [x] 2.6 Estado `expiring_soon` en schema si no existe
+- [x] 2.7 Verificar lint/typecheck, commit + push
 
 **Criterios:** avisos pasan a suspendido tras vencimiento; usuario puede renovar desde panel.
 

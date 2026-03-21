@@ -57,6 +57,9 @@ export default function EditarPropiedadPage() {
   const publishMutation = trpc.listing.publish.useMutation({
     onSuccess: () => utils.listing.getMineById.invalidate({ id }),
   })
+  const renewMutation = trpc.listing.renew.useMutation({
+    onSuccess: () => utils.listing.getMineById.invalidate({ id }),
+  })
 
   const handleFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -195,6 +198,15 @@ export default function EditarPropiedadPage() {
               disabled={publishMutation.isPending}
             >
               {publishMutation.isPending ? 'Publicando...' : 'Publicar'}
+            </Button>
+          )}
+          {(current.status === 'expiring_soon' ||
+            current.status === 'suspended') && (
+            <Button
+              onClick={() => renewMutation.mutate({ id })}
+              disabled={renewMutation.isPending}
+            >
+              {renewMutation.isPending ? 'Renovando...' : 'Renovar'}
             </Button>
           )}
           <Button asChild variant="outline">
