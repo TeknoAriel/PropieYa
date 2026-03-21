@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google'
 
 import '@propieya/ui/styles'
 import './globals.css'
+import { CopyPackBanner } from '@/components/layout/copy-pack-banner'
+
 import { Providers } from './providers'
 
 const inter = Inter({
@@ -28,7 +30,10 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <Providers>{children}</Providers>
+        <Providers>
+          <CopyPackBanner />
+          {children}
+        </Providers>
       </body>
     </html>
   )

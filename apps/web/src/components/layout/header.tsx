@@ -4,8 +4,10 @@ import Link from 'next/link'
 
 import { Button, Menu, Moon, Sun } from '@propieya/ui'
 import { useTheme } from '@/lib/theme-provider'
+import { getPortalPack } from '@/lib/portal-copy'
 
 export function Header() {
+  const pack = getPortalPack()
   const { resolvedTheme, setTheme } = useTheme()
 
   const toggleTheme = () => {
@@ -26,19 +28,19 @@ export function Header() {
             href="/buscar"
             className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
           >
-            Buscar
+            {pack.nav.buscar}
           </Link>
           <Link
             href="/venta"
             className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
           >
-            Venta
+            {pack.nav.venta}
           </Link>
           <Link
             href="/alquiler"
             className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
           >
-            Alquiler
+            {pack.nav.alquiler}
           </Link>
         </nav>
 
@@ -61,10 +63,10 @@ export function Header() {
           {/* Auth buttons - Desktop */}
           <div className="hidden md:flex items-center gap-2">
             <Button variant="ghost" asChild>
-              <Link href="/login">Iniciar sesión</Link>
+              <Link href="/login">{pack.cta.login}</Link>
             </Button>
             <Button asChild>
-              <Link href="/publicar">Publicar</Link>
+              <Link href="/publicar">{pack.cta.publish}</Link>
             </Button>
           </div>
 

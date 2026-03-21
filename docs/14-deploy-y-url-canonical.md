@@ -27,6 +27,10 @@ Copiar/pegar env: **`docs/09-CONFIGURACION-COPIAR-PEGAR.md`**.
 
 **`docs/15-etapa-actual-prioridad.md`** — Panel ↔ web (CORS + env).
 
+- DB sin tablas: **`docs/16-db-inicializar-produccion.md`**
+- Magic link prueba: **`docs/17-magic-link-prueba.md`**
+- Copy A/B portal: **`docs/18-copy-portal-ab.md`**
+
 ## Reglas del agente / calidad
 
 - **`AGENTS.md`**

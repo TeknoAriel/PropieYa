@@ -8,6 +8,8 @@ import { Button, Card, Badge, Skeleton, ArrowRight } from '@propieya/ui'
 import { formatPrice } from '@propieya/shared'
 import type { Currency, OperationType } from '@propieya/shared'
 
+import { getPortalPack } from '@/lib/portal-copy'
+
 type FeaturedListingCardData = {
   id: string
   title: string
@@ -22,6 +24,7 @@ type FeaturedListingCardData = {
 }
 
 export function FeaturedListings() {
+  const pack = getPortalPack()
   const { data: listingsRaw = [], isLoading } =
     trpc.listing.getFeatured.useQuery({ limit: 6 })
   const listings = listingsRaw as unknown as FeaturedListingCardData[]
@@ -70,7 +73,7 @@ export function FeaturedListings() {
         <div className="mt-8 text-center md:hidden">
           <Button variant="outline" asChild>
             <Link href="/buscar">
-              Ver todas las propiedades
+              {pack.featured.viewAllMobile}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>

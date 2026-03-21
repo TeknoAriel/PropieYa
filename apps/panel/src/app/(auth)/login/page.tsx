@@ -9,6 +9,9 @@ import { setTokens } from '@/lib/auth-store'
 import { safeInternalPath } from '@/lib/safe-redirect'
 import { trpc } from '@/lib/trpc'
 
+const MAGIC_LINK_UI =
+  process.env.NEXT_PUBLIC_MAGIC_LINK_TEST_MODE === '1'
+
 export default function LoginPage() {
   const router = useRouter()
   const [redirectTo, setRedirectTo] = useState('/dashboard')
@@ -16,6 +19,10 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [magicEmail, setMagicEmail] = useState('')
+  const [magicName, setMagicName] = useState('')
+  const [magicLinkUrl, setMagicLinkUrl] = useState('')
+  const [magicError, setMagicError] = useState('')
 
   useEffect(() => {
     const redirect = new URLSearchParams(window.location.search).get('redirect')
@@ -31,6 +38,17 @@ export default function LoginPage() {
     },
     onError: (err) => {
       setError(err.message ?? 'Error al iniciar sesión')
+    },
+  })
+
+  const magicMutation = trpc.auth.generateTestMagicLink.useMutation({
+    onSuccess: (data) => {
+      setMagicLinkUrl(data.url)
+      setMagicError('')
+    },
+    onError: (err) => {
+      setMagicError(err.message ?? 'No se pudo generar el enlace')
+      setMagicLinkUrl('')
     },
   })
 
@@ -117,6 +135,63 @@ export default function LoginPage() {
             Registrate en el portal
           </Link>
         </div>
+
+        {MAGIC_LINK_UI ? (
+          <div className="mt-8 border-t border-border pt-6 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+              Modo prueba — magic link
+            </p>
+            <p className="text-xs text-text-secondary">
+              Generá un enlace de un solo uso (15 min). Requiere{' '}
+              <code className="rounded bg-surface-secondary px-1">MAGIC_LINK_TEST_MODE=1</code>{' '}
+              en el proyecto <strong>web</strong> (Vercel).
+            </p>
+            <Input
+              type="email"
+              placeholder="Email (se crea usuario si no existe)"
+              value={magicEmail}
+              onChange={(e) => setMagicEmail(e.target.value)}
+            />
+            <Input
+              type="text"
+              placeholder="Nombre (opcional, si es usuario nuevo)"
+              value={magicName}
+              onChange={(e) => setMagicName(e.target.value)}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              disabled={magicMutation.isPending || !magicEmail.trim()}
+              onClick={() => {
+                setMagicLinkUrl('')
+                magicMutation.mutate({
+                  email: magicEmail.trim(),
+                  name: magicName.trim() || undefined,
+                  createIfMissing: true,
+                })
+              }}
+            >
+              {magicMutation.isPending ? 'Generando…' : 'Generar enlace de acceso'}
+            </Button>
+            {magicError ? (
+              <p className="text-xs text-semantic-error">{magicError}</p>
+            ) : null}
+            {magicLinkUrl ? (
+              <div className="rounded-lg bg-surface-secondary p-3 text-left">
+                <p className="text-xs text-text-secondary mb-1">
+                  Abrí o copiá este enlace:
+                </p>
+                <a
+                  href={magicLinkUrl}
+                  className="text-xs break-all text-brand-primary hover:underline"
+                >
+                  {magicLinkUrl}
+                </a>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </Card>
     </div>
   )
