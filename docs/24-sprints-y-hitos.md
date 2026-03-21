@@ -78,17 +78,17 @@
 
 ---
 
-## Sprint 4 — Búsqueda Elasticsearch
+## Sprint 4 — Búsqueda Elasticsearch ✅
 
 **Objetivo:** migrar búsqueda de SQL a Elasticsearch.
 
-- [ ] 4.1 Package `@propieya/search` o módulo en web: cliente ES
-- [ ] 4.2 Mapping índice listings (campos, geo)
-- [ ] 4.3 Job/sync: indexar listings activos (bulk inicial)
-- [ ] 4.4 Evento: al publicar/actualizar/archivar → reindex
-- [ ] 4.5 `listing.search` usa ES en lugar de SQL
-- [ ] 4.6 Fallback a SQL si ES no disponible (opcional)
-- [ ] 4.7 Verificar lint/typecheck, commit + push
+- [x] 4.1 Package `@propieya/search` o módulo en web: cliente ES
+- [x] 4.2 Mapping índice listings (campos, geo)
+- [x] 4.3 Job/sync: indexar listings activos (bulk inicial)
+- [x] 4.4 Evento: al publicar/actualizar/archivar → reindex
+- [x] 4.5 `listing.search` usa ES en lugar de SQL
+- [x] 4.6 Fallback a SQL si ES no disponible (opcional)
+- [x] 4.7 Verificar lint/typecheck, commit + push
 
 **Criterios:** búsqueda del portal usa ES; resultados coherentes con SQL actual.
 

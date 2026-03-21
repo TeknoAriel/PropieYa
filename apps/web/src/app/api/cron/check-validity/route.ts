@@ -16,6 +16,7 @@ import {
 } from '@propieya/shared'
 
 import { sendExpiringSoonEmail } from '@/lib/email'
+import { removeListingFromSearch } from '@/lib/search/sync'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -55,7 +56,10 @@ export async function GET(req: NextRequest) {
         })
         .where(eq(listings.id, row.id))
         .returning({ id: listings.id })
-      if (updated) suspended++
+      if (updated) {
+        suspended++
+        await removeListingFromSearch(row.id)
+      }
     }
 
     // 2. Marcar expiring_soon: active con expiresAt dentro de X días

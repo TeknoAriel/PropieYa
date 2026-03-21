@@ -17,6 +17,11 @@ import {
   publicMediaUrl,
   sanitizeUploadFilename,
 } from '../s3-presign'
+import {
+  syncListingToSearch,
+  removeListingFromSearch,
+} from '@/lib/search/sync'
+import { searchListings } from '@/lib/search/search'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
 
 /** Evita que el usuario inyecte comodines ILIKE (%, _). */
@@ -127,6 +132,9 @@ export const listingRouter = createTRPCRouter({
         .where(eq(listings.id, input.id))
         .returning()
 
+      if (updated) {
+        syncListingToSearch(ctx.db, input.id).catch(() => {})
+      }
       return updated ?? null
     }),
 
@@ -169,6 +177,9 @@ export const listingRouter = createTRPCRouter({
         .where(eq(listings.id, input.id))
         .returning()
 
+      if (updated && updated.status === 'active') {
+        syncListingToSearch(ctx.db, input.id).catch(() => {})
+      }
       return updated ?? null
     }),
 
@@ -279,6 +290,9 @@ export const listingRouter = createTRPCRouter({
         .where(eq(listings.id, input.id))
         .returning()
 
+      if (updated && updated.status === 'active') {
+        syncListingToSearch(ctx.db, input.id).catch(() => {})
+      }
       return updated
     }),
 
@@ -299,6 +313,9 @@ export const listingRouter = createTRPCRouter({
         )
         .returning()
 
+      if (archived) {
+        removeListingFromSearch(input.id).catch(() => {})
+      }
       return archived ?? null
     }),
 
@@ -343,7 +360,7 @@ export const listingRouter = createTRPCRouter({
       return result
     }),
 
-  /** Búsqueda pública (solo avisos activos). */
+  /** Búsqueda pública (solo avisos activos). Usa ES si está configurado, fallback a SQL. */
   search: publicProcedure
     .input(
       z.object({
@@ -362,8 +379,24 @@ export const listingRouter = createTRPCRouter({
       })
     )
     .query(async ({ input, ctx }) => {
-      const conditions = [eq(listings.status, 'active')]
+      const esResult = await searchListings({
+        q: input.q,
+        operationType: input.operationType,
+        propertyType: input.propertyType,
+        minPrice: input.minPrice,
+        maxPrice: input.maxPrice,
+        minBedrooms: input.minBedrooms,
+        city: input.city,
+        neighborhood: input.neighborhood,
+        limit: input.limit,
+        offset: input.offset,
+      })
 
+      if (esResult.fromEs) {
+        return esResult.hits
+      }
+
+      const conditions = [eq(listings.status, 'active')]
       if (input.q?.trim()) {
         const frag = sanitizeIlikeFragment(input.q)
         if (frag.length > 0) {
@@ -376,7 +409,6 @@ export const listingRouter = createTRPCRouter({
           )
         }
       }
-
       if (input.operationType) {
         conditions.push(eq(listings.operationType, input.operationType))
       }
@@ -409,14 +441,12 @@ export const listingRouter = createTRPCRouter({
         }
       }
 
-      const result = await ctx.db.query.listings.findMany({
+      return ctx.db.query.listings.findMany({
         where: and(...conditions),
         orderBy: [desc(listings.publishedAt)],
         limit: input.limit,
         offset: input.offset,
       })
-
-      return result
     }),
 
   getPresignedUploadUrl: protectedProcedure
