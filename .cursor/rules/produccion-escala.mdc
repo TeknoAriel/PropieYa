@@ -10,6 +10,7 @@ alwaysApply: true
 - **Portal web canónico:** `https://propieyaweb.vercel.app` — documentado en `docs/CANONICAL-URLS.md`.
 - No inventar ni documentar otras URLs de web sin actualizar ese archivo.
 - **`NEXT_PUBLIC_WEB_APP_URL`** en Panel = exactamente la URL canónica (sin `/` final).
+- **`TRUSTED_PANEL_ORIGINS`** en Web (Vercel) = URL(s) del panel para CORS en `/api/trpc` (ver `docs/CANONICAL-URLS.md`).
 
 ## Vercel
 
