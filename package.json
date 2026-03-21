@@ -18,7 +18,8 @@
     "infra:test": "bash scripts/infra-test.sh",
     "clean": "turbo clean && rm -rf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
-    "import:yumblin": "tsx scripts/import-yumblin-json.ts",
+    "import:yumblin": "pnpm exec tsx scripts/import-yumblin-json.ts",
+    "publish:imported": "pnpm exec tsx scripts/publish-imported-drafts.ts",
     "prepare": "husky"
   },
   "devDependencies": {

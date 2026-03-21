@@ -478,4 +478,85 @@ export const listingRouter = createTRPCRouter({
 
       return row
     }),
+
+  removeMedia: protectedProcedure
+    .input(z.object({ mediaId: z.string().uuid() }))
+    .mutation(async ({ input, ctx }) => {
+      const media = await ctx.db.query.listingMedia.findFirst({
+        where: eq(listingMedia.id, input.mediaId),
+      })
+      if (!media) throw new Error('Imagen no encontrada')
+
+      const listing = await ctx.db.query.listings.findFirst({
+        where: and(
+          eq(listings.id, media.listingId),
+          eq(listings.publisherId, ctx.session.userId)
+        ),
+      })
+      if (!listing) throw new Error('Propiedad no encontrada')
+
+      await ctx.db.delete(listingMedia).where(eq(listingMedia.id, input.mediaId))
+
+      const remaining = await ctx.db.query.listingMedia.findMany({
+        where: eq(listingMedia.listingId, media.listingId),
+        orderBy: [listingMedia.order],
+      })
+
+      const newPrimary = remaining[0]?.url ?? null
+      await ctx.db
+        .update(listings)
+        .set({
+          primaryImageUrl: newPrimary,
+          mediaCount: remaining.length,
+          updatedAt: new Date(),
+        })
+        .where(eq(listings.id, media.listingId))
+
+      const firstRemaining = remaining[0]
+      if (firstRemaining && firstRemaining.id !== media.id) {
+        await ctx.db
+          .update(listingMedia)
+          .set({ isPrimary: true })
+          .where(eq(listingMedia.id, firstRemaining.id))
+      }
+
+      return { ok: true }
+    }),
+
+  setPrimaryMedia: protectedProcedure
+    .input(z.object({ mediaId: z.string().uuid() }))
+    .mutation(async ({ input, ctx }) => {
+      const media = await ctx.db.query.listingMedia.findFirst({
+        where: eq(listingMedia.id, input.mediaId),
+      })
+      if (!media) throw new Error('Imagen no encontrada')
+
+      const listing = await ctx.db.query.listings.findFirst({
+        where: and(
+          eq(listings.id, media.listingId),
+          eq(listings.publisherId, ctx.session.userId)
+        ),
+      })
+      if (!listing) throw new Error('Propiedad no encontrada')
+
+      await ctx.db
+        .update(listingMedia)
+        .set({ isPrimary: false })
+        .where(eq(listingMedia.listingId, media.listingId))
+
+      await ctx.db
+        .update(listingMedia)
+        .set({ isPrimary: true })
+        .where(eq(listingMedia.id, input.mediaId))
+
+      await ctx.db
+        .update(listings)
+        .set({
+          primaryImageUrl: media.url,
+          updatedAt: new Date(),
+        })
+        .where(eq(listings.id, media.listingId))
+
+      return { ok: true }
+    }),
 })
