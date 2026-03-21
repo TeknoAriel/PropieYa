@@ -9,11 +9,13 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 import { and, eq, gt, inArray, lt, lte } from 'drizzle-orm'
 
-import { db, listings } from '@propieya/database'
+import { db, listings, users } from '@propieya/database'
 import {
   LISTING_VALIDITY,
   type ListingStatus,
 } from '@propieya/shared'
+
+import { sendExpiringSoonEmail } from '@/lib/email'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -57,9 +59,17 @@ export async function GET(req: NextRequest) {
     }
 
     // 2. Marcar expiring_soon: active con expiresAt dentro de X días
+    const panelUrl =
+      process.env.NEXT_PUBLIC_PANEL_URL ?? 'http://localhost:3001'
+
     const toExpiringSoon = await db
-      .select({ id: listings.id })
+      .select({
+        id: listings.id,
+        title: listings.title,
+        publisherEmail: users.email,
+      })
       .from(listings)
+      .innerJoin(users, eq(listings.publisherId, users.id))
       .where(
         and(
           eq(listings.status, 'active'),
@@ -78,7 +88,17 @@ export async function GET(req: NextRequest) {
         })
         .where(eq(listings.id, row.id))
         .returning({ id: listings.id })
-      if (updated) expiringSoon++
+      if (updated) {
+        expiringSoon++
+        if (row.publisherEmail) {
+          const renewUrl = `${panelUrl}/propiedades/${row.id}`
+          await sendExpiringSoonEmail({
+            to: row.publisherEmail,
+            listingTitle: row.title,
+            renewUrl,
+          })
+        }
+      }
     }
 
     return NextResponse.json({

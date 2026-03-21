@@ -64,15 +64,15 @@
 
 ---
 
-## Sprint 3 — Notificaciones de vigencia
+## Sprint 3 — Notificaciones de vigencia ✅
 
 **Objetivo:** avisar al publicador cuando un aviso está por vencer.
 
-- [ ] 3.1 Template email "próximo a vencer" (Resend o Sendgrid)
-- [ ] 3.2 Job o paso en job vigencia: enviar email a publisher
-- [ ] 3.3 Link de renovación en email (query param o token)
-- [ ] 3.4 Variable `EMAIL_FROM`, `RESEND_API_KEY` en .env.example
-- [ ] 3.5 Verificar lint/typecheck, commit + push
+- [x] 3.1 Template email "próximo a vencer" (Resend o Sendgrid)
+- [x] 3.2 Job o paso en job vigencia: enviar email a publisher
+- [x] 3.3 Link de renovación en email (query param o token)
+- [x] 3.4 Variable `EMAIL_FROM`, `RESEND_API_KEY` en .env.example
+- [x] 3.5 Verificar lint/typecheck, commit + push
 
 **Criterios:** publicador recibe email con link para renovar.
 
