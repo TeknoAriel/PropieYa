@@ -1,3 +1,9 @@
+# Vercel: evitar proyectos web duplicados
+
+**URL canónica del portal:** https://propieyaweb.vercel.app (`docs/CANONICAL-URLS.md`).
+
+---
+
 # Vercel: dos proyectos “web” (propie-ya-web vs propieya_web)
 
 Solo necesitás **un** proyecto Vercel para el portal (`apps/web`). El otro es duplicado y genera confusión.
