@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from 'react'
 
 import type { Currency } from '@propieya/shared'
 import { Button, Card, Input } from '@propieya/ui'
+import Image from 'next/image'
 import Link from 'next/link'
 import { Star, Trash2 } from 'lucide-react'
 
@@ -301,10 +302,13 @@ export default function EditarPropiedadPage() {
               key={m.id}
               className="relative group w-32 h-24 rounded overflow-hidden bg-surface-secondary border border-border"
             >
-              <img
+              <Image
                 src={m.url}
                 alt=""
-                className="w-full h-full object-cover"
+                fill
+                sizes="128px"
+                className="object-cover"
+                unoptimized
               />
               {m.isPrimary && (
                 <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-brand-primary text-white text-xs rounded">
