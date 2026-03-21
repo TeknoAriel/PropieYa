@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto'
+
 import { z } from 'zod'
-import { eq, and, desc, ilike } from 'drizzle-orm'
+import { eq, and, desc, ilike, or, gte, lte, sql } from 'drizzle-orm'
 
 import {
   listings,
@@ -9,7 +11,18 @@ import {
 } from '@propieya/database'
 import { createListingSchema, updateListingSchema, LISTING_VALIDITY } from '@propieya/shared'
 
+import {
+  getPresignedPutUrl,
+  isS3Configured,
+  publicMediaUrl,
+  sanitizeUploadFilename,
+} from '../s3-presign'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
+
+/** Evita que el usuario inyecte comodines ILIKE (%, _). */
+function sanitizeIlikeFragment(raw: string): string {
+  return raw.trim().slice(0, 120).replace(/[%_\\]/g, ' ').replace(/\s+/g, ' ')
+}
 
 export const listingRouter = createTRPCRouter({
   create: protectedProcedure
@@ -115,6 +128,29 @@ export const listingRouter = createTRPCRouter({
         .returning()
 
       return updated ?? null
+    }),
+
+  /** Detalle para el publicador (cualquier estado). */
+  getMineById: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .query(async ({ input, ctx }) => {
+      const listing = await ctx.db.query.listings.findFirst({
+        where: and(
+          eq(listings.id, input.id),
+          eq(listings.publisherId, ctx.session.userId)
+        ),
+      })
+
+      if (!listing) {
+        return null
+      }
+
+      const media = await ctx.db.query.listingMedia.findMany({
+        where: eq(listingMedia.listingId, input.id),
+        orderBy: [desc(listingMedia.isPrimary), listingMedia.order],
+      })
+
+      return { ...listing, media }
     }),
 
   listMine: protectedProcedure
@@ -263,5 +299,183 @@ export const listingRouter = createTRPCRouter({
       })
 
       return result
+    }),
+
+  /** Búsqueda pública (solo avisos activos). */
+  search: publicProcedure
+    .input(
+      z.object({
+        q: z.string().max(200).optional(),
+        operationType: z
+          .enum(['sale', 'rent', 'temporary_rent'])
+          .optional(),
+        propertyType: z.string().max(50).optional(),
+        minPrice: z.number().nonnegative().optional(),
+        maxPrice: z.number().nonnegative().optional(),
+        minBedrooms: z.number().int().min(0).max(50).optional(),
+        city: z.string().max(120).optional(),
+        neighborhood: z.string().max(120).optional(),
+        limit: z.number().min(1).max(50).default(24),
+        offset: z.number().min(0).max(500).default(0),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const conditions = [eq(listings.status, 'active')]
+
+      if (input.q?.trim()) {
+        const frag = sanitizeIlikeFragment(input.q)
+        if (frag.length > 0) {
+          const pat = `%${frag}%`
+          conditions.push(
+            or(
+              ilike(listings.title, pat),
+              ilike(listings.description, pat)
+            )!
+          )
+        }
+      }
+
+      if (input.operationType) {
+        conditions.push(eq(listings.operationType, input.operationType))
+      }
+      if (input.propertyType) {
+        conditions.push(eq(listings.propertyType, input.propertyType))
+      }
+      if (input.minPrice !== undefined) {
+        conditions.push(gte(listings.priceAmount, input.minPrice))
+      }
+      if (input.maxPrice !== undefined) {
+        conditions.push(lte(listings.priceAmount, input.maxPrice))
+      }
+      if (input.minBedrooms !== undefined) {
+        conditions.push(gte(listings.bedrooms, input.minBedrooms))
+      }
+      if (input.city?.trim()) {
+        const c = sanitizeIlikeFragment(input.city)
+        if (c.length > 0) {
+          conditions.push(
+            sql`COALESCE(${listings.address}->>'city', '') ILIKE ${`%${c}%`}`
+          )
+        }
+      }
+      if (input.neighborhood?.trim()) {
+        const n = sanitizeIlikeFragment(input.neighborhood)
+        if (n.length > 0) {
+          conditions.push(
+            sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${`%${n}%`}`
+          )
+        }
+      }
+
+      const result = await ctx.db.query.listings.findMany({
+        where: and(...conditions),
+        orderBy: [desc(listings.publishedAt)],
+        limit: input.limit,
+        offset: input.offset,
+      })
+
+      return result
+    }),
+
+  getPresignedUploadUrl: protectedProcedure
+    .input(
+      z.object({
+        listingId: z.string().uuid(),
+        filename: z.string().min(1).max(200),
+        contentType: z.string().min(1).max(120),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      if (!isS3Configured()) {
+        throw new Error(
+          'Almacenamiento de archivos no configurado (S3/R2). Revisá variables en docs/21-s3-media.md.'
+        )
+      }
+
+      const existing = await ctx.db.query.listings.findFirst({
+        where: and(
+          eq(listings.id, input.listingId),
+          eq(listings.publisherId, ctx.session.userId)
+        ),
+      })
+
+      if (!existing) {
+        throw new Error('Propiedad no encontrada')
+      }
+
+      const safeName = sanitizeUploadFilename(input.filename)
+      const key = `listings/${input.listingId}/${randomUUID()}-${safeName}`
+      const uploadUrl = await getPresignedPutUrl({
+        key,
+        contentType: input.contentType,
+      })
+      const fileUrl = publicMediaUrl(key)
+
+      return { uploadUrl, fileUrl, key }
+    }),
+
+  addMedia: protectedProcedure
+    .input(
+      z.object({
+        listingId: z.string().uuid(),
+        url: z.string().url().max(2048),
+        type: z.enum(['image', 'video', 'floor_plan', 'virtual_tour']).default('image'),
+        isPrimary: z.boolean().optional(),
+        alt: z.string().max(255).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const existing = await ctx.db.query.listings.findFirst({
+        where: and(
+          eq(listings.id, input.listingId),
+          eq(listings.publisherId, ctx.session.userId)
+        ),
+      })
+
+      if (!existing) {
+        throw new Error('Propiedad no encontrada')
+      }
+
+      const mediaRows = await ctx.db.query.listingMedia.findMany({
+        where: eq(listingMedia.listingId, input.listingId),
+      })
+
+      const order = mediaRows.length
+      const noPrimaryYet = !existing.primaryImageUrl && mediaRows.length === 0
+      const isPrimary = input.isPrimary ?? noPrimaryYet
+
+      if (isPrimary) {
+        await ctx.db
+          .update(listingMedia)
+          .set({ isPrimary: false })
+          .where(eq(listingMedia.listingId, input.listingId))
+      }
+
+      const [row] = await ctx.db
+        .insert(listingMedia)
+        .values({
+          listingId: input.listingId,
+          type: input.type,
+          url: input.url,
+          order,
+          isPrimary,
+          alt: input.alt ?? null,
+        })
+        .returning()
+
+      const nextPrimary = isPrimary
+        ? input.url
+        : (existing.primaryImageUrl ?? input.url)
+
+      await ctx.db
+        .update(listings)
+        .set({
+          primaryImageUrl: nextPrimary,
+          mediaCount: existing.mediaCount + 1,
+          updatedAt: new Date(),
+        })
+        .where(eq(listings.id, input.listingId))
+
+      return row
     }),
 })
