@@ -1,6 +1,7 @@
 'use client'
 
 import { Button, Bell, Menu, Moon, Sun } from '@propieya/ui'
+
 import { useTheme } from '@/lib/theme-provider'
 
 export function TopBar() {

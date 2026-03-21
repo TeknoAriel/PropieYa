@@ -188,6 +188,7 @@ Este documento define las tareas técnicas priorizadas para el desarrollo del MV
 - [ ] Modo simple/pro (campos visibles)
 - [ ] Autocompletado de ubicación
 - [ ] Selector de amenities
+- [ ] Variante rural para publicaciones tipo `land` (agrícola/ganadero/mixto/forestal/otro) + campos específicos
 - [ ] Upload de imágenes con preview
 - [ ] Drag & drop reordenamiento
 - [ ] Preview antes de publicar

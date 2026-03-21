@@ -125,7 +125,120 @@ export interface ListingFeatures {
   amenities: Amenity[]
   // Campos libres para características adicionales
   extras: Record<string, string | number | boolean>
+
+  /**
+   * Subrubro para propiedades `commercial` / `office`.
+   * Se guarda dentro de `features` (JSONB) sin migración adicional.
+   */
+  commercialSub?: ListingCommercialSub | null
+
+  /**
+   * Campos rurales (agricola/ganadero/etc).
+   * Se usa cuando `propertyType` representa terrenos/espacios rurales.
+   */
+  field?: ListingField | null
 }
+
+/**
+ * Subrubros para espacios comerciales y oficinas.
+ */
+export type CommercialSubVariant =
+  | 'retail'
+  | 'medical'
+  | 'business'
+  | 'office'
+  | 'unificado'
+  | 'otro'
+
+export interface CommercialSubRetail {
+  variant: 'retail'
+  label?: string | null
+}
+
+export interface CommercialSubMedical {
+  variant: 'medical'
+  label?: string | null
+}
+
+export interface CommercialSubBusiness {
+  variant: 'business'
+  label?: string | null
+}
+
+export interface CommercialSubOffice {
+  variant: 'office'
+  label?: string | null
+}
+
+export interface CommercialSubUnificado {
+  /**
+   * Variante para integradores que envían un “subrubro” unificado.
+   * Guardamos la etiqueta (o un resumen) sin imponer estructura extra.
+   */
+  variant: 'unificado'
+  label?: string | null
+}
+
+export interface CommercialSubOtro {
+  variant: 'otro'
+  label?: string | null
+}
+
+export type ListingCommercialSub =
+  | CommercialSubRetail
+  | CommercialSubMedical
+  | CommercialSubBusiness
+  | CommercialSubOffice
+  | CommercialSubUnificado
+  | CommercialSubOtro
+
+/**
+ * Variantes de "campo" para publicaciones de tipo `land`.
+ */
+export type FieldVariant = 'agricola' | 'ganadero' | 'mixto' | 'forestal' | 'otro'
+
+export interface FieldAgricola {
+  variant: 'agricola'
+  hectares: number
+  cropType: string
+  irrigation?: string | null
+  soilType?: string | null
+}
+
+export interface FieldGanadero {
+  variant: 'ganadero'
+  hectares: number
+  animalSpecies: string
+  headCount: number
+  housingSystem?: string | null
+}
+
+export interface FieldMixto {
+  variant: 'mixto'
+  hectares: number
+  cropType: string
+  animalSpecies: string
+  headCount: number
+}
+
+export interface FieldForestal {
+  variant: 'forestal'
+  hectares: number
+  treeSpecies: string
+  ageYears?: number | null
+}
+
+export interface FieldOtro {
+  variant: 'otro'
+  description: string
+}
+
+export type ListingField =
+  | FieldAgricola
+  | FieldGanadero
+  | FieldMixto
+  | FieldForestal
+  | FieldOtro
 
 export interface ListingMedia {
   id: UUID

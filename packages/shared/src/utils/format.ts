@@ -14,7 +14,17 @@ export function formatPrice(
   const { compact = false, showCents = false } = options ?? {}
 
   const locale = 'es-AR'
-  const currencyCode = currency === 'USD' ? 'USD' : 'ARS'
+  // `UF` no es moneda ISO-4217; se muestra con formato propio.
+  if (currency === 'UF') {
+    const formatter = new Intl.NumberFormat(locale, {
+      notation: compact ? 'compact' : 'standard',
+      minimumFractionDigits: showCents ? 2 : 0,
+      maximumFractionDigits: showCents ? 2 : 0,
+    })
+    return `${formatter.format(amount)} UF`
+  }
+
+  const currencyCode = currency
 
   if (compact && amount >= 1000) {
     const formatter = new Intl.NumberFormat(locale, {

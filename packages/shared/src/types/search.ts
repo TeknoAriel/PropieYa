@@ -1,19 +1,18 @@
 import {
+  type Currency,
+  type GeoPoint,
+  type GeoShape,
+  type PriceRange,
+  type SurfaceRange,
+  type CursorPagination,
+} from './common'
+import {
   type PropertyType,
   type OperationType,
   type Amenity,
   type Orientation,
   type AgeType,
 } from './listing'
-import {
-  type Currency,
-  type GeoPoint,
-  type GeoShape,
-  type PriceRange,
-  type SurfaceRange,
-  type SortOption,
-  type CursorPagination,
-} from './common'
 
 /**
  * Filtros de búsqueda estructurados

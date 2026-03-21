@@ -1,3 +1,4 @@
+import { relations } from 'drizzle-orm'
 import {
   pgTable,
   uuid,
@@ -10,10 +11,9 @@ import {
   doublePrecision,
   index,
 } from 'drizzle-orm/pg-core'
-import { relations } from 'drizzle-orm'
 
-import { users } from './users'
 import { organizations } from './organizations'
+import { users } from './users'
 
 /**
  * Propiedades/avisos

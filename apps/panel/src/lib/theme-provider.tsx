@@ -64,10 +64,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('panel-theme', newTheme)
   }
 
-  if (!mounted) {
-    return <>{children}</>
-  }
-
   return (
     <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
       {children}
@@ -75,10 +71,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   )
 }
 
+const defaultThemeValue: ThemeContextValue = {
+  theme: 'system',
+  setTheme: () => {},
+  resolvedTheme: 'light',
+}
+
 export function useTheme() {
   const context = useContext(ThemeContext)
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider')
-  }
-  return context
+  return context ?? defaultThemeValue
 }

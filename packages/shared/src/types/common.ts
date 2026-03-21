@@ -6,7 +6,9 @@ export type UUID = string
 
 export type Timestamp = string // ISO 8601
 
-export type Currency = 'ARS' | 'USD'
+// Monedas soportadas por el portal + integraciones (MVP)
+// Nota: `UF` (Unidad de Fomento) no es ISO-4217; se formatea con lógica propia.
+export type Currency = 'ARS' | 'USD' | 'CLP' | 'UF' | 'MXN'
 
 export type Locale = 'es-AR' | 'es' | 'en'
 

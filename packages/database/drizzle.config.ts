@@ -1,4 +1,12 @@
+import { config } from 'dotenv'
+import fs from 'fs'
+import path from 'path'
 import { defineConfig } from 'drizzle-kit'
+
+// Cargar .env: primero raíz del monorepo, luego cwd
+const rootEnv = path.resolve(process.cwd(), '../../.env')
+const localEnv = path.resolve(process.cwd(), '.env')
+config({ path: fs.existsSync(rootEnv) ? rootEnv : localEnv })
 
 export default defineConfig({
   schema: './src/schema/index.ts',
@@ -8,5 +16,6 @@ export default defineConfig({
     url: process.env.DATABASE_URL!,
   },
   verbose: true,
-  strict: true,
+  // strict: false para permitir db:push sin confirmación en CI (infra:test)
+  strict: false,
 })

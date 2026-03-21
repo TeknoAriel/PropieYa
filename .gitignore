@@ -38,6 +38,9 @@ coverage
 *.tsbuildinfo
 .eslintcache
 
+# Credenciales locales (no subir)
+DEPLOY-CREDENTIALS.local.txt
+
 # Database
 *.db
 *.sqlite

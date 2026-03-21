@@ -14,7 +14,7 @@ const propertyTypes = [
 
 const operationTypes = ['sale', 'rent', 'temporary_rent'] as const
 
-const currencies = ['ARS', 'USD'] as const
+const currencies = ['ARS', 'USD', 'CLP', 'UF', 'MXN'] as const
 
 const amenities = [
   'pool',
@@ -38,6 +38,67 @@ const amenities = [
   'pet_friendly',
   'wheelchair_accessible',
 ] as const
+
+const fieldSchema = z.discriminatedUnion('variant', [
+  z.object({
+    variant: z.literal('agricola'),
+    hectares: z.number().positive(),
+    cropType: z.string().min(1),
+    irrigation: z.string().min(1).nullable().optional(),
+    soilType: z.string().min(1).nullable().optional(),
+  }),
+  z.object({
+    variant: z.literal('ganadero'),
+    hectares: z.number().positive(),
+    animalSpecies: z.string().min(1),
+    headCount: z.number().int().positive(),
+    housingSystem: z.string().min(1).nullable().optional(),
+  }),
+  z.object({
+    variant: z.literal('mixto'),
+    hectares: z.number().positive(),
+    cropType: z.string().min(1),
+    animalSpecies: z.string().min(1),
+    headCount: z.number().int().positive(),
+  }),
+  z.object({
+    variant: z.literal('forestal'),
+    hectares: z.number().positive(),
+    treeSpecies: z.string().min(1),
+    ageYears: z.number().int().positive().nullable().optional(),
+  }),
+  z.object({
+    variant: z.literal('otro'),
+    description: z.string().min(10),
+  }),
+])
+
+const commercialSubSchema = z.discriminatedUnion('variant', [
+  z.object({
+    variant: z.literal('retail'),
+    label: z.string().min(1).nullable().optional(),
+  }),
+  z.object({
+    variant: z.literal('medical'),
+    label: z.string().min(1).nullable().optional(),
+  }),
+  z.object({
+    variant: z.literal('business'),
+    label: z.string().min(1).nullable().optional(),
+  }),
+  z.object({
+    variant: z.literal('office'),
+    label: z.string().min(1).nullable().optional(),
+  }),
+  z.object({
+    variant: z.literal('unificado'),
+    label: z.string().min(1).nullable().optional(),
+  }),
+  z.object({
+    variant: z.literal('otro'),
+    label: z.string().min(1).nullable().optional(),
+  }),
+])
 
 const addressSchema = z.object({
   street: z.string().min(1, 'La calle es requerida'),
@@ -104,6 +165,12 @@ export const createListingSchema = z.object({
       .nullable(),
     amenities: z.array(z.enum(amenities)),
     extras: z.record(z.union([z.string(), z.number(), z.boolean()])),
+
+    // Subrubro comercial/oficina (opcional).
+    commercialSub: commercialSubSchema.optional().nullable(),
+
+    // Campos rurales (opcional). Se guarda dentro de `features` (JSONB) sin migración adicional.
+    field: fieldSchema.optional().nullable(),
   }),
 })
 

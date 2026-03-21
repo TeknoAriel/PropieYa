@@ -1,7 +1,7 @@
+import type { AppRouter } from '@propieya/web/server'
 import { createTRPCReact, httpBatchLink } from '@trpc/react-query'
 import superjson from 'superjson'
 
-import type { AppRouter } from '@propieya/web/server'
 
 function getBaseUrl(): string {
   return process.env.NEXT_PUBLIC_WEB_APP_URL ?? 'http://localhost:3000'

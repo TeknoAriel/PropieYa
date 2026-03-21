@@ -58,5 +58,28 @@ export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './comp
 // Navigation
 export { Tabs, TabsList, TabsTrigger, TabsContent } from './components/tabs'
 
-// Icons (re-export from lucide)
-export * from 'lucide-react'
+// Icons (lucide): export explícito para no chocar con el componente `Badge`
+export {
+  ArrowRight,
+  Bell,
+  Building2,
+  Calendar,
+  Eye,
+  Filter,
+  Heart,
+  LayoutDashboard,
+  LogOut,
+  Mail,
+  Menu,
+  MessageSquare,
+  Moon,
+  Phone,
+  Plus,
+  Search,
+  Settings,
+  Sparkles,
+  Sun,
+  TrendingDown,
+  TrendingUp,
+  Users,
+} from 'lucide-react'

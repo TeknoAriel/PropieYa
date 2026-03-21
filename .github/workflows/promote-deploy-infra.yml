@@ -1,0 +1,73 @@
+# Tras push a deploy/infra: verifica y fusiona a main → Vercel despliega solo.
+name: Promote deploy/infra → main
+
+on:
+  push:
+    branches: [deploy/infra]
+  workflow_dispatch:
+
+concurrency:
+  group: promote-deploy-infra
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/propieya
+  NEXT_PUBLIC_APP_URL: https://example.com
+  NEXT_PUBLIC_PANEL_URL: https://panel.example.com
+  NEXT_PUBLIC_WEB_APP_URL: https://example.com
+
+jobs:
+  verify:
+    name: Verify (lint + typecheck + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && 'deploy/infra' || github.ref }}
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+  merge-to-main:
+    name: Merge to main
+    needs: [verify]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge deploy/infra into main and push
+        run: |
+          git fetch origin main deploy/infra
+          git checkout -B main origin/main
+          git merge origin/deploy/infra --no-ff -m "chore: auto-merge deploy/infra → main"
+          git push origin main

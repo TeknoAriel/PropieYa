@@ -1,8 +1,5 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-
 import {
   cn,
   LayoutDashboard,
@@ -12,13 +9,17 @@ import {
   Settings,
   LogOut,
 } from '@propieya/ui'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
 
-import { trpc } from '@/lib/trpc'
+
 import { getRefreshToken, clearTokens } from '@/lib/auth-store'
+import { trpc } from '@/lib/trpc'
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/propiedades', label: 'Propiedades', icon: Building2 },
+  { href: '/campos', label: 'Campos', icon: Building2 },
   { href: '/leads', label: 'Leads', icon: Users },
   { href: '/mensajes', label: 'Mensajes', icon: MessageSquare },
   { href: '/configuracion', label: 'Configuración', icon: Settings },
