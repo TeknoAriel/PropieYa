@@ -20,8 +20,8 @@ import {
 import {
   syncListingToSearch,
   removeListingFromSearch,
-} from '@/lib/search/sync'
-import { searchListings } from '@/lib/search/search'
+} from '../../lib/search/sync'
+import { searchListings } from '../../lib/search/search'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
 
 /** Evita que el usuario inyecte comodines ILIKE (%, _). */

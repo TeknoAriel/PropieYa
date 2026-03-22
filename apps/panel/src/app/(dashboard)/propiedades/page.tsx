@@ -137,7 +137,7 @@ export default function PropiedadesPage() {
                           : listing.status === 'expiring_soon'
                             ? 'secondary'
                             : listing.status === 'suspended'
-                              ? 'destructive'
+                              ? 'error'
                               : 'secondary'
                       }
                     >

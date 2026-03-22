@@ -1,10 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-import { Badge, Button, Card, Skeleton } from '@propieya/ui'
+import { Badge, Button, Card, MessageSquare, Skeleton } from '@propieya/ui'
+
+import { ContactModal } from '@/components/contact-modal'
 import { formatPrice, formatSurface } from '@propieya/shared'
 import type {
   Currency,
@@ -70,6 +73,30 @@ function FieldSummary({ field }: { field: ListingField | null | undefined }) {
     default:
       return null
   }
+}
+
+function ContactButton({
+  listingId,
+  listingTitle,
+}: {
+  listingId: string
+  listingTitle: string
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <Button onClick={() => setOpen(true)} className="w-full">
+        <MessageSquare className="h-4 w-4 mr-2" />
+        Contactar
+      </Button>
+      <ContactModal
+        listingId={listingId}
+        listingTitle={listingTitle}
+        open={open}
+        onOpenChange={setOpen}
+      />
+    </>
+  )
 }
 
 function CommercialSubSummary({
@@ -242,6 +269,17 @@ export default function PropiedadPage() {
         </div>
 
         <div className="space-y-4">
+          <Card className="p-6 space-y-4">
+            <h2 className="text-lg font-semibold">¿Te interesa?</h2>
+            <p className="text-sm text-text-secondary">
+              Consultá por esta propiedad y te responderán a la brevedad.
+            </p>
+            <ContactButton
+              listingId={listing.id}
+              listingTitle={listing.title}
+            />
+          </Card>
+
           <Card className="p-6 space-y-4">
             <h2 className="text-lg font-semibold">Datos</h2>
             <div className="space-y-2 text-sm">
