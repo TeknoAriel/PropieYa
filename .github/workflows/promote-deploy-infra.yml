@@ -51,9 +51,32 @@ jobs:
       - name: Build
         run: pnpm build
 
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && 'deploy/infra' || github.ref }}
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
   merge-to-main:
     name: Merge to main (vía PR)
-    needs: [verify]
+    needs: [verify, typecheck]
     runs-on: ubuntu-latest
     steps:
       - name: Crear PR y mergear
@@ -84,30 +107,38 @@ jobs:
               core.info(`PR #${prNum} created`);
             }
 
-            for (let i = 0; i < 24; i++) {
+            for (let i = 0; i < 12; i++) {
               const { data: status } = await github.rest.repos.getCombinedStatusForRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 ref: 'deploy/infra'
               });
               if (status.state === 'success') {
-                await github.rest.pulls.merge({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: prNum,
-                  merge_method: 'merge',
-                  commit_title: 'chore: auto-merge deploy/infra → main'
-                });
-                core.info('PR merged');
-                return;
+                try {
+                  await github.rest.pulls.merge({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: prNum,
+                    merge_method: 'merge',
+                    commit_title: 'chore: auto-merge deploy/infra → main'
+                  });
+                  core.info('PR merged');
+                  return;
+                } catch (e) {
+                  core.warning('Merge failed: ' + (e.message || e));
+                  if (i < 11) {
+                    core.info('Retrying in 15s...');
+                    await new Promise(r => setTimeout(r, 15000));
+                  } else throw e;
+                }
+              } else if (status.state === 'failure' || status.state === 'error') {
+                throw new Error('Checks failed on deploy/infra: ' + status.state);
+              } else {
+                core.info(`Waiting for checks (${status.state})... ${i+1}/12`);
+                await new Promise(r => setTimeout(r, 15000));
               }
-              if (status.state === 'failure' || status.state === 'error') {
-                throw new Error('CI failed on deploy/infra: ' + status.state);
-              }
-              core.info(`Waiting for CI (${status.state})... ${i+1}/24`);
-              await new Promise(r => setTimeout(r, 25000));
             }
-            throw new Error('Timeout: CI no completó en 10 min');
+            throw new Error('Timeout: checks no completaron en 3 min');
 
   verify-deploy:
     name: Verificar deploy en producción

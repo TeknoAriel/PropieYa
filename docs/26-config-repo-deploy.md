@@ -26,8 +26,6 @@
 3. Marcar: **"Allow GitHub Actions to create and approve pull requests"**
 4. Guardar
 
-![Workflow permissions](https://docs.github.com/assets/cb-114952/images/help/actions/workflow-permissions.png)
-
 ### 2. (Opcional) Bypass para merge
 
 Si el merge del PR falla con "changes must be made through a pull request" o permisos:
@@ -59,3 +57,4 @@ Si el merge del PR falla con "changes must be made through a pull request" o per
 | Build: `MappingProperty` | Vercel | Corregido (tipo local en mapping.ts) |
 | Push directo a main | Promote | Workflow cambiado a PR-based |
 | **Actions no puede crear PR** | Promote | **Habilitar en Settings → Actions** |
+| **Branch protection requiere "Typecheck"** | Promote | Job "Typecheck" agregado al workflow Promote (crea el check que exige la regla) |
