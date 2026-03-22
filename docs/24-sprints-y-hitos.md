@@ -94,29 +94,29 @@
 
 ---
 
-## Sprint 5 — Leads básico
+## Sprint 5 — Leads básico ✅
 
 **Objetivo:** contacto desde ficha y listado en panel.
 
-- [ ] 5.1 Modal/página de contacto en ficha de propiedad (portal)
-- [ ] 5.2 Router `lead.create` (nombre, email, mensaje, listingId)
-- [ ] 5.3 Guardar lead en DB con datos del listing
-- [ ] 5.4 Página/listado de leads en panel (solo de mis propiedades)
-- [ ] 5.5 Detalle de lead (mensaje, fecha, listing)
-- [ ] 5.6 Verificar lint/typecheck, commit + push
+- [x] 5.1 Modal/página de contacto en ficha de propiedad (portal)
+- [x] 5.2 Router `lead.create` (nombre, email, mensaje, listingId)
+- [x] 5.3 Guardar lead en DB con datos del listing
+- [x] 5.4 Página/listado de leads en panel (solo de mis propiedades)
+- [x] 5.5 Detalle de lead (mensaje, fecha, listing)
+- [x] 5.6 Verificar lint/typecheck, commit + push
 
 **Criterios:** usuario puede contactar desde ficha; publicador ve leads en panel.
 
 ---
 
-## Sprint 6 — Notificación de lead
+## Sprint 6 — Notificación de lead ✅
 
 **Objetivo:** avisar al publicador cuando recibe un lead.
 
-- [ ] 6.1 Template email "nuevo lead"
-- [ ] 6.2 Tras `lead.create`: enviar email al publisher
-- [ ] 6.3 Link al panel en email
-- [ ] 6.4 Verificar lint/typecheck, commit + push
+- [x] 6.1 Template email "nuevo lead"
+- [x] 6.2 Tras `lead.create`: enviar email al publisher
+- [x] 6.3 Link al panel en email
+- [x] 6.4 Verificar lint/typecheck, commit + push
 
 **Criterios:** publicador recibe email al crear lead.
 
@@ -171,4 +171,4 @@
 
 ---
 
-*Actualizado: 2026-03-21*
+*Actualizado: 2026-03-22*
