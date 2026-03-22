@@ -9,9 +9,14 @@ Detalle y variables: **`docs/CANONICAL-URLS.md`**.
 ## Flujo de deploy (automatizado)
 
 1. Cambios en rama **`deploy/infra`** → push.
-2. GitHub Actions **Promote deploy/infra → main** (ver `.github/workflows/promote-deploy-infra.yml`).
-3. **`main`** actualizado → Vercel despliega si el proyecto está enlazado a `main`.
-4. Bypass GitHub si hace falta: **`docs/12-bypass-github-actions.md`**.
+2. GitHub Actions **Promote deploy/infra → main** (ver `.github/workflows/promote-deploy-infra.yml`):
+   - **verify**: lint, typecheck, build
+   - **merge-to-main**: fusiona `deploy/infra` en `main` y push
+   - **verify-deploy**: espera 90s, verifica que el portal responda 2xx
+3. **`main`** actualizado → Vercel despliega automáticamente.
+4. Verificar: `curl https://propieyaweb.vercel.app/api/version`
+5. Bypass GitHub si hace falta: **`docs/12-bypass-github-actions.md`**.
+6. Si algo falla: **`docs/25-verificar-deploy.md`**.
 
 ## Vercel (por proyecto)
 

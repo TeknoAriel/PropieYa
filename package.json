@@ -9,6 +9,7 @@
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",
     "typecheck": "turbo typecheck",
+    "verify": "pnpm lint && pnpm typecheck && pnpm build",
     "test": "turbo test",
     "test:watch": "turbo test:watch",
     "db:generate": "turbo db:generate",

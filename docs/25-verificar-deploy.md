@@ -53,6 +53,16 @@ git push origin deploy/infra
 
 Luego ir a GitHub Actions y vigilar que verify → merge → verify-deploy pasen.
 
+## Antes de pushear a deploy/infra
+
+Ejecutar localmente lo mismo que hace el CI:
+
+```bash
+pnpm verify
+```
+
+Equivale a `pnpm lint && pnpm typecheck && pnpm build`. Si falla, corregir antes de push.
+
 ## Resumen
 
 | Qué revisar          | Dónde                                         |

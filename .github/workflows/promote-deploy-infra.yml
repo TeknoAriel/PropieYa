@@ -101,3 +101,8 @@ jobs:
           else
             echo "WARN: Health API devolvió $code (no falla el job)"
           fi
+
+      - name: Mostrar versión desplegada
+        run: |
+          echo "Versión en producción:"
+          curl -sf https://propieyaweb.vercel.app/api/version 2>/dev/null | head -c 500 || echo "(api/version no disponible)"

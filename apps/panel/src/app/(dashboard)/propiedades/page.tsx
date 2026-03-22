@@ -6,7 +6,7 @@ import {
   type Currency,
   type ListingStatus,
 } from '@propieya/shared'
-import { Button, Input, Card, Badge, Plus, Search, Filter } from '@propieya/ui'
+import { Button, Input, Card, Badge, Plus, Search } from '@propieya/ui'
 import Link from 'next/link'
 import { useState } from 'react'
 
