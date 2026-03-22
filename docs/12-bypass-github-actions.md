@@ -1,11 +1,9 @@
-# Si falla “Merge to main” en Actions
+# Si falla "Merge to main" en Actions
 
-GitHub puede bloquear el `push` a `main`. **Una sola vez**, en el repo:
+El workflow `promote-deploy-infra` usa **PR** (crea PR deploy/infra→main, espera CI, mergea). Funciona con main protegido.
 
-1. **Settings** → **Rules** → **Rulesets** (o **Branches** → reglas de `main`)
-2. En la regla de `main`: **Bypass list** / excepciones
-3. Añadí actor: **`github-actions[bot]`** o **Repository roles** que permitan a Actions escribir en `main`
+Si falla el merge del PR:
 
-Alternativa: **Settings** → **Actions** → **General** → **Workflow permissions** → **Read and write permissions**.
-
-Sin bypass, el workflow `promote-deploy-infra` fallará en el paso *Merge to main*.
+1. **Settings** → **Rules** → **Rulesets** → regla de `main`
+2. **Bypass list**: añadir **`github-actions[bot]`** para que pueda mergear PRs
+3. O: **Settings** → **Actions** → **General** → **Workflow permissions** → **Read and write**

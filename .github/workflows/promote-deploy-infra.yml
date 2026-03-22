@@ -11,8 +11,9 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
+  statuses: read
 
 env:
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/propieya
@@ -51,26 +52,62 @@ jobs:
         run: pnpm build
 
   merge-to-main:
-    name: Merge to main
+    name: Merge to main (vía PR)
     needs: [verify]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Crear PR y mergear
+        uses: actions/github-script@v7
         with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: context.repo.owner + ':deploy/infra',
+              base: 'main'
+            });
+            let prNum;
+            if (pulls.length > 0) {
+              prNum = pulls[0].number;
+              core.info(`Usando PR #${prNum} existente`);
+            } else {
+              const { data: pr } = await github.rest.pulls.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'chore: auto-merge deploy/infra → main',
+                head: 'deploy/infra',
+                base: 'main',
+                body: 'Merge automático tras verify (lint, typecheck, build).'
+              });
+              prNum = pr.number;
+              core.info(`PR #${prNum} created`);
+            }
 
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Merge deploy/infra into main and push
-        run: |
-          git fetch origin main deploy/infra
-          git checkout -B main origin/main
-          git merge origin/deploy/infra --no-ff -m "chore: auto-merge deploy/infra → main"
-          git push origin main
+            for (let i = 0; i < 24; i++) {
+              const { data: status } = await github.rest.repos.getCombinedStatusForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: 'deploy/infra'
+              });
+              if (status.state === 'success') {
+                await github.rest.pulls.merge({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNum,
+                  merge_method: 'merge',
+                  commit_title: 'chore: auto-merge deploy/infra → main'
+                });
+                core.info('PR merged');
+                return;
+              }
+              if (status.state === 'failure' || status.state === 'error') {
+                throw new Error('CI failed on deploy/infra: ' + status.state);
+              }
+              core.info(`Waiting for CI (${status.state})... ${i+1}/24`);
+              await new Promise(r => setTimeout(r, 25000));
+            }
+            throw new Error('Timeout: CI no completó en 10 min');
 
   verify-deploy:
     name: Verificar deploy en producción

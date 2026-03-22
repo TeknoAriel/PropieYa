@@ -5,7 +5,7 @@ El agente anota aquí fallos que **no puede resolver** sin acción externa (GitH
 | Fecha | Qué falló | Acción necesaria (una vez) |
 |-------|-----------|----------------------------|
 | 2026-03-22 | Build Vercel: `@elastic/elasticsearch/api/types` y `@/lib/search` | Corregido en mapping.ts (tipo local) y lib/search/index.ts |
-| 2026-03-22 | main desactualizado: promote workflow fallaba por build | Ver GitHub Actions; si verify pasa, merge debería completarse |
+| 2026-03-22 | main protegido: push directo rechazado (PR requerido) | Workflow cambiado a PR-based: crea PR, espera CI, mergea |
 
 Formato al añadir fila:
 
