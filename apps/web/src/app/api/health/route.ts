@@ -34,6 +34,9 @@ export async function GET() {
     checks,
     latencyMs: Date.now() - startedAt,
     timestamp: new Date().toISOString(),
+    version: process.env.VERCEL_GIT_COMMIT_SHA
+      ? { commit: process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7), ref: process.env.VERCEL_GIT_COMMIT_REF }
+      : undefined,
   }
 
   return NextResponse.json(body, { status })

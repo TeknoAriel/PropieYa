@@ -28,6 +28,17 @@ Si usás previews del panel, agregá varias URLs separadas por coma.
 ## Verificación rápida
 
 - Abrí **https://propieyaweb.vercel.app** → debe cargar el home de Propieya.
-- Health (si está desplegado): `https://propieyaweb.vercel.app/api/health`
+- Health: `https://propieyaweb.vercel.app/api/health` (incluye `version.commit` si hay deploy Vercel).
+- Version (qué commit está desplegado): `https://propieyaweb.vercel.app/api/version`
 
 Última confirmación: contenido esperado incluye título *Propieya - Encontrá tu propiedad ideal* y hero *Contale a Propieya*.
+
+### Verificar que el deploy coincide con el repo
+
+```bash
+# Commit desplegado (desde /api/version o /api/health)
+curl -s https://propieyaweb.vercel.app/api/version | jq .commit
+
+# Comparar con el último en main
+git fetch origin main && git log -1 --format=%h origin/main
+```
