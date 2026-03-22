@@ -6,12 +6,16 @@ Punto de control: sincronizar local, Git, Neon y Vercel.
 
 ## 1. Estado actual (diagnóstico)
 
+**Verificación rápida:** `bash scripts/verificar-produccion.sh`
+
 ### Git
 
 | Rama | Último commit | Contenido |
 |------|---------------|-----------|
 | **main** | `7fd7f2a` | Merge deploy/infra; Sprints 1–5, Yumblin, copy packs, Elasticsearch, Leads |
 | **deploy/infra** | `69d67a2` | + Sprint 6 (email lead) |
+
+**Nota:** Si main y producción coinciden pero ves diferencias con local, suele ser **datos** (Neon vacío) o **env** (variables no configuradas en Vercel).
 
 ### Producción (Vercel)
 

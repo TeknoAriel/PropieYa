@@ -4,7 +4,7 @@ import { eq, and, desc, count } from 'drizzle-orm'
 import { leads, listings, users } from '@propieya/database'
 
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
-import { sendNewLeadEmail } from '@/lib/email'
+import { sendNewLeadEmail } from '../../lib/email'
 
 const panelBaseUrl = () =>
   process.env.NEXT_PUBLIC_PANEL_URL?.trim() || 'http://localhost:3001'
