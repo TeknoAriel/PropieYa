@@ -7,8 +7,8 @@ alwaysApply: true
 
 ## Antes de cada push
 
-1. Ejecutar **`pnpm lint`** y **`pnpm typecheck`**; si falla, corregir y no pushear hasta pasar.
-2. Si el cambio toca build/deploy: ejecutar **`pnpm build`** o al menos el paquete afectado.
+1. Ejecutar **`pnpm verify`** (lint + typecheck + build); si falla, corregir y no pushear hasta pasar.
+2. Para push a `deploy/infra`: `verify` es obligatorio (replica lo que corre el CI).
 3. No asumir que el usuario mirará Actions ni logs de Vercel.
 
 ## Si CI o promote falla
