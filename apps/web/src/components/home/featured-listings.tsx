@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 
 import { trpc } from '@/lib/trpc'
@@ -7,6 +8,8 @@ import { trpc } from '@/lib/trpc'
 import { Button, Card, Badge, Skeleton, ArrowRight } from '@propieya/ui'
 import { formatPrice } from '@propieya/shared'
 import type { Currency, OperationType } from '@propieya/shared'
+
+import { getPortalPack } from '@/lib/portal-copy'
 
 type FeaturedListingCardData = {
   id: string
@@ -22,6 +25,7 @@ type FeaturedListingCardData = {
 }
 
 export function FeaturedListings() {
+  const pack = getPortalPack()
   const { data: listingsRaw = [], isLoading } =
     trpc.listing.getFeatured.useQuery({ limit: 6 })
   const listings = listingsRaw as unknown as FeaturedListingCardData[]
@@ -70,7 +74,7 @@ export function FeaturedListings() {
         <div className="mt-8 text-center md:hidden">
           <Button variant="outline" asChild>
             <Link href="/buscar">
-              Ver todas las propiedades
+              {pack.featured.viewAllMobile}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
@@ -90,13 +94,16 @@ function ListingCard({ listing }: { listing: FeaturedListingCardData }) {
       <Card className="overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow">
         {/* Image */}
         <div className="relative h-48 overflow-hidden bg-surface-secondary">
-          <img
+          <Image
             src={
               listing.primaryImageUrl ||
               'https://placehold.co/600x400/e0ddd8/666660?text=Propiedad'
             }
             alt={listing.title}
-            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            unoptimized
           />
           <Badge className="absolute top-3 left-3" variant="secondary">
             {operationLabel}

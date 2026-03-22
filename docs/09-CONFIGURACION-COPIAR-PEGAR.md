@@ -1,5 +1,17 @@
 # Configuración — URLs y datos para copiar/pegar
 
+## URL canónica del portal
+
+**https://propieyaweb.vercel.app**
+
+En el **Panel**, variable `NEXT_PUBLIC_WEB_APP_URL`:
+
+```text
+https://propieyaweb.vercel.app
+```
+
+Más detalle: **`docs/CANONICAL-URLS.md`**.
+
 ---
 
 ## 1. NEON (Base de datos)

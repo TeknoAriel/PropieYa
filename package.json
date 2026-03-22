@@ -9,6 +9,7 @@
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",
     "typecheck": "turbo typecheck",
+    "verify": "pnpm lint && pnpm typecheck && pnpm build",
     "test": "turbo test",
     "test:watch": "turbo test:watch",
     "db:generate": "turbo db:generate",
@@ -18,14 +19,18 @@
     "infra:test": "bash scripts/infra-test.sh",
     "clean": "turbo clean && rm -rf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "import:yumblin": "pnpm exec tsx scripts/import-yumblin-json.ts",
+    "publish:imported": "pnpm exec tsx scripts/publish-imported-drafts.ts",
     "prepare": "husky"
   },
   "devDependencies": {
+    "dotenv": "^16.4.0",
     "@commitlint/cli": "^19.0.0",
     "@commitlint/config-conventional": "^19.0.0",
     "husky": "^9.0.0",
     "prettier": "^3.2.0",
     "prettier-plugin-tailwindcss": "^0.5.0",
+    "tsx": "^4.7.0",
     "turbo": "^2.0.0",
     "typescript": "^5.4.0"
   },

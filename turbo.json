@@ -4,10 +4,12 @@
   "globalEnv": [
     "NODE_ENV",
     "DATABASE_URL",
+    "JWT_SECRET",
     "ELASTICSEARCH_URL",
     "REDIS_URL",
     "OPENAI_API_KEY",
-    "NEXT_PUBLIC_APP_URL"
+    "NEXT_PUBLIC_APP_URL",
+    "NEXT_PUBLIC_WEB_APP_URL"
   ],
   "tasks": {
     "build": {

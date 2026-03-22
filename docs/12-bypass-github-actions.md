@@ -1,11 +1,13 @@
-# Si falla “Merge to main” en Actions
+# Si falla "Merge to main" en Actions
 
-GitHub puede bloquear el `push` a `main`. **Una sola vez**, en el repo:
+## Error: "GitHub Actions is not permitted to create or approve pull requests"
 
-1. **Settings** → **Rules** → **Rulesets** (o **Branches** → reglas de `main`)
-2. En la regla de `main`: **Bypass list** / excepciones
-3. Añadí actor: **`github-actions[bot]`** o **Repository roles** que permitan a Actions escribir en `main`
+**Solución:** Settings → **Actions** → **General** → **Workflow permissions** → marcar **"Allow GitHub Actions to create and approve pull requests"**.
 
-Alternativa: **Settings** → **Actions** → **General** → **Workflow permissions** → **Read and write permissions**.
+Ver guía completa: **docs/26-config-repo-deploy.md**
 
-Sin bypass, el workflow `promote-deploy-infra` fallará en el paso *Merge to main*.
+## Si falla el merge del PR (otro error)
+
+1. **Settings** → **Rules** → **Rulesets** → regla de `main`
+2. **Bypass list**: añadir **`github-actions[bot]`** para que pueda mergear PRs
+3. O: **Settings** → **Actions** → **General** → **Workflow permissions** → **Read and write**

@@ -11,8 +11,9 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: write   # necesario para mergear el PR a main
   pull-requests: write
+  statuses: read
 
 env:
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/propieya
@@ -50,24 +51,126 @@ jobs:
       - name: Build
         run: pnpm build
 
-  merge-to-main:
-    name: Merge to main
-    needs: [verify]
+  typecheck:
+    name: Typecheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && 'deploy/infra' || github.ref }}
 
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
 
-      - name: Merge deploy/infra into main and push
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+  merge-to-main:
+    name: Merge to main (vía PR)
+    needs: [verify, typecheck]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Crear PR y mergear
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: context.repo.owner + ':deploy/infra',
+              base: 'main'
+            });
+            let prNum;
+            if (pulls.length > 0) {
+              prNum = pulls[0].number;
+              core.info(`Usando PR #${prNum} existente`);
+            } else {
+              const { data: pr } = await github.rest.pulls.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'chore: auto-merge deploy/infra → main',
+                head: 'deploy/infra',
+                base: 'main',
+                body: 'Merge automático tras verify (lint, typecheck, build).'
+              });
+              prNum = pr.number;
+              core.info(`PR #${prNum} created`);
+            }
+
+            for (let i = 0; i < 12; i++) {
+              const { data: status } = await github.rest.repos.getCombinedStatusForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: 'deploy/infra'
+              });
+              if (status.state === 'success') {
+                try {
+                  await github.rest.pulls.merge({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: prNum,
+                    merge_method: 'merge',
+                    commit_title: 'chore: auto-merge deploy/infra → main'
+                  });
+                  core.info('PR merged');
+                  return;
+                } catch (e) {
+                  core.warning('Merge failed: ' + (e.message || e));
+                  if (i < 11) {
+                    core.info('Retrying in 15s...');
+                    await new Promise(r => setTimeout(r, 15000));
+                  } else throw e;
+                }
+              } else if (status.state === 'failure' || status.state === 'error') {
+                throw new Error('Checks failed on deploy/infra: ' + status.state);
+              } else {
+                core.info(`Waiting for checks (${status.state})... ${i+1}/12`);
+                await new Promise(r => setTimeout(r, 15000));
+              }
+            }
+            throw new Error('Timeout: checks no completaron en 3 min');
+
+  verify-deploy:
+    name: Verificar deploy en producción
+    needs: [merge-to-main]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Esperar despliegue en Vercel
+        run: sleep 90
+
+      - name: Verificar portal web
         run: |
-          git fetch origin main deploy/infra
-          git checkout -B main origin/main
-          git merge origin/deploy/infra --no-ff -m "chore: auto-merge deploy/infra → main"
-          git push origin main
+          for i in 1 2 3 4 5; do
+            if curl -sf -o /dev/null -w "%{http_code}" https://propieyaweb.vercel.app | grep -qE '^2'; then
+              echo "✓ Portal responde OK"
+              exit 0
+            fi
+            echo "Intento $i/5: esperando 30s..."
+            sleep 30
+          done
+          echo "ERROR: El portal no respondió OK tras 5 intentos"
+          exit 1
+
+      - name: Verificar health API
+        run: |
+          code=$(curl -sf -o /dev/null -w "%{http_code}" https://propieyaweb.vercel.app/api/health || true)
+          if [ "$code" = "200" ]; then
+            echo "✓ Health API OK"
+          else
+            echo "WARN: Health API devolvió $code (no falla el job)"
+          fi
+
+      - name: Mostrar versión desplegada
+        run: |
+          echo "Versión en producción:"
+          curl -sf https://propieyaweb.vercel.app/api/version 2>/dev/null | head -c 500 || echo "(api/version no disponible)"

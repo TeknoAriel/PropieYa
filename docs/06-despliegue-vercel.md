@@ -1,5 +1,13 @@
 # Despliegue en Vercel (Portal Web + Panel)
 
+## URL canónica del portal (pruebas / producción)
+
+**https://propieyaweb.vercel.app**
+
+Fuente de verdad y variables: **`docs/CANONICAL-URLS.md`**. Resumen deploy: **`docs/14-deploy-y-url-canonical.md`**.
+
+---
+
 Este repo es un monorepo (Turborepo + Next.js App Router) con 2 apps:
 - `apps/web` (portal público, Next.js)
 - `apps/panel` (panel B2B, Next.js)
@@ -19,6 +27,7 @@ Para que el `Panel` llame al `tRPC` del `Web`, necesitás configurar `NEXT_PUBLI
 5. Node version: 20.
 
 Variables de entorno mínimas (en el proyecto Web):
+- `TRUSTED_PANEL_ORIGINS` — URL(s) del panel para CORS en `/api/trpc` (ver `docs/CANONICAL-URLS.md`)
 - `DATABASE_URL`
 - `ELASTICSEARCH_URL`
 - `REDIS_URL`

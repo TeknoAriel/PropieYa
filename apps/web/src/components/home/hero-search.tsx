@@ -5,14 +5,10 @@ import Link from 'next/link'
 
 import { Button, Input, ArrowRight, Filter } from '@propieya/ui'
 
-const EXAMPLE_QUERIES = [
-  '3 ambientes en Palermo con balcón',
-  'Casa con jardín en zona norte',
-  'Departamento luminoso hasta 200K USD',
-  'Alquiler en Belgrano cerca del subte',
-]
+import { getPortalPack } from '@/lib/portal-copy'
 
 export function HeroSearch() {
+  const pack = getPortalPack()
   const [query, setQuery] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -38,15 +34,13 @@ export function HeroSearch() {
         <div className="mx-auto max-w-3xl text-center">
           {/* Headline */}
           <h1 className="text-4xl font-bold tracking-tight text-text-primary md:text-5xl lg:text-6xl">
-            Contale a Propieya
+            {pack.hero.line1}
             <br />
-            <span className="text-brand-primary">qué estás buscando</span>
+            <span className="text-brand-primary">{pack.hero.line2Accent}</span>
           </h1>
 
           <p className="mt-6 text-lg text-text-secondary md:text-xl">
-            Buscá propiedades hablando en lenguaje natural.
-            <br className="hidden md:block" />
-            Sin filtros complicados, sin formularios interminables.
+            {pack.hero.subtitle}
           </p>
 
           {/* Search input */}
@@ -56,7 +50,7 @@ export function HeroSearch() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ej: Busco un 3 ambientes en Palermo, luminoso, hasta 200K dólares..."
+                placeholder={pack.hero.placeholder}
                 className="h-14 pl-5 pr-14 text-base md:text-lg rounded-2xl border-2 border-border focus-visible:ring-brand-primary shadow-lg"
               />
               <Button
@@ -71,7 +65,7 @@ export function HeroSearch() {
 
           {/* Example chips */}
           <div className="mt-6 flex flex-wrap justify-center gap-2">
-            {EXAMPLE_QUERIES.map((example) => (
+            {pack.heroExamples.map((example) => (
               <button
                 key={example}
                 onClick={() => handleExampleClick(example)}
@@ -89,7 +83,7 @@ export function HeroSearch() {
               className="inline-flex items-center gap-2 text-sm text-text-tertiary hover:text-text-secondary transition-colors"
             >
               <Filter className="h-4 w-4" />
-              Prefiero buscar con filtros tradicionales
+              {pack.hero.filterLink}
             </Link>
           </div>
         </div>

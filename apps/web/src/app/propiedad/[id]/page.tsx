@@ -1,9 +1,13 @@
 'use client'
 
+import { useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-import { Badge, Button, Card, Skeleton } from '@propieya/ui'
+import { Badge, Button, Card, MessageSquare, Skeleton } from '@propieya/ui'
+
+import { ContactModal } from '@/components/contact-modal'
 import { formatPrice, formatSurface } from '@propieya/shared'
 import type {
   Currency,
@@ -69,6 +73,30 @@ function FieldSummary({ field }: { field: ListingField | null | undefined }) {
     default:
       return null
   }
+}
+
+function ContactButton({
+  listingId,
+  listingTitle,
+}: {
+  listingId: string
+  listingTitle: string
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <Button onClick={() => setOpen(true)} className="w-full">
+        <MessageSquare className="h-4 w-4 mr-2" />
+        Contactar
+      </Button>
+      <ContactModal
+        listingId={listingId}
+        listingTitle={listingTitle}
+        open={open}
+        onOpenChange={setOpen}
+      />
+    </>
+  )
 }
 
 function CommercialSubSummary({
@@ -197,20 +225,32 @@ export default function PropiedadPage() {
           <Card className="p-4">
             {images.length ? (
               <div className="space-y-3">
-                <img
-                  src={mainImage?.url}
-                  alt={mainImage?.alt ?? listing.title}
-                  className="h-[420px] w-full rounded object-cover bg-surface-secondary"
-                />
+                <div className="relative h-[420px] w-full rounded overflow-hidden bg-surface-secondary">
+                  <Image
+                    src={mainImage?.url ?? ''}
+                    alt={mainImage?.alt ?? listing.title}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 66vw"
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
                 {images.length > 1 ? (
                   <div className="flex gap-3 overflow-x-auto">
                     {images.slice(1, 6).map((img, idx) => (
-                      <img
+                      <div
                         key={img.id ?? idx}
-                        src={img.url}
-                        alt={img.alt ?? listing.title}
-                        className="h-20 w-20 rounded object-cover bg-surface-secondary flex-none"
-                      />
+                        className="relative h-20 w-20 rounded overflow-hidden bg-surface-secondary flex-none"
+                      >
+                        <Image
+                          src={img.url}
+                          alt={img.alt ?? listing.title}
+                          fill
+                          sizes="80px"
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
                     ))}
                   </div>
                 ) : null}
@@ -229,6 +269,17 @@ export default function PropiedadPage() {
         </div>
 
         <div className="space-y-4">
+          <Card className="p-6 space-y-4">
+            <h2 className="text-lg font-semibold">¿Te interesa?</h2>
+            <p className="text-sm text-text-secondary">
+              Consultá por esta propiedad y te responderán a la brevedad.
+            </p>
+            <ContactButton
+              listingId={listing.id}
+              listingTitle={listing.title}
+            />
+          </Card>
+
           <Card className="p-6 space-y-4">
             <h2 className="text-lg font-semibold">Datos</h2>
             <div className="space-y-2 text-sm">

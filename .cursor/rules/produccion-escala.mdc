@@ -1,0 +1,40 @@
+---
+description: Producción estable, una URL canónica, monorepo escalable sin duplicar proyectos ni envs.
+alwaysApply: true
+---
+
+# Producción robusta y escalado del repo
+
+## URL y naming (estricto)
+
+- **Portal web canónico:** `https://propieyaweb.vercel.app` — documentado en `docs/CANONICAL-URLS.md`.
+- No inventar ni documentar otras URLs de web sin actualizar ese archivo.
+- **`NEXT_PUBLIC_WEB_APP_URL`** en Panel = exactamente la URL canónica (sin `/` final).
+- **`TRUSTED_PANEL_ORIGINS`** en Web (Vercel) = URL(s) del panel para CORS en `/api/trpc` (ver `docs/CANONICAL-URLS.md`).
+
+## Vercel
+
+- **Un** proyecto por app: un web (`apps/web`), un panel (`apps/panel`). Eliminar duplicados; no crear terceros “web” sin actualizar docs.
+- **Root Directory** obligatorio: `apps/web` o `apps/panel`; nunca raíz del monorepo para Next.
+- Variables sensibles solo en Vercel / secretos; nunca en git (salvo `.env.example` con placeholders).
+
+## Monorepo
+
+- Dependencias entre paquetes vía `workspace:*` y nombres `@propieya/*` únicos.
+- Cambios en `packages/shared` o `packages/database`: considerar impacto en **web** y **panel**; ejecutar `pnpm lint` + `pnpm typecheck` en todo el repo.
+- **Lockfile:** `pnpm-lock.yaml` siempre commiteado; CI usa `--frozen-lockfile`.
+
+## Ramas y producción
+
+- Código que debe llegar a producción: flujo **`deploy/infra` → promote → `main`** (no depender de ramas sueltas sin merge).
+- No pushear a `main` manualmente si las reglas del repo lo impiden; el workflow de promote es la vía.
+
+## Escalabilidad y claridad
+
+- Nuevos servicios o apps: documentar en `docs/01-arquitectura-tecnica.md` o archivo nuevo en `docs/` + fila en `CANONICAL-URLS.md` si expone URL.
+- Migraciones DB: script o comando documentado (`pnpm db:push` / migrate) y coherencia con Neon.
+- Evitar `any` en APIs públicas; errores con códigos HTTP y mensajes útiles.
+
+## Si la URL deja de responder
+
+- Revisar deploy en Vercel (no asumir otra URL); actualizar `REGISTRO-BLOQUEOS.md` si el fallo es externo a código.
