@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write   # necesario para mergear el PR a main
   pull-requests: write
   statuses: read
 
