@@ -71,3 +71,33 @@ jobs:
           git checkout -B main origin/main
           git merge origin/deploy/infra --no-ff -m "chore: auto-merge deploy/infra → main"
           git push origin main
+
+  verify-deploy:
+    name: Verificar deploy en producción
+    needs: [merge-to-main]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Esperar despliegue en Vercel
+        run: sleep 90
+
+      - name: Verificar portal web
+        run: |
+          for i in 1 2 3 4 5; do
+            if curl -sf -o /dev/null -w "%{http_code}" https://propieyaweb.vercel.app | grep -qE '^2'; then
+              echo "✓ Portal responde OK"
+              exit 0
+            fi
+            echo "Intento $i/5: esperando 30s..."
+            sleep 30
+          done
+          echo "ERROR: El portal no respondió OK tras 5 intentos"
+          exit 1
+
+      - name: Verificar health API
+        run: |
+          code=$(curl -sf -o /dev/null -w "%{http_code}" https://propieyaweb.vercel.app/api/health || true)
+          if [ "$code" = "200" ]; then
+            echo "✓ Health API OK"
+          else
+            echo "WARN: Health API devolvió $code (no falla el job)"
+          fi

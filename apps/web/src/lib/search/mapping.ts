@@ -2,9 +2,10 @@
  * Mapping del índice de listings en Elasticsearch.
  */
 
-import type { MappingProperty } from '@elastic/elasticsearch/api/types'
+/** Tipo compatible con propiedades de mapping de ES (evita import interno del cliente). */
+type EsMappingProperty = Record<string, unknown>
 
-export const listingsMapping: Record<string, MappingProperty> = {
+export const listingsMapping: Record<string, EsMappingProperty> = {
   id: { type: 'keyword' },
   organizationId: { type: 'keyword' },
   publisherId: { type: 'keyword' },
