@@ -17,6 +17,7 @@ Detalle y variables: **`docs/CANONICAL-URLS.md`**.
 4. Verificar: `curl https://propieyaweb.vercel.app/api/version`
 5. Bypass GitHub si hace falta: **`docs/12-bypass-github-actions.md`**.
 6. Si algo falla: **`docs/25-verificar-deploy.md`**.
+7. **Config repo (primera vez):** **`docs/26-config-repo-deploy.md`** — habilitar "Allow GitHub Actions to create and approve pull requests".
 
 ## Vercel (por proyecto)
 

@@ -6,6 +6,7 @@ El agente anota aquí fallos que **no puede resolver** sin acción externa (GitH
 |-------|-----------|----------------------------|
 | 2026-03-22 | Build Vercel: `@elastic/elasticsearch/api/types` y `@/lib/search` | Corregido en mapping.ts (tipo local) y lib/search/index.ts |
 | 2026-03-22 | main protegido: push directo rechazado (PR requerido) | Workflow cambiado a PR-based: crea PR, espera CI, mergea |
+| 2026-03-22 | **Actions no puede crear PR**: "GitHub Actions is not permitted to create or approve pull requests" | **Settings → Actions → General → Workflow permissions** → marcar "Allow GitHub Actions to create and approve pull requests". Ver docs/26-config-repo-deploy.md |
 
 Formato al añadir fila:
 

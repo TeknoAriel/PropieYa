@@ -1,8 +1,12 @@
 # Si falla "Merge to main" en Actions
 
-El workflow `promote-deploy-infra` usa **PR** (crea PR deploy/infra→main, espera CI, mergea). Funciona con main protegido.
+## Error: "GitHub Actions is not permitted to create or approve pull requests"
 
-Si falla el merge del PR:
+**Solución:** Settings → **Actions** → **General** → **Workflow permissions** → marcar **"Allow GitHub Actions to create and approve pull requests"**.
+
+Ver guía completa: **docs/26-config-repo-deploy.md**
+
+## Si falla el merge del PR (otro error)
 
 1. **Settings** → **Rules** → **Rulesets** → regla de `main`
 2. **Bypass list**: añadir **`github-actions[bot]`** para que pueda mergear PRs
