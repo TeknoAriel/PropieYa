@@ -92,35 +92,54 @@ export function mapYumblinItem(
   input: YumblinListingInput
 ): MappedListingRow | null {
   const title = getValue(item, 'titulo', 'title', 'nombre') as string | null
-  const desc = getValue(item, 'descripcion', 'description', 'texto') as string | null
-  const price = getValue(item, 'precio', 'price', 'valor') as number | string | null
-  const surface = getValue(item, 'superficie_total', 'surface', 'm2', 'superficie', 'm2_totales') as number | string | null
+  const desc = getValue(item, 'content', 'descripcion', 'description', 'texto') as string | null
   const city = getValue(item, 'ciudad', 'city', 'localidad') as string | null
-  const neighborhood = getValue(item, 'barrio', 'neighborhood', 'zona') as string | null
-  const street = getValue(item, 'calle', 'direccion', 'address', 'street') as string | null
-  const state = getValue(item, 'provincia', 'state') as string | null
+  const neighborhood = getValue(item, 'barrio', 'neighborhood', 'zona', 'zone') as string | null
+  const addrVal = item.address ?? item.calle ?? item.direccion
+  const street = typeof addrVal === 'string' ? addrVal : (getValue(item, 'calle', 'street') as string | null)
+  const state = getValue(item, 'provincia', 'state', 'region') as string | null
 
   if (!title || title.length < 5) return null
 
+  const forSale = item.for_sale === true || item.for_sale === '1'
+  const forRent = item.for_rent === true || item.for_rent === '1'
+  const forTemp = item.for_temp_rental === true || item.for_temp_rental === '1'
+  let price: number | string | null = getValue(item, 'precio', 'price', 'valor') as number | string | null
+  if (price == null || price === '' || (typeof price === 'number' && price <= 0)) {
+    if (forSale) price = getValue(item, 'for_sale_price') as number | string | null
+    if ((price == null || price === '') && forRent) price = getValue(item, 'for_rent_price') as number | string | null
+    if ((price == null || price === '') && forTemp) {
+      price = (getValue(item, 'for_temp_rental_price_month') ?? getValue(item, 'for_temp_rental_price_day')) as number | string | null
+    }
+  }
   const priceNum = typeof price === 'number' ? price : parseFloat(String(price ?? 0))
+  if (isNaN(priceNum) || priceNum <= 0) return null
+
+  const surface = getValue(item, 'total_meters', 'covered_meters', 'superficie_total', 'surface', 'm2', 'superficie', 'm2_totales', 'exclusive_meters') as number | string | null
   const surfaceNum = typeof surface === 'number' ? surface : parseFloat(String(surface ?? 1))
-  if (isNaN(priceNum) || priceNum <= 0 || isNaN(surfaceNum) || surfaceNum <= 0) return null
+  if (isNaN(surfaceNum) || surfaceNum <= 0) return null
 
-  const opRaw = String(getValue(item, 'operacion', 'operation', 'tipo_operacion') ?? 'venta').toLowerCase()
-  const typeRaw = String(getValue(item, 'tipo_propiedad', 'property_type', 'tipo') ?? 'departamento').toLowerCase()
+  let operationType: OperationType = 'sale'
+  if (forRent && !forSale) operationType = 'rent'
+  else if (forTemp && !forSale && !forRent) operationType = 'temporary_rent'
+  else if (!forSale && !forRent && !forTemp) {
+    const opRaw = String(getValue(item, 'operacion', 'operation', 'tipo_operacion') ?? 'venta').toLowerCase()
+    operationType = OP_MAP[opRaw] ?? 'sale'
+  }
 
-  const operationType = OP_MAP[opRaw] ?? 'sale'
+  const typeRaw = String(getValue(item, 'property_type', 'tipo_propiedad', 'tipo') ?? 'departamento').toLowerCase()
   const propertyType = TYPE_MAP[typeRaw] ?? 'apartment'
 
-  const lat = getValue(item, 'lat', 'latitud', 'latitude') as number | string | null
-  const lng = getValue(item, 'lng', 'longitud', 'longitude', 'lon') as number | string | null
+  const lat = getValue(item, 'latitude', 'lat', 'latitud') as number | string | null
+  const lng = getValue(item, 'longitude', 'lng', 'longitud', 'lon') as number | string | null
   const locationLat = lat != null ? (typeof lat === 'number' ? lat : parseFloat(String(lat))) : null
   const locationLng = lng != null ? (typeof lng === 'number' ? lng : parseFloat(String(lng))) : null
 
-  const fotos = item.fotos ?? item.photos ?? item.images ?? item.imagenes ?? item.foto ?? item.image
+  const fotos = item.images ?? item.fotos ?? item.photos ?? item.imagenes ?? item.foto ?? item.image
   let imageUrls: string[] = []
   if (Array.isArray(fotos)) {
     imageUrls = fotos
+      .map((u) => (typeof u === 'string' ? u : (u as { url?: string })?.url))
       .filter((u): u is string => typeof u === 'string' && u.startsWith('http'))
       .slice(0, 20)
   } else if (typeof fotos === 'string' && fotos.startsWith('http')) {
@@ -134,20 +153,20 @@ export function mapYumblinItem(
   }
 
   const address: Record<string, unknown> = {
-    street: street ?? '',
+    street: (typeof addrVal === 'object' && addrVal && (addrVal as { street?: string }).street) ?? street ?? '',
     number: getValue(item, 'numero', 'number') ?? null,
-    floor: getValue(item, 'piso', 'floor') ?? null,
+    floor: getValue(item, 'floor_number', 'piso', 'floor') ?? null,
     unit: getValue(item, 'unidad', 'unit', 'depto') ?? null,
     neighborhood: neighborhood ?? '',
     city: city ?? '',
     state: state ?? 'Santa Fe',
     country: 'Argentina',
-    postalCode: getValue(item, 'codigo_postal', 'postalCode') ?? null,
+    postalCode: getValue(item, 'postcode', 'codigo_postal', 'postalCode') ?? null,
   }
 
-  const externalId = getValue(item, 'id', 'codigo', 'external_id', 'id_aviso') as string | null
-  const bedrooms = getValue(item, 'dormitorios', 'bedrooms', 'ambientes') as number | string | null
-  const bathrooms = getValue(item, 'banos', 'bathrooms') as number | string | null
+  const externalId = getValue(item, 'public_code', 'id', 'codigo', 'external_id', 'id_aviso') as string | null
+  const bedrooms = getValue(item, 'bedrooms', 'dormitorios', 'rooms', 'ambientes') as number | string | null
+  const bathrooms = getValue(item, 'bathrooms', 'banos', 'half_bathrooms') as number | string | null
 
   return {
     organizationId: input.organizationId,
@@ -159,7 +178,7 @@ export function mapYumblinItem(
     title: title.slice(0, 255),
     description: (desc ?? title).slice(0, 5000),
     priceAmount: priceNum,
-    priceCurrency: String(getValue(item, 'moneda', 'currency') ?? 'ARS').slice(0, 3).toUpperCase(),
+    priceCurrency: String(getValue(item, 'currency', 'moneda') ?? 'ARS').slice(0, 3).toUpperCase(),
     surfaceTotal: surfaceNum,
     bedrooms: bedrooms != null ? (typeof bedrooms === 'number' ? bedrooms : parseInt(String(bedrooms), 10)) : null,
     bathrooms: bathrooms != null ? (typeof bathrooms === 'number' ? bathrooms : parseInt(String(bathrooms), 10)) : null,

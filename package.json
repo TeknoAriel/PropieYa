@@ -20,10 +20,12 @@
     "clean": "turbo clean && rm -rf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "import:yumblin": "pnpm exec tsx scripts/import-yumblin-json.ts",
+    "seed:org": "pnpm exec tsx scripts/seed-org-for-import.ts",
     "publish:imported": "pnpm exec tsx scripts/publish-imported-drafts.ts",
     "prepare": "husky"
   },
   "devDependencies": {
+    "argon2": "^0.31.2",
     "dotenv": "^16.4.0",
     "@commitlint/cli": "^19.0.0",
     "@commitlint/config-conventional": "^19.0.0",

@@ -1,5 +1,6 @@
 export * from './users'
 export * from './organizations'
+export * from './import-feeds'
 export * from './listings'
 export * from './search'
 export * from './leads'
