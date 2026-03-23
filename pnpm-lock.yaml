@@ -14,6 +14,9 @@ importers:
       '@commitlint/config-conventional':
         specifier: ^19.0.0
         version: 19.8.1
+      argon2:
+        specifier: ^0.31.2
+        version: 0.31.2
       dotenv:
         specifier: ^16.4.0
         version: 16.6.1
@@ -261,6 +264,9 @@ importers:
       '@propieya/config':
         specifier: workspace:*
         version: link:../config
+      '@types/node':
+        specifier: ^20.11.0
+        version: 20.19.37
       typescript:
         specifier: ^5.4.0
         version: 5.9.3

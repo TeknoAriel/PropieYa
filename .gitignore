@@ -44,3 +44,4 @@ DEPLOY-CREDENTIALS.local.txt
 # Database
 *.db
 *.sqlite
+.vercel

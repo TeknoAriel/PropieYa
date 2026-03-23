@@ -1,32 +1,24 @@
 /**
- * Cron: importa propiedades desde feed JSON Yumblin.
- * Vercel Cron: vercel.json "crons"
+ * Cron: sincroniza propiedades desde feed JSON Yumblin (Kiteprop).
+ * - HTTP condicional (ETag / 304) y hash del body para evitar trabajo si no hubo cambios.
+ * - Altas, actualizaciones (hash por ítem) y bajas (withdrawn si ya no está en el feed).
  *
- * Requiere: CRON_SECRET en env (header Authorization: Bearer <secret>)
+ * Vercel Cron: vercel.json "crons" — en producción cada hora; el intervalo mínimo entre
+ * ejecuciones reales se controla con IMPORT_SYNC_INTERVAL_HOURS (p. ej. 240 ≈ 10 días en prueba).
+ *
+ * Requiere: CRON_SECRET (header Authorization: Bearer <secret>)
  */
 
 import { NextResponse, type NextRequest } from 'next/server'
 
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
-import {
-  db,
-  listings,
-  listingMedia,
-  organizations,
-  organizationMemberships,
-} from '@propieya/database'
-import {
-  extractListingsFromFeed,
-  mapYumblinItem,
-} from '@propieya/shared'
-
-const YUMBLIN_URL =
-  process.env.YUMBLIN_JSON_URL ??
-  'https://static.kiteprop.com/kp/difusions/23705a4a85ab8f1d301c73aae5359a81a8b5c1ca/yumblin.json'
+import { db, listings, runYumblinImportSyncAllSources } from '@propieya/database'
+import { LISTING_VALIDITY } from '@propieya/shared'
 
 export const runtime = 'nodejs'
-export const maxDuration = 60
+/** Sync masivo: Vercel Pro permite hasta 300s; ajustar según plan. */
+export const maxDuration = 300
 
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
@@ -35,90 +27,56 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const enforceInterval =
+    process.env.IMPORT_SYNC_ENFORCE_INTERVAL !== 'false'
+
   try {
-    const res = await fetch(YUMBLIN_URL)
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: `Feed error: ${res.status}` },
-        { status: 502 }
-      )
-    }
-    const raw = await res.json()
-    const items = extractListingsFromFeed(raw)
-
-    const [org] = await db.select({ id: organizations.id }).from(organizations).limit(1)
-    if (!org) {
-      return NextResponse.json({ error: 'No organization' }, { status: 500 })
-    }
-
-    const [membership] = await db
-      .select({ userId: organizationMemberships.userId })
-      .from(organizationMemberships)
-      .where(eq(organizationMemberships.organizationId, org.id))
-      .limit(1)
-    if (!membership) {
-      return NextResponse.json({ error: 'No publisher' }, { status: 500 })
-    }
-
-    const input = {
-      organizationId: org.id,
-      publisherId: membership.userId,
-    }
-
-    let imported = 0
-    for (const item of items) {
-      const mapped = mapYumblinItem(item as Record<string, unknown>, input)
-      if (!mapped) continue
-
-      if (mapped.externalId) {
-        const existing = await db.query.listings.findFirst({
-          where: eq(listings.externalId, mapped.externalId),
-        })
-        if (existing) continue
+    const { results } = await runYumblinImportSyncAllSources({ enforceInterval })
+    const totals = results.reduce(
+      (acc, r) => {
+        acc.imported += r.counts.imported
+        acc.updated += r.counts.updated
+        acc.unchanged += r.counts.unchanged
+        acc.skippedInvalid += r.counts.skippedInvalid
+        acc.withdrawn += r.counts.withdrawn
+        return acc
+      },
+      {
+        imported: 0,
+        updated: 0,
+        unchanged: 0,
+        skippedInvalid: 0,
+        withdrawn: 0,
       }
+    )
 
-      const [inserted] = await db
-        .insert(listings)
-        .values({
-          organizationId: mapped.organizationId,
-          publisherId: mapped.publisherId,
-          externalId: mapped.externalId,
-          propertyType: mapped.propertyType,
-          operationType: mapped.operationType,
-          source: 'import',
-          address: mapped.address,
-          title: mapped.title,
-          description: mapped.description,
-          priceAmount: mapped.priceAmount,
-          priceCurrency: mapped.priceCurrency,
-          surfaceTotal: mapped.surfaceTotal,
-          bedrooms: mapped.bedrooms,
-          bathrooms: mapped.bathrooms,
-          locationLat: mapped.locationLat,
-          locationLng: mapped.locationLng,
-          primaryImageUrl: mapped.primaryImageUrl,
-          mediaCount: mapped.imageUrls.length,
-          status: 'draft',
+    // Publica los borradores generados por la importación (source=import).
+    // Así, el cron deja de ser "solo sincronización" y pasa a "sincronización + actualización visible".
+    const drafts = await db
+      .select({ id: listings.id })
+      .from(listings)
+      .where(and(eq(listings.status, 'draft'), eq(listings.source, 'import')))
+
+    const now = new Date()
+    const expiresAt = new Date(
+      now.getTime() + LISTING_VALIDITY.MANUAL_VALIDITY_DAYS * 24 * 60 * 60 * 1000
+    )
+
+    if (drafts.length > 0) {
+      await db
+        .update(listings)
+        .set({
+          status: 'active',
+          publishedAt: now,
+          lastValidatedAt: now,
+          expiresAt,
+          updatedAt: now,
         })
+        .where(and(eq(listings.status, 'draft'), eq(listings.source, 'import')))
         .returning({ id: listings.id })
-
-      if (inserted && mapped.imageUrls.length > 0) {
-        for (let i = 0; i < mapped.imageUrls.length; i++) {
-          const url = mapped.imageUrls[i]
-          if (!url) continue
-          await db.insert(listingMedia).values({
-            listingId: inserted.id,
-            type: 'image',
-            url,
-            order: i,
-            isPrimary: i === 0,
-          })
-        }
-      }
-      imported++
     }
 
-    return NextResponse.json({ imported, total: items.length })
+    return NextResponse.json({ totals, resultsCount: results.length })
   } catch (err) {
     console.error('Cron import-yumblin:', err)
     return NextResponse.json(

@@ -12,6 +12,7 @@ import {
   index,
 } from 'drizzle-orm/pg-core'
 
+import { importFeedSources } from './import-feeds'
 import { organizations } from './organizations'
 import { users } from './users'
 
@@ -29,6 +30,10 @@ export const listings = pgTable(
       .notNull()
       .references(() => users.id),
     externalId: varchar('external_id', { length: 255 }), // ID en sistema externo
+    /** Hash del payload importado; evita UPDATE si el ítem del feed no cambió. */
+    importContentHash: varchar('import_content_hash', { length: 64 }),
+    importFeedSourceId: uuid('import_feed_source_id')
+      .references(() => importFeedSources.id, { onDelete: 'cascade' }),
 
     // Tipo y operación
     propertyType: varchar('property_type', { length: 50 }).notNull(),
@@ -103,6 +108,9 @@ export const listings = pgTable(
     locationIdx: index('listings_location_idx').on(table.locationLat, table.locationLng),
     priceIdx: index('listings_price_idx').on(table.priceAmount, table.priceCurrency),
     externalIdx: index('listings_external_idx').on(table.organizationId, table.externalId),
+    importFeedSourceIdx: index('listings_import_feed_source_idx').on(
+      table.importFeedSourceId
+    ),
   })
 )
 

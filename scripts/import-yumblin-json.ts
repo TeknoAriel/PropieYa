@@ -5,149 +5,64 @@
  * Uso:
  *   pnpm import:yumblin
  *   pnpm import:yumblin -- --file=./lacapital.json
+ *   pnpm import:yumblin -- --limit=100
  *   IMPORT_ORGANIZATION_ID=xxx IMPORT_PUBLISHER_ID=yyy pnpm import:yumblin
  *
  * Variables:
  *   DATABASE_URL          - Obligatoria
  *   IMPORT_ORGANIZATION_ID - UUID de la organización destino
  *   IMPORT_PUBLISHER_ID   - UUID del usuario publicador
- *   YUMBLIN_JSON_URL     - URL del feed (default: yumblin.json en docs/19)
+ *   YUMBLIN_JSON_URL     - URL del feed (default en código)
  */
 
 import 'dotenv/config'
 
-import { eq } from 'drizzle-orm'
+import path from 'node:path'
 
-import {
-  db,
-  listings,
-  listingMedia,
-  organizations,
-  organizationMemberships,
-} from '@propieya/database'
-import {
-  extractListingsFromFeed,
-  mapYumblinItem,
-} from '@propieya/shared'
-
-const YUMBLIN_URL =
-  process.env.YUMBLIN_JSON_URL ??
-  'https://static.kiteprop.com/kp/difusions/23705a4a85ab8f1d301c73aae5359a81a8b5c1ca/yumblin.json'
+import { runYumblinImportSync } from '@propieya/database'
 
 async function main() {
-  const orgId = process.env.IMPORT_ORGANIZATION_ID
-  const pubId = process.env.IMPORT_PUBLISHER_ID
-
   const fileArg = process.argv.find((a) => a.startsWith('--file='))
   const filePath = fileArg?.slice('--file='.length)
+  const limitArg = process.argv.find((a) => a.startsWith('--limit='))
+  const limit = limitArg ? parseInt(limitArg.slice('--limit='.length), 10) : undefined
+  const forceFullFetch = process.argv.includes('--force-full-fetch')
 
-  let raw: unknown
+  let rawData: unknown | undefined
+  let feedUrl: string | undefined
 
   if (filePath) {
     const fs = await import('node:fs/promises')
     const buf = await fs.readFile(filePath, 'utf-8')
-    raw = JSON.parse(buf)
-  } else {
-    const res = await fetch(YUMBLIN_URL)
-    if (!res.ok) {
-      throw new Error(`Error al obtener feed: ${res.status} ${res.statusText}`)
-    }
-    raw = await res.json()
+    rawData = JSON.parse(buf) as unknown
+    feedUrl = `file://${path.resolve(filePath)}`
   }
 
-  const items = extractListingsFromFeed(raw)
-  console.log(`Items en el feed: ${items.length}`)
+  if (process.argv.includes('--debug') && rawData && typeof rawData === 'object') {
+    const items = (rawData as Record<string, unknown>).propiedades
+    if (Array.isArray(items) && items[0]) {
+      console.log('Primer item (keys):', Object.keys(items[0] as object))
+    }
+  }
 
-  if (items.length === 0) {
-    console.log('No hay propiedades para importar.')
+  const result = await runYumblinImportSync({
+    feedUrl,
+    rawData,
+    limit,
+    enforceInterval: false,
+    forceFullFetch,
+    assumeUnassignedBelongsToThisSource: true,
+  })
+
+  if (result.skipped) {
+    console.log(`Omitido (${result.skipped}).`)
     return
   }
 
-  let organizationId = orgId
-  let publisherId = pubId
-
-  if (!organizationId || !publisherId) {
-    const [org] = await db
-      .select({ id: organizations.id })
-      .from(organizations)
-      .limit(1)
-
-    if (!org) {
-      console.error(
-        'No hay organizaciones en la DB. Creá una desde el panel o usá IMPORT_ORGANIZATION_ID.'
-      )
-      process.exit(1)
-    }
-    organizationId = org.id
-
-    const [membership] = await db
-      .select({ userId: organizationMemberships.userId })
-      .from(organizationMemberships)
-      .where(eq(organizationMemberships.organizationId, org.id))
-      .limit(1)
-
-    if (!membership) {
-      console.error(
-        'No hay miembros en la organización. Usá IMPORT_PUBLISHER_ID con un user existente.'
-      )
-      process.exit(1)
-    }
-    publisherId = membership.userId
-    console.log(`Usando org ${organizationId}, publisher ${publisherId}`)
-  }
-
-  const input = { organizationId, publisherId }
-  let imported = 0
-  let skipped = 0
-
-  for (const item of items) {
-    const mapped = mapYumblinItem(item as Record<string, unknown>, input)
-    if (!mapped) {
-      skipped++
-      continue
-    }
-
-    const [inserted] = await db
-      .insert(listings)
-      .values({
-        organizationId: mapped.organizationId,
-        publisherId: mapped.publisherId,
-        externalId: mapped.externalId,
-        propertyType: mapped.propertyType,
-        operationType: mapped.operationType,
-        source: 'import',
-        address: mapped.address,
-        title: mapped.title,
-        description: mapped.description,
-        priceAmount: mapped.priceAmount,
-        priceCurrency: mapped.priceCurrency,
-        surfaceTotal: mapped.surfaceTotal,
-        bedrooms: mapped.bedrooms,
-        bathrooms: mapped.bathrooms,
-        locationLat: mapped.locationLat,
-        locationLng: mapped.locationLng,
-        primaryImageUrl: mapped.primaryImageUrl,
-        mediaCount: mapped.imageUrls.length,
-        status: 'draft',
-      })
-      .returning({ id: listings.id })
-
-    if (inserted && mapped.imageUrls.length > 0) {
-      for (let i = 0; i < mapped.imageUrls.length; i++) {
-        await db.insert(listingMedia).values({
-          listingId: inserted.id,
-          type: 'image',
-          url: mapped.imageUrls[i],
-          order: i,
-          isPrimary: i === 0,
-        })
-      }
-    }
-
-    imported++
-  }
-
-  console.log(`Importadas: ${imported}, omitidas: ${skipped}`)
+  const c = result.counts
+  console.log(
+    `Importadas: ${c.imported}, actualizadas: ${c.updated}, sin cambios: ${c.unchanged}, omitidas (inválidas): ${c.skippedInvalid}, bajas: ${c.withdrawn}`
+  )
 }
 
 main().catch((err) => {
