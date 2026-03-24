@@ -76,6 +76,9 @@ export const AMENITY_LABELS: Record<Amenity, string> = {
   furnished: 'Amoblado',
   pet_friendly: 'Acepta mascotas',
   wheelchair_accessible: 'Accesible',
+  fireplace: 'Chimenea',
+  front_facing: 'Contra frente',
+  credit_approved: 'Apto crédito',
 }
 
 /**
@@ -102,6 +105,9 @@ export const AMENITY_ICONS: Record<Amenity, string> = {
   furnished: 'sofa',
   pet_friendly: 'paw-print',
   wheelchair_accessible: 'accessibility',
+  fireplace: 'flame',
+  front_facing: 'building-front',
+  credit_approved: 'credit-card',
 }
 
 /**

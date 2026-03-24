@@ -37,6 +37,9 @@ const amenities = [
   'furnished',
   'pet_friendly',
   'wheelchair_accessible',
+  'fireplace',
+  'front_facing',
+  'credit_approved',
 ] as const
 
 const fieldSchema = z.discriminatedUnion('variant', [

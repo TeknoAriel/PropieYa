@@ -19,12 +19,19 @@ export function computeImportContentHash(mapped: MappedListingRow): string {
     priceAmount: mapped.priceAmount,
     priceCurrency: mapped.priceCurrency,
     surfaceTotal: mapped.surfaceTotal,
+    surfaceCovered: mapped.surfaceCovered,
+    surfaceSemicovered: mapped.surfaceSemicovered,
+    surfaceLand: mapped.surfaceLand,
     bedrooms: mapped.bedrooms,
     bathrooms: mapped.bathrooms,
+    garages: mapped.garages,
+    totalRooms: mapped.totalRooms,
     locationLat: mapped.locationLat,
     locationLng: mapped.locationLng,
     imageUrls: mapped.imageUrls,
     primaryImageUrl: mapped.primaryImageUrl,
+    amenities: mapped.amenities?.slice().sort() ?? [],
+    features: mapped.features,
   }
   return sha256Hex(JSON.stringify(payload))
 }

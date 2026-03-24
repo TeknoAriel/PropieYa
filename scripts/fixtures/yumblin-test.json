@@ -13,6 +13,8 @@
       "covered_meters": 50,
       "bedrooms": 2,
       "bathrooms": 1,
+      "balcon": true,
+      "aire_acondicionado": true,
       "imagenes": ["https://placehold.co/600x400/e0ddd8/666660?text=Depto+Centro"]
     },
     {
@@ -26,6 +28,10 @@
       "total_meters": 120,
       "bedrooms": 3,
       "bathrooms": 2,
+      "cochera": true,
+      "chimenea": true,
+      "apto_credito": true,
+      "contra_frente": true,
       "imagenes": ["https://placehold.co/600x400/e0ddd8/666660?text=Casa+Fisherton"]
     }
   ]
