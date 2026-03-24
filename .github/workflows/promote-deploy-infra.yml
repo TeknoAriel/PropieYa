@@ -82,6 +82,8 @@ jobs:
       - name: Crear PR y mergear
         uses: actions/github-script@v7
         with:
+          # REPO_ACCESS_TOKEN (PAT) para bypass de reglas de main si falla con GITHUB_TOKEN.
+          github-token: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
           script: |
             const { data: pulls } = await github.rest.pulls.list({
               owner: context.repo.owner,

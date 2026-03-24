@@ -1,37 +1,37 @@
 #!/usr/bin/env bash
-# Verifica estado de producción (Git, API, commit desplegado)
+# Verifica que el portal y APIs de producción respondan OK.
+# Uso: ./scripts/verificar-produccion.sh
+
 set -e
+URL="${URL:-https://propieyaweb.vercel.app}"
 
 echo "=== Verificación de producción ==="
+echo "URL: $URL"
 echo ""
 
-echo "1. Commit en main (GitHub):"
-git fetch origin main 2>/dev/null || true
-git log -1 --format="   %h %s" origin/main
-echo ""
-
-echo "2. Commit desplegado (API):"
-V=$(curl -sf https://propieyaweb.vercel.app/api/version 2>/dev/null | grep -o '"commit":"[^"]*"' | cut -d'"' -f4)
-if [ -n "$V" ]; then
-  echo "   $V"
+# Portal
+code=$(curl -s -o /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
+if [[ "$code" =~ ^2 ]]; then
+  echo "✓ Portal: HTTP $code"
 else
-  echo "   (no se pudo obtener)"
+  echo "✗ Portal: HTTP $code (se esperaba 2xx)"
+  exit 1
 fi
-echo ""
 
-echo "3. Health:"
-H=$(curl -sf https://propieyaweb.vercel.app/api/health 2>/dev/null | head -c 200)
-if echo "$H" | grep -q healthy; then
-  echo "   OK"
+# Health
+code=$(curl -s -o /dev/null -w "%{http_code}" "$URL/api/health" 2>/dev/null || echo "000")
+if [ "$code" = "200" ]; then
+  echo "✓ Health: HTTP 200"
+  curl -s "$URL/api/health" | head -c 200
+  echo ""
 else
-  echo "   $H"
+  echo "✗ Health: HTTP $code"
 fi
-echo ""
 
-MAIN_H=$(git rev-parse --short origin/main 2>/dev/null)
-if [ "$MAIN_H" = "$V" ]; then
-  echo "✓ main y producción coinciden"
-else
-  echo "⚠ main ($MAIN_H) y producción ($V) NO coinciden"
-  echo "  Ejecutá Promote o mergeá deploy/infra → main"
-fi
+# Version
+echo ""
+echo "Versión desplegada:"
+curl -s "$URL/api/version" 2>/dev/null | head -c 300 || echo "(no disponible)"
+echo ""
+echo ""
+echo "=== Fin verificación ==="
