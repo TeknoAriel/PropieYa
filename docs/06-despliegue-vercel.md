@@ -22,9 +22,11 @@ Para que el `Panel` llame al `tRPC` del `Web`, necesitás configurar `NEXT_PUBLI
 3. Framework preset: `Next.js`.
 4. Build settings:
    - `Install command`: `pnpm install --frozen-lockfile`
-   - `Build command`: `pnpm --filter @propieya/web build`
+   - `Build command`: vacío (usa `buildCommand` de `apps/web/vercel.json`)
    - `Output directory`: vacío (Next.js lo detecta)
 5. Node version: 20.
+
+Configuración detallada: **docs/33-VERCEL-CONFIG-PROYECTO-WEB.md**.
 
 Variables de entorno mínimas (en el proyecto Web):
 - `TRUSTED_PANEL_ORIGINS` — URL(s) del panel para CORS en `/api/trpc` (ver `docs/CANONICAL-URLS.md`)
