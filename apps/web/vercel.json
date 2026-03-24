@@ -1,5 +1,6 @@
 {
-  "buildCommand": "cd ../.. && pnpm exec turbo run build --filter=@propieya/web",
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "buildCommand": "cd ../.. && pnpm --filter @propieya/web exec next build",
   "framework": "nextjs",
   "crons": [
     {
