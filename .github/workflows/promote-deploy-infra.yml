@@ -144,7 +144,7 @@ jobs:
                   } else throw e;
                 }
               } else if (status.state === 'failure' || status.state === 'error') {
-                throw new Error('Checks failed on deploy/infra: ' + status.state + '. Revisar deploy Vercel y docs/33-VERCEL-CONFIG-PROYECTO-WEB.md');
+                throw new Error('Checks failed on deploy/infra: ' + status.state + '. Revisar Actions y docs/DEPLOY-PASOS-URIs.md');
               } else {
                 core.info(`Waiting for checks (${status.state})... ${i+1}/${maxAttempts}`);
                 await new Promise(r => setTimeout(r, intervalMs));
@@ -156,38 +156,53 @@ jobs:
     name: Verificar deploy en producción
     needs: [merge-to-main]
     runs-on: ubuntu-latest
+    env:
+      PORTAL_URL: https://propieyaweb.vercel.app
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
-      - name: Esperar despliegue en Vercel
+      - uses: actions/checkout@v4
+
+      - name: Deploy por CLI (opcional, si los tres secretos están definidos)
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
+        working-directory: apps/web
+        run: npx --yes vercel@37 deploy --prod --yes
+
+      - name: Esperar despliegue (build Vercel / CDN)
         run: |
-          echo "Esperando 2 min para que Vercel termine el build..."
+          echo "Esperando 2 min para que el build termine..."
           sleep 120
 
-      - name: Verificar portal web
-        continue-on-error: true
+      - name: Verificar portal (2xx obligatorio)
         run: |
-          URL="https://propieyaweb.vercel.app"
-          for i in 1 2 3 4 5 6 7 8; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
+          set -euo pipefail
+          URL="${PORTAL_URL}"
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
             if [[ "$code" =~ ^2 ]]; then
               echo "✓ Portal $URL responde HTTP $code"
               exit 0
             fi
-            echo "Intento $i/8: HTTP $code, esperando 30s..."
+            echo "Intento $i/10: HTTP $code, esperando 30s..."
             sleep 30
           done
-          echo "WARN: Portal no respondió 2xx (Vercel puede estar construyendo). Merge OK, verificar luego: $URL"
+          echo "::error::Portal no respondió 2xx. Ver docs/DEPLOY-PASOS-URIs.md (A3 y Parte D) y docs/33-VERCEL-CONFIG-PROYECTO-WEB.md"
           exit 1
 
-      - name: Verificar health API
+      - name: Verificar ruta /api/health (no 404)
         run: |
-          code=$(curl -s -o /dev/null -w "%{http_code}" https://propieyaweb.vercel.app/api/health 2>/dev/null || echo "000")
-          if [ "$code" = "200" ]; then
-            echo "✓ Health API OK (HTTP 200)"
+          set -euo pipefail
+          URL="${PORTAL_URL}/api/health"
+          code=$(curl -sS -o /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
+          if [[ "$code" =~ ^(200|503)$ ]]; then
+            echo "✓ /api/health responde HTTP $code (app desplegada; 503 = dependencias degradadas)"
           else
-            echo "WARN: Health API devolvió HTTP $code"
+            echo "::error:: /api/health devolvió HTTP $code (se esperaba 200 o 503, no 404)"
+            exit 1
           fi
 
       - name: Mostrar versión desplegada
         run: |
           echo "Versión en producción:"
-          curl -s https://propieyaweb.vercel.app/api/version 2>/dev/null | head -c 500 || echo "(api/version no disponible)"
+          curl -sS "${PORTAL_URL}/api/version" 2>/dev/null | head -c 500 || echo "(api/version no disponible)"

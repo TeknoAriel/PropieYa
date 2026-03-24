@@ -103,11 +103,29 @@ URL: https://github.com/TeknoAriel/PropieYa/settings/actions
 
 ---
 
+## Parte D: Secretos opcionales en GitHub (deploy por CLI, una sola vez)
+
+Si el enlace **Git → Vercel** deja el dominio en `NOT_FOUND`, el workflow **Promote** puede ejecutar `vercel deploy --prod` **después del merge a `main`**, sin abrir el dashboard en cada release.
+
+1. En Vercel: proyecto del portal → **Settings → General** → copiar **Project ID** y **Team / Org ID** (o desde `.vercel/project.json` si existe en local).
+2. En Vercel: **Account Settings → Tokens** → crear token con alcance adecuado.
+3. En GitHub: **https://github.com/TeknoAriel/PropieYa/settings/secrets/actions** → **New repository secret**:
+   - `VERCEL_TOKEN`
+   - `VERCEL_ORG_ID`
+   - `VERCEL_PROJECT_ID`
+
+Con los tres definidos, el job **Verificar deploy en producción** del workflow Promote ejecuta el deploy por CLI antes del `curl` al portal. Sin secretos, el flujo sigue dependiendo solo del enlace Git de Vercel.
+
+**Nota:** `/api/health` puede responder **503** si la base en producción no está disponible; eso no invalida que el sitio esté desplegado (ver lógica en el workflow).
+
+---
+
 ## Resumen de URLs para copiar/pegar
 
 ```
 https://github.com/TeknoAriel/PropieYa/settings/actions
 https://github.com/TeknoAriel/PropieYa/settings/rules
+https://github.com/TeknoAriel/PropieYa/settings/secrets/actions
 https://propieyaweb.vercel.app
 https://propieyaweb.vercel.app/api/health
 https://propieyaweb.vercel.app/api/version
