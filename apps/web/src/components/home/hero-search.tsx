@@ -51,8 +51,15 @@ export function HeroSearch() {
     searchConversational.mutate({ message: query.trim() })
   }
 
+  const runSearch = (text: string) => {
+    const t = text.trim()
+    if (!t) return
+    setQuery(t)
+    searchConversational.mutate({ message: t })
+  }
+
   const handleExampleClick = (example: string) => {
-    setQuery(example)
+    runSearch(example)
   }
 
   return (
@@ -112,8 +119,10 @@ export function HeroSearch() {
             {pack.heroExamples.map((example) => (
               <button
                 key={example}
+                type="button"
+                disabled={searchConversational.isPending}
                 onClick={() => handleExampleClick(example)}
-                className="rounded-full bg-surface-elevated px-4 py-2 text-sm text-text-secondary border border-border hover:border-brand-primary hover:text-brand-primary transition-colors"
+                className="rounded-full bg-surface-elevated px-4 py-2 text-sm text-text-secondary border border-border hover:border-brand-primary hover:text-brand-primary transition-colors disabled:opacity-50"
               >
                 {example}
               </button>
