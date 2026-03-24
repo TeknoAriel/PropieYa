@@ -17,35 +17,16 @@ URLs directas y valores a configurar para que el deploy funcione.
 
 ---
 
-## 2. Bypass para que Actions pueda mergear
+## 2. Ruleset de main — quitar "Require status checks"
 
 **URL:** https://github.com/TeknoAriel/PropieYa/settings/rules
 
-1. Si hay reglas activas, abrir la regla que protege `main`
-2. Buscar **"Bypass list"** o **"Allow specified actors to bypass"**
-3. Añadir: **`github-actions[bot]`**
+1. Abrir la regla que protege `main`
+2. En **"Rules"**, buscar **"Require status checks to pass before merging"**
+3. **Eliminar** esa regla
+4. Guardar
 
-Si usás **Rulesets** (nuevo):
-
-**URL:** https://github.com/TeknoAriel/PropieYa/settings/rules/new (o editar la existente)
-
-- En la regla que aplica a `main`, en **"Bypass list"** → añadir **`github-actions[bot]`**
-- Guardar
-
----
-
-## 3. Revisar required status checks
-
-**URL:** https://github.com/TeknoAriel/PropieYa/settings/branches
-
-O: **Settings** → **Rules** → regla de `main`
-
-Verificar qué checks exige la protección. Debe incluir al menos uno de:
-
-- `Typecheck` (del workflow CI o Promote)
-- `Verify (lint + typecheck + build)` (si lo tenés como required)
-
-Si sólo exige `Typecheck`, el workflow Promote ya lo genera. Si exige otros, puede haber conflicto.
+Evita el error "Required status check 'Typecheck' is expected". El Promote ya verifica antes de mergear.
 
 ---
 

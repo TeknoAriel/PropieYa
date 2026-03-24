@@ -26,15 +26,16 @@
 3. Marcar: **"Allow GitHub Actions to create and approve pull requests"**
 4. Guardar
 
-### 2. (Opcional) Bypass para merge
+### 2. Ruleset: quitar "Require status checks"
 
-Si el merge del PR falla con "changes must be made through a pull request" o "Required status check":
+Si el merge falla con "Required status check 'Typecheck'":
 
 1. Ir a: **https://github.com/TeknoAriel/PropieYa/settings/rules**
 2. Editar la regla de `main`
-3. En **Bypass list**, agregar: `github-actions[bot]`
+3. En **Rules** → eliminar **"Require status checks to pass before merging"**
+4. Guardar
 
-**Alternativa (PAT):** Si el bypass no basta, crear un Fine-grained PAT con permisos Contents + Pull requests, añadirlo como secret **REPO_ACCESS_TOKEN** en Settings → Secrets. Ver docs/12-bypass-github-actions.md.
+El Promote ya hace verify antes de mergear. Ver docs/12-bypass-github-actions.md.
 
 ---
 

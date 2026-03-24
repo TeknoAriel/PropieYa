@@ -1,5 +1,9 @@
 # Deploy + URL canónica (resumen)
 
+**→ Documento definitivo con pasos y URLs:** **`docs/DEPLOY-PASOS-URIs.md`** — usar ese.
+
+---
+
 ## URL de prueba / producción web
 
 **https://propieyaweb.vercel.app**
