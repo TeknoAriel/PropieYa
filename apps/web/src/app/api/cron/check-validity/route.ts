@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
 
     // 2. Marcar expiring_soon: active con expiresAt dentro de X días
     const panelUrl =
-      process.env.NEXT_PUBLIC_PANEL_URL ?? 'http://localhost:3001'
+      process.env.NEXT_PUBLIC_PANEL_URL ?? 'http://localhost:3011'
 
     const toExpiringSoon = await db
       .select({

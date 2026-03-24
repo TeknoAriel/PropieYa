@@ -86,8 +86,8 @@ pnpm dev
 
 | Servicio | URL |
 |----------|-----|
-| Portal web | http://localhost:3000 |
-| Panel B2B | http://localhost:3001 |
+| Portal web | http://localhost:3010 |
+| Panel B2B | http://localhost:3011 |
 | PostgreSQL | localhost:5432 |
 | Elasticsearch | http://localhost:9200 |
 | Redis | localhost:6379 |

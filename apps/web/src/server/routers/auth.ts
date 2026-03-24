@@ -41,7 +41,7 @@ function generateMagicToken(): string {
 
 function panelBaseUrl(): string {
   const base =
-    process.env.NEXT_PUBLIC_PANEL_URL?.trim() || 'http://localhost:3001'
+    process.env.NEXT_PUBLIC_PANEL_URL?.trim() || 'http://localhost:3011'
   return base.replace(/\/$/, '')
 }
 
