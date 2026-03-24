@@ -22,6 +22,7 @@
     "import:yumblin": "pnpm exec tsx scripts/import-yumblin-json.ts",
     "seed:org": "pnpm exec tsx scripts/seed-org-for-import.ts",
     "publish:imported": "pnpm exec tsx scripts/publish-imported-drafts.ts",
+    "sync-search:local": "pnpm exec tsx scripts/sync-search-local.ts",
     "prepare": "husky"
   },
   "devDependencies": {

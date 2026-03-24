@@ -1,0 +1,32 @@
+{
+  "propiedades": [
+    {
+      "titulo": "Depto 2 ambientes zona centro",
+      "content": "Amplio departamento con balcón. Excelente estado.",
+      "ciudad": "Rosario",
+      "barrio": "Centro",
+      "calle": "San Martín 1200",
+      "precio": 85000,
+      "for_rent": true,
+      "for_sale": false,
+      "total_meters": 55,
+      "covered_meters": 50,
+      "bedrooms": 2,
+      "bathrooms": 1,
+      "imagenes": ["https://placehold.co/600x400/e0ddd8/666660?text=Depto+Centro"]
+    },
+    {
+      "titulo": "Casa con jardín en zona norte",
+      "descripcion": "Casa de 3 ambientes con jardín y cochera.",
+      "ciudad": "Rosario",
+      "barrio": "Fisherton",
+      "precio": 195000,
+      "for_sale": true,
+      "for_rent": false,
+      "total_meters": 120,
+      "bedrooms": 3,
+      "bathrooms": 2,
+      "imagenes": ["https://placehold.co/600x400/e0ddd8/666660?text=Casa+Fisherton"]
+    }
+  ]
+}

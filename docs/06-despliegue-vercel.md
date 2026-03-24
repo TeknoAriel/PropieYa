@@ -31,7 +31,7 @@ Configuración detallada: **docs/33-VERCEL-CONFIG-PROYECTO-WEB.md**.
 Variables de entorno mínimas (en el proyecto Web):
 - `TRUSTED_PANEL_ORIGINS` — URL(s) del panel para CORS en `/api/trpc` (ver `docs/CANONICAL-URLS.md`)
 - `DATABASE_URL`
-- `ELASTICSEARCH_URL`
+- `ELASTICSEARCH_URL` — para búsqueda con Elasticsearch; si no está, fallback a SQL. Guía Bonsai (gratis): **docs/34-ELASTICSEARCH-BONSAI-CONFIG.md**
 - `REDIS_URL`
 - `OPENAI_API_KEY` (o el provider que uses)
 - `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, `S3_REGION`, `S3_PUBLIC_URL`

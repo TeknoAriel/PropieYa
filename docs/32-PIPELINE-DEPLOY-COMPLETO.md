@@ -157,19 +157,27 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 
 Para forzar import sin respetar el intervalo: en Vercel → Env Vars, agregar `IMPORT_SYNC_ENFORCE_INTERVAL=false` (temporal, luego borrar).
 
-### Script local contra prod
+### Script de verificación (recomendado)
 
 ```bash
-vercel env pull .env.prod --environment=production --yes
-set -a && source .env.prod && set +a
+./scripts/verificar-ingestion.sh
+```
 
-# Publicar drafts importados (si ya están en la DB)
+Hace: env pull → import → publish drafts → sync-search (si tenés CRON_SECRET). Con archivo local:
+
+```bash
+./scripts/verificar-ingestion.sh --file=./kiteprop.json
+```
+
+### Pasos manuales
+
+```bash
+cd apps/web && vercel env pull .env.prod --environment=production --yes
+cd ../.. && set -a && source apps/web/.env.prod && set +a
+
 pnpm publish:imported
+pnpm import:yumblin -- --file=./kiteprop.json   # o sin --file para feed remoto
 
-# Import desde archivo local contra prod
-pnpm import:yumblin -- --file=./kiteprop.json
-
-# Luego disparar sync-search para indexar en ES
 curl -H "Authorization: Bearer $CRON_SECRET" https://propieyaweb.vercel.app/api/cron/sync-search
 ```
 
