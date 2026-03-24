@@ -1,4 +1,5 @@
-# Tras push a deploy/infra: verifica y fusiona a main → Vercel despliega solo.
+# Tras push a deploy/infra: verifica y fusiona a main → Vercel despliega desde main.
+# Si el merge automático falla: abrir/mergear el PR deploy/infra → main en GitHub (docs/DEPLOY-PASOS-URIs.md).
 name: Promote deploy/infra → main
 
 on:
@@ -11,7 +12,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write   # necesario para mergear el PR a main
+  contents: write
   pull-requests: write
   statuses: read
 
@@ -51,32 +52,9 @@ jobs:
       - name: Build
         run: pnpm build
 
-  typecheck:
-    name: Typecheck
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && 'deploy/infra' || github.ref }}
-
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Typecheck
-        run: pnpm typecheck
-
   merge-to-main:
     name: Merge to main (vía PR)
-    needs: [verify, typecheck]
+    needs: [verify]
     runs-on: ubuntu-latest
     steps:
       - name: Crear PR y mergear

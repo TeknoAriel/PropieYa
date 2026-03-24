@@ -93,6 +93,22 @@ URL: https://github.com/TeknoAriel/PropieYa/settings/rules
 → **A1**: Verificar permisos de Actions.  
 URL: https://github.com/TeknoAriel/PropieYa/settings/actions
 
+### Actions no puede crear o mergear el PR (merge automático rojo)
+
+En **Settings → Actions → General** → **Workflow permissions**:
+
+- **Read and write permissions** (no solo read).
+- Marcar **Allow GitHub Actions to create and approve pull requests**.
+
+Sin esto, el job "Merge to main" falla aunque el código en `deploy/infra` sea correcto.
+
+### `main` va atrasada respecto a `deploy/infra` (cambios no llegan a producción)
+
+1. Esperar a que el workflow **Promote** pase (push a `deploy/infra` lo dispara).
+2. Si el Promote sigue fallando: merge **manual del PR** (válido con la regla "solo por PR"):  
+   **https://github.com/TeknoAriel/PropieYa/compare/main...deploy/infra**  
+   → **Create pull request** → **Merge**. Tras eso, Vercel despliega desde `main`.
+
 ### Verify-deploy muestra advertencia (portal no responde 2xx)
 
 → El merge ya se hizo. Revisar A3; Vercel puede estar construyendo. Verificar luego: `curl https://propieyaweb.vercel.app/api/version`

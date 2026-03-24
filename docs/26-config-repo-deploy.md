@@ -62,4 +62,4 @@ El Promote ya hace verify antes de mergear. Ver docs/12-bypass-github-actions.md
 | Build: `MappingProperty` | Vercel | Corregido (tipo local en mapping.ts) |
 | Push directo a main | Promote | Workflow cambiado a PR-based |
 | **Actions no puede crear PR** | Promote | **Habilitar en Settings → Actions** |
-| **Branch protection requiere "Typecheck"** | Promote | Job "Typecheck" agregado al workflow Promote (crea el check que exige la regla) |
+| **Branch protection requiere "Typecheck"** | Rules + CI | El workflow **CI** (`ci.yml`) en el PR a `main` ya publica el check **Typecheck**. No hace falta duplicar ese job en Promote; si la regla pide nombres distintos, alinear nombres o quitar "Require status checks" (A2). |
