@@ -129,3 +129,54 @@ Required status check "Typecheck" is expected.
 | `No organization` en cron import | Sin org/publicador | Ejecutar `pnpm seed:org` contra prod |
 | Push a main rechazado | Branch protection | Usar flujo deploy/infra → Promote → main |
 | Promote no mergea | Checks fallan o timeout | Revisar Actions; verificar deploy Vercel en deploy/infra; docs/33-VERCEL-CONFIG-PROYECTO-WEB.md |
+| Propiedades Kiteprop/import no visibles | Drafts no publicados o ES sin indexar | Ver sección 9 abajo |
+
+---
+
+## 9. Propiedades importadas no visibles: verificación y triggers manuales
+
+Si subiste propiedades desde el JSON de Kiteprop (o cualquier feed Yumblin) y no aparecen:
+
+1. **Pueden estar en draft** — el cron import-yumblin las publica automáticamente, pero si el cron no corrió o falló, quedan en draft. Solución: disparar el cron o ejecutar `pnpm publish:imported` contra prod.
+
+2. **Pueden no estar en Elasticsearch** — la búsqueda (`/buscar`) usa ES. Si el índice está vacío o desactualizado, no aparecen. Solución: disparar el cron sync-search o ejecutarlo manualmente.
+
+### Disparar crons manualmente (producción)
+
+Necesitás `CRON_SECRET` de las variables de entorno del proyecto web en Vercel.
+
+```bash
+# Reindexar todas las propiedades activas en Elasticsearch
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  https://propieyaweb.vercel.app/api/cron/sync-search
+
+# Ejecutar import + publicar drafts + indexar en ES
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  https://propieyaweb.vercel.app/api/cron/import-yumblin
+```
+
+Para forzar import sin respetar el intervalo: en Vercel → Env Vars, agregar `IMPORT_SYNC_ENFORCE_INTERVAL=false` (temporal, luego borrar).
+
+### Script local contra prod
+
+```bash
+vercel env pull .env.prod --environment=production --yes
+set -a && source .env.prod && set +a
+
+# Publicar drafts importados (si ya están en la DB)
+pnpm publish:imported
+
+# Import desde archivo local contra prod
+pnpm import:yumblin -- --file=./kiteprop.json
+
+# Luego disparar sync-search para indexar en ES
+curl -H "Authorization: Bearer $CRON_SECRET" https://propieyaweb.vercel.app/api/cron/sync-search
+```
+
+### Orden de crons (diario)
+
+| Hora UTC | Cron | Qué hace |
+|----------|------|----------|
+| 04:00 | sync-search | Reindexa todos los activos en ES |
+| 05:00 | check-validity | Verifica vencimientos |
+| 06:00 | import-yumblin | Importa desde feeds, publica drafts, indexa los nuevos en ES |

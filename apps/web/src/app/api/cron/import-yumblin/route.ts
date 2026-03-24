@@ -16,6 +16,8 @@ import { and, eq } from 'drizzle-orm'
 import { db, listings, runYumblinImportSyncAllSources } from '@propieya/database'
 import { LISTING_VALIDITY } from '@propieya/shared'
 
+import { syncListingToSearch } from '@/lib/search/sync'
+
 export const runtime = 'nodejs'
 /** Sync masivo: Vercel Pro permite hasta 300s; ajustar según plan. */
 export const maxDuration = 300
@@ -62,8 +64,9 @@ export async function GET(req: NextRequest) {
       now.getTime() + LISTING_VALIDITY.MANUAL_VALIDITY_DAYS * 24 * 60 * 60 * 1000
     )
 
+    let publishedIds: string[] = []
     if (drafts.length > 0) {
-      await db
+      const updated = await db
         .update(listings)
         .set({
           status: 'active',
@@ -74,9 +77,21 @@ export async function GET(req: NextRequest) {
         })
         .where(and(eq(listings.status, 'draft'), eq(listings.source, 'import')))
         .returning({ id: listings.id })
+      publishedIds = updated.map((r) => r.id)
+      await Promise.allSettled(
+        publishedIds.map((id) =>
+          syncListingToSearch(db, id).catch((e) => {
+            console.error('syncListingToSearch failed for', id, e)
+          })
+        )
+      )
     }
 
-    return NextResponse.json({ totals, resultsCount: results.length })
+    return NextResponse.json({
+      totals,
+      resultsCount: results.length,
+      publishedCount: publishedIds.length,
+    })
   } catch (err) {
     console.error('Cron import-yumblin:', err)
     return NextResponse.json(
