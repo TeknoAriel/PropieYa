@@ -5,7 +5,8 @@
  * Uso: ver scripts/import-yumblin-json.ts
  */
 
-import type { OperationType, PropertyType } from '../types/listing'
+import { extractAmenitiesFromFeedItem } from '../amenity-mapping'
+import type { Amenity, OperationType, PropertyType } from '../types/listing'
 
 type JsonItem = Record<string, unknown>
 
@@ -75,12 +76,20 @@ export interface MappedListingRow {
   priceAmount: number
   priceCurrency: string
   surfaceTotal: number
+  surfaceCovered: number | null
+  surfaceSemicovered: number | null
+  surfaceLand: number | null
   bedrooms: number | null
   bathrooms: number | null
+  garages: number | null
+  totalRooms: number | null
   locationLat: number | null
   locationLng: number | null
   primaryImageUrl: string | null
   imageUrls: string[]
+  amenities: Amenity[]
+  /** features para DB: floor, totalFloors, escalera, orientation */
+  features: Record<string, unknown>
 }
 
 /**
@@ -152,10 +161,18 @@ export function mapYumblinItem(
     else if (Array.isArray(arr)) imageUrls = arr.filter((u): u is string => typeof u === 'string').slice(0, 20)
   }
 
+  const floorVal = getValue(item, 'floor_number', 'piso', 'floor', 'planta')
+  const floorNum =
+    floorVal != null
+      ? (typeof floorVal === 'number' ? floorVal : parseInt(String(floorVal), 10))
+      : null
+  const floorStr =
+    floorVal != null ? String(floorVal) : null
+
   const address: Record<string, unknown> = {
     street: (typeof addrVal === 'object' && addrVal && (addrVal as { street?: string }).street) ?? street ?? '',
     number: getValue(item, 'numero', 'number') ?? null,
-    floor: getValue(item, 'floor_number', 'piso', 'floor') ?? null,
+    floor: floorStr,
     unit: getValue(item, 'unidad', 'unit', 'depto') ?? null,
     neighborhood: neighborhood ?? '',
     city: city ?? '',
@@ -167,6 +184,54 @@ export function mapYumblinItem(
   const externalId = getValue(item, 'public_code', 'id', 'codigo', 'external_id', 'id_aviso') as string | null
   const bedrooms = getValue(item, 'bedrooms', 'dormitorios', 'rooms', 'ambientes') as number | string | null
   const bathrooms = getValue(item, 'bathrooms', 'banos', 'half_bathrooms') as number | string | null
+  const garagesVal = getValue(item, 'garages', 'cocheras', 'garage_count', 'estacionamientos') ?? item.garages ?? item.cocheras
+  const garages =
+    garagesVal != null
+      ? (typeof garagesVal === 'number' ? garagesVal : parseInt(String(garagesVal), 10))
+      : null
+  const totalRoomsVal = getValue(item, 'total_rooms', 'ambientes_totales')
+  const totalRooms =
+    totalRoomsVal != null
+      ? (typeof totalRoomsVal === 'number' ? totalRoomsVal : parseInt(String(totalRoomsVal), 10))
+      : null
+
+  const surfaceCoveredVal = getValue(item, 'covered_meters', 'superficie_cubierta', 'm2_cubiertos', 'surface_covered')
+  const surfaceCovered =
+    surfaceCoveredVal != null
+      ? (typeof surfaceCoveredVal === 'number' ? surfaceCoveredVal : parseFloat(String(surfaceCoveredVal)))
+      : null
+  const surfaceSemicoveredVal = getValue(item, 'semicovered_meters', 'superficie_semicubierta', 'm2_semicubiertos')
+  const surfaceSemicovered =
+    surfaceSemicoveredVal != null
+      ? (typeof surfaceSemicoveredVal === 'number' ? surfaceSemicoveredVal : parseFloat(String(surfaceSemicoveredVal)))
+      : null
+  const surfaceLandVal = getValue(item, 'land_meters', 'superficie_terreno', 'm2_terreno')
+  const surfaceLand =
+    surfaceLandVal != null
+      ? (typeof surfaceLandVal === 'number' ? surfaceLandVal : parseFloat(String(surfaceLandVal)))
+      : null
+
+  const totalFloorsVal = getValue(item, 'total_floors', 'total_pisos', 'pisos_edificio')
+  const totalFloors =
+    totalFloorsVal != null
+      ? (typeof totalFloorsVal === 'number' ? totalFloorsVal : parseInt(String(totalFloorsVal), 10))
+      : null
+
+  const escaleraVal = getValue(item, 'escalera', 'staircase', 'entrada', 'entrance')
+  const escalera = escaleraVal != null && String(escaleraVal).trim() !== '' ? String(escaleraVal).trim().toUpperCase().slice(0, 5) : null
+
+  const orientationVal = getValue(item, 'orientation', 'orientacion', 'orientación')
+  const orientation = orientationVal != null ? String(orientationVal).trim().slice(0, 10) : null
+
+  const amenities = extractAmenitiesFromFeedItem(item as Record<string, unknown>)
+
+  const features: Record<string, unknown> = {
+    amenities,
+    floor: Number.isFinite(floorNum) ? floorNum : null,
+    totalFloors: Number.isFinite(totalFloors) ? totalFloors : null,
+    orientation: orientation ?? null,
+    escalera: escalera ?? null,
+  }
 
   return {
     organizationId: input.organizationId,
@@ -180,12 +245,19 @@ export function mapYumblinItem(
     priceAmount: priceNum,
     priceCurrency: String(getValue(item, 'currency', 'moneda') ?? 'ARS').slice(0, 3).toUpperCase(),
     surfaceTotal: surfaceNum,
+    surfaceCovered: surfaceCovered != null && !Number.isNaN(surfaceCovered) ? surfaceCovered : null,
+    surfaceSemicovered: surfaceSemicovered != null && !Number.isNaN(surfaceSemicovered) ? surfaceSemicovered : null,
+    surfaceLand: surfaceLand != null && !Number.isNaN(surfaceLand) ? surfaceLand : null,
     bedrooms: bedrooms != null ? (typeof bedrooms === 'number' ? bedrooms : parseInt(String(bedrooms), 10)) : null,
     bathrooms: bathrooms != null ? (typeof bathrooms === 'number' ? bathrooms : parseInt(String(bathrooms), 10)) : null,
+    garages: garages != null && Number.isFinite(garages) ? garages : null,
+    totalRooms: totalRooms != null && Number.isFinite(totalRooms) ? totalRooms : null,
     locationLat: Number.isFinite(locationLat) ? locationLat : null,
     locationLng: Number.isFinite(locationLng) ? locationLng : null,
     primaryImageUrl: imageUrls[0] ?? null,
     imageUrls,
+    amenities,
+    features,
   }
 }
 

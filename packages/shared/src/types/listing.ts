@@ -86,6 +86,9 @@ export type Amenity =
   | 'furnished'
   | 'pet_friendly'
   | 'wheelchair_accessible'
+  | 'fireplace' // Chimenea
+  | 'front_facing' // Ubicación contra frente / frente a calle
+  | 'credit_approved' // Apto crédito / financiación
 
 export interface ListingPrice {
   amount: number

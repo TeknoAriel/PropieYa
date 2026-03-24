@@ -16,6 +16,13 @@ export async function syncListingToSearch(
     where: eq(listings.id, listingId),
   })
   if (!row || row.status !== 'active') return
+  const features = (row.features ?? {}) as {
+    amenities?: string[]
+    floor?: number | null
+    totalFloors?: number | null
+    escalera?: string | null
+    orientation?: string | null
+  }
   const doc: ListingRow = {
     id: row.id,
     organizationId: row.organizationId,
@@ -31,11 +38,20 @@ export async function syncListingToSearch(
     priceAmount: row.priceAmount ?? 0,
     priceCurrency: row.priceCurrency ?? 'USD',
     surfaceTotal: row.surfaceTotal ?? 0,
+    surfaceCovered: row.surfaceCovered ?? null,
+    surfaceSemicovered: row.surfaceSemicovered ?? null,
     bedrooms: row.bedrooms,
     bathrooms: row.bathrooms,
+    garages: row.garages ?? null,
+    totalRooms: row.totalRooms ?? null,
+    floor: features.floor ?? null,
+    totalFloors: features.totalFloors ?? null,
+    escalera: features.escalera ?? null,
+    orientation: features.orientation ?? null,
     primaryImageUrl: row.primaryImageUrl,
     publishedAt: row.publishedAt,
     createdAt: row.createdAt,
+    amenities: features.amenities ?? [],
   }
   await indexListing(doc)
 }

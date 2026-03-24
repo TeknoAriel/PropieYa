@@ -1,9 +1,11 @@
 /**
  * Query builder para búsqueda de listings.
+ * Extrae filtros del texto (q) vía extractFiltersFromQuery para búsqueda por asistente.
  */
 
 import type { SearchFilters } from './types'
 import { getListingsIndex } from './client'
+import { extractFiltersFromQuery } from '@propieya/shared'
 
 const INDEX = getListingsIndex()
 
@@ -11,11 +13,36 @@ function sanitize(q: string): string {
   return q.trim().slice(0, 200).replace(/[<>*?":|\\[\]{}()&]/g, ' ')
 }
 
+/** Combina filtros explícitos con los extraídos del texto de búsqueda. */
+function mergeFilters(filters: SearchFilters): SearchFilters {
+  if (!filters.q?.trim()) return filters
+  const extracted = extractFiltersFromQuery(filters.q)
+  return {
+    ...filters,
+    amenities: [...new Set([...(filters.amenities ?? []), ...(extracted.amenities ?? [])])],
+    minSurface: extracted.minSurface ?? filters.minSurface,
+    maxSurface: extracted.maxSurface ?? filters.maxSurface,
+    minBedrooms: extracted.minBedrooms ?? filters.minBedrooms,
+    minBathrooms: extracted.minBathrooms ?? filters.minBathrooms,
+    minGarages: extracted.minGarages ?? filters.minGarages,
+    floorMin: extracted.floorMin ?? filters.floorMin,
+    floorMax: extracted.floorMax ?? filters.floorMax,
+    escalera: extracted.escalera ?? filters.escalera,
+    minPrice: extracted.minPrice ?? filters.minPrice,
+    maxPrice: extracted.maxPrice ?? filters.maxPrice,
+  }
+}
+
 export function buildSearchBody(filters: SearchFilters): Record<string, unknown> {
+  const merged = mergeFilters(filters)
   const must: Record<string, unknown>[] = [{ term: { status: 'active' } }]
 
-  if (filters.q?.trim()) {
-    const q = sanitize(filters.q)
+  if ((merged.amenities?.length ?? 0) > 0) {
+    must.push({ terms: { amenities: merged.amenities } })
+  }
+
+  if (merged.q?.trim()) {
+    const q = sanitize(merged.q)
     if (q.length > 0) {
       must.push({
         multi_match: {
@@ -28,31 +55,52 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
     }
   }
 
-  if (filters.operationType) {
-    must.push({ term: { operationType: filters.operationType } })
+  if (merged.operationType) {
+    must.push({ term: { operationType: merged.operationType } })
   }
-  if (filters.propertyType) {
-    must.push({ term: { propertyType: filters.propertyType } })
+  if (merged.propertyType) {
+    must.push({ term: { propertyType: merged.propertyType } })
   }
-  if (filters.minPrice !== undefined) {
-    must.push({ range: { priceAmount: { gte: filters.minPrice } } })
+  if (merged.minPrice !== undefined) {
+    must.push({ range: { priceAmount: { gte: merged.minPrice } } })
   }
-  if (filters.maxPrice !== undefined) {
-    must.push({ range: { priceAmount: { lte: filters.maxPrice } } })
+  if (merged.maxPrice !== undefined) {
+    must.push({ range: { priceAmount: { lte: merged.maxPrice } } })
   }
-  if (filters.minBedrooms !== undefined) {
-    must.push({ range: { bedrooms: { gte: filters.minBedrooms } } })
+  if (merged.minSurface !== undefined) {
+    must.push({ range: { surfaceTotal: { gte: merged.minSurface } } })
   }
-  if (filters.city?.trim()) {
-    const c = sanitize(filters.city)
+  if (merged.maxSurface !== undefined) {
+    must.push({ range: { surfaceTotal: { lte: merged.maxSurface } } })
+  }
+  if (merged.minBedrooms !== undefined) {
+    must.push({ range: { bedrooms: { gte: merged.minBedrooms } } })
+  }
+  if (merged.minBathrooms !== undefined) {
+    must.push({ range: { bathrooms: { gte: merged.minBathrooms } } })
+  }
+  if (merged.minGarages !== undefined) {
+    must.push({ range: { garages: { gte: merged.minGarages } } })
+  }
+  if (merged.floorMin !== undefined) {
+    must.push({ range: { floor: { gte: merged.floorMin } } })
+  }
+  if (merged.floorMax !== undefined) {
+    must.push({ range: { floor: { lte: merged.floorMax } } })
+  }
+  if (merged.escalera?.trim()) {
+    must.push({ term: { escalera: merged.escalera.trim().toUpperCase() } })
+  }
+  if (merged.city?.trim()) {
+    const c = sanitize(merged.city)
     if (c.length > 0) {
       must.push({
         match: { 'address.city': { query: c, operator: 'or' } },
       })
     }
   }
-  if (filters.neighborhood?.trim()) {
-    const n = sanitize(filters.neighborhood)
+  if (merged.neighborhood?.trim()) {
+    const n = sanitize(merged.neighborhood)
     if (n.length > 0) {
       must.push({
         match: { 'address.neighborhood': { query: n, operator: 'or' } },
@@ -60,8 +108,8 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
     }
   }
 
-  const size = Math.min(filters.limit ?? 24, 50)
-  const from = Math.min(filters.offset ?? 0, 500)
+  const size = Math.min(merged.limit ?? 24, 50)
+  const from = Math.min(merged.offset ?? 0, 500)
 
   return {
     query: { bool: { must } },
@@ -78,8 +126,12 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
       'priceCurrency',
       'address',
       'surfaceTotal',
+      'surfaceCovered',
       'bedrooms',
       'bathrooms',
+      'garages',
+      'floor',
+      'escalera',
       'primaryImageUrl',
       'publishedAt',
     ],

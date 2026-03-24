@@ -23,11 +23,20 @@ export function listingToEsDoc(row: ListingRow): Record<string, unknown> {
     priceAmount: row.priceAmount,
     priceCurrency: row.priceCurrency,
     surfaceTotal: row.surfaceTotal,
+    surfaceCovered: row.surfaceCovered ?? null,
+    surfaceSemicovered: row.surfaceSemicovered ?? null,
     bedrooms: row.bedrooms,
     bathrooms: row.bathrooms,
+    garages: row.garages ?? null,
+    totalRooms: row.totalRooms ?? null,
+    floor: row.floor ?? null,
+    totalFloors: row.totalFloors ?? null,
+    escalera: row.escalera ?? null,
+    orientation: row.orientation ?? null,
     primaryImageUrl: row.primaryImageUrl ?? null,
     publishedAt: row.publishedAt,
     createdAt: row.createdAt,
+    amenities: row.amenities ?? [],
   }
   if (
     row.locationLat != null &&

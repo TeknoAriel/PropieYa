@@ -371,9 +371,17 @@ export const listingRouter = createTRPCRouter({
         propertyType: z.string().max(50).optional(),
         minPrice: z.number().nonnegative().optional(),
         maxPrice: z.number().nonnegative().optional(),
+        minSurface: z.number().nonnegative().optional(),
+        maxSurface: z.number().nonnegative().optional(),
         minBedrooms: z.number().int().min(0).max(50).optional(),
+        minBathrooms: z.number().int().min(0).max(20).optional(),
+        minGarages: z.number().int().min(0).max(20).optional(),
+        floorMin: z.number().int().min(0).optional(),
+        floorMax: z.number().int().min(0).optional(),
+        escalera: z.string().max(10).optional(),
         city: z.string().max(120).optional(),
         neighborhood: z.string().max(120).optional(),
+        amenities: z.array(z.string()).optional(),
         limit: z.number().min(1).max(50).default(24),
         offset: z.number().min(0).max(500).default(0),
       })
@@ -385,9 +393,17 @@ export const listingRouter = createTRPCRouter({
         propertyType: input.propertyType,
         minPrice: input.minPrice,
         maxPrice: input.maxPrice,
+        minSurface: input.minSurface,
+        maxSurface: input.maxSurface,
         minBedrooms: input.minBedrooms,
+        minBathrooms: input.minBathrooms,
+        minGarages: input.minGarages,
+        floorMin: input.floorMin,
+        floorMax: input.floorMax,
+        escalera: input.escalera,
         city: input.city,
         neighborhood: input.neighborhood,
+        amenities: input.amenities,
         limit: input.limit,
         offset: input.offset,
       })
@@ -424,6 +440,33 @@ export const listingRouter = createTRPCRouter({
       if (input.minBedrooms !== undefined) {
         conditions.push(gte(listings.bedrooms, input.minBedrooms))
       }
+      if (input.minBathrooms !== undefined) {
+        conditions.push(gte(listings.bathrooms, input.minBathrooms))
+      }
+      if (input.minGarages !== undefined) {
+        conditions.push(gte(listings.garages, input.minGarages))
+      }
+      if (input.minSurface !== undefined) {
+        conditions.push(gte(listings.surfaceTotal, input.minSurface))
+      }
+      if (input.maxSurface !== undefined) {
+        conditions.push(lte(listings.surfaceTotal, input.maxSurface))
+      }
+      if (input.floorMin !== undefined) {
+        conditions.push(
+          sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) >= ${input.floorMin}`
+        )
+      }
+      if (input.floorMax !== undefined) {
+        conditions.push(
+          sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) <= ${input.floorMax}`
+        )
+      }
+      if (input.escalera?.trim()) {
+        conditions.push(
+          sql`(${listings.features}->>'escalera') = ${input.escalera.trim().toUpperCase()}`
+        )
+      }
       if (input.city?.trim()) {
         const c = sanitizeIlikeFragment(input.city)
         if (c.length > 0) {
@@ -438,6 +481,20 @@ export const listingRouter = createTRPCRouter({
           conditions.push(
             sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${`%${n}%`}`
           )
+        }
+      }
+      if (input.amenities && input.amenities.length > 0) {
+        const validAmenities = [
+          'balcony', 'terrace', 'parking', 'air_conditioning', 'heating',
+          'fireplace', 'front_facing', 'credit_approved', 'pool', 'gym',
+          'garden', 'bbq', 'elevator', 'doorman', 'storage', 'furnished',
+        ]
+        for (const a of input.amenities) {
+          if (validAmenities.includes(a)) {
+            conditions.push(
+              sql`(${listings.features}->'amenities') @> to_jsonb(ARRAY[${a}]::text[])`
+            )
+          }
         }
       }
 

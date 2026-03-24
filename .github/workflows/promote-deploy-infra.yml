@@ -148,31 +148,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Esperar despliegue en Vercel
-        run: sleep 90
+        run: |
+          echo "Esperando 2 min para que Vercel termine el build..."
+          sleep 120
 
       - name: Verificar portal web
         run: |
-          for i in 1 2 3 4 5; do
-            if curl -sf -o /dev/null -w "%{http_code}" https://propieyaweb.vercel.app | grep -qE '^2'; then
-              echo "✓ Portal responde OK"
+          URL="https://propieyaweb.vercel.app"
+          for i in 1 2 3 4 5 6 7 8; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
+            if [[ "$code" =~ ^2 ]]; then
+              echo "✓ Portal $URL responde HTTP $code"
               exit 0
             fi
-            echo "Intento $i/5: esperando 30s..."
+            echo "Intento $i/8: HTTP $code, esperando 30s..."
             sleep 30
           done
-          echo "ERROR: El portal no respondió OK tras 5 intentos"
+          echo "ERROR: Portal no respondió 2xx tras 8 intentos. Último código: $code"
           exit 1
 
       - name: Verificar health API
         run: |
-          code=$(curl -sf -o /dev/null -w "%{http_code}" https://propieyaweb.vercel.app/api/health || true)
+          code=$(curl -s -o /dev/null -w "%{http_code}" https://propieyaweb.vercel.app/api/health 2>/dev/null || echo "000")
           if [ "$code" = "200" ]; then
-            echo "✓ Health API OK"
+            echo "✓ Health API OK (HTTP 200)"
           else
-            echo "WARN: Health API devolvió $code (no falla el job)"
+            echo "WARN: Health API devolvió HTTP $code"
           fi
 
       - name: Mostrar versión desplegada
         run: |
           echo "Versión en producción:"
-          curl -sf https://propieyaweb.vercel.app/api/version 2>/dev/null | head -c 500 || echo "(api/version no disponible)"
+          curl -s https://propieyaweb.vercel.app/api/version 2>/dev/null | head -c 500 || echo "(api/version no disponible)"

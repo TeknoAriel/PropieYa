@@ -1,27 +1,39 @@
 /**
- * Stub de mapeo XML (feeds tipo Zonaprop / Kiteprop) → campos internos.
- * Ver `docs/19-referencia-xml-ficha-propiedad.md` y el feed de referencia.
+ * Mapeo XML (feeds Zonaprop / Kiteprop) → campos internos.
+ * Referencia: https://static.kiteprop.com/kp/difusions/.../zonaprop.xml
  *
- * Cuando exista ingest real, reemplazar o ampliar con parsers por proveedor.
+ * Incluye todos los campos posibles para filtros de búsqueda por texto/asistente.
  */
 
 export const XML_LISTING_FIELD_ALIASES = {
-  externalId: ['id', 'codigo', 'external_id', 'id_aviso'] as const,
-  title: ['titulo', 'title'] as const,
-  description: ['descripcion', 'description', 'texto'] as const,
+  externalId: ['id', 'codigo', 'external_id', 'id_aviso', 'public_code'] as const,
+  title: ['titulo', 'title', 'nombre'] as const,
+  description: ['descripcion', 'description', 'texto', 'content'] as const,
   operationType: ['operacion', 'operation', 'tipo_operacion'] as const,
   propertyType: ['tipo_propiedad', 'property_type', 'tipo'] as const,
-  priceAmount: ['precio', 'price', 'valor'] as const,
+  priceAmount: ['precio', 'price', 'valor', 'for_sale_price', 'for_rent_price'] as const,
   currency: ['moneda', 'currency'] as const,
-  surfaceTotal: ['superficie_total', 'surface', 'm2_totales'] as const,
-  bedrooms: ['dormitorios', 'bedrooms', 'ambientes'] as const,
-  bathrooms: ['banos', 'bathrooms'] as const,
+  surfaceTotal: ['superficie_total', 'surface', 'm2_totales', 'total_meters', 'm2', 'superficie', 'exclusive_meters'] as const,
+  surfaceCovered: ['superficie_cubierta', 'm2_cubiertos', 'covered_meters', 'surface_covered'] as const,
+  surfaceSemicovered: ['superficie_semicubierta', 'm2_semicubiertos', 'semicovered_meters'] as const,
+  surfaceLand: ['superficie_terreno', 'm2_terreno', 'land_meters'] as const,
+  bedrooms: ['dormitorios', 'bedrooms', 'rooms', 'ambientes'] as const,
+  bathrooms: ['banos', 'bathrooms', 'half_bathrooms'] as const,
+  garages: ['cocheras', 'garages', 'garage_count', 'estacionamientos'] as const,
+  totalRooms: ['ambientes_totales', 'total_rooms'] as const,
+  floor: ['piso', 'floor', 'floor_number', 'planta'] as const,
+  totalFloors: ['total_pisos', 'total_floors', 'pisos_edificio'] as const,
+  escalera: ['escalera', 'staircase', 'entrada', 'entrance'] as const,
+  unit: ['unidad', 'unit', 'depto', 'departamento', 'apt'] as const,
   city: ['ciudad', 'city', 'localidad'] as const,
-  neighborhood: ['barrio', 'neighborhood', 'zona'] as const,
-  addressLine: ['direccion', 'address', 'calle'] as const,
-  latitude: ['lat', 'latitud'] as const,
-  longitude: ['lng', 'longitud', 'lon'] as const,
-  imageUrl: ['foto', 'imagen', 'url_foto', 'image'] as const,
+  neighborhood: ['barrio', 'neighborhood', 'zona', 'zone'] as const,
+  addressLine: ['direccion', 'address', 'calle', 'street'] as const,
+  latitude: ['lat', 'latitud', 'latitude'] as const,
+  longitude: ['lng', 'longitud', 'lon', 'longitude'] as const,
+  imageUrl: ['foto', 'imagen', 'url_foto', 'image', 'imagenes', 'photos'] as const,
+  orientation: ['orientacion', 'orientation', 'orientación'] as const,
+  disposition: ['disposicion', 'disposition', 'disposición'] as const,
+  age: ['antiguedad', 'age', 'antigüedad', 'years_old'] as const,
 } as const
 
 export type XmlListingLogicalField = keyof typeof XML_LISTING_FIELD_ALIASES
