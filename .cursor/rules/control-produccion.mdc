@@ -26,3 +26,9 @@ alwaysApply: true
 
 - Solo subir cambios que pasen la verificación anterior.
 - Tras push, el agente **no pide** al usuario que revise el repo; si hace falta confirmación externa, queda en `docs/REGISTRO-BLOQUEOS.md`.
+
+## Tras push a deploy/infra
+
+1. El agente **verifica** que el deploy terminó: ejecuta `pnpm verificar:deploy` (espera 3 min, hace poll al portal hasta 10 intentos).
+2. Si el portal responde 2xx: **avisa al usuario** "Deploy verificado OK. Portal: https://propieyaweb.vercel.app"
+3. Si tras ~8 min sigue 404: **avisa al usuario** que revisar Vercel (proyecto, rama main, Root Directory) y anota en `docs/REGISTRO-BLOQUEOS.md` si aplica.

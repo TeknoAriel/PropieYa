@@ -24,6 +24,7 @@
     "publish:imported": "pnpm exec tsx scripts/publish-imported-drafts.ts",
     "sync-search:local": "pnpm exec tsx scripts/sync-search-local.ts",
     "verificar:prod": "bash scripts/verificar-produccion.sh",
+    "verificar:deploy": "bash scripts/verificar-deploy-esperar.sh --wait 3",
     "prepare": "husky"
   },
   "devDependencies": {
