@@ -141,12 +141,14 @@ jobs:
                 continue;
               }
 
-              // clean = checks OK o no requeridos. unstable = checks fallidos (no mergear).
+              // unstable no es fiable: a veces aparece con checks aún en cola o recalculando.
+              // No abortar aquí (eso rompió #46–#47); esperar hasta clean o timeout.
               if (st === 'unstable') {
-                throw new Error(
-                  'El PR tiene checks fallidos (mergeable_state=unstable). Revisar la pestaña Checks del PR #' +
-                    prNum
+                core.info(
+                  'mergeable_state=unstable (esperando a que terminen checks o pase a clean)...'
                 );
+                await new Promise(r => setTimeout(r, intervalMs));
+                continue;
               }
 
               // mergeable puede ser null en edge cases; mergeable_state=clean es la señal estable.
