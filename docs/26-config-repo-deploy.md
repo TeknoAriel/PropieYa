@@ -5,9 +5,11 @@
 ```
 1. Push a deploy/infra
 2. Promote workflow: Verify (lint, typecheck, build) ✓
-3. Promote workflow: Crear PR → Esperar CI → Mergear  ← FALLA AQUÍ
+3. Promote workflow: Crear PR → Polling mergeable_state → Mergear
 4. Vercel despliega main
 ```
+
+**Nota:** El merge **no** usa `getCombinedStatusForRef` (API legacy de Statuses): no refleja bien los Check Runs de Actions y podía dejar el paso colgado en “pending”. Se usa `pulls.get` y `mergeable_state` hasta `clean`.
 
 ## Problema actual
 

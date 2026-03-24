@@ -109,48 +109,87 @@ jobs:
               core.info(`PR #${prNum} created`);
             }
             if (isNewPr) {
-              core.info('Esperando 45s para que CI arranque...');
+              core.info('Esperando 45s para que el CI del PR arranque...');
               await new Promise(r => setTimeout(r, 45000));
             }
 
-            const maxAttempts = 24;
+            // No usar getCombinedStatusForRef: la API de Statuses es legacy y no refleja bien
+            // los Check Runs de GitHub Actions → el estado puede quedar "pending" para siempre.
+            // Tampoco esperar "todos los check runs": el job actual "Merge to main" quedaría in_progress.
+            const maxAttempts = 40;
             const intervalMs = 15000;
             for (let i = 0; i < maxAttempts; i++) {
-              const { data: status } = await github.rest.repos.getCombinedStatusForRef({
+              const { data: pr } = await github.rest.pulls.get({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                ref: 'deploy/infra'
+                pull_number: prNum,
               });
-              if (status.state === 'success') {
+              const st = pr.mergeable_state;
+              core.info(
+                `PR #${prNum}: mergeable=${pr.mergeable} mergeable_state=${st} (${i + 1}/${maxAttempts})`
+              );
+
+              if (st === 'dirty') {
+                throw new Error(
+                  'Hay conflicto entre deploy/infra y main. Resolver en local y volver a pushear deploy/infra.'
+                );
+              }
+
+              if (st === 'unknown' && pr.mergeable === null) {
+                core.info('mergeable aún calculándose, esperando...');
+                await new Promise(r => setTimeout(r, intervalMs));
+                continue;
+              }
+
+              // clean = checks OK o no requeridos. unstable = checks fallidos (no mergear).
+              if (st === 'unstable') {
+                throw new Error(
+                  'El PR tiene checks fallidos (mergeable_state=unstable). Revisar la pestaña Checks del PR #' +
+                    prNum
+                );
+              }
+
+              // mergeable puede ser null en edge cases; mergeable_state=clean es la señal estable.
+              if (st === 'clean') {
                 try {
                   await github.rest.pulls.merge({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
                     pull_number: prNum,
                     merge_method: 'merge',
-                    commit_title: 'chore: auto-merge deploy/infra → main'
+                    commit_title: 'chore: auto-merge deploy/infra → main',
                   });
                   core.info('PR merged');
                   return;
                 } catch (e) {
-                  const msg = e.message || e;
+                  const msg = String(e.message || e);
                   core.warning('Merge failed: ' + msg);
-                  if (msg.includes('Required status check') || msg.includes('status checks')) {
-                    throw new Error('Ruleset exige status checks. En Settings → Rules → regla main → Rules → QUITAR "Require status checks to pass". Este workflow ya verificó lint+typecheck+build. Ver docs/DEPLOY-PASOS-URIs.md');
+                  if (
+                    msg.includes('Required status check') ||
+                    msg.includes('status checks') ||
+                    msg.includes('Review required')
+                  ) {
+                    throw new Error(
+                      'Branch protection bloquea el merge. Opciones: (1) Settings → Rules → main → quitar "Require status checks" (el Promote ya verifica antes). (2) Permitir que Actions mergee. Ver docs/DEPLOY-PASOS-URIs.md A2.'
+                    );
                   }
                   if (i < maxAttempts - 1) {
-                    core.info('Retrying in 15s...');
+                    core.info('Reintentando merge en 15s...');
                     await new Promise(r => setTimeout(r, intervalMs));
-                  } else throw e;
+                  } else {
+                    throw e;
+                  }
                 }
-              } else if (status.state === 'failure' || status.state === 'error') {
-                throw new Error('Checks failed on deploy/infra: ' + status.state + '. Revisar Actions y docs/DEPLOY-PASOS-URIs.md');
               } else {
-                core.info(`Waiting for checks (${status.state})... ${i+1}/${maxAttempts}`);
+                core.info(`Esperando checks requeridos (estado=${st})...`);
                 await new Promise(r => setTimeout(r, intervalMs));
               }
             }
-            throw new Error('Timeout: checks no completaron en ' + (maxAttempts * intervalMs / 60000) + ' min');
+            throw new Error(
+              'Timeout: el PR no llegó a estado mergeable en ' +
+                (maxAttempts * intervalMs / 60000) +
+                ' min. Revisar Actions del PR y reglas de main.'
+            );
 
   verify-deploy:
     name: Verificar deploy en producción
