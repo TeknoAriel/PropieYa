@@ -103,8 +103,11 @@ function BuscarContent() {
     PropertyType | ''
   >((searchParams.get('tipo') as PropertyType) ?? '')
   const [city, setCity] = useState(searchParams.get('ciudad') ?? '')
+  const [neighborhood] = useState(searchParams.get('barrio') ?? '')
   const [minPrice, setMinPrice] = useState(searchParams.get('min') ?? '')
   const [maxPrice, setMaxPrice] = useState(searchParams.get('max') ?? '')
+  const [minBedrooms] = useState(searchParams.get('dorm') ?? '')
+  const [minSurface] = useState(searchParams.get('sup') ?? '')
 
   const filters = useMemo(
     () => ({
@@ -112,12 +115,25 @@ function BuscarContent() {
       operationType: operationType || undefined,
       propertyType: propertyType || undefined,
       city: city.trim() || undefined,
+      neighborhood: neighborhood.trim() || undefined,
       minPrice: minPrice ? Number(minPrice) : undefined,
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
+      minBedrooms: minBedrooms ? Number(minBedrooms) : undefined,
+      minSurface: minSurface ? Number(minSurface) : undefined,
       limit: 24,
       offset: 0,
     }),
-    [q, operationType, propertyType, city, minPrice, maxPrice]
+    [
+      q,
+      operationType,
+      propertyType,
+      city,
+      neighborhood,
+      minPrice,
+      maxPrice,
+      minBedrooms,
+      minSurface,
+    ]
   )
 
   const { data: listingsRaw = [], isLoading } =
