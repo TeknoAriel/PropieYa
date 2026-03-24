@@ -1,4 +1,6 @@
 {
+  "buildCommand": "cd ../.. && pnpm exec turbo run build --filter=@propieya/web",
+  "framework": "nextjs",
   "crons": [
     {
       "path": "/api/cron/import-yumblin",

@@ -107,7 +107,9 @@ jobs:
               core.info(`PR #${prNum} created`);
             }
 
-            for (let i = 0; i < 12; i++) {
+            const maxAttempts = 24;
+            const intervalMs = 15000;
+            for (let i = 0; i < maxAttempts; i++) {
               const { data: status } = await github.rest.repos.getCombinedStatusForRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -126,19 +128,19 @@ jobs:
                   return;
                 } catch (e) {
                   core.warning('Merge failed: ' + (e.message || e));
-                  if (i < 11) {
+                  if (i < maxAttempts - 1) {
                     core.info('Retrying in 15s...');
-                    await new Promise(r => setTimeout(r, 15000));
+                    await new Promise(r => setTimeout(r, intervalMs));
                   } else throw e;
                 }
               } else if (status.state === 'failure' || status.state === 'error') {
-                throw new Error('Checks failed on deploy/infra: ' + status.state);
+                throw new Error('Checks failed on deploy/infra: ' + status.state + '. Revisar deploy Vercel y docs/33-VERCEL-CONFIG-PROYECTO-WEB.md');
               } else {
-                core.info(`Waiting for checks (${status.state})... ${i+1}/12`);
-                await new Promise(r => setTimeout(r, 15000));
+                core.info(`Waiting for checks (${status.state})... ${i+1}/${maxAttempts}`);
+                await new Promise(r => setTimeout(r, intervalMs));
               }
             }
-            throw new Error('Timeout: checks no completaron en 3 min');
+            throw new Error('Timeout: checks no completaron en ' + (maxAttempts * intervalMs / 60000) + ' min');
 
   verify-deploy:
     name: Verificar deploy en producción

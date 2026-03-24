@@ -123,8 +123,9 @@ Required status check "Typecheck" is expected.
 
 | Bloqueo | Causa | Solución |
 |---------|-------|----------|
+| `No Output Directory named "public"` | Root Directory o Output Directory mal configurados | Ver **docs/33-VERCEL-CONFIG-PROYECTO-WEB.md**: Root Directory = `apps/web`, Output Directory vacío |
 | Deploy falla por cron | Hobby no permite horario | Usar `0 6 * * *` en vercel.json |
 | `relation "X" does not exist` | Schema no aplicado en Neon | Ejecutar `db-push-produccion.sh` con DATABASE_URL de prod |
 | `No organization` en cron import | Sin org/publicador | Ejecutar `pnpm seed:org` contra prod |
 | Push a main rechazado | Branch protection | Usar flujo deploy/infra → Promote → main |
-| Promote no mergea | Checks fallan o timeout | Revisar Actions; corregir lint/typecheck/build localmente |
+| Promote no mergea | Checks fallan o timeout | Revisar Actions; verificar deploy Vercel en deploy/infra; docs/33-VERCEL-CONFIG-PROYECTO-WEB.md |
