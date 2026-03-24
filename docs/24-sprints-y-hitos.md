@@ -122,17 +122,17 @@
 
 ---
 
-## Sprint 7 — Conversacional v1
+## Sprint 7 — Conversacional v1 ✅
 
 **Objetivo:** input conversacional en home que derive en búsqueda.
 
-- [ ] 7.1 Abstracción LLM (OpenAI o similar)
-- [ ] 7.2 Prompt: extraer intención (operación, tipo, ciudad, precio, etc.)
-- [ ] 7.3 Endpoint: mensaje → intención → query search → resultados
-- [ ] 7.4 UI: input en home + chips de ejemplo
-- [ ] 7.5 Respuesta con resultados inline o redirección a /buscar
-- [ ] 7.6 Rate limiting
-- [ ] 7.7 Verificar lint/typecheck, commit + push
+- [x] 7.1 Abstracción LLM (OpenAI o similar)
+- [x] 7.2 Prompt: extraer intención (operación, tipo, ciudad, precio, etc.)
+- [x] 7.3 Endpoint: mensaje → intención → query search → resultados
+- [x] 7.4 UI: input en home + chips de ejemplo
+- [x] 7.5 Respuesta con resultados inline o redirección a /buscar
+- [x] 7.6 Rate limiting
+- [x] 7.7 Verificar lint/typecheck, commit + push
 
 **Criterios:** usuario escribe en lenguaje natural y recibe resultados de búsqueda.
 

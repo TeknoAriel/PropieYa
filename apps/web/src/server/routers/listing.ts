@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { z } from 'zod'
 import { eq, and, desc, ilike, or, gte, lte, sql } from 'drizzle-orm'
+import { TRPCError } from '@trpc/server'
 
 import {
   listings,
@@ -22,6 +23,8 @@ import {
   removeListingFromSearch,
 } from '../../lib/search/sync'
 import { searchListings } from '../../lib/search/search'
+import { extractIntentionFromMessage } from '../../lib/llm'
+import { checkRateLimit } from '../../lib/rate-limit'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
 
 /** Evita que el usuario inyecte comodines ILIKE (%, _). */
@@ -504,6 +507,122 @@ export const listingRouter = createTRPCRouter({
         limit: input.limit,
         offset: input.offset,
       })
+    }),
+
+  /** Búsqueda conversacional: extrae intención del mensaje y devuelve filtros + resultados. */
+  searchConversational: publicProcedure
+    .input(z.object({ message: z.string().min(1).max(500) }))
+    .mutation(async ({ input, ctx }) => {
+      if (!checkRateLimit(ctx.ip)) {
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Máximo 10 búsquedas por minuto. Esperá un momento.',
+        })
+      }
+
+      const intention = await extractIntentionFromMessage(input.message)
+      const filters = {
+        q: intention.q,
+        operationType: intention.operationType,
+        propertyType: intention.propertyType,
+        city: intention.city,
+        neighborhood: intention.neighborhood,
+        minPrice: intention.minPrice,
+        maxPrice: intention.maxPrice,
+        minBedrooms: intention.minBedrooms,
+        minSurface: intention.minSurface,
+        amenities: intention.amenities,
+        limit: 24,
+        offset: 0,
+      }
+
+      const esResult = await searchListings(filters)
+
+      if (esResult.fromEs) {
+        return {
+          filters,
+          hits: esResult.hits,
+          total: esResult.total,
+        }
+      }
+
+      const conditions = [eq(listings.status, 'active')]
+      if (filters.q?.trim()) {
+        const frag = sanitizeIlikeFragment(filters.q)
+        if (frag.length > 0) {
+          const pat = `%${frag}%`
+          conditions.push(
+            or(
+              ilike(listings.title, pat),
+              ilike(listings.description, pat)
+            )!
+          )
+        }
+      }
+      if (filters.operationType) {
+        conditions.push(eq(listings.operationType, filters.operationType))
+      }
+      if (filters.propertyType) {
+        conditions.push(eq(listings.propertyType, filters.propertyType))
+      }
+      if (filters.minPrice !== undefined) {
+        conditions.push(gte(listings.priceAmount, filters.minPrice))
+      }
+      if (filters.maxPrice !== undefined) {
+        conditions.push(lte(listings.priceAmount, filters.maxPrice))
+      }
+      if (filters.minBedrooms !== undefined) {
+        conditions.push(gte(listings.bedrooms, filters.minBedrooms))
+      }
+      if (filters.minSurface !== undefined) {
+        conditions.push(gte(listings.surfaceTotal, filters.minSurface))
+      }
+      if (filters.city?.trim()) {
+        const c = sanitizeIlikeFragment(filters.city)
+        if (c.length > 0) {
+          conditions.push(
+            sql`COALESCE(${listings.address}->>'city', '') ILIKE ${`%${c}%`}`
+          )
+        }
+      }
+      if (filters.neighborhood?.trim()) {
+        const n = sanitizeIlikeFragment(filters.neighborhood)
+        if (n.length > 0) {
+          conditions.push(
+            sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${`%${n}%`}`
+          )
+        }
+      }
+      if (filters.amenities && filters.amenities.length > 0) {
+        const validAmenities = [
+          'balcony', 'terrace', 'parking', 'air_conditioning', 'heating',
+          'fireplace', 'front_facing', 'credit_approved', 'pool', 'gym',
+          'garden', 'bbq', 'elevator', 'doorman', 'storage', 'furnished',
+        ]
+        for (const a of filters.amenities) {
+          if (validAmenities.includes(a)) {
+            conditions.push(
+              sql`(${listings.features}->'amenities') @> to_jsonb(ARRAY[${a}]::text[])`
+            )
+          }
+        }
+      }
+
+      const [countResult] = await ctx.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(listings)
+        .where(and(...conditions))
+
+      const total = countResult?.count ?? 0
+
+      const hits = await ctx.db.query.listings.findMany({
+        where: and(...conditions),
+        orderBy: [desc(listings.publishedAt)],
+        limit: filters.limit ?? 24,
+        offset: filters.offset ?? 0,
+      })
+
+      return { filters, hits, total }
     }),
 
   getPresignedUploadUrl: protectedProcedure

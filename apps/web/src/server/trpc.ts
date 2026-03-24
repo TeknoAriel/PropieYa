@@ -9,6 +9,16 @@ import { verifyAccessToken, payloadToSession, type Session } from './auth'
 export interface Context {
   db: typeof db
   session: Session | null
+  /** IP del cliente (para rate limiting) */
+  ip: string
+}
+
+function getClientIp(headers: Headers): string {
+  const forwarded = headers.get('x-forwarded-for')
+  if (forwarded) return forwarded.split(',')[0]?.trim() ?? 'unknown'
+  const real = headers.get('x-real-ip')
+  if (real) return real.trim()
+  return 'unknown'
 }
 
 export const createTRPCContext = async (opts: {
@@ -19,6 +29,7 @@ export const createTRPCContext = async (opts: {
   return {
     db,
     session,
+    ip: getClientIp(opts.headers),
   }
 }
 

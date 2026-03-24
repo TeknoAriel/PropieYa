@@ -2,20 +2,53 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 import { Button, Input, ArrowRight, Filter } from '@propieya/ui'
 
 import { getPortalPack } from '@/lib/portal-copy'
+import { trpc } from '@/lib/trpc'
+
+function buildBuscarUrl(filters: {
+  q?: string
+  operationType?: string
+  propertyType?: string
+  city?: string
+  neighborhood?: string
+  minPrice?: number
+  maxPrice?: number
+  minBedrooms?: number
+  minSurface?: number
+}): string {
+  const params = new URLSearchParams()
+  if (filters.q) params.set('q', filters.q)
+  if (filters.operationType) params.set('op', filters.operationType)
+  if (filters.propertyType) params.set('tipo', filters.propertyType)
+  if (filters.city) params.set('ciudad', filters.city)
+  if (filters.neighborhood) params.set('barrio', filters.neighborhood)
+  if (filters.minPrice != null) params.set('min', String(filters.minPrice))
+  if (filters.maxPrice != null) params.set('max', String(filters.maxPrice))
+  if (filters.minBedrooms != null) params.set('dorm', String(filters.minBedrooms))
+  if (filters.minSurface != null) params.set('sup', String(filters.minSurface))
+  return `/buscar?${params.toString()}`
+}
 
 export function HeroSearch() {
   const pack = getPortalPack()
+  const router = useRouter()
   const [query, setQuery] = useState('')
+
+  const searchConversational = trpc.listing.searchConversational.useMutation({
+    onSuccess: (data) => {
+      const url = buildBuscarUrl(data.filters)
+      router.push(url)
+    },
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!query.trim()) return
-    // TODO: Navigate to search with query
-    window.location.href = `/buscar?q=${encodeURIComponent(query)}`
+    searchConversational.mutate({ message: query.trim() })
   }
 
   const handleExampleClick = (example: string) => {
@@ -51,16 +84,27 @@ export function HeroSearch() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={pack.hero.placeholder}
+                disabled={searchConversational.isPending}
                 className="h-14 pl-5 pr-14 text-base md:text-lg rounded-2xl border-2 border-border focus-visible:ring-brand-primary shadow-lg"
               />
               <Button
                 type="submit"
                 size="icon"
+                disabled={searchConversational.isPending}
                 className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-xl"
               >
-                <ArrowRight className="h-5 w-5" />
+                {searchConversational.isPending ? (
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <ArrowRight className="h-5 w-5" />
+                )}
               </Button>
             </div>
+            {searchConversational.isError && (
+              <p className="mt-2 text-sm text-red-600">
+                {searchConversational.error.message}
+              </p>
+            )}
           </form>
 
           {/* Example chips */}
