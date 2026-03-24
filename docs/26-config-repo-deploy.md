@@ -5,9 +5,11 @@
 ```
 1. Push a deploy/infra
 2. Promote workflow: Verify (lint, typecheck, build) ✓
-3. Promote workflow: Crear PR → Esperar CI → Mergear  ← FALLA AQUÍ
+3. Promote workflow: Crear PR → Polling mergeable_state → Mergear
 4. Vercel despliega main
 ```
+
+**Nota:** El merge **no** usa `getCombinedStatusForRef` (API legacy de Statuses): no refleja bien los Check Runs de Actions y podía dejar el paso colgado en “pending”. Se usa `pulls.get` y `mergeable_state` hasta `clean`.
 
 ## Problema actual
 
@@ -60,4 +62,4 @@ El Promote ya hace verify antes de mergear. Ver docs/12-bypass-github-actions.md
 | Build: `MappingProperty` | Vercel | Corregido (tipo local en mapping.ts) |
 | Push directo a main | Promote | Workflow cambiado a PR-based |
 | **Actions no puede crear PR** | Promote | **Habilitar en Settings → Actions** |
-| **Branch protection requiere "Typecheck"** | Promote | Job "Typecheck" agregado al workflow Promote (crea el check que exige la regla) |
+| **Branch protection requiere "Typecheck"** | Rules + CI | El workflow **CI** (`ci.yml`) en el PR a `main` ya publica el check **Typecheck**. No hace falta duplicar ese job en Promote; si la regla pide nombres distintos, alinear nombres o quitar "Require status checks" (A2). |

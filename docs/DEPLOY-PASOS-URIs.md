@@ -93,6 +93,22 @@ URL: https://github.com/TeknoAriel/PropieYa/settings/rules
 → **A1**: Verificar permisos de Actions.  
 URL: https://github.com/TeknoAriel/PropieYa/settings/actions
 
+### Actions no puede crear o mergear el PR (merge automático rojo)
+
+En **Settings → Actions → General** → **Workflow permissions**:
+
+- **Read and write permissions** (no solo read).
+- Marcar **Allow GitHub Actions to create and approve pull requests**.
+
+Sin esto, el job "Merge to main" falla aunque el código en `deploy/infra` sea correcto.
+
+### `main` va atrasada respecto a `deploy/infra` (cambios no llegan a producción)
+
+1. Esperar a que el workflow **Promote** pase (push a `deploy/infra` lo dispara).
+2. Si el Promote sigue fallando: merge **manual del PR** (válido con la regla "solo por PR"):  
+   **https://github.com/TeknoAriel/PropieYa/compare/main...deploy/infra**  
+   → **Create pull request** → **Merge**. Tras eso, Vercel despliega desde `main`.
+
 ### Verify-deploy muestra advertencia (portal no responde 2xx)
 
 → El merge ya se hizo. Revisar A3; Vercel puede estar construyendo. Verificar luego: `curl https://propieyaweb.vercel.app/api/version`
@@ -103,11 +119,29 @@ URL: https://github.com/TeknoAriel/PropieYa/settings/actions
 
 ---
 
+## Parte D: Secretos opcionales en GitHub (deploy por CLI, una sola vez)
+
+Si el enlace **Git → Vercel** deja el dominio en `NOT_FOUND`, el workflow **Promote** puede ejecutar `vercel deploy --prod` **después del merge a `main`**, sin abrir el dashboard en cada release.
+
+1. En Vercel: proyecto del portal → **Settings → General** → copiar **Project ID** y **Team / Org ID** (o desde `.vercel/project.json` si existe en local).
+2. En Vercel: **Account Settings → Tokens** → crear token con alcance adecuado.
+3. En GitHub: **https://github.com/TeknoAriel/PropieYa/settings/secrets/actions** → **New repository secret**:
+   - `VERCEL_TOKEN`
+   - `VERCEL_ORG_ID`
+   - `VERCEL_PROJECT_ID`
+
+Con los tres definidos, el job **Verificar deploy en producción** del workflow Promote ejecuta el deploy por CLI antes del `curl` al portal. Sin secretos, el flujo sigue dependiendo solo del enlace Git de Vercel.
+
+**Nota:** `/api/health` puede responder **503** si la base en producción no está disponible; eso no invalida que el sitio esté desplegado (ver lógica en el workflow).
+
+---
+
 ## Resumen de URLs para copiar/pegar
 
 ```
 https://github.com/TeknoAriel/PropieYa/settings/actions
 https://github.com/TeknoAriel/PropieYa/settings/rules
+https://github.com/TeknoAriel/PropieYa/settings/secrets/actions
 https://propieyaweb.vercel.app
 https://propieyaweb.vercel.app/api/health
 https://propieyaweb.vercel.app/api/version

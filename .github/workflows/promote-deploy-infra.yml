@@ -1,4 +1,5 @@
-# Tras push a deploy/infra: verifica y fusiona a main → Vercel despliega solo.
+# Tras push a deploy/infra: verifica y fusiona a main → Vercel despliega desde main.
+# Si el merge automático falla: abrir/mergear el PR deploy/infra → main en GitHub (docs/DEPLOY-PASOS-URIs.md).
 name: Promote deploy/infra → main
 
 on:
@@ -11,7 +12,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write   # necesario para mergear el PR a main
+  contents: write
   pull-requests: write
   statuses: read
 
@@ -51,32 +52,9 @@ jobs:
       - name: Build
         run: pnpm build
 
-  typecheck:
-    name: Typecheck
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && 'deploy/infra' || github.ref }}
-
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Typecheck
-        run: pnpm typecheck
-
   merge-to-main:
     name: Merge to main (vía PR)
-    needs: [verify, typecheck]
+    needs: [verify]
     runs-on: ubuntu-latest
     steps:
       - name: Crear PR y mergear
@@ -109,85 +87,141 @@ jobs:
               core.info(`PR #${prNum} created`);
             }
             if (isNewPr) {
-              core.info('Esperando 45s para que CI arranque...');
+              core.info('Esperando 45s para que el CI del PR arranque...');
               await new Promise(r => setTimeout(r, 45000));
             }
 
-            const maxAttempts = 24;
+            // No usar getCombinedStatusForRef: la API de Statuses es legacy y no refleja bien
+            // los Check Runs de GitHub Actions → el estado puede quedar "pending" para siempre.
+            // Tampoco esperar "todos los check runs": el job actual "Merge to main" quedaría in_progress.
+            const maxAttempts = 40;
             const intervalMs = 15000;
             for (let i = 0; i < maxAttempts; i++) {
-              const { data: status } = await github.rest.repos.getCombinedStatusForRef({
+              const { data: pr } = await github.rest.pulls.get({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                ref: 'deploy/infra'
+                pull_number: prNum,
               });
-              if (status.state === 'success') {
+              const st = pr.mergeable_state;
+              core.info(
+                `PR #${prNum}: mergeable=${pr.mergeable} mergeable_state=${st} (${i + 1}/${maxAttempts})`
+              );
+
+              if (st === 'dirty') {
+                throw new Error(
+                  'Hay conflicto entre deploy/infra y main. Resolver en local y volver a pushear deploy/infra.'
+                );
+              }
+
+              if (st === 'unknown' && pr.mergeable === null) {
+                core.info('mergeable aún calculándose, esperando...');
+                await new Promise(r => setTimeout(r, intervalMs));
+                continue;
+              }
+
+              // unstable no es fiable: a veces aparece con checks aún en cola o recalculando.
+              // No abortar aquí (eso rompió #46–#47); esperar hasta clean o timeout.
+              if (st === 'unstable') {
+                core.info(
+                  'mergeable_state=unstable (esperando a que terminen checks o pase a clean)...'
+                );
+                await new Promise(r => setTimeout(r, intervalMs));
+                continue;
+              }
+
+              // mergeable puede ser null en edge cases; mergeable_state=clean es la señal estable.
+              if (st === 'clean') {
                 try {
                   await github.rest.pulls.merge({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
                     pull_number: prNum,
                     merge_method: 'merge',
-                    commit_title: 'chore: auto-merge deploy/infra → main'
+                    commit_title: 'chore: auto-merge deploy/infra → main',
                   });
                   core.info('PR merged');
                   return;
                 } catch (e) {
-                  const msg = e.message || e;
+                  const msg = String(e.message || e);
                   core.warning('Merge failed: ' + msg);
-                  if (msg.includes('Required status check') || msg.includes('status checks')) {
-                    throw new Error('Ruleset exige status checks. En Settings → Rules → regla main → Rules → QUITAR "Require status checks to pass". Este workflow ya verificó lint+typecheck+build. Ver docs/DEPLOY-PASOS-URIs.md');
+                  if (
+                    msg.includes('Required status check') ||
+                    msg.includes('status checks') ||
+                    msg.includes('Review required')
+                  ) {
+                    throw new Error(
+                      'Branch protection bloquea el merge. Opciones: (1) Settings → Rules → main → quitar "Require status checks" (el Promote ya verifica antes). (2) Permitir que Actions mergee. Ver docs/DEPLOY-PASOS-URIs.md A2.'
+                    );
                   }
                   if (i < maxAttempts - 1) {
-                    core.info('Retrying in 15s...');
+                    core.info('Reintentando merge en 15s...');
                     await new Promise(r => setTimeout(r, intervalMs));
-                  } else throw e;
+                  } else {
+                    throw e;
+                  }
                 }
-              } else if (status.state === 'failure' || status.state === 'error') {
-                throw new Error('Checks failed on deploy/infra: ' + status.state + '. Revisar deploy Vercel y docs/33-VERCEL-CONFIG-PROYECTO-WEB.md');
               } else {
-                core.info(`Waiting for checks (${status.state})... ${i+1}/${maxAttempts}`);
+                core.info(`Esperando checks requeridos (estado=${st})...`);
                 await new Promise(r => setTimeout(r, intervalMs));
               }
             }
-            throw new Error('Timeout: checks no completaron en ' + (maxAttempts * intervalMs / 60000) + ' min');
+            throw new Error(
+              'Timeout: el PR no llegó a estado mergeable en ' +
+                (maxAttempts * intervalMs / 60000) +
+                ' min. Revisar Actions del PR y reglas de main.'
+            );
 
   verify-deploy:
     name: Verificar deploy en producción
     needs: [merge-to-main]
+    continue-on-error: true
     runs-on: ubuntu-latest
+    env:
+      PORTAL_URL: https://propieyaweb.vercel.app
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
-      - name: Esperar despliegue en Vercel
+      - uses: actions/checkout@v4
+
+      - name: Deploy por CLI (opcional, secretos en GitHub)
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
+        run: npx --yes vercel@37 deploy --prod --yes
+
+      - name: Esperar despliegue (build Vercel / CDN)
         run: |
-          echo "Esperando 2 min para que Vercel termine el build..."
+          echo "Esperando 2 min para que el build termine..."
           sleep 120
 
-      - name: Verificar portal web
-        continue-on-error: true
+      - name: Verificar portal (2xx obligatorio)
         run: |
-          URL="https://propieyaweb.vercel.app"
-          for i in 1 2 3 4 5 6 7 8; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
+          set -euo pipefail
+          URL="${PORTAL_URL}"
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
             if [[ "$code" =~ ^2 ]]; then
               echo "✓ Portal $URL responde HTTP $code"
               exit 0
             fi
-            echo "Intento $i/8: HTTP $code, esperando 30s..."
+            echo "Intento $i/10: HTTP $code, esperando 30s..."
             sleep 30
           done
-          echo "WARN: Portal no respondió 2xx (Vercel puede estar construyendo). Merge OK, verificar luego: $URL"
+          echo "::error::Portal no respondió 2xx. Ver docs/DEPLOY-PASOS-URIs.md (A3 y Parte D) y docs/33-VERCEL-CONFIG-PROYECTO-WEB.md"
           exit 1
 
-      - name: Verificar health API
+      - name: Verificar ruta /api/health (no 404)
         run: |
-          code=$(curl -s -o /dev/null -w "%{http_code}" https://propieyaweb.vercel.app/api/health 2>/dev/null || echo "000")
-          if [ "$code" = "200" ]; then
-            echo "✓ Health API OK (HTTP 200)"
+          set -euo pipefail
+          URL="${PORTAL_URL}/api/health"
+          code=$(curl -sS -o /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
+          if [[ "$code" =~ ^(200|503)$ ]]; then
+            echo "✓ /api/health responde HTTP $code (app desplegada; 503 = dependencias degradadas)"
           else
-            echo "WARN: Health API devolvió HTTP $code"
+            echo "::error:: /api/health devolvió HTTP $code (se esperaba 200 o 503, no 404)"
+            exit 1
           fi
 
       - name: Mostrar versión desplegada
         run: |
           echo "Versión en producción:"
-          curl -s https://propieyaweb.vercel.app/api/version 2>/dev/null | head -c 500 || echo "(api/version no disponible)"
+          curl -sS "${PORTAL_URL}/api/version" 2>/dev/null | head -c 500 || echo "(api/version no disponible)"

@@ -21,8 +21,8 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
   if [[ "$code" =~ ^2 ]]; then
     echo "✓ Portal responde HTTP $code"
     code_h=$(curl -s -o /dev/null -w "%{http_code}" "$URL/api/health" 2>/dev/null || echo "000")
-    if [ "$code_h" = "200" ]; then
-      echo "✓ Health OK"
+    if [ "$code_h" = "200" ] || [ "$code_h" = "503" ]; then
+      echo "✓ Health responde HTTP $code_h (503 = degradado, app desplegada)"
     fi
     echo ""
     echo "Versión:"

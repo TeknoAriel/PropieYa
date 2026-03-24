@@ -18,14 +18,19 @@ else
   exit 1
 fi
 
-# Health
+# Health (200 = OK; 503 = app viva pero DB u otra dependencia caída)
 code=$(curl -s -o /dev/null -w "%{http_code}" "$URL/api/health" 2>/dev/null || echo "000")
 if [ "$code" = "200" ]; then
   echo "✓ Health: HTTP 200"
   curl -s "$URL/api/health" | head -c 200
   echo ""
+elif [ "$code" = "503" ]; then
+  echo "⚠ Health: HTTP 503 (degradado; revisar DATABASE_URL en Vercel)"
+  curl -s "$URL/api/health" | head -c 200
+  echo ""
 else
   echo "✗ Health: HTTP $code"
+  exit 1
 fi
 
 # Version

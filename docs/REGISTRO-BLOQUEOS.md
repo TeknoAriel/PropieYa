@@ -9,7 +9,7 @@ El agente anota aquí fallos que **no puede resolver** sin acción externa (GitH
 | 2026-03-22 | **Actions no puede crear PR**: "GitHub Actions is not permitted to create or approve pull requests" | **Settings → Actions → General → Workflow permissions** → marcar "Allow GitHub Actions to create and approve pull requests". Ver docs/26-config-repo-deploy.md |
 | 2026-03-24 | **Merge PR falla**: "Required status check 'Typecheck' is expected" | **Settings → Rules** → regla de `main` → **Rules** → **quitar** "Require status checks to pass". Ver docs/DEPLOY-PASOS-URIs.md A2 |
 | 2026-03-24 | **Verify-deploy falla**: portal no responde 2xx en tiempo | Workflow ajustado (sleep 120s, 8 intentos). Si persiste: revisar Vercel build logs, que el proyecto web esté vinculado a `main`. |
-| 2026-03-24 | **Portal 404**: propieyaweb.vercel.app devuelve 404 tras merge OK | Vercel: proyecto web importado desde TeknoAriel/PropieYa, rama `main`, Root Directory `apps/web`, dominio `propieyaweb.vercel.app`. Ver docs/DEPLOY-PASOS-URIs.md A3. |
+| 2026-03-24 | **Portal 404**: propieyaweb.vercel.app devuelve 404 tras merge OK | **Checklist:** docs/33-VERCEL-CONFIG-PROYECTO-WEB.md y A3 de `DEPLOY-PASOS-URIs.md`. **Alternativa sin dashboard en cada release:** Parte D (secretos `VERCEL_*` en GitHub) para deploy por CLI en el workflow Promote. El job verify-deploy **falla** si el portal no da 2xx (ya no se ignora). |
 
 Formato al añadir fila:
 

@@ -10,6 +10,6 @@ alwaysApply: true
 - **Sprints:** seguir `docs/24-sprints-y-hitos.md` en orden; ejecutar tareas sin preguntar cada paso.
 - **Respuestas:** cortas, claras; **preguntas:** mínimas y directas.
 - **Deploy:** push a `deploy/infra` dispara `.github/workflows/promote-deploy-infra.yml` → merge a `main` → Vercel (si está enlazado a `main`).
-- **Control:** ver `.cursor/rules/control-produccion.mdc` y `docs/13-control-calidad-agente.md`.
+- **Control:** ver `.cursor/rules/control-produccion.mdc`, `.cursor/rules/deploy-infra.mdc` y `docs/13-control-calidad-agente.md`.
 - **URL web canónica:** `https://propieyaweb.vercel.app` → `docs/CANONICAL-URLS.md`.
 - **Escala / estabilidad:** `.cursor/rules/produccion-escala.mdc`.
