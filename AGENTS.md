@@ -6,9 +6,7 @@
 
 **URL portal (pruebas/prod):** https://propieyaweb.vercel.app — `docs/CANONICAL-URLS.md`.
 
-**Deploy resumen:** `docs/14-deploy-y-url-canonical.md`.
-
-**Reglas Cursor:** `automacion-propietario.mdc`, `control-produccion.mdc`, `produccion-escala.mdc`.
+**Deploy (definitivo):** `docs/DEPLOY-PASOS-URIs.md` — pasos y URLs exactas. Seguir ese doc siempre.
 
 **Sprints y hitos:** `docs/24-sprints-y-hitos.md` — ejecutar en orden, sin preguntar cada paso.
 
