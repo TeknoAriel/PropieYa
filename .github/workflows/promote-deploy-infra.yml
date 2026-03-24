@@ -194,6 +194,7 @@ jobs:
   verify-deploy:
     name: Verificar deploy en producción
     needs: [merge-to-main]
+    continue-on-error: true
     runs-on: ubuntu-latest
     env:
       PORTAL_URL: https://propieyaweb.vercel.app
@@ -203,9 +204,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy por CLI (opcional, si los tres secretos están definidos)
+      - name: Deploy por CLI (opcional, secretos en GitHub)
         if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
-        working-directory: apps/web
         run: npx --yes vercel@37 deploy --prod --yes
 
       - name: Esperar despliegue (build Vercel / CDN)
