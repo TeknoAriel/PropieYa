@@ -1,0 +1,31 @@
+import { z } from 'zod'
+
+/** Filtros de búsqueda pública (sin paginación). */
+export const listingSearchFiltersSchema = z.object({
+  q: z.string().max(200).optional(),
+  operationType: z
+    .enum(['sale', 'rent', 'temporary_rent'])
+    .optional(),
+  propertyType: z.string().max(50).optional(),
+  minPrice: z.number().nonnegative().optional(),
+  maxPrice: z.number().nonnegative().optional(),
+  minSurface: z.number().nonnegative().optional(),
+  maxSurface: z.number().nonnegative().optional(),
+  minBedrooms: z.number().int().min(0).max(50).optional(),
+  minBathrooms: z.number().int().min(0).max(20).optional(),
+  minGarages: z.number().int().min(0).max(20).optional(),
+  floorMin: z.number().int().min(0).optional(),
+  floorMax: z.number().int().min(0).optional(),
+  escalera: z.string().max(10).optional(),
+  city: z.string().max(120).optional(),
+  neighborhood: z.string().max(120).optional(),
+  amenities: z.array(z.string()).optional(),
+})
+
+export const listingSearchInputSchema = listingSearchFiltersSchema.extend({
+  limit: z.number().min(1).max(50).default(24),
+  offset: z.number().min(0).max(500).default(0),
+})
+
+export type ListingSearchFiltersInput = z.infer<typeof listingSearchFiltersSchema>
+export type ListingSearchInput = z.infer<typeof listingSearchInputSchema>

@@ -152,23 +152,38 @@
 
 ---
 
+## Sprint 9 — Perfil de demanda + matching explicado ✅
+
+**Objetivo:** explicar por qué cada aviso coincide con los filtros; persistir un perfil de demanda desde la búsqueda.
+
+- [x] 9.1 Helper `explainMatchReasons` / `withMatchReasons` / resumen en `@propieya/shared`
+- [x] 9.2 `listing.search` y `listing.searchConversational` enriquecen resultados con `matchReasons`
+- [x] 9.3 Router `demand.getMyProfile` + `demand.upsertFromSearchFilters` (tabla `demand_profiles`)
+- [x] 9.4 UI `/buscar`: bloque "Por qué coincide" + guardar filtros en perfil (usuario autenticado)
+- [x] 9.5 Página `/perfil-demanda` (resumen guardado)
+- [x] 9.6 Cliente web: guardar JWT tras login y enviar `Authorization` en tRPC
+- [x] 9.7 Verificar lint/typecheck, commit + push
+
+**Criterios:** los resultados listan motivos de coincidencia; el usuario con sesión puede guardar y consultar su perfil de demanda.
+
+---
+
 ## Leyenda de prioridad
 
 | Símbolo | Significado |
 |---------|-------------|
 | Sprint 1–3 | Pulido + vigencia (base operativa) |
 | Sprint 4–6 | Búsqueda + leads (valor core) |
-| Sprint 7–8 | Conversacional + dashboard (diferenciadores) |
+| Sprint 7–9 | Conversacional + dashboard + demanda (diferenciadores) |
 
 ---
 
 ## Próximos sprints (backlog)
 
-- Sprint 9: Perfil de demanda + matching explicado
 - Sprint 10: Alertas guardadas
 - Sprint 11: Gestión de organización (invitar miembros)
 - Sprint 12: Ficha propiedad mejorada (mapa, similares)
 
 ---
 
-*Actualizado: 2026-03-22*
+*Actualizado: 2026-03-25*

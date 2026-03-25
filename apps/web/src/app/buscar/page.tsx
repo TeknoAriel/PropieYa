@@ -3,12 +3,13 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Suspense, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 
 import { Badge, Button, Card, Input, Skeleton } from '@propieya/ui'
 import { formatPrice, OPERATION_TYPE_LABELS } from '@propieya/shared'
 import type { Currency, OperationType, PropertyType } from '@propieya/shared'
 
+import { getAccessToken } from '@/lib/auth-storage'
 import { trpc } from '@/lib/trpc'
 
 type BuscarListingCardData = {
@@ -75,6 +76,19 @@ function ListingCard({ listing }: { listing: BuscarListingCardData }) {
               </span>
             ) : null}
           </div>
+
+          {listing.matchReasons && listing.matchReasons.length > 0 ? (
+            <div className="mt-3 rounded-md bg-surface-secondary/80 px-3 py-2 text-xs text-text-secondary border border-border/60">
+              <p className="font-medium text-text-primary mb-1">
+                Por qué coincide
+              </p>
+              <ul className="list-disc list-inside space-y-0.5">
+                {listing.matchReasons.slice(0, 5).map((r, i) => (
+                  <li key={`${listing.id}-reason-${i}`}>{r}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       </Card>
     </Link>
@@ -141,6 +155,19 @@ function BuscarContent() {
 
   const listings = listingsRaw as unknown as BuscarListingCardData[]
 
+  const demandPayload = useMemo(() => {
+    const { limit: _l, offset: _o, ...rest } = filters
+    return rest
+  }, [filters])
+
+  const saveProfile = trpc.demand.upsertFromSearchFilters.useMutation({
+    onSuccess: () => {
+      setProfileSaved(true)
+      void utils.demand.getMyProfile.invalidate()
+      window.setTimeout(() => setProfileSaved(false), 4000)
+    },
+  })
+
   return (
     <div className="container mx-auto px-4 py-10 space-y-6">
       <div className="flex flex-col gap-6">
@@ -153,10 +180,34 @@ function BuscarContent() {
               Filtrá por operación, tipo, ciudad y precio.
             </p>
           </div>
-          <Button asChild variant="outline">
-            <Link href="/">Volver al inicio</Link>
-          </Button>
+          <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+            {me ? (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={saveProfile.isPending}
+                  onClick={() => saveProfile.mutate(demandPayload)}
+                >
+                  {saveProfile.isPending
+                    ? 'Guardando…'
+                    : 'Guardar filtros en mi perfil'}
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/perfil-demanda">Ver perfil de demanda</Link>
+                </Button>
+              </>
+            ) : null}
+            <Button asChild variant="outline">
+              <Link href="/">Volver al inicio</Link>
+            </Button>
+          </div>
         </div>
+        {profileSaved ? (
+          <p className="text-sm text-semantic-success">
+            Perfil actualizado con estos filtros.
+          </p>
+        ) : null}
 
         <Card className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -6,6 +6,7 @@ import { useState } from 'react'
 
 import { Button, Card, Input } from '@propieya/ui'
 
+import { setAccessToken } from '@/lib/auth-storage'
 import { trpc } from '@/lib/trpc'
 
 export default function LoginPage() {
@@ -15,7 +16,8 @@ export default function LoginPage() {
   const [error, setError] = useState('')
 
   const loginMutation = trpc.auth.login.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setAccessToken(data.accessToken)
       router.push('/')
     },
     onError: (err) => {
