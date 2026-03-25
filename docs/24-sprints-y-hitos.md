@@ -138,15 +138,15 @@
 
 ---
 
-## Sprint 8 — Panel: dashboard y vigencia visible
+## Sprint 8 — Panel: dashboard y vigencia visible ✅
 
 **Objetivo:** métricas básicas y visibilidad de vigencia.
 
-- [ ] 8.1 Dashboard: contador avisos por estado (activo, draft, expiring, suspendido)
-- [ ] 8.2 Dashboard: leads recientes (últimos 5)
-- [ ] 8.3 Lista propiedades: badge/indicador vigencia (días restantes, vencido)
-- [ ] 8.4 Filtro por estado en lista propiedades
-- [ ] 8.5 Verificar lint/typecheck, commit + push
+- [x] 8.1 Dashboard: contador avisos por estado (activo, draft, expiring, suspendido) — `listing.dashboardStats`
+- [x] 8.2 Dashboard: leads recientes (últimos 5) — `lead.listByPublisher`
+- [x] 8.3 Lista propiedades: badge/indicador vigencia (días restantes, vencido) — columna + `formatListingVigencia`
+- [x] 8.4 Filtro por estado en lista propiedades — select ampliado
+- [x] 8.5 Verificar lint/typecheck, commit + push
 
 **Criterios:** panel muestra métricas y estado de vigencia claramente.
 

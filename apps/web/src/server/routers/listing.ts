@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { z } from 'zod'
-import { eq, and, desc, ilike, or, gte, lte, sql } from 'drizzle-orm'
+import { eq, and, desc, ilike, or, gte, lte, sql, count } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
 import {
@@ -233,6 +233,43 @@ export const listingRouter = createTRPCRouter({
         limit: input.limit,
       })
     }),
+
+  /** Conteos por estado para el dashboard del panel (avisos del publicador). */
+  dashboardStats: protectedProcedure.query(async ({ ctx }) => {
+    const publisherId = ctx.session.userId
+    const rows = await ctx.db
+      .select({
+        status: listings.status,
+        n: count(),
+      })
+      .from(listings)
+      .where(eq(listings.publisherId, publisherId))
+      .groupBy(listings.status)
+
+    const byStatus: Record<string, number> = {}
+    let totalListings = 0
+    for (const r of rows) {
+      const n = Number(r.n)
+      byStatus[r.status] = n
+      totalListings += n
+    }
+
+    const known = [
+      'draft',
+      'pending_review',
+      'active',
+      'expiring_soon',
+      'suspended',
+      'archived',
+      'sold',
+      'withdrawn',
+    ] as const
+    for (const s of known) {
+      if (byStatus[s] === undefined) byStatus[s] = 0
+    }
+
+    return { byStatus, totalListings }
+  }),
 
   update: protectedProcedure
     .input(

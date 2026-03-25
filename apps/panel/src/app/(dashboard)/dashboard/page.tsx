@@ -1,128 +1,194 @@
+'use client'
+
 import {
   Card,
   Building2,
-  Eye,
+  FileEdit,
+  Clock,
+  Ban,
   Users,
-  MessageSquare,
-  TrendingUp,
-  TrendingDown,
+  ArrowRight,
 } from '@propieya/ui'
+import Link from 'next/link'
 
-const STATS = [
-  {
-    label: 'Propiedades activas',
-    value: '24',
-    change: '+2',
-    trend: 'up',
-    icon: Building2,
-  },
-  {
-    label: 'Visitas este mes',
-    value: '1,234',
-    change: '+12%',
-    trend: 'up',
-    icon: Eye,
-  },
-  {
-    label: 'Leads nuevos',
-    value: '18',
-    change: '+5',
-    trend: 'up',
-    icon: Users,
-  },
-  {
-    label: 'Consultas pendientes',
-    value: '7',
-    change: '-3',
-    trend: 'down',
-    icon: MessageSquare,
-  },
-]
+import { trpc } from '@/lib/trpc'
+
+function relativeTime(iso: Date | string) {
+  const d = typeof iso === 'string' ? new Date(iso) : iso
+  const sec = Math.floor((Date.now() - d.getTime()) / 1000)
+  if (sec < 60) return 'Hace instantes'
+  if (sec < 3600) return `Hace ${Math.floor(sec / 60)} min`
+  if (sec < 86400) return `Hace ${Math.floor(sec / 3600)} h`
+  return `Hace ${Math.floor(sec / 86400)} d`
+}
 
 export default function DashboardPage() {
+  const { data: stats, isLoading: statsLoading } =
+    trpc.listing.dashboardStats.useQuery()
+  const { data: leadsData, isLoading: leadsLoading } =
+    trpc.lead.listByPublisher.useQuery({ limit: 5 })
+
+  const by = stats?.byStatus ?? {}
+  const cards = [
+    {
+      label: 'Activos',
+      value: by.active ?? 0,
+      icon: Building2,
+      hint: 'Publicados en el portal',
+    },
+    {
+      label: 'Borradores',
+      value: by.draft ?? 0,
+      icon: FileEdit,
+      hint: 'Aún no publicados',
+    },
+    {
+      label: 'Por vencer',
+      value: by.expiring_soon ?? 0,
+      icon: Clock,
+      hint: 'Renová la vigencia pronto',
+    },
+    {
+      label: 'Suspendidos',
+      value: by.suspended ?? 0,
+      icon: Ban,
+      hint: 'Requieren acción',
+    },
+  ]
+
+  const recentLeads = leadsData?.items ?? []
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">Dashboard</h1>
         <p className="text-text-secondary">
-          Resumen de tu actividad en Propieya
+          Resumen de tus avisos y leads
+          {stats && !statsLoading ? (
+            <span className="text-text-tertiary">
+              {' '}
+              · {stats.totalListings} propiedades en total
+            </span>
+          ) : null}
         </p>
       </div>
 
-      {/* Stats grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {STATS.map((stat) => (
-          <Card key={stat.label} className="p-4">
-            <div className="flex items-start justify-between">
-              <div className="p-2 rounded-lg bg-brand-primary/10">
-                <stat.icon className="h-5 w-5 text-brand-primary" />
-              </div>
-              <div
-                className={`flex items-center gap-1 text-sm ${
-                  stat.trend === 'up' ? 'text-semantic-success' : 'text-semantic-error'
-                }`}
-              >
-                {stat.trend === 'up' ? (
-                  <TrendingUp className="h-4 w-4" />
-                ) : (
-                  <TrendingDown className="h-4 w-4" />
-                )}
-                {stat.change}
-              </div>
-            </div>
-            <div className="mt-3">
-              <p className="text-2xl font-bold text-text-primary">{stat.value}</p>
-              <p className="text-sm text-text-secondary">{stat.label}</p>
-            </div>
-          </Card>
-        ))}
+        {statsLoading
+          ? cards.map((c) => (
+              <Card key={c.label} className="p-4 animate-pulse">
+                <div className="h-16 bg-surface-secondary rounded" />
+              </Card>
+            ))
+          : cards.map((c) => (
+              <Card key={c.label} className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="p-2 rounded-lg bg-brand-primary/10">
+                    <c.icon className="h-5 w-5 text-brand-primary" />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <p className="text-2xl font-bold text-text-primary">
+                    {c.value}
+                  </p>
+                  <p className="text-sm font-medium text-text-primary">
+                    {c.label}
+                  </p>
+                  <p className="text-xs text-text-tertiary mt-1">{c.hint}</p>
+                </div>
+              </Card>
+            ))}
       </div>
 
-      {/* Recent activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-4">
-          <h2 className="font-semibold text-text-primary mb-4">
-            Últimos leads
-          </h2>
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 p-3 rounded-lg bg-surface-secondary"
-              >
-                <div className="h-10 w-10 rounded-full bg-brand-primary/20 flex items-center justify-center">
-                  <Users className="h-5 w-5 text-brand-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-text-primary">
-                    Consulta por Depto 3 amb
-                  </p>
-                  <p className="text-xs text-text-tertiary">Hace 2 horas</p>
-                </div>
-              </div>
-            ))}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-text-primary">Últimos leads</h2>
+            <Link
+              href="/leads"
+              className="text-sm text-brand-primary hover:underline inline-flex items-center gap-1"
+            >
+              Ver todos
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
+          {leadsLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-14 rounded-lg bg-surface-secondary animate-pulse"
+                />
+              ))}
+            </div>
+          ) : recentLeads.length === 0 ? (
+            <p className="text-sm text-text-secondary">
+              Todavía no recibiste consultas. Cuando publiques avisos, los leads
+              aparecerán acá.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {recentLeads.map((lead) => (
+                <li key={lead.id}>
+                  <Link
+                    href={`/leads/${lead.id}`}
+                    className="flex items-center gap-3 p-3 rounded-lg bg-surface-secondary hover:bg-surface-elevated transition-colors"
+                  >
+                    <div className="h-10 w-10 rounded-full bg-brand-primary/20 flex items-center justify-center shrink-0">
+                      <Users className="h-5 w-5 text-brand-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-text-primary truncate">
+                        {lead.contactName}
+                      </p>
+                      <p className="text-xs text-text-tertiary truncate">
+                        {lead.listingTitle} · {relativeTime(lead.createdAt)}
+                      </p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-text-tertiary shrink-0" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </Card>
 
         <Card className="p-4">
           <h2 className="font-semibold text-text-primary mb-4">
-            Propiedades más vistas
+            Otros estados
           </h2>
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 p-3 rounded-lg bg-surface-secondary"
-              >
-                <div className="h-10 w-14 rounded bg-surface-elevated" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-text-primary">
-                    Depto 2 amb en Palermo
-                  </p>
-                  <p className="text-xs text-text-tertiary">145 visitas</p>
-                </div>
-              </div>
-            ))}
+          <dl className="space-y-2 text-sm">
+            <div className="flex justify-between py-2 border-b border-border">
+              <dt className="text-text-secondary">En revisión</dt>
+              <dd className="font-medium text-text-primary">
+                {by.pending_review ?? 0}
+              </dd>
+            </div>
+            <div className="flex justify-between py-2 border-b border-border">
+              <dt className="text-text-secondary">Archivados</dt>
+              <dd className="font-medium text-text-primary">
+                {by.archived ?? 0}
+              </dd>
+            </div>
+            <div className="flex justify-between py-2 border-b border-border">
+              <dt className="text-text-secondary">Vendido / alquilado</dt>
+              <dd className="font-medium text-text-primary">{by.sold ?? 0}</dd>
+            </div>
+            <div className="flex justify-between py-2">
+              <dt className="text-text-secondary">Dados de baja</dt>
+              <dd className="font-medium text-text-primary">
+                {by.withdrawn ?? 0}
+              </dd>
+            </div>
+          </dl>
+          <div className="mt-4 pt-4 border-t border-border">
+            <Link
+              href="/propiedades"
+              className="text-sm text-brand-primary hover:underline inline-flex items-center gap-1"
+            >
+              Gestionar propiedades
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
         </Card>
       </div>

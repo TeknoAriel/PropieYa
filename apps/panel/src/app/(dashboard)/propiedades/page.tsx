@@ -10,6 +10,7 @@ import { Button, Input, Card, Badge, Plus, Search } from '@propieya/ui'
 import Link from 'next/link'
 import { useState } from 'react'
 
+import { formatListingVigencia } from '@/lib/vigencia'
 import { trpc } from '@/lib/trpc'
 
 export default function PropiedadesPage() {
@@ -68,6 +69,9 @@ export default function PropiedadesPage() {
           <option value="suspended">Suspendido</option>
           <option value="draft">Borrador</option>
           <option value="archived">Archivado</option>
+          <option value="pending_review">En revisión</option>
+          <option value="sold">Vendido / alquilado</option>
+          <option value="withdrawn">Dado de baja</option>
         </select>
       </div>
 
@@ -82,6 +86,9 @@ export default function PropiedadesPage() {
                 </th>
                 <th className="text-left p-4 text-sm font-medium text-text-secondary">
                   Estado
+                </th>
+                <th className="text-left p-4 text-sm font-medium text-text-secondary">
+                  Vigencia
                 </th>
                 <th className="text-left p-4 text-sm font-medium text-text-secondary">
                   Precio
@@ -100,13 +107,13 @@ export default function PropiedadesPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td className="p-4 text-text-secondary" colSpan={6}>
+                  <td className="p-4 text-text-secondary" colSpan={7}>
                     Cargando propiedades...
                   </td>
                 </tr>
               ) : listings.length === 0 ? (
                 <tr>
-                  <td className="p-4 text-text-secondary" colSpan={6}>
+                  <td className="p-4 text-text-secondary" colSpan={7}>
                     Aún no tenés propiedades. Creá la primera desde "Nueva propiedad".
                   </td>
                 </tr>
@@ -144,6 +151,23 @@ export default function PropiedadesPage() {
                       {LISTING_STATUS_LABELS[listing.status as ListingStatus] ??
                         listing.status}
                     </Badge>
+                  </td>
+                  <td className="p-4 text-sm text-text-secondary max-w-[10rem]">
+                    <span
+                      className={
+                        formatListingVigencia(
+                          listing.expiresAt,
+                          listing.status
+                        ) === 'Vencido'
+                          ? 'text-semantic-error font-medium'
+                          : ''
+                      }
+                    >
+                      {formatListingVigencia(
+                        listing.expiresAt,
+                        listing.status
+                      )}
+                    </span>
                   </td>
                   <td className="p-4 text-text-primary">
                     {formatPrice(listing.priceAmount, listing.priceCurrency as Currency)}
