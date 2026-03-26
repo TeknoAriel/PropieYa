@@ -61,10 +61,13 @@ export { Tabs, TabsList, TabsTrigger, TabsContent } from './components/tabs'
 // Icons (lucide): export explícito para no chocar con el componente `Badge`
 export {
   ArrowRight,
+  Ban,
   Bell,
   Building2,
   Calendar,
+  Clock,
   Eye,
+  FileEdit,
   Filter,
   Heart,
   LayoutDashboard,

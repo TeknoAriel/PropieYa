@@ -132,6 +132,7 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
       'garages',
       'floor',
       'escalera',
+      'amenities',
       'primaryImageUrl',
       'publishedAt',
     ],

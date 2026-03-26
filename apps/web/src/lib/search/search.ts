@@ -18,6 +18,10 @@ export interface SearchHit {
   surfaceTotal: number
   bedrooms: number | null
   bathrooms: number | null
+  garages?: number | null
+  floor?: number | null
+  escalera?: string | null
+  amenities?: string[]
   primaryImageUrl: string | null
   publishedAt: string | null
 }

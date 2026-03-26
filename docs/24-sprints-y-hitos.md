@@ -138,17 +138,33 @@
 
 ---
 
-## Sprint 8 — Panel: dashboard y vigencia visible
+## Sprint 8 — Panel: dashboard y vigencia visible ✅
 
 **Objetivo:** métricas básicas y visibilidad de vigencia.
 
-- [ ] 8.1 Dashboard: contador avisos por estado (activo, draft, expiring, suspendido)
-- [ ] 8.2 Dashboard: leads recientes (últimos 5)
-- [ ] 8.3 Lista propiedades: badge/indicador vigencia (días restantes, vencido)
-- [ ] 8.4 Filtro por estado en lista propiedades
-- [ ] 8.5 Verificar lint/typecheck, commit + push
+- [x] 8.1 Dashboard: contador avisos por estado (activo, draft, expiring, suspendido) — `listing.dashboardStats`
+- [x] 8.2 Dashboard: leads recientes (últimos 5) — `lead.listByPublisher`
+- [x] 8.3 Lista propiedades: badge/indicador vigencia (días restantes, vencido) — columna + `formatListingVigencia`
+- [x] 8.4 Filtro por estado en lista propiedades — select ampliado
+- [x] 8.5 Verificar lint/typecheck, commit + push
 
 **Criterios:** panel muestra métricas y estado de vigencia claramente.
+
+---
+
+## Sprint 9 — Perfil de demanda + matching explicado ✅
+
+**Objetivo:** explicar por qué cada aviso coincide con los filtros; persistir un perfil de demanda desde la búsqueda.
+
+- [x] 9.1 Helper `explainMatchReasons` / `withMatchReasons` / resumen en `@propieya/shared`
+- [x] 9.2 `listing.search` y `listing.searchConversational` enriquecen resultados con `matchReasons`
+- [x] 9.3 Router `demand.getMyProfile` + `demand.upsertFromSearchFilters` (tabla `demand_profiles`)
+- [x] 9.4 UI `/buscar`: bloque "Por qué coincide" + guardar filtros en perfil (usuario autenticado)
+- [x] 9.5 Página `/perfil-demanda` (resumen guardado)
+- [x] 9.6 Cliente web: guardar JWT tras login y enviar `Authorization` en tRPC
+- [x] 9.7 Verificar lint/typecheck, commit + push
+
+**Criterios:** los resultados listan motivos de coincidencia; el usuario con sesión puede guardar y consultar su perfil de demanda.
 
 ---
 
@@ -158,17 +174,16 @@
 |---------|-------------|
 | Sprint 1–3 | Pulido + vigencia (base operativa) |
 | Sprint 4–6 | Búsqueda + leads (valor core) |
-| Sprint 7–8 | Conversacional + dashboard (diferenciadores) |
+| Sprint 7–9 | Conversacional + dashboard + demanda (diferenciadores) |
 
 ---
 
 ## Próximos sprints (backlog)
 
-- Sprint 9: Perfil de demanda + matching explicado
 - Sprint 10: Alertas guardadas
 - Sprint 11: Gestión de organización (invitar miembros)
 - Sprint 12: Ficha propiedad mejorada (mapa, similares)
 
 ---
 
-*Actualizado: 2026-03-22*
+*Actualizado: 2026-03-25*

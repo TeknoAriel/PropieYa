@@ -6,7 +6,7 @@
     "./server": "./src/server/routers/_app.ts"
   },
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "next dev --port 3010",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

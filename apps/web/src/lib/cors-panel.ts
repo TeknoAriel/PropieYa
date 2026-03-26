@@ -10,7 +10,7 @@ export function getTrustedPanelOrigins(): string[] {
   if (raw.length > 0) {
     return raw.split(',').map((s) => s.trim()).filter(Boolean)
   }
-  return ['http://localhost:3001', 'http://127.0.0.1:3001']
+  return ['http://localhost:3011', 'http://127.0.0.1:3011']
 }
 
 export function corsHeadersForRequest(request: Request): Headers {

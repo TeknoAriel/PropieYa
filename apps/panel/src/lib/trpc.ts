@@ -4,7 +4,7 @@ import superjson from 'superjson'
 
 
 function getBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_WEB_APP_URL ?? 'http://localhost:3000'
+  return process.env.NEXT_PUBLIC_WEB_APP_URL ?? 'http://localhost:3010'
 }
 
 function getAuthHeader(): Record<string, string> {

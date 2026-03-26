@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { z } from 'zod'
-import { eq, and, desc, ilike, or, gte, lte, sql } from 'drizzle-orm'
+import { eq, and, desc, ilike, or, gte, lte, sql, count } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
 import {
@@ -10,7 +10,13 @@ import {
   organizations,
   organizationMemberships,
 } from '@propieya/database'
-import { createListingSchema, updateListingSchema, LISTING_VALIDITY } from '@propieya/shared'
+import {
+  createListingSchema,
+  updateListingSchema,
+  LISTING_VALIDITY,
+  withMatchReasons,
+  type ExplainMatchFilters,
+} from '@propieya/shared'
 
 import {
   getPresignedPutUrl,
@@ -26,6 +32,7 @@ import { searchListings } from '../../lib/search/search'
 import { extractIntentionFromMessage } from '../../lib/llm'
 import { checkRateLimit } from '../../lib/rate-limit'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
+import { listingSearchInputSchema } from './listing-search-input'
 
 /** Evita que el usuario inyecte comodines ILIKE (%, _). */
 function sanitizeIlikeFragment(raw: string): string {
@@ -234,6 +241,43 @@ export const listingRouter = createTRPCRouter({
       })
     }),
 
+  /** Conteos por estado para el dashboard del panel (avisos del publicador). */
+  dashboardStats: protectedProcedure.query(async ({ ctx }) => {
+    const publisherId = ctx.session.userId
+    const rows = await ctx.db
+      .select({
+        status: listings.status,
+        n: count(),
+      })
+      .from(listings)
+      .where(eq(listings.publisherId, publisherId))
+      .groupBy(listings.status)
+
+    const byStatus: Record<string, number> = {}
+    let totalListings = 0
+    for (const r of rows) {
+      const n = Number(r.n)
+      byStatus[r.status] = n
+      totalListings += n
+    }
+
+    const known = [
+      'draft',
+      'pending_review',
+      'active',
+      'expiring_soon',
+      'suspended',
+      'archived',
+      'sold',
+      'withdrawn',
+    ] as const
+    for (const s of known) {
+      if (byStatus[s] === undefined) byStatus[s] = 0
+    }
+
+    return { byStatus, totalListings }
+  }),
+
   update: protectedProcedure
     .input(
       z.object({
@@ -365,31 +409,9 @@ export const listingRouter = createTRPCRouter({
 
   /** Búsqueda pública (solo avisos activos). Usa ES si está configurado, fallback a SQL. */
   search: publicProcedure
-    .input(
-      z.object({
-        q: z.string().max(200).optional(),
-        operationType: z
-          .enum(['sale', 'rent', 'temporary_rent'])
-          .optional(),
-        propertyType: z.string().max(50).optional(),
-        minPrice: z.number().nonnegative().optional(),
-        maxPrice: z.number().nonnegative().optional(),
-        minSurface: z.number().nonnegative().optional(),
-        maxSurface: z.number().nonnegative().optional(),
-        minBedrooms: z.number().int().min(0).max(50).optional(),
-        minBathrooms: z.number().int().min(0).max(20).optional(),
-        minGarages: z.number().int().min(0).max(20).optional(),
-        floorMin: z.number().int().min(0).optional(),
-        floorMax: z.number().int().min(0).optional(),
-        escalera: z.string().max(10).optional(),
-        city: z.string().max(120).optional(),
-        neighborhood: z.string().max(120).optional(),
-        amenities: z.array(z.string()).optional(),
-        limit: z.number().min(1).max(50).default(24),
-        offset: z.number().min(0).max(500).default(0),
-      })
-    )
+    .input(listingSearchInputSchema)
     .query(async ({ input, ctx }) => {
+      const { limit, offset, ...explainFilters } = input
       const esResult = await searchListings({
         q: input.q,
         operationType: input.operationType,
@@ -407,12 +429,15 @@ export const listingRouter = createTRPCRouter({
         city: input.city,
         neighborhood: input.neighborhood,
         amenities: input.amenities,
-        limit: input.limit,
-        offset: input.offset,
+        limit,
+        offset,
       })
 
       if (esResult.fromEs) {
-        return esResult.hits
+        return withMatchReasons(
+          explainFilters as ExplainMatchFilters,
+          esResult.hits
+        )
       }
 
       const conditions = [eq(listings.status, 'active')]
@@ -501,12 +526,13 @@ export const listingRouter = createTRPCRouter({
         }
       }
 
-      return ctx.db.query.listings.findMany({
+      const rows = await ctx.db.query.listings.findMany({
         where: and(...conditions),
         orderBy: [desc(listings.publishedAt)],
-        limit: input.limit,
-        offset: input.offset,
+        limit,
+        offset,
       })
+      return withMatchReasons(explainFilters as ExplainMatchFilters, rows)
     }),
 
   /** Búsqueda conversacional: extrae intención del mensaje y devuelve filtros + resultados. */
@@ -521,7 +547,7 @@ export const listingRouter = createTRPCRouter({
       }
 
       const intention = await extractIntentionFromMessage(input.message)
-      const filters = {
+      const explainFilters: ExplainMatchFilters = {
         q: intention.q,
         operationType: intention.operationType,
         propertyType: intention.propertyType,
@@ -532,6 +558,9 @@ export const listingRouter = createTRPCRouter({
         minBedrooms: intention.minBedrooms,
         minSurface: intention.minSurface,
         amenities: intention.amenities,
+      }
+      const filters = {
+        ...explainFilters,
         limit: 24,
         offset: 0,
       }
@@ -541,7 +570,7 @@ export const listingRouter = createTRPCRouter({
       if (esResult.fromEs) {
         return {
           filters,
-          hits: esResult.hits,
+          hits: withMatchReasons(explainFilters, esResult.hits),
           total: esResult.total,
         }
       }
@@ -622,7 +651,11 @@ export const listingRouter = createTRPCRouter({
         offset: filters.offset ?? 0,
       })
 
-      return { filters, hits, total }
+      return {
+        filters,
+        hits: withMatchReasons(explainFilters, hits),
+        total,
+      }
     }),
 
   getPresignedUploadUrl: protectedProcedure
