@@ -1,6 +1,4 @@
-# Tras push a deploy/infra: verifica y fusiona a main → Vercel despliega desde main.
-# Si el merge automático falla: abrir/mergear el PR deploy/infra → main en GitHub (docs/DEPLOY-PASOS-URIs.md).
-name: Promote deploy/infra → main
+name: Deploy producción desde deploy/infra
 
 on:
   push:
@@ -8,34 +6,53 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: promote-deploy-infra
-  cancel-in-progress: false
+  group: deploy-produccion-web
+  cancel-in-progress: true
 
 permissions:
-  contents: write
-  pull-requests: write
-  statuses: read
+  contents: read
 
 env:
+  PORTAL_URL: https://propieyaweb.vercel.app
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/propieya
-  NEXT_PUBLIC_APP_URL: https://example.com
-  NEXT_PUBLIC_PANEL_URL: https://panel.example.com
-  NEXT_PUBLIC_WEB_APP_URL: https://example.com
+  NEXT_PUBLIC_APP_URL: https://propieyaweb.vercel.app
+  NEXT_PUBLIC_PANEL_URL: https://propieya-panel.vercel.app
+  NEXT_PUBLIC_WEB_APP_URL: https://propieyaweb.vercel.app
 
 jobs:
-  verify:
-    name: Verify (lint + typecheck + build)
+  deploy-production:
+    name: Verify + Deploy + Smoke tests
     runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && 'deploy/infra' || github.ref }}
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v2
+      - name: Validar secretos Vercel
+        run: |
+          set -euo pipefail
+          missing=0
+          for k in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!k:-}" ]; then
+              echo "::error::Falta secret $k en GitHub Actions"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Configurar secrets en https://github.com/TeknoAriel/PropieYa/settings/secrets/actions"
+            exit 1
+          fi
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
         with:
           version: 9
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -43,206 +60,74 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm lint
+      - name: Verify (lint + typecheck + build)
+        run: pnpm verify
 
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Build
-        run: pnpm build
-
-  merge-to-main:
-    name: Merge to main (vía PR)
-    needs: [verify]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Crear PR y mergear
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data: pulls } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              head: context.repo.owner + ':deploy/infra',
-              base: 'main'
-            });
-            let prNum;
-            let isNewPr = false;
-            if (pulls.length > 0) {
-              prNum = pulls[0].number;
-              core.info(`Usando PR #${prNum} existente`);
-            } else {
-              const { data: pr } = await github.rest.pulls.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: 'chore: auto-merge deploy/infra → main',
-                head: 'deploy/infra',
-                base: 'main',
-                body: 'Merge automático tras verify (lint, typecheck, build).'
-              });
-              prNum = pr.number;
-              isNewPr = true;
-              core.info(`PR #${prNum} created`);
-            }
-            if (isNewPr) {
-              core.info('Esperando 45s para que el CI del PR arranque...');
-              await new Promise(r => setTimeout(r, 45000));
-            }
-
-            // No usar getCombinedStatusForRef: la API de Statuses es legacy y no refleja bien
-            // los Check Runs de GitHub Actions → el estado puede quedar "pending" para siempre.
-            // Tampoco esperar "todos los check runs": el job actual "Merge to main" quedaría in_progress.
-            const maxAttempts = 40;
-            const intervalMs = 15000;
-            for (let i = 0; i < maxAttempts; i++) {
-              const { data: pr } = await github.rest.pulls.get({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: prNum,
-              });
-              const st = pr.mergeable_state;
-              core.info(
-                `PR #${prNum}: mergeable=${pr.mergeable} mergeable_state=${st} (${i + 1}/${maxAttempts})`
-              );
-
-              if (st === 'dirty') {
-                throw new Error(
-                  'Hay conflicto entre deploy/infra y main. Resolver en local y volver a pushear deploy/infra.'
-                );
-              }
-
-              if (st === 'unknown' && pr.mergeable === null) {
-                core.info('mergeable aún calculándose, esperando...');
-                await new Promise(r => setTimeout(r, intervalMs));
-                continue;
-              }
-
-              // unstable no es fiable: a veces aparece con checks aún en cola o recalculando.
-              // No abortar aquí (eso rompió #46–#47); esperar hasta clean o timeout.
-              if (st === 'unstable') {
-                core.info(
-                  'mergeable_state=unstable (esperando a que terminen checks o pase a clean)...'
-                );
-                await new Promise(r => setTimeout(r, intervalMs));
-                continue;
-              }
-
-              // mergeable puede ser null en edge cases; mergeable_state=clean es la señal estable.
-              if (st === 'clean') {
-                try {
-                  await github.rest.pulls.merge({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    pull_number: prNum,
-                    merge_method: 'merge',
-                    commit_title: 'chore: auto-merge deploy/infra → main',
-                  });
-                  core.info('PR merged');
-                  return;
-                } catch (e) {
-                  const msg = String(e.message || e);
-                  core.warning('Merge failed: ' + msg);
-                  if (
-                    msg.includes('Required status check') ||
-                    msg.includes('status checks') ||
-                    msg.includes('Review required')
-                  ) {
-                    throw new Error(
-                      'Branch protection bloquea el merge. Opciones: (1) Settings → Rules → main → quitar "Require status checks" (el Promote ya verifica antes). (2) Permitir que Actions mergee. Ver docs/DEPLOY-PASOS-URIs.md A2.'
-                    );
-                  }
-                  if (i < maxAttempts - 1) {
-                    core.info('Reintentando merge en 15s...');
-                    await new Promise(r => setTimeout(r, intervalMs));
-                  } else {
-                    throw e;
-                  }
-                }
-              } else {
-                core.info(`Esperando checks requeridos (estado=${st})...`);
-                await new Promise(r => setTimeout(r, intervalMs));
-              }
-            }
-            throw new Error(
-              'Timeout: el PR no llegó a estado mergeable en ' +
-                (maxAttempts * intervalMs / 60000) +
-                ' min. Revisar Actions del PR y reglas de main.'
-            );
-
-  verify-deploy:
-    name: Verificar deploy en producción
-    needs: [merge-to-main]
-    continue-on-error: false
-    runs-on: ubuntu-latest
-    env:
-      PORTAL_URL: https://propieyaweb.vercel.app
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy por CLI (opcional, secretos en GitHub)
-        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
+      - name: Linkear proyecto web para CLI
         run: |
           set -euo pipefail
-          # Linkea el proyecto en CI sin prompts (monorepo: Root Directory = apps/web).
           mkdir -p apps/web/.vercel
-          cat > apps/web/.vercel/project.json <<'EOF'
+          cat > apps/web/.vercel/project.json <<JSON
           {
             "orgId": "${VERCEL_ORG_ID}",
             "projectId": "${VERCEL_PROJECT_ID}"
           }
-          EOF
-          # Sustituir variables dentro del JSON (sin depender de envsubst).
-          python - <<'PY'
-          import os, pathlib
-          p = pathlib.Path("apps/web/.vercel/project.json")
-          s = p.read_text()
-          s = s.replace("${VERCEL_ORG_ID}", os.environ["VERCEL_ORG_ID"])
-          s = s.replace("${VERCEL_PROJECT_ID}", os.environ["VERCEL_PROJECT_ID"])
-          p.write_text(s)
-          PY
+          JSON
 
-          # Deploy productivo usando el link anterior.
-          npx --yes vercel@37 deploy --prod --yes --token "${VERCEL_TOKEN}" --cwd apps/web
+      - name: Pull config producción (Vercel)
+        run: npx --yes vercel@37 pull --yes --environment=production --token "${VERCEL_TOKEN}" --cwd apps/web
 
-      - name: Esperar despliegue (build Vercel / CDN)
-        run: |
-          echo "Esperando 2 min para que el build termine..."
-          sleep 120
+      - name: Build producción local (Vercel)
+        run: npx --yes vercel@37 build --prod --token "${VERCEL_TOKEN}" --cwd apps/web
 
-      - name: Verificar portal (2xx obligatorio)
+      - name: Deploy producción (prebuilt)
+        run: npx --yes vercel@37 deploy --prebuilt --prod --yes --token "${VERCEL_TOKEN}" --cwd apps/web
+
+      - name: Esperar propagación
+        run: sleep 90
+
+      - name: Smoke test root (2xx)
         run: |
           set -euo pipefail
-          URL="${PORTAL_URL}"
           for i in 1 2 3 4 5 6 7 8 9 10; do
-            code=$(curl -sS -o /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
+            code=$(curl -sS -o /dev/null -w "%{http_code}" "${PORTAL_URL}" 2>/dev/null || echo "000")
+            echo "Intento $i/10 root: HTTP $code"
             if [[ "$code" =~ ^2 ]]; then
-              echo "✓ Portal $URL responde HTTP $code"
               exit 0
             fi
-            echo "Intento $i/10: HTTP $code, esperando 30s..."
-            sleep 30
+            sleep 20
           done
-          echo "::error::Portal no respondió 2xx. Ver docs/DEPLOY-PASOS-URIs.md (A3 y Parte D) y docs/33-VERCEL-CONFIG-PROYECTO-WEB.md"
+          echo "::error::${PORTAL_URL} no respondió 2xx"
           exit 1
 
-      - name: Verificar ruta /api/health (no 404)
+      - name: Smoke test /api/health (200 o 503)
         run: |
           set -euo pipefail
-          URL="${PORTAL_URL}/api/health"
-          code=$(curl -sS -o /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
+          code=$(curl -sS -o /dev/null -w "%{http_code}" "${PORTAL_URL}/api/health" 2>/dev/null || echo "000")
+          echo "/api/health HTTP $code"
           if [[ "$code" =~ ^(200|503)$ ]]; then
-            echo "✓ /api/health responde HTTP $code (app desplegada; 503 = dependencias degradadas)"
-          else
-            echo "::error:: /api/health devolvió HTTP $code (se esperaba 200 o 503, no 404)"
+            exit 0
+          fi
+          echo "::error::/api/health devolvió $code"
+          exit 1
+
+      - name: Smoke test /api/version
+        run: |
+          set -euo pipefail
+          body=$(curl -sS "${PORTAL_URL}/api/version" 2>/dev/null || true)
+          if [ -z "$body" ]; then
+            echo "::error::/api/version vacío o inaccesible"
             exit 1
           fi
+          echo "$body" | head -c 600
 
-      - name: Mostrar versión desplegada
+      - name: Diagnóstico rápido si falla
+        if: failure()
         run: |
-          echo "Versión en producción:"
-          curl -sS "${PORTAL_URL}/api/version" 2>/dev/null | head -c 500 || echo "(api/version no disponible)"
+          set +e
+          echo "=== HEADERS / ==="
+          curl -sS -I "${PORTAL_URL}" || true
+          echo "=== HEADERS /api/health ==="
+          curl -sS -I "${PORTAL_URL}/api/health" || true
+          echo "=== BODY /api/version ==="
+          curl -sS "${PORTAL_URL}/api/version" || true
