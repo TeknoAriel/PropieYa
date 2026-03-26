@@ -174,7 +174,7 @@ jobs:
   verify-deploy:
     name: Verificar deploy en producción
     needs: [merge-to-main]
-    continue-on-error: true
+    continue-on-error: false
     runs-on: ubuntu-latest
     env:
       PORTAL_URL: https://propieyaweb.vercel.app
