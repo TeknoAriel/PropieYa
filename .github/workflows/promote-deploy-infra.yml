@@ -186,7 +186,28 @@ jobs:
 
       - name: Deploy por CLI (opcional, secretos en GitHub)
         if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
-        run: npx --yes vercel@37 deploy --prod --yes
+        run: |
+          set -euo pipefail
+          # Linkea el proyecto en CI sin prompts (monorepo: Root Directory = apps/web).
+          mkdir -p apps/web/.vercel
+          cat > apps/web/.vercel/project.json <<'EOF'
+          {
+            "orgId": "${VERCEL_ORG_ID}",
+            "projectId": "${VERCEL_PROJECT_ID}"
+          }
+          EOF
+          # Sustituir variables dentro del JSON (sin depender de envsubst).
+          python - <<'PY'
+          import os, pathlib
+          p = pathlib.Path("apps/web/.vercel/project.json")
+          s = p.read_text()
+          s = s.replace("${VERCEL_ORG_ID}", os.environ["VERCEL_ORG_ID"])
+          s = s.replace("${VERCEL_PROJECT_ID}", os.environ["VERCEL_PROJECT_ID"])
+          p.write_text(s)
+          PY
+
+          # Deploy productivo usando el link anterior.
+          npx --yes vercel@37 deploy --prod --yes --token "${VERCEL_TOKEN}" --cwd apps/web
 
       - name: Esperar despliegue (build Vercel / CDN)
         run: |

@@ -24,6 +24,7 @@ type BuscarListingCardData = {
   bedrooms: number | null
   bathrooms: number | null
   primaryImageUrl: string | null
+  matchReasons?: string[]
 }
 
 function ListingCard({ listing }: { listing: BuscarListingCardData }) {
@@ -108,6 +109,19 @@ const PROPERTY_OPTIONS: { value: PropertyType; label: string }[] = [
 
 function BuscarContent() {
   const searchParams = useSearchParams()
+
+  const utils = trpc.useUtils()
+  const [canAuth, setCanAuth] = useState(false)
+  const [profileSaved, setProfileSaved] = useState(false)
+
+  useEffect(() => {
+    setCanAuth(!!getAccessToken())
+  }, [])
+
+  const { data: me } = trpc.auth.me.useQuery(undefined, {
+    enabled: canAuth,
+    retry: false,
+  })
 
   const [q, setQ] = useState(searchParams.get('q') ?? '')
   const [operationType, setOperationType] = useState<
