@@ -78,6 +78,8 @@ jobs:
         run: npx --yes vercel@37 pull --yes --environment=production --token "${VERCEL_TOKEN}" --cwd apps/web
 
       - name: Build producción local (Vercel)
+        env:
+          TURBO_FORCE: "1"
         run: npx --yes vercel@37 build --prod --token "${VERCEL_TOKEN}" --cwd apps/web
 
       - name: Deploy producción (prebuilt)
