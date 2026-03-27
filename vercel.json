@@ -1,0 +1,19 @@
+{
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm exec turbo run build --filter=@propieya/web --force",
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/cron/import-yumblin",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/check-validity",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/sync-search",
+      "schedule": "0 4 * * *"
+    }
+  ]
+}
