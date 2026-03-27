@@ -80,7 +80,18 @@ jobs:
       - name: Deploy producción (Vercel build remoto, sin prebuilt)
         env:
           TURBO_FORCE: "1"
-        run: npx --yes vercel@37 deploy --prod --yes --token "${VERCEL_TOKEN}"
+        run: |
+          set -euo pipefail
+          out="$(npx --yes vercel@37 deploy --prod --yes --token "${VERCEL_TOKEN}")"
+          echo "$out"
+          # La última URL suele ser el deployment/production URL
+          url="$(echo "$out" | grep -Eo 'https?://[^ ]+\\.vercel\\.app' | tail -n 1 || true)"
+          if [ -n "${url:-}" ]; then
+            echo "DEPLOY_URL=$url" >> "$GITHUB_ENV"
+            echo "Deploy URL detectada: $url"
+          else
+            echo "::warning::No pude detectar DEPLOY_URL desde la salida de vercel deploy"
+          fi
 
       - name: Esperar propagación
         run: sleep 90
@@ -88,6 +99,10 @@ jobs:
       - name: Smoke test root (2xx)
         run: |
           set -euo pipefail
+          if [ -n "${DEPLOY_URL:-}" ]; then
+            echo "Probe deploy URL: ${DEPLOY_URL}"
+            curl -sS -I "${DEPLOY_URL}" | head -n 15 || true
+          fi
           for i in 1 2 3 4 5 6 7 8 9 10; do
             code=$(curl -sS -o /dev/null -w "%{http_code}" "${PORTAL_URL}" 2>/dev/null || echo "000")
             echo "Intento $i/10 root: HTTP $code"
