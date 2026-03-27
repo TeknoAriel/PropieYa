@@ -186,4 +186,8 @@
 
 ---
 
-*Actualizado: 2026-03-25*
+**Producción (qué validar en la URL, Git, importación):** `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md`
+
+---
+
+*Actualizado: 2026-03-27*

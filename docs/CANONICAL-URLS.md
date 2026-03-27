@@ -5,7 +5,7 @@
 | Entorno | Servicio | URL |
 |---------|----------|-----|
 | **Producción / pruebas públicas** | Portal web (`apps/web`) | **https://propieyaweb.vercel.app** |
-| Producción | Panel B2B (`apps/panel`) | *(definir en Vercel → Settings → Domains y actualizar esta tabla)* |
+| Producción | Panel B2B (`apps/panel`) | **https://propieya-panel.vercel.app** (confirmar en Vercel → Domains del proyecto panel) |
 
 ## Variables que deben coincidir
 

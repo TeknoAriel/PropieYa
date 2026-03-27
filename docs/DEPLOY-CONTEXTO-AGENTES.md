@@ -13,7 +13,7 @@
 | **Dominio Vercel del proyecto** | `propie-ya-web.vercel.app` (alias interno; el canónico de producto es `propieyaweb.vercel.app`) |
 | **Repositorio** | `TeknoAriel/PropieYa` |
 | **Root Directory en Vercel** | `apps/web` |
-| **Rama de integración deploy** | `deploy/infra` → workflow promote → `main` |
+| **Rama de integración deploy** | Push a `deploy/infra` → workflow → **Vercel CLI** (portal). **`main` debe fusionarse con `deploy/infra`** para mantener el repo y el deploy del panel (Git) alineados; el workflow **no** mergea solo. |
 | **Secretos GitHub** | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` deben apuntar al proyecto **`propie-ya-web`** |
 
 **Proyecto obsoleto (no usar):** `propieya_web` — quedó en estado inconsistente; puede **eliminarse** del dashboard Vercel cuando no haya dependencias. No volver a vincular el dominio canónico a ese proyecto.
@@ -31,7 +31,7 @@
 
 2. **No crear** un segundo “proyecto web” en Vercel sin actualizar `docs/CANONICAL-URLS.md`, este archivo y `docs/33-VERCEL-CONFIG-PROYECTO-WEB.md`.
 
-3. **Un solo flujo de producción:** código que debe llegar a la URL canónica sigue `deploy/infra` → merge a `main` → verificación (`pnpm verificar:deploy`). No documentar ni depender de pushes directos a `main` como rutina.
+3. **Un solo flujo de producción:** cambios que van al portal se integran en `deploy/infra`, pasan `pnpm verify`, push, y el workflow despliega. Después, **fusionar `deploy/infra` → `main`** (PR o merge local) para que `main` refleje lo desplegado. Verificación: `pnpm verificar:deploy`. Lista de sprints y de import: `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md`.
 
 4. **Antes de cualquier push** que dispare CI/deploy: `pnpm verify` (lint + typecheck + build).
 
