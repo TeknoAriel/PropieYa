@@ -38,6 +38,7 @@ coverage
 # Misc
 *.tsbuildinfo
 .eslintcache
+tmp-*.zip
 
 # Credenciales locales (no subir)
 DEPLOY-CREDENTIALS.local.txt

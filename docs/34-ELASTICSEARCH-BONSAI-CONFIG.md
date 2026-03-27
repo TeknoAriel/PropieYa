@@ -48,7 +48,7 @@ Propieya usa Elasticsearch para la búsqueda en `/buscar`. Sin ES configurado, l
 
 ### Paso 2.1: Ir a Environment Variables
 
-1. Entrá a: **https://vercel.com/teknoariels-projects/propieya_web/settings/environment-variables**
+1. Entrá a: **https://vercel.com/teknoariels-projects/propie-ya-web/settings/environment-variables**
 2. Si tu proyecto tiene otro nombre o scope, ajustá la URL. El patrón es:
    ```
    https://vercel.com/{TU-TEAM}/{TU-PROYECTO-WEB}/settings/environment-variables
@@ -76,7 +76,7 @@ Si no lo agregás, el código usa `propieya` por defecto.
 
 ## 3. Redeploy
 
-1. Entrá a: **https://vercel.com/teknoariels-projects/propieya_web**
+1. Entrá a: **https://vercel.com/teknoariels-projects/propie-ya-web**
 2. Abrí el último deployment
 3. Click en **⋯** (tres puntos) → **Redeploy**
 4. Dejá **Use existing Build Cache** marcado si querés

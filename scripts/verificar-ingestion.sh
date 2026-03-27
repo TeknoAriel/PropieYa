@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Verifica y ejecuta la ingesta de propiedades contra la DB de producción.
 #
-# Requisitos: vercel CLI logueado, proyecto linkeado a propieya_web
+# Requisitos: vercel CLI logueado, proyecto linkeado a propie-ya-web (ver docs/DEPLOY-CONTEXTO-AGENTES.md)
 #
 # Uso:
 #   ./scripts/verificar-ingestion.sh
@@ -23,8 +23,8 @@ done
 
 echo "=== 1. Descargar variables de producción ==="
 (cd apps/web && vercel env pull .env.prod.verificar --environment=production --yes) 2>/dev/null || {
-  echo "ERROR: vercel env pull falló. ¿Estás linkeado a propieya_web?"
-  echo "  cd apps/web && vercel link --project propieya_web"
+  echo "ERROR: vercel env pull falló. ¿Estás linkeado a propie-ya-web?"
+  echo "  cd apps/web && vercel link --project propie-ya-web"
   exit 1
 }
 

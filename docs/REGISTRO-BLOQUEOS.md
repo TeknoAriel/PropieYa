@@ -11,7 +11,7 @@ El agente anota aquí fallos que **no puede resolver** sin acción externa (GitH
 | 2026-03-24 | **Verify-deploy falla**: portal no responde 2xx en tiempo | Workflow ajustado (sleep 120s, 8 intentos). Si persiste: revisar Vercel build logs, que el proyecto web esté vinculado a `main`. |
 | 2026-03-24 | **Portal 404**: propieyaweb.vercel.app devuelve 404 tras merge OK | **Checklist:** docs/33-VERCEL-CONFIG-PROYECTO-WEB.md y A3 de `DEPLOY-PASOS-URIs.md`. **Alternativa sin dashboard en cada release:** Parte D (secretos `VERCEL_*` en GitHub) para deploy por CLI en el workflow Promote. El job verify-deploy **falla** si el portal no da 2xx (ya no se ignora). |
 | 2026-03-25 | **Vercel plan Hobby**: bloqueo / límite por **exceso de descargas** (ventana ~24 h) | Revisar **Vercel Dashboard → Usage / Billing**. Opciones: esperar reinicio de cuota, reducir builds, o **upgrade** a plan de pago. Sin builds exitosos no hay deploy nuevo. |
-| 2026-03-26 | **Probe portal**: `https://propieyaweb.vercel.app` sigue **404** desde agente | Mismo checklist que fila 404 (rama `main`, Root `apps/web`, proyecto correcto). Página pública **`/estado`** en el código resume pendientes cuando el sitio ya responde. |
+| 2026-03-26 | **Probe portal**: `https://propieyaweb.vercel.app` **404** `x-vercel-error: NOT_FOUND` (re-verificado; `pnpm diagnostico:prod` igual) | Dominio sin deployment válido en el proyecto **web**: `docs/33-VERCEL-CONFIG-PROYECTO-WEB.md`, A3 de `DEPLOY-PASOS-URIs.md`; secretos `VERCEL_*` = proyecto **web**, no panel. Cuando responda 2xx: `/`, `/api/health`, `/api/version`, `/estado`. |
 
 Formato al añadir fila:
 

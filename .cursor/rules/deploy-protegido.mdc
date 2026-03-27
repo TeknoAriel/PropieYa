@@ -1,0 +1,28 @@
+---
+description: Reglas duras — no alterar deploy/CI/Vercel sin autorización explícita y documentación.
+alwaysApply: true
+---
+
+# Deploy protegido (obligatorio)
+
+## Fuente de verdad
+
+- **`docs/DEPLOY-CONTEXTO-AGENTES.md`** — contexto actual, proyecto Vercel activo, reglas duras, URLs.
+- `docs/CANONICAL-URLS.md` — URL pública única del portal.
+- `docs/DEPLOY-PASOS-URIs.md` — pasos operativos.
+
+## Prohibido sin autorización explícita del propietario + actualización de `docs/DEPLOY-CONTEXTO-AGENTES.md`
+
+- Modificar `.github/workflows/promote-deploy-infra.yml`.
+- Modificar `vercel.json` en la raíz o `apps/web/vercel.json` (salvo corrección de bug bloqueante acordada y documentada).
+- Cambiar instrucciones de Root Directory / Build / Install en Vercel (eso es configuración en dashboard, no “código” improvisado).
+- Crear un segundo proyecto Vercel “web” o mover el dominio `propieyaweb.vercel.app` sin actualizar la documentación enlazada arriba.
+
+## Permitido
+
+- Cambios en `apps/web`, `apps/panel`, `packages/*` que pasen `pnpm verify`.
+- Documentar bloqueos en `docs/REGISTRO-BLOQUEOS.md` cuando el fallo sea externo.
+
+## Proyecto Vercel web actual
+
+- **`propie-ya-web`** (team `teknoariels-projects`). Secretos `VERCEL_PROJECT_ID` deben coincidir. No usar el proyecto obsoleto `propieya_web` para nuevos deploys.

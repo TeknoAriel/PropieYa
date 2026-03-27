@@ -48,7 +48,7 @@ Con eso, `main` se actualiza, Vercel despliega y producción queda al día. El f
 
 Si el build en Vercel falla por variables:
 
-**URL:** https://vercel.com/teknoariels-projects/propieya_web/settings/environment-variables
+**URL:** https://vercel.com/teknoariels-projects/propie-ya-web/settings/environment-variables
 
 Variables necesarias (según `docs/22-vercel-env-s3.md`):
 
