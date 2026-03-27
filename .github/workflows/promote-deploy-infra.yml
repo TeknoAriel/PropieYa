@@ -66,8 +66,8 @@ jobs:
       - name: Linkear proyecto web para CLI
         run: |
           set -euo pipefail
-          mkdir -p apps/web/.vercel
-          cat > apps/web/.vercel/project.json <<JSON
+          mkdir -p .vercel
+          cat > .vercel/project.json <<JSON
           {
             "orgId": "${VERCEL_ORG_ID}",
             "projectId": "${VERCEL_PROJECT_ID}"
@@ -75,12 +75,12 @@ jobs:
           JSON
 
       - name: Pull config producción (Vercel)
-        run: npx --yes vercel@37 pull --yes --environment=production --token "${VERCEL_TOKEN}" --cwd apps/web
+        run: npx --yes vercel@37 pull --yes --environment=production --token "${VERCEL_TOKEN}"
 
       - name: Deploy producción (Vercel build remoto, sin prebuilt)
         env:
           TURBO_FORCE: "1"
-        run: npx --yes vercel@37 deploy --prod --yes --token "${VERCEL_TOKEN}" --cwd apps/web
+        run: npx --yes vercel@37 deploy --prod --yes --token "${VERCEL_TOKEN}"
 
       - name: Esperar propagación
         run: sleep 90
