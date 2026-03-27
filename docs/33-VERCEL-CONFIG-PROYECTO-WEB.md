@@ -7,8 +7,11 @@ Documento breve; el detalle operativo está en **`docs/DEPLOY-PASOS-URIs.md`**.
 | Qué | Valor esperado |
 |-----|----------------|
 | Repositorio | `TeknoAriel/PropieYa` |
+| **Nombre del proyecto Vercel (web)** | **`propie-ya-web`** (team `teknoariels-projects`) |
 | Root Directory | `apps/web` |
 | Dominio del portal | `propieyaweb.vercel.app` (asignado al **mismo** proyecto web) |
+
+> Detalle histórico y reglas duras: `docs/DEPLOY-CONTEXTO-AGENTES.md`.
 
 > El deploy productivo ahora lo hace GitHub Actions por **Vercel CLI** desde `deploy/infra`.
 > La rama de producción configurada en Vercel ya **no es el punto crítico** del flujo.

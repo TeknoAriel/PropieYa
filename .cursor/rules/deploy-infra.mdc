@@ -11,9 +11,10 @@ El **propietario no debe** repetir configuración de Vercel/GitHub en cada relea
 
 ## Fuentes de verdad (orden)
 
-1. `docs/DEPLOY-PASOS-URIs.md` — URLs y flujo canónico (incluye Parte D: secretos GitHub para deploy CLI opcional).
-2. `docs/33-VERCEL-CONFIG-PROYECTO-WEB.md` — checklist proyecto web (Root `apps/web`, rama `main`).
-3. `docs/REGISTRO-BLOQUEOS.md` — solo cuando una acción externa es inevitable (con **un** paso de desbloqueo).
+1. `docs/DEPLOY-CONTEXTO-AGENTES.md` — proyecto Vercel activo, reglas duras, qué no tocar sin autorización.
+2. `docs/DEPLOY-PASOS-URIs.md` — URLs y flujo canónico (incluye Parte D: secretos GitHub para deploy CLI opcional).
+3. `docs/33-VERCEL-CONFIG-PROYECTO-WEB.md` — checklist proyecto web (Root `apps/web`, rama `main`).
+4. `docs/REGISTRO-BLOQUEOS.md` — solo cuando una acción externa es inevitable (con **un** paso de desbloqueo).
 
 ## Tras push a `deploy/infra`
 

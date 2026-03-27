@@ -4,7 +4,7 @@
 
 - **101 propiedades activas** en la base de datos de producción
 - Ingesta ejecutada con `./scripts/verificar-ingestion.sh --file=./scripts/fixtures/yumblin-test.json`
-- Proyecto Vercel linkeado: `apps/web` → `propieya_web`
+- Proyecto Vercel linkeado: `apps/web` → `propie-ya-web`
 
 ## Cómo ejecutar la verificación
 
@@ -29,7 +29,7 @@ El script hace:
 
 ## Dónde verificar
 
-1. **Portal:** En Vercel → propieya_web → Domains → usar la URL asignada (ej. `propieya-web-xxx.vercel.app` o dominio custom)
+1. **Portal:** URL canónica `https://propieyaweb.vercel.app` (proyecto `propie-ya-web` en Vercel; ver `docs/DEPLOY-CONTEXTO-AGENTES.md`)
 2. **Home:** Debe mostrar "Propiedades destacadas" con las últimas publicadas
 3. **Búsqueda:** `/buscar` — usa Elasticsearch si está configurado; si no, fallback a SQL (las 101 propiedades aparecen igual)
 

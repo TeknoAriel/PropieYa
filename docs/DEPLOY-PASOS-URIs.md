@@ -35,14 +35,16 @@ Ir a: **https://github.com/TeknoAriel/PropieYa/settings/secrets/actions** y crea
 
 Origen de valores:
 - Vercel → Account Settings → Tokens (`VERCEL_TOKEN`)
-- Vercel → proyecto web (`propieya_web`) → Settings → General (`Project ID`)
+- Vercel → proyecto web (`propie-ya-web`) → Settings → General (`Project ID`)
 - Vercel → Team Settings (`Team/Org ID`)
 
 ### A3. Vercel Web (proyecto correcto)
 
-1. Proyecto web único: `propieya_web`
+1. Proyecto web único: **`propie-ya-web`**
 2. Root Directory: `apps/web`
 3. Dominio `propieyaweb.vercel.app` asignado a ese proyecto
+
+Ver también: `docs/DEPLOY-CONTEXTO-AGENTES.md`.
 
 > El deploy productivo lo realiza **GitHub Actions + Vercel CLI**, por lo que no dependemos del Git Integration de Vercel para publicar.
 
@@ -71,7 +73,7 @@ Workflow: **`.github/workflows/promote-deploy-infra.yml`**
 
 1. Install dependencies
 2. `pnpm verify`
-3. `vercel pull` + `vercel build --prod` + `vercel deploy --prebuilt --prod`
+3. `vercel pull` + `vercel deploy --prod` (build remoto en Vercel; sin `--prebuilt`)
 4. Smoke tests estrictos:
    - `/` debe ser 2xx
    - `/api/health` debe ser 200 o 503
