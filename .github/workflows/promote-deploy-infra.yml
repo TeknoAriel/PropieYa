@@ -78,7 +78,9 @@ jobs:
         run: npx --yes vercel@37 pull --yes --environment=production --token "${VERCEL_TOKEN}" --cwd apps/web
 
       - name: Deploy producción (Vercel build remoto, sin prebuilt)
-        run: npx --yes vercel@37 deploy --prod --yes --token "${VERCEL_TOKEN}" --cwd apps/web --build-env TURBO_FORCE=1
+        env:
+          TURBO_FORCE: "1"
+        run: npx --yes vercel@37 deploy --prod --yes --token "${VERCEL_TOKEN}" --cwd apps/web
 
       - name: Esperar propagación
         run: sleep 90
