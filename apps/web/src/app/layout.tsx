@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google'
 import '@propieya/ui/styles'
 import './globals.css'
 import { CopyPackBanner } from '@/components/layout/copy-pack-banner'
+import { ProductionStatusBanner } from '@/components/layout/production-status-banner'
 
 import { Providers } from './providers'
 
@@ -31,6 +32,7 @@ export default function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
         <Providers>
+          <ProductionStatusBanner />
           <CopyPackBanner />
           {children}
         </Providers>

@@ -4,6 +4,19 @@
 
 ---
 
+## 0. Causa #1 de “portal básico” o sin datos (2026-03-27)
+
+- **`DATABASE_URL` no está definida en el proyecto Vercel `propie-ya-web` (Production).** El código de los sprints **sí** está en el deploy; el servidor no puede leer PostgreSQL.
+- **Comprobar:** `curl -s https://propieyaweb.vercel.app/api/health` → si `status` es `degraded` y el error de `database` menciona `DATABASE_URL`, hay que **copiar la variable** desde Neon (o desde el proyecto Vercel anterior si aún existe) y **Redeploy**.
+- Sin DB: no hay propiedades en home/buscar, fallan tRPC que consultan DB, registro/login pueden fallar, import/cron no persisten datos.
+- **No confundir** con pérdida de código: revisar `git log` y `/api/version`; el commit desplegado incluye toda la app.
+
+### GitHub: commits con “X” roja
+
+- En PRs `deploy/infra` → `main`, a veces fallan checks del **Vercel GitHub App** (build duplicado o preview) mientras el **workflow Promote** en `deploy/infra` ya desplegó bien. Mirar **qué check** falló (Actions vs Vercel). El criterio de producción operativa es: `GET /` = 200 y `GET /api/health` = 200 tras configurar env.
+
+---
+
 ## 1. Git vs lo que ves en el navegador
 
 | Concepto | Detalle |
