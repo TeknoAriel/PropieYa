@@ -164,7 +164,7 @@ function BuscarContent() {
     ]
   )
 
-  const { data: listingsRaw = [], isLoading } =
+  const { data: listingsRaw = [], isLoading, isError, error } =
     trpc.listing.search.useQuery(filters)
 
   const listings = listingsRaw as unknown as BuscarListingCardData[]
@@ -277,7 +277,16 @@ function BuscarContent() {
         </Card>
       </div>
 
-      {isLoading ? (
+      {isError ? (
+        <Card className="p-6">
+          <p className="text-sm text-text-primary">
+            No pudimos cargar resultados.{' '}
+            {error?.message?.includes('DATABASE') || error?.message?.includes('required')
+              ? 'Revisá que DATABASE_URL esté definida en Vercel (proyecto web, Production).'
+              : (error?.message ?? 'Intentá de nuevo más tarde.')}
+          </p>
+        </Card>
+      ) : isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
             <Card key={i} className="overflow-hidden">
