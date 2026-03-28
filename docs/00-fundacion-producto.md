@@ -25,6 +25,8 @@ Propieya es una plataforma inmobiliaria conversacional-first, diseñada para cap
 
 **Criterios extendidos (MLS-ready real, filtros facetados, mapa profundo, semántica y UX por capas):** ver **`docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md`** — complementa este documento para backlog y arquitectura evolutiva.
 
+**Onboarding por persona (buscador / dueño / inmobiliaria) y monetización (Mercado Pago):** **`docs/40-ONBOARDING-PERSONAS-Y-FLUJOS.md`**, **`docs/39-MONETIZACION-MERCADOPAGO.md`**.
+
 ---
 
 ## 2. Replanteo Crítico del Producto
