@@ -3,7 +3,11 @@
 import { useParams } from 'next/navigation'
 import { useCallback, useRef, useState } from 'react'
 
-import { formatTrpcUserMessage, type Currency } from '@propieya/shared'
+import {
+  formatTrpcUserMessage,
+  type CreateListingInput,
+  type Currency,
+} from '@propieya/shared'
 import { Button, Card, Input } from '@propieya/ui'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -12,6 +16,17 @@ import { Star, Trash2 } from 'lucide-react'
 import { trpc } from '@/lib/trpc'
 
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
+const ORIENTATION_VALUES = [
+  'N',
+  'S',
+  'E',
+  'W',
+  'NE',
+  'NW',
+  'SE',
+  'SW',
+] as const
 
 export default function EditarPropiedadPage() {
   const params = useParams()
@@ -111,6 +126,24 @@ export default function EditarPropiedadPage() {
     const surface = Number((form.elements.namedItem('surface') as HTMLInputElement).value)
     const bedrooms = (form.elements.namedItem('bedrooms') as HTMLInputElement).value
     const bathrooms = (form.elements.namedItem('bathrooms') as HTMLInputElement).value
+    const surfaceCoveredRaw = (
+      form.elements.namedItem('surfaceCovered') as HTMLInputElement
+    ).value
+    const totalRoomsRaw = (form.elements.namedItem('totalRooms') as HTMLInputElement)
+      .value
+    const featFloorRaw = (form.elements.namedItem('featFloor') as HTMLInputElement)
+      .value
+    const featTotalFloorsRaw = (
+      form.elements.namedItem('featTotalFloors') as HTMLInputElement
+    ).value
+    const featOrientation = (
+      form.elements.namedItem('featOrientation') as HTMLSelectElement
+    ).value
+    const featEscalera = (
+      form.elements.namedItem('featEscalera') as HTMLInputElement
+    ).value
+      .trim()
+      .slice(0, 10)
 
     if (!title || title.length < 10) {
       setEditError('El título debe tener al menos 10 caracteres')
@@ -126,6 +159,48 @@ export default function EditarPropiedadPage() {
     }
 
     const addr = current.address as Record<string, unknown> ?? {}
+    const prevFeats = (current.features ?? {}) as Record<string, unknown>
+
+    const parseOptInt = (raw: string): number | null => {
+      if (!raw.trim()) return null
+      const n = parseInt(raw, 10)
+      return Number.isNaN(n) ? null : n
+    }
+
+    let surfaceCovered: number | null = null
+    if (surfaceCoveredRaw.trim() !== '') {
+      const n = Number(surfaceCoveredRaw)
+      surfaceCovered = !Number.isNaN(n) && n >= 0 ? n : null
+    }
+
+    const totalRoomsParsed = parseOptInt(totalRoomsRaw)
+    const floorFeat = parseOptInt(featFloorRaw)
+    const totalFloorsFeat = parseOptInt(featTotalFloorsRaw)
+    const orientationVal = ORIENTATION_VALUES.includes(
+      featOrientation as (typeof ORIENTATION_VALUES)[number]
+    )
+      ? (featOrientation as (typeof ORIENTATION_VALUES)[number])
+      : null
+
+    const featBase =
+      prevFeats && typeof prevFeats === 'object' && !Array.isArray(prevFeats)
+        ? { ...prevFeats }
+        : {}
+
+    const mergedFeatures: CreateListingInput['features'] = {
+      disposition: null,
+      age: null,
+      amenities: [],
+      extras: {},
+      commercialSub: null,
+      field: null,
+      ...(featBase as Partial<CreateListingInput['features']>),
+      floor: floorFeat,
+      totalFloors: totalFloorsFeat,
+      escalera: featEscalera === '' ? null : featEscalera.toUpperCase(),
+      orientation: orientationVal,
+    }
+
     updateMutation.mutate({
       id,
       data: {
@@ -138,13 +213,18 @@ export default function EditarPropiedadPage() {
           expenses: current.expenses,
           expensesCurrency: (current.expensesCurrency as Currency | null) ?? null,
         },
-        surface: { total: surface, covered: current.surfaceCovered, semicovered: current.surfaceSemicovered, land: current.surfaceLand },
+        surface: {
+          total: surface,
+          covered: surfaceCovered,
+          semicovered: current.surfaceSemicovered,
+          land: current.surfaceLand,
+        },
         rooms: {
           bedrooms: bedrooms ? parseInt(bedrooms, 10) : null,
           bathrooms: bathrooms ? parseInt(bathrooms, 10) : null,
           toilettes: current.toilettes,
           garages: current.garages,
-          total: current.totalRooms,
+          total: totalRoomsParsed ?? current.totalRooms,
         },
         address: {
           street: (addr.street as string) ?? '',
@@ -157,6 +237,7 @@ export default function EditarPropiedadPage() {
           country: (addr.country as string) ?? 'Argentina',
           postalCode: (addr.postalCode as string) ?? null,
         },
+        features: mergedFeatures,
       },
     })
   }
@@ -181,6 +262,12 @@ export default function EditarPropiedadPage() {
   }
 
   const addr = current.address as Record<string, unknown> | null
+  const feats = (current.features ?? {}) as {
+    floor?: number | null
+    totalFloors?: number | null
+    escalera?: string | null
+    orientation?: string | null
+  }
   const media = (current as { media?: { id: string; url: string; isPrimary: boolean; order: number }[] }).media ?? []
 
   return (
@@ -280,6 +367,87 @@ export default function EditarPropiedadPage() {
                   defaultValue={current.bathrooms ?? ''}
                   min={0}
                 />
+              </div>
+            </div>
+            <div className="md:col-span-2 space-y-3 border-t border-border pt-4">
+              <h3 className="text-sm font-semibold text-text-primary">
+                Superficie cubierta, ambientes y datos para búsqueda (modelo XML
+                OpenNavent)
+              </h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
+                    Superficie cubierta (m²)
+                  </label>
+                  <Input
+                    name="surfaceCovered"
+                    type="number"
+                    defaultValue={current.surfaceCovered ?? ''}
+                    min={0}
+                    step={1}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
+                    Ambientes totales
+                  </label>
+                  <Input
+                    name="totalRooms"
+                    type="number"
+                    defaultValue={current.totalRooms ?? ''}
+                    min={0}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
+                    Piso (unidad)
+                  </label>
+                  <Input
+                    name="featFloor"
+                    type="number"
+                    defaultValue={feats.floor ?? ''}
+                    min={0}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
+                    Pisos del edificio
+                  </label>
+                  <Input
+                    name="featTotalFloors"
+                    type="number"
+                    defaultValue={feats.totalFloors ?? ''}
+                    min={0}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
+                    Orientación
+                  </label>
+                  <select
+                    name="featOrientation"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    defaultValue={feats.orientation ?? ''}
+                  >
+                    <option value="">—</option>
+                    {ORIENTATION_VALUES.map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
+                    Escalera / entrada
+                  </label>
+                  <Input
+                    name="featEscalera"
+                    defaultValue={feats.escalera ?? ''}
+                    maxLength={10}
+                    placeholder="Ej: A, B"
+                  />
+                </div>
               </div>
             </div>
           </div>

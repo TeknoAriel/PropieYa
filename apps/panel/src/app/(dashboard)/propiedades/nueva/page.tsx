@@ -171,6 +171,7 @@ export default function NuevaPropiedadPage() {
       features: {
         floor: null,
         totalFloors: null,
+        escalera: null,
         orientation: null,
         disposition: null,
         age: null,

@@ -91,6 +91,24 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
   if (merged.escalera?.trim()) {
     must.push({ term: { escalera: merged.escalera.trim().toUpperCase() } })
   }
+  if (merged.orientation?.trim()) {
+    must.push({ term: { orientation: merged.orientation.trim() } })
+  }
+  if (merged.minSurfaceCovered !== undefined) {
+    must.push({
+      range: { surfaceCovered: { gte: merged.minSurfaceCovered } },
+    })
+  }
+  if (merged.maxSurfaceCovered !== undefined) {
+    must.push({
+      range: { surfaceCovered: { lte: merged.maxSurfaceCovered } },
+    })
+  }
+  if (merged.minTotalRooms !== undefined) {
+    must.push({
+      range: { totalRooms: { gte: merged.minTotalRooms } },
+    })
+  }
   if (merged.city?.trim()) {
     const c = sanitize(merged.city)
     if (c.length > 0) {
@@ -142,8 +160,11 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
       'bedrooms',
       'bathrooms',
       'garages',
+      'totalRooms',
+      'surfaceCovered',
       'floor',
       'escalera',
+      'orientation',
       'amenities',
       'location',
       'primaryImageUrl',

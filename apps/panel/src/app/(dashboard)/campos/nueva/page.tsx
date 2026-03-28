@@ -157,6 +157,7 @@ export default function NuevoCampoPage() {
       features: {
         floor: null,
         totalFloors: null,
+        escalera: null,
         orientation: null,
         disposition: null,
         age: null,

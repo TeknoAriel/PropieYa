@@ -506,6 +506,10 @@ export const listingRouter = createTRPCRouter({
         floorMin: input.floorMin,
         floorMax: input.floorMax,
         escalera: input.escalera,
+        orientation: input.orientation,
+        minSurfaceCovered: input.minSurfaceCovered,
+        maxSurfaceCovered: input.maxSurfaceCovered,
+        minTotalRooms: input.minTotalRooms,
         city: input.city,
         neighborhood: input.neighborhood,
         amenities: input.amenities,
@@ -574,6 +578,26 @@ export const listingRouter = createTRPCRouter({
       if (input.escalera?.trim()) {
         conditions.push(
           sql`(${listings.features}->>'escalera') = ${input.escalera.trim().toUpperCase()}`
+        )
+      }
+      if (input.orientation) {
+        conditions.push(
+          sql`(${listings.features}->>'orientation') = ${input.orientation}`
+        )
+      }
+      if (input.minSurfaceCovered !== undefined) {
+        conditions.push(
+          sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} >= ${input.minSurfaceCovered}`
+        )
+      }
+      if (input.maxSurfaceCovered !== undefined) {
+        conditions.push(
+          sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} <= ${input.maxSurfaceCovered}`
+        )
+      }
+      if (input.minTotalRooms !== undefined) {
+        conditions.push(
+          sql`${listings.totalRooms} IS NOT NULL AND ${listings.totalRooms} >= ${input.minTotalRooms}`
         )
       }
       if (input.city?.trim()) {

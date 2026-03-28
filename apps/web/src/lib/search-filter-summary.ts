@@ -69,6 +69,14 @@ export function buildFiltersSummary(f: ListingSearchFiltersInput): string {
     )
   }
   if (f.escalera?.trim()) parts.push(`Esc. ${f.escalera.trim()}`)
+  if (f.orientation) parts.push(`Orient. ${f.orientation}`)
+  if (f.minSurfaceCovered != null || f.maxSurfaceCovered != null) {
+    const bits: string[] = []
+    if (f.minSurfaceCovered != null) bits.push(`cub≥${f.minSurfaceCovered}`)
+    if (f.maxSurfaceCovered != null) bits.push(`cub≤${f.maxSurfaceCovered}`)
+    parts.push(bits.join(' '))
+  }
+  if (f.minTotalRooms != null) parts.push(`≥${f.minTotalRooms} amb.`)
 
   if (f.amenities?.length) {
     const labels = f.amenities

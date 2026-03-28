@@ -271,6 +271,21 @@
 
 ---
 
+## Sprint 17 — XML OpenNavent (Zonaprop/Kiteprop) + filtros y ficha ✅
+
+**Objetivo:** incorporar el feed real OpenNavent como referencia en repo (muestra liviana), mapeo en código, campos alineados a búsqueda y edición en panel.
+
+- [x] 17.1 Muestra `docs/samples/zonaprop-kiteprop-one-aviso.xml` + README; `.gitignore` al dump completo (~80MB); doc `36` actualizada con estructura `<OpenNavent>/<Avisos>/<Aviso>`
+- [x] 17.2 `packages/shared/src/xml/zonaprop-opennavent-map.ts` (URL feed, roles `PRINCIPALES|*` → modelo interno)
+- [x] 17.3 `createListingSchema.features.escalera`; create en panel con `escalera: null`
+- [x] 17.4 Búsqueda: `orientation`, `minSurfaceCovered`, `maxSurfaceCovered`, `minTotalRooms` + ES/SQL + explain + resumen alertas/perfil + **escalera en UI** `/buscar`
+- [x] 17.5 Panel editar ficha: superficie cubierta, ambientes totales, piso, pisos edificio, orientación, escalera (indexación ES al publicar)
+- [x] 17.6 Verificar lint/typecheck, commit + push
+
+**Criterios:** el XML de referencia está documentado y trazable en código; los filtros avanzados cubren campos del feed; el publicador puede cargar datos que entran en SQL/ES como el modelo XML.
+
+---
+
 ## Próximos sprints (backlog)
 
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
@@ -283,4 +298,4 @@
 
 ---
 
-*Actualizado: 2026-03-27 (Sprint 15)*
+*Actualizado: 2026-03-28 (Sprint 17)*

@@ -1,8 +1,11 @@
 /**
  * Mapeo XML (feeds Zonaprop / Kiteprop) → campos internos.
- * Referencia: https://static.kiteprop.com/kp/difusions/.../zonaprop.xml
  *
- * Incluye todos los campos posibles para filtros de búsqueda por texto/asistente.
+ * Formato real del feed: **OpenNavent** (`<OpenNavent><Avisos><Aviso>…`).
+ * URL del dump: ver `ZONAPROP_KITEPROP_FEED_URL` y `zonaprop-opennavent-map.ts`.
+ * Muestra en repo: `docs/samples/zonaprop-kiteprop-one-aviso.xml`.
+ *
+ * Incluye alias genéricos para filtros de búsqueda por texto/asistente.
  */
 
 export const XML_LISTING_FIELD_ALIASES = {

@@ -47,6 +47,10 @@ export interface SearchFilters {
   floorMin?: number
   floorMax?: number
   escalera?: string
+  orientation?: string
+  minSurfaceCovered?: number
+  maxSurfaceCovered?: number
+  minTotalRooms?: number
   city?: string
   neighborhood?: string
   amenities?: string[]

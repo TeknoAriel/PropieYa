@@ -195,6 +195,13 @@ export function BuscarContent({
   const [minGarages, setMinGarages] = useState('')
   const [floorMin, setFloorMin] = useState('')
   const [floorMax, setFloorMax] = useState('')
+  const [escalera, setEscalera] = useState('')
+  const [minSurfaceCovered, setMinSurfaceCovered] = useState('')
+  const [maxSurfaceCovered, setMaxSurfaceCovered] = useState('')
+  const [minTotalRooms, setMinTotalRooms] = useState('')
+  const [orientation, setOrientation] = useState<
+    '' | 'N' | 'S' | 'E' | 'W' | 'NE' | 'NW' | 'SE' | 'SW'
+  >('')
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([])
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [mapBbox, setMapBbox] = useState<BuscarMapBBox | null>(null)
@@ -222,6 +229,15 @@ export function BuscarContent({
       minGarages: minGarages ? Number(minGarages) : undefined,
       floorMin: floorMin ? Number(floorMin) : undefined,
       floorMax: floorMax ? Number(floorMax) : undefined,
+      escalera: escalera.trim() || undefined,
+      orientation: orientation || undefined,
+      minSurfaceCovered: minSurfaceCovered
+        ? Number(minSurfaceCovered)
+        : undefined,
+      maxSurfaceCovered: maxSurfaceCovered
+        ? Number(maxSurfaceCovered)
+        : undefined,
+      minTotalRooms: minTotalRooms ? Number(minTotalRooms) : undefined,
       amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined,
       bbox: mapBbox ?? undefined,
       limit: 24,
@@ -243,6 +259,11 @@ export function BuscarContent({
       minGarages,
       floorMin,
       floorMax,
+      escalera,
+      orientation,
+      minSurfaceCovered,
+      maxSurfaceCovered,
+      minTotalRooms,
       selectedAmenities,
       mapBbox,
     ]
@@ -492,6 +513,52 @@ export function BuscarContent({
                   placeholder="Piso hasta"
                   value={floorMax}
                   onChange={(e) => setFloorMax(e.target.value)}
+                  min={0}
+                />
+                <Input
+                  placeholder="Escalera (ej. A, B)"
+                  value={escalera}
+                  onChange={(e) => setEscalera(e.target.value)}
+                  maxLength={10}
+                />
+                <select
+                  className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={orientation}
+                  onChange={(e) =>
+                    setOrientation(
+                      e.target.value as typeof orientation
+                    )
+                  }
+                >
+                  <option value="">Orientación (cualquiera)</option>
+                  <option value="N">Norte</option>
+                  <option value="S">Sur</option>
+                  <option value="E">Este</option>
+                  <option value="W">Oeste</option>
+                  <option value="NE">Noreste</option>
+                  <option value="NW">Noroeste</option>
+                  <option value="SE">Sureste</option>
+                  <option value="SW">Suroeste</option>
+                </select>
+                <Input
+                  type="number"
+                  placeholder="Sup. cubierta mín. (m²)"
+                  value={minSurfaceCovered}
+                  onChange={(e) => setMinSurfaceCovered(e.target.value)}
+                  min={0}
+                />
+                <Input
+                  type="number"
+                  placeholder="Sup. cubierta máx. (m²)"
+                  value={maxSurfaceCovered}
+                  onChange={(e) => setMaxSurfaceCovered(e.target.value)}
+                  min={0}
+                />
+                <Input
+                  type="number"
+                  placeholder="Ambientes mín."
+                  value={minTotalRooms}
+                  onChange={(e) => setMinTotalRooms(e.target.value)}
                   min={0}
                 />
               </div>

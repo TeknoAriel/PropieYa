@@ -61,6 +61,10 @@ export const demandRouter = createTRPCRouter({
         floorMin: input.floorMin ?? null,
         floorMax: input.floorMax ?? null,
         escalera: input.escalera ?? null,
+        orientation: input.orientation ?? null,
+        minSurfaceCovered: input.minSurfaceCovered ?? null,
+        maxSurfaceCovered: input.maxSurfaceCovered ?? null,
+        minTotalRooms: input.minTotalRooms ?? null,
       }
       const features = {
         q: input.q ?? null,

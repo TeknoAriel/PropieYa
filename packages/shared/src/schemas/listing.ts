@@ -158,6 +158,8 @@ export const createListingSchema = z.object({
   features: z.object({
     floor: z.number().int().nullable(),
     totalFloors: z.number().int().nullable(),
+    /** Escalera / entrada (p. ej. A, B), alineado a feeds OpenNavent/XML. */
+    escalera: z.string().max(10).nullable().optional(),
     orientation: z.enum(['N', 'S', 'E', 'W', 'NE', 'NW', 'SE', 'SW']).nullable(),
     disposition: z.enum(['front', 'back', 'internal', 'lateral']).nullable(),
     age: z
