@@ -182,6 +182,8 @@
 
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
 
+**Onboarding y monetización (registro por persona, MP stub):** `docs/40-ONBOARDING-PERSONAS-Y-FLUJOS.md`, `docs/39-MONETIZACION-MERCADOPAGO.md`. Tras pull: `pnpm db:push` para `users.account_intent` y `payment_webhook_events`.
+
 - Sprint 10: Alertas guardadas
 - Sprint 11: Gestión de organización (invitar miembros)
 - Sprint 12: Ficha propiedad mejorada (mapa, similares)

@@ -10,6 +10,7 @@
 - **Comprobar:** `curl -s https://propieyaweb.vercel.app/api/health` → si `status` es `degraded` y el error de `database` menciona `DATABASE_URL`, hay que **copiar la variable** desde Neon (o desde el proyecto Vercel anterior si aún existe) y **Redeploy**.
 - Sin DB: no hay propiedades en home/buscar, fallan tRPC que consultan DB, registro/login pueden fallar, import/cron no persisten datos.
 - **No confundir** con pérdida de código: revisar `git log` y `/api/version`; el commit desplegado incluye toda la app.
+- **Schema nuevo (registro / pagos):** columnas `account_intent` en `users` y tabla `payment_webhook_events`. Ejecutar **`pnpm db:push`** (o migración Neon) en el entorno que use el portal; sin eso, registro o webhook pueden fallar al insertar.
 
 ### GitHub: commits con “X” roja
 
