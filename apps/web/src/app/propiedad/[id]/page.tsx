@@ -8,6 +8,7 @@ import { useParams } from 'next/navigation'
 import { Badge, Button, Card, MessageSquare, Skeleton } from '@propieya/ui'
 
 import { ContactModal } from '@/components/contact-modal'
+import { PropertyLocationMap } from '@/components/property/property-location-map'
 import {
   formatPrice,
   formatSurface,
@@ -240,6 +241,9 @@ export default function PropiedadPage() {
     surfaceTotal: number
     bedrooms: number | null
     bathrooms: number | null
+    hideExactAddress?: boolean | null
+    locationLat?: number | null
+    locationLng?: number | null
     features?: {
       field?: ListingField | null
       commercialSub?: ListingCommercialSub | null
@@ -289,7 +293,7 @@ export default function PropiedadPage() {
           </div>
           <div className="mt-2">
             <Badge variant="outline">
-              {listing.operationType === 'sale' ? 'Venta' : 'Alquiler'}
+              {OPERATION_TYPE_LABELS[listing.operationType] ?? listing.operationType}
             </Badge>
           </div>
         </div>
@@ -367,6 +371,24 @@ export default function PropiedadPage() {
               ) : null}
             </div>
           </Card>
+
+          {listing.hideExactAddress !== true &&
+          listing.locationLat != null &&
+          listing.locationLng != null &&
+          !Number.isNaN(listing.locationLat) &&
+          !Number.isNaN(listing.locationLng) ? (
+            <Card className="p-6 space-y-3">
+              <h2 className="text-lg font-semibold">Ubicación</h2>
+              <p className="text-xs text-text-secondary">
+                Referencia en mapa (OpenStreetMap).
+              </p>
+              <PropertyLocationMap
+                lat={listing.locationLat}
+                lng={listing.locationLng}
+                title={`Ubicación: ${listing.title}`}
+              />
+            </Card>
+          ) : null}
 
           {listing.propertyType === 'land' ? (
             <Card className="p-6 space-y-4">

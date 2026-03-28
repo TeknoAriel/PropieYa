@@ -14,6 +14,7 @@ import {
   createListingSchema,
   updateListingSchema,
   LISTING_VALIDITY,
+  SEARCH_FILTER_AMENITIES,
   withMatchReasons,
   type ExplainMatchFilters,
 } from '@propieya/shared'
@@ -591,13 +592,9 @@ export const listingRouter = createTRPCRouter({
         }
       }
       if (input.amenities && input.amenities.length > 0) {
-        const validAmenities = [
-          'balcony', 'terrace', 'parking', 'air_conditioning', 'heating',
-          'fireplace', 'front_facing', 'credit_approved', 'pool', 'gym',
-          'garden', 'bbq', 'elevator', 'doorman', 'storage', 'furnished',
-        ]
+        const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
         for (const a of input.amenities) {
-          if (validAmenities.includes(a)) {
+          if (allowed.includes(a)) {
             conditions.push(
               sql`(${listings.features}->'amenities') @> to_jsonb(ARRAY[${a}]::text[])`
             )
@@ -702,13 +699,9 @@ export const listingRouter = createTRPCRouter({
         }
       }
       if (filters.amenities && filters.amenities.length > 0) {
-        const validAmenities = [
-          'balcony', 'terrace', 'parking', 'air_conditioning', 'heating',
-          'fireplace', 'front_facing', 'credit_approved', 'pool', 'gym',
-          'garden', 'bbq', 'elevator', 'doorman', 'storage', 'furnished',
-        ]
+        const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
         for (const a of filters.amenities) {
-          if (validAmenities.includes(a)) {
+          if (allowed.includes(a)) {
             conditions.push(
               sql`(${listings.features}->'amenities') @> to_jsonb(ARRAY[${a}]::text[])`
             )

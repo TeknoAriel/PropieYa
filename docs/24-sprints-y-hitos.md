@@ -214,7 +214,20 @@
 
 **Criterios:** la ficha muestra hasta 6 similares cuando existen.
 
-**Pendiente de producto (doc 38):** mapa en ficha, facets dinámicos, MLS, semántica — no cubierto en este sprint.
+**Pendiente de producto (doc 38):** facets dinámicos tipo catálogo, MLS, semántica amplia — fuera de este sprint.
+
+---
+
+## Sprint 13 — Mapa en ficha + filtros avanzados (UX progresiva) ✅
+
+**Objetivo:** primera capa de mapa en ficha y más criterios de búsqueda sin saturar la pantalla principal.
+
+- [x] 13.1 Ficha: mapa embebido OpenStreetMap si hay `locationLat`/`locationLng` y no `hideExactAddress`
+- [x] 13.2 `/buscar`: bloque colapsable “Más filtros” (barrio, dorm/baños/cocheras, superficie máx., piso, amenities)
+- [x] 13.3 `SEARCH_FILTER_AMENITIES` en `@propieya/shared` y uso en `listing.search` / conversacional (SQL)
+- [x] 13.4 Verificar lint/typecheck, commit + push
+
+**Criterios:** ubicación visible cuando el aviso la expone; búsqueda refinable con amenities alineadas al backend.
 
 ---
 
@@ -230,4 +243,4 @@
 
 ---
 
-*Actualizado: 2026-03-27*
+*Actualizado: 2026-03-28*
