@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { Button, Card, Input } from '@propieya/ui'
 
 import { setAccessToken } from '@/lib/auth-storage'
+import { formatTrpcUserMessage } from '@/lib/trpc-form-errors'
 import { trpc } from '@/lib/trpc'
 
 function safeNext(raw: string | null): string {
@@ -34,7 +35,7 @@ export function LoginForm() {
       router.push(safeNext(nextParam))
     },
     onError: (err) => {
-      setError(err.message || 'No se pudo iniciar sesión')
+      setError(formatTrpcUserMessage(err) || 'No se pudo iniciar sesión')
     },
   })
 

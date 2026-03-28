@@ -244,6 +244,19 @@
 
 ---
 
+## Sprint 15 — Registro legible + guía Publicar / panel ✅
+
+**Objetivo:** que los errores de validación Zod no se muestren como JSON; aclarar el camino buscador vs publicador hacia el panel.
+
+- [x] 15.1 Web: `formatTrpcUserMessage` (zodError + fallback si `message` es JSON) y uso en registro + login
+- [x] 15.2 Registro paso 2: texto de ayuda bajo contraseña alineado a `registerSchema`
+- [x] 15.3 `/publicar`: pasos concretos (registro con intent, panel → Propiedades → Nueva) y enlaces
+- [x] 15.4 Verificar lint/typecheck, commit + push
+
+**Criterios:** el usuario ve un mensaje claro ante contraseña inválida; la página Publicar explica el flujo sin asumir que el panel “está listo” sin contexto.
+
+---
+
 ## Próximos sprints (backlog)
 
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
@@ -256,4 +269,4 @@
 
 ---
 
-*Actualizado: 2026-03-28 (Sprint 14)*
+*Actualizado: 2026-03-27 (Sprint 15)*
