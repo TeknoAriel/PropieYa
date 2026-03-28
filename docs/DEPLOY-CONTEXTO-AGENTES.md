@@ -14,7 +14,8 @@
 | **Repositorio** | `TeknoAriel/PropieYa` |
 | **Root Directory en Vercel** | `apps/web` |
 | **Rama de integración deploy** | Push a `deploy/infra` → workflow → **Vercel CLI** (portal). **`main` debe fusionarse con `deploy/infra`** para mantener el repo y el deploy del panel (Git) alineados; el workflow **no** mergea solo. |
-| **Secretos GitHub** | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` deben apuntar al proyecto **`propie-ya-web`** |
+| **Secretos GitHub** | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` deben apuntar al proyecto **`propie-ya-web`** (el workflow Promote **falla** si el ID no resuelve a ese nombre vía API Vercel). |
+| **Fuente única de constantes** | `scripts/production-canonical.env.sh` — URL canónica, nombre del proyecto web, rama de deploy. Scripts: `pnpm verificar:ruta-produccion`. |
 | **Variables Vercel (web, Production)** | Mínimo: `DATABASE_URL`, `JWT_SECRET`, `TRUSTED_PANEL_ORIGINS`. [Environment Variables →](https://vercel.com/teknoariels-projects/propie-ya-web/settings/environment-variables) |
 
 **Proyecto obsoleto (no usar):** `propieya_web` — quedó en estado inconsistente; puede **eliminarse** del dashboard Vercel cuando no haya dependencias. No volver a vincular el dominio canónico a ese proyecto.
@@ -32,7 +33,7 @@
 
 2. **No crear** un segundo “proyecto web” en Vercel sin actualizar `docs/CANONICAL-URLS.md`, este archivo y `docs/33-VERCEL-CONFIG-PROYECTO-WEB.md`.
 
-3. **Un solo flujo de producción:** cambios que van al portal se integran en `deploy/infra`, pasan `pnpm verify`, push, y el workflow despliega. Después, **fusionar `deploy/infra` → `main`** (PR o merge local) para que `main` refleje lo desplegado. Verificación: `pnpm verificar:deploy`. Lista de sprints y de import: `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md`.
+3. **Un solo flujo de producción:** un solo repositorio (`TeknoAriel/PropieYa`); cambios al portal en `deploy/infra`, `pnpm verify`, push, workflow Promote + Vercel CLI al proyecto **`propie-ya-web`**. Después, **fusionar `deploy/infra` → `main`** (PR o merge) para alinear clones y el panel. Verificación: `pnpm verificar:deploy` y/o `pnpm verificar:ruta-produccion`. Lista de sprints: `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md`.
 
 4. **Antes de cualquier push** que dispare CI/deploy: `pnpm verify` (lint + typecheck + build).
 

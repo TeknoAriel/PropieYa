@@ -18,7 +18,7 @@ El **propietario no debe** repetir configuración de Vercel/GitHub en cada relea
 
 ## Tras push a `deploy/infra`
 
-- Confiar en `.github/workflows/promote-deploy-infra.yml`: merge a `main` y job **Verificar deploy en producción** (falla en rojo si el portal no responde 2xx).
+- Confiar en `.github/workflows/promote-deploy-infra.yml`: **despliega el portal por Vercel CLI** al proyecto canónico (`propie-ya-web`), valida que `VERCEL_PROJECT_ID` sea ese proyecto, y hace smoke tests al dominio canónico (falla en rojo si el portal no responde 2xx). **No fusiona** `main`; alinear `main` con PR o merge aparte (`docs/10-MERGEAR-DEPLOY-INFRA.md`).
 - El agente ejecuta `pnpm verificar:deploy` o `pnpm diagnostico:prod` para evidencia local; **no** pedir al propietario que “revise Vercel”.
 - Si el workflow falla: leer logs del job, ejecutar `pnpm diagnostico:prod`, actualizar `REGISTRO-BLOQUEOS` con causa y enlace (p. ej. secretos en GitHub Parte D), **sin** listas largas de pasos manuales al usuario.
 

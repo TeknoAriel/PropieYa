@@ -2,8 +2,8 @@
 
 - El **propietario no revisa** el repo ni Actions: solo ve el producto y la URL pública.
 - El **agente** ejecuta lint/typecheck (y build si aplica) **antes de push**, corrige CI sin pedir revisión, documenta bloqueos en `docs/REGISTRO-BLOQUEOS.md`.
-- **Tras push a deploy/infra:** el agente ejecuta `pnpm verificar:deploy` y, si hace falta, `pnpm diagnostico:prod`. El workflow Promote **falla** si producción no responde (no se asume éxito). Bloqueos: `docs/REGISTRO-BLOQUEOS.md` — sin pedir al propietario revisar Vercel en bucle (ver `.cursor/rules/deploy-infra.mdc`).
-- Flujo: `deploy/infra` → **Promote** → `main` → Vercel.
+- **Tras push a `deploy/infra`:** el agente ejecuta `pnpm verificar:deploy` y, si hace falta, `pnpm diagnostico:prod` o `pnpm verificar:ruta-produccion` (valida URL canónica y, con `VERCEL_TOKEN`+`VERCEL_PROJECT_ID`, que el secret apunte a `propie-ya-web`). El workflow Promote **falla** si producción no responde o si `VERCEL_PROJECT_ID` no es el proyecto web canónico. Bloqueos: `docs/REGISTRO-BLOQUEOS.md` — ver `.cursor/rules/deploy-infra.mdc`.
+- **Flujo portal producción (único):** un solo repo monorepo; rama **`deploy/infra`** → workflow **Promote** → Vercel CLI → proyecto **`propie-ya-web`**. Alinear **`main`** con PR/merge aparte (no lo hace el Promote). Constantes: `scripts/production-canonical.env.sh`.
 
 **URL portal (pruebas/prod):** https://propieyaweb.vercel.app — `docs/CANONICAL-URLS.md`.
 

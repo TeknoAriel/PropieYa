@@ -3,7 +3,10 @@
 # Uso: ./scripts/diagnostico-produccion.sh [URL]
 
 set -e
-URL="${1:-${URL:-https://propieyaweb.vercel.app}}"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=/dev/null
+source "${ROOT}/scripts/production-canonical.env.sh"
+URL="${1:-${URL:-${PROPIEYA_CANONICAL_PORTAL_URL}}}"
 
 echo "=== Diagnóstico producción ==="
 echo "URL: $URL"

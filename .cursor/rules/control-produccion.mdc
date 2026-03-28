@@ -29,6 +29,6 @@ alwaysApply: true
 
 ## Tras push a deploy/infra
 
-1. El agente **verifica** que el deploy terminó: ejecuta `pnpm verificar:deploy` (espera 3 min, hace poll al portal hasta 10 intentos). El workflow **Promote** también falla en rojo si el portal no da 2xx (no se oculta el fallo).
+1. El agente **verifica** que el deploy terminó: ejecuta `pnpm verificar:deploy` (espera 3 min, hace poll al portal hasta 10 intentos). Opcional: `pnpm verificar:ruta-produccion` (URL canónica + coherencia del proyecto Vercel si hay token). El workflow **Promote** valida que `VERCEL_PROJECT_ID` sea `propie-ya-web` y falla si el portal no da 2xx.
 2. Si el portal responde 2xx: **avisa al usuario** "Deploy verificado OK. Portal: https://propieyaweb.vercel.app"
 3. Si falla: el agente ejecuta `pnpm diagnostico:prod`, revisa el log del job **verify-deploy** en Actions y documenta en `docs/REGISTRO-BLOQUEOS.md` el desbloqueo (p. ej. Parte D de `docs/DEPLOY-PASOS-URIs.md`). **No** pedir al propietario que repase configuración de Vercel en bucle; ver `.cursor/rules/deploy-infra.mdc`.

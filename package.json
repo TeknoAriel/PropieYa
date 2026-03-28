@@ -26,6 +26,7 @@
     "verificar:prod": "bash scripts/verificar-produccion.sh",
     "diagnostico:prod": "bash scripts/diagnostico-produccion.sh",
     "verificar:deploy": "bash scripts/verificar-deploy-esperar.sh --wait 3",
+    "verificar:ruta-produccion": "bash scripts/verificar-ruta-produccion.sh",
     "prepare": "husky"
   },
   "devDependencies": {

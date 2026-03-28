@@ -46,6 +46,26 @@ jobs:
             exit 1
           fi
 
+      - name: Verificar que VERCEL_PROJECT_ID sea el proyecto web canónico
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          source scripts/production-canonical.env.sh
+          resp="$(curl -fsS -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            "https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}")"
+          name="$(echo "$resp" | jq -r '.name // empty')"
+          if [ -z "$name" ]; then
+            echo "::error::No se pudo leer el nombre del proyecto Vercel (token o VERCEL_PROJECT_ID inválido)."
+            exit 1
+          fi
+          if [ "$name" != "${PROPIEYA_VERCEL_WEB_PROJECT_NAME}" ]; then
+            echo "::error::VERCEL_PROJECT_ID apunta a '${name}'; la ruta de producción exige '${PROPIEYA_VERCEL_WEB_PROJECT_NAME}'. Ver scripts/production-canonical.env.sh y docs/DEPLOY-CONTEXTO-AGENTES.md"
+            exit 1
+          fi
+          echo "OK: secretos alineados con proyecto web único (${name})."
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
@@ -134,6 +154,16 @@ jobs:
             exit 1
           fi
           echo "$body" | head -c 600
+
+      - name: Aviso si /api/version no refleja la rama de deploy
+        run: |
+          set -euo pipefail
+          source scripts/production-canonical.env.sh
+          body=$(curl -sS "${PORTAL_URL}/api/version" 2>/dev/null || true)
+          b=$(echo "$body" | jq -r '.branch // empty')
+          if [ -n "$b" ] && [ "$b" != "${PROPIEYA_DEPLOY_BRANCH}" ]; then
+            echo "::warning::/api/version reporta branch='$b' (esperado '${PROPIEYA_DEPLOY_BRANCH}' o vacío). Puede haber otro origen de build; revisar dominio y proyecto Vercel."
+          fi
 
       - name: Diagnóstico rápido si falla
         if: failure()
