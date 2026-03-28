@@ -88,9 +88,14 @@ export default function PerfilDemandaPage() {
             .
           </p>
         </div>
-        <Button asChild variant="outline">
-          <Link href="/buscar">Ir a buscar</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link href="/mis-alertas">Mis alertas</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/buscar">Ir a buscar</Link>
+          </Button>
+        </div>
       </div>
 
       {!profile ? (

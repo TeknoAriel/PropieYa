@@ -1,0 +1,135 @@
+import { TRPCError } from '@trpc/server'
+import { and, desc, eq, inArray } from 'drizzle-orm'
+import { z } from 'zod'
+
+import { listings, notifications, searchAlerts } from '@propieya/database'
+
+import { createTRPCRouter, protectedProcedure } from '../trpc'
+
+type FeedNotificationItem = {
+  kind: 'notification'
+  id: string
+  createdAt: Date
+  notifType: string
+  title: string
+  body: string
+  listingId: string | null
+  priceLabel: string | null
+  badgeLabel: string
+}
+
+type FeedSavedSearchItem = {
+  kind: 'saved_search'
+  id: string
+  createdAt: Date
+  filtersSummary: string
+  isActive: boolean
+  badgeLabel: string
+  lastActivityAt: Date
+}
+
+type FeedItem = FeedNotificationItem | FeedSavedSearchItem
+
+export const searchAlertRouter = createTRPCRouter({
+  /** Notificaciones de match + alertas guardadas, orden unificado por fecha. */
+  getMyFeed: protectedProcedure.query(async ({ ctx }): Promise<FeedItem[]> => {
+    const userId = ctx.session.userId
+
+    const notifRows = await ctx.db.query.notifications.findMany({
+      where: and(
+        eq(notifications.userId, userId),
+        inArray(notifications.type, ['new_listing_match', 'price_change'])
+      ),
+      orderBy: [desc(notifications.createdAt)],
+      limit: 50,
+    })
+
+    const alertRows = await ctx.db.query.searchAlerts.findMany({
+      where: eq(searchAlerts.userId, userId),
+      orderBy: [desc(searchAlerts.updatedAt)],
+      limit: 50,
+    })
+
+    const items: FeedItem[] = []
+
+    for (const n of notifRows) {
+      let priceLabel: string | null = null
+      let listingId: string | null = null
+      const data = n.data as Record<string, unknown> | null
+      if (data?.listingId && typeof data.listingId === 'string') {
+        listingId = data.listingId
+        const listing = await ctx.db.query.listings.findFirst({
+          where: eq(listings.id, listingId),
+        })
+        if (listing && listing.showPrice !== false) {
+          priceLabel = `${listing.priceCurrency} ${Number(listing.priceAmount).toLocaleString('es-AR')}`
+        }
+      }
+
+      const badgeLabel =
+        n.type === 'price_change' ? '📉 Bajó el precio' : '🏠 Nuevas publicaciones'
+
+      items.push({
+        kind: 'notification',
+        id: n.id,
+        createdAt: n.createdAt,
+        notifType: n.type,
+        title: n.title,
+        body: n.body,
+        listingId,
+        priceLabel,
+        badgeLabel,
+      })
+    }
+
+    for (const a of alertRows) {
+      items.push({
+        kind: 'saved_search',
+        id: a.id,
+        createdAt: a.createdAt,
+        filtersSummary: a.filtersSummary,
+        isActive: a.isActive,
+        badgeLabel: '🏠 Nuevas publicaciones',
+        lastActivityAt: a.lastNotifiedAt ?? a.updatedAt,
+      })
+    }
+
+    const relevant = (it: FeedItem) =>
+      it.kind === 'saved_search'
+        ? it.lastActivityAt.getTime()
+        : it.createdAt.getTime()
+
+    items.sort((a, b) => relevant(b) - relevant(a))
+
+    return items
+  }),
+
+  setActive: protectedProcedure
+    .input(z.object({ id: z.string().uuid(), isActive: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const row = await ctx.db.query.searchAlerts.findFirst({
+        where: eq(searchAlerts.id, input.id),
+      })
+      if (!row || row.userId !== ctx.session.userId) {
+        throw new TRPCError({ code: 'NOT_FOUND' })
+      }
+      await ctx.db
+        .update(searchAlerts)
+        .set({ isActive: input.isActive, updatedAt: new Date() })
+        .where(eq(searchAlerts.id, input.id))
+      return { ok: true as const }
+    }),
+
+  remove: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const row = await ctx.db.query.searchAlerts.findFirst({
+        where: eq(searchAlerts.id, input.id),
+      })
+      if (!row || row.userId !== ctx.session.userId) {
+        throw new TRPCError({ code: 'NOT_FOUND' })
+      }
+      await ctx.db.delete(searchAlerts).where(eq(searchAlerts.id, input.id))
+      return { ok: true as const }
+    }),
+})
