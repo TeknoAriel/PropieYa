@@ -161,8 +161,8 @@ jobs:
           source scripts/production-canonical.env.sh
           body=$(curl -sS "${PORTAL_URL}/api/version" 2>/dev/null || true)
           b=$(echo "$body" | jq -r '.branch // empty')
-          if [ -n "$b" ] && [ "$b" != "${PROPIEYA_DEPLOY_BRANCH}" ]; then
-            echo "::warning::/api/version reporta branch='$b' (esperado '${PROPIEYA_DEPLOY_BRANCH}' o vacío). Puede haber otro origen de build; revisar dominio y proyecto Vercel."
+          if [ -n "$b" ] && [ "$b" != "${PROPIEYA_DEPLOY_BRANCH}" ] && [ "$b" != "main" ]; then
+            echo "::warning::/api/version reporta branch='$b' (esperado '${PROPIEYA_DEPLOY_BRANCH}', main o vacío). Revisar dominio y proyecto Vercel."
           fi
 
       - name: Diagnóstico rápido si falla
