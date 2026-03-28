@@ -113,8 +113,18 @@ export default function PropiedadesPage() {
                 </tr>
               ) : listings.length === 0 ? (
                 <tr>
-                  <td className="p-4 text-text-secondary" colSpan={7}>
-                    Aún no tenés propiedades. Creá la primera desde "Nueva propiedad".
+                  <td className="p-8 text-center text-text-secondary" colSpan={7}>
+                    <p className="mb-4 max-w-md mx-auto">
+                      Aún no tenés avisos. Creá el primero con datos básicos; después
+                      podés cargar fotos, ajustar la dirección y publicar desde la
+                      ficha.
+                    </p>
+                    <Button asChild>
+                      <Link href="/propiedades/nueva">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Nueva propiedad
+                      </Link>
+                    </Button>
                   </td>
                 </tr>
               ) : (

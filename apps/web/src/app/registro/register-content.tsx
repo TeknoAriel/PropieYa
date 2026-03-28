@@ -8,10 +8,10 @@ import { Button, Card, Input } from '@propieya/ui'
 import {
   ACCOUNT_INTENT_LABELS,
   ACCOUNT_INTENT_VALUES,
+  formatTrpcUserMessage,
   type AccountIntent,
 } from '@propieya/shared'
 
-import { formatTrpcUserMessage } from '@/lib/trpc-form-errors'
 import { trpc } from '@/lib/trpc'
 
 function intentFromQuery(raw: string | null): AccountIntent {

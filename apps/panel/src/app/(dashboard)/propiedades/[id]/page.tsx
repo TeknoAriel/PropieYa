@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation'
 import { useCallback, useRef, useState } from 'react'
 
-import type { Currency } from '@propieya/shared'
+import { formatTrpcUserMessage, type Currency } from '@propieya/shared'
 import { Button, Card, Input } from '@propieya/ui'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -36,7 +36,7 @@ export default function EditarPropiedadPage() {
       setUploadError('')
     },
     onError: (err) => {
-      setUploadError(err.message ?? 'Error al guardar la imagen')
+      setUploadError(formatTrpcUserMessage(err) || 'Error al guardar la imagen')
       setUploading(false)
     },
   })
@@ -52,7 +52,8 @@ export default function EditarPropiedadPage() {
       utils.listing.getMineById.invalidate({ id })
       setEditError('')
     },
-    onError: (err) => setEditError(err.message ?? 'Error al guardar'),
+    onError: (err) =>
+      setEditError(formatTrpcUserMessage(err) || 'Error al guardar'),
   })
   const publishMutation = trpc.listing.publish.useMutation({
     onSuccess: () => utils.listing.getMineById.invalidate({ id }),

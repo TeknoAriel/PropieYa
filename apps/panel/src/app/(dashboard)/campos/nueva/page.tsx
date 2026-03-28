@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 
+import { formatTrpcUserMessage } from '@propieya/shared'
 import { Button, Card, Input } from '@propieya/ui'
 import { useMemo, useState } from 'react'
 
@@ -45,11 +46,12 @@ export default function NuevoCampoPage() {
   const [error, setError] = useState('')
 
   const createMutation = trpc.listing.create.useMutation({
-    onSuccess: () => {
-      router.push('/campos')
+    onSuccess: (created) => {
+      if (created?.id) router.push(`/propiedades/${created.id}`)
+      else router.push('/campos')
     },
     onError: (err) => {
-      setError(err.message || 'No se pudo crear el campo')
+      setError(formatTrpcUserMessage(err) || 'No se pudo crear el campo')
     },
   })
 

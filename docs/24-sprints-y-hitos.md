@@ -248,12 +248,26 @@
 
 **Objetivo:** que los errores de validación Zod no se muestren como JSON; aclarar el camino buscador vs publicador hacia el panel.
 
-- [x] 15.1 Web: `formatTrpcUserMessage` (zodError + fallback si `message` es JSON) y uso en registro + login
+- [x] 15.1 Web: `formatTrpcUserMessage` (zodError + fallback si `message` es JSON) y uso en registro + login — desde S16 vive en `@propieya/shared`
 - [x] 15.2 Registro paso 2: texto de ayuda bajo contraseña alineado a `registerSchema`
 - [x] 15.3 `/publicar`: pasos concretos (registro con intent, panel → Propiedades → Nueva) y enlaces
 - [x] 15.4 Verificar lint/typecheck, commit + push
 
 **Criterios:** el usuario ve un mensaje claro ante contraseña inválida; la página Publicar explica el flujo sin asumir que el panel “está listo” sin contexto.
+
+---
+
+## Sprint 16 — Panel publicador: onboarding y errores legibles ✅
+
+**Objetivo:** cerrar el hueco “panel para publicar”: registro desde login, primer aviso guiado, Zod legible en panel y salto a la ficha tras crear.
+
+- [x] 16.1 `formatTrpcUserMessage` en `@propieya/shared`; web importa desde shared (sin duplicar en apps/web)
+- [x] 16.2 Panel: login con enlaces a registro (particular / inmobiliaria / otro); `formatTrpcUserMessage` en login, magic link, nueva propiedad, edición, campos/nueva
+- [x] 16.3 Tras `listing.create` (propiedad o campo): redirección a `/propiedades/[id]` para fotos, dirección y publicar
+- [x] 16.4 Dashboard: card onboarding si hay 0 avisos; lista Propiedades vacía con CTA “Nueva propiedad”
+- [x] 16.5 Verificar lint/typecheck, commit + push
+
+**Criterios:** el publicador entiende el camino portal → panel → borrador → ficha → publicar; los errores de validación no se muestran como JSON.
 
 ---
 

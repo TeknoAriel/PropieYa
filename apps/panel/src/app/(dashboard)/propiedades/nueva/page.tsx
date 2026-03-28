@@ -1,6 +1,10 @@
 'use client'
 
-import { OPERATION_TYPE_LABELS, PROPERTY_TYPE_LABELS } from '@propieya/shared'
+import {
+  formatTrpcUserMessage,
+  OPERATION_TYPE_LABELS,
+  PROPERTY_TYPE_LABELS,
+} from '@propieya/shared'
 import { Button, Card, Input } from '@propieya/ui'
 import type {
   FieldVariant,
@@ -56,11 +60,12 @@ export default function NuevaPropiedadPage() {
   const [otherDescription, setOtherDescription] = useState('')
 
   const createMutation = trpc.listing.create.useMutation({
-    onSuccess: () => {
-      router.push('/propiedades')
+    onSuccess: (created) => {
+      if (created?.id) router.push(`/propiedades/${created.id}`)
+      else router.push('/propiedades')
     },
     onError: (err) => {
-      setError(err.message || 'No se pudo crear la propiedad')
+      setError(formatTrpcUserMessage(err) || 'No se pudo crear la propiedad')
     },
   })
 
@@ -181,7 +186,10 @@ export default function NuevaPropiedadPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">Nueva propiedad</h1>
-        <p className="text-text-secondary">Carga inicial simple para el MVP.</p>
+        <p className="text-text-secondary">
+          Carga inicial rápida. Después te llevamos a la ficha para completar
+          dirección, fotos y publicar.
+        </p>
       </div>
 
       <Card className="p-6">

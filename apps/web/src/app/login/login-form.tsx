@@ -4,10 +4,10 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
+import { formatTrpcUserMessage } from '@propieya/shared'
 import { Button, Card, Input } from '@propieya/ui'
 
 import { setAccessToken } from '@/lib/auth-storage'
-import { formatTrpcUserMessage } from '@/lib/trpc-form-errors'
 import { trpc } from '@/lib/trpc'
 
 function safeNext(raw: string | null): string {

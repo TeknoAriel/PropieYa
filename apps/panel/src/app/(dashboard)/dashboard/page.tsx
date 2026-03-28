@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  Button,
   Card,
   Building2,
   FileEdit,
@@ -8,6 +9,7 @@ import {
   Ban,
   Users,
   ArrowRight,
+  Plus,
 } from '@propieya/ui'
 import Link from 'next/link'
 
@@ -58,6 +60,9 @@ export default function DashboardPage() {
 
   const recentLeads = leadsData?.items ?? []
 
+  const showPublisherOnboarding =
+    !statsLoading && stats && stats.totalListings === 0
+
   return (
     <div className="space-y-6">
       <div>
@@ -72,6 +77,25 @@ export default function DashboardPage() {
           ) : null}
         </p>
       </div>
+
+      {showPublisherOnboarding ? (
+        <Card className="border-brand-primary/30 bg-brand-primary/5 p-5">
+          <h2 className="font-semibold text-text-primary">
+            Empezá a publicar en Propieya
+          </h2>
+          <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-text-secondary">
+            <li>Creá un borrador con título, descripción, precio y superficie.</li>
+            <li>En la ficha, sumá fotos y completá la ubicación si querés mostrarla.</li>
+            <li>Cuando esté listo, pulsá Publicar para que aparezca en el portal.</li>
+          </ol>
+          <Button asChild className="mt-4">
+            <Link href="/propiedades/nueva">
+              <Plus className="h-4 w-4 mr-2" />
+              Nueva propiedad
+            </Link>
+          </Button>
+        </Card>
+      ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {statsLoading
