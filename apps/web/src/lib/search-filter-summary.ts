@@ -77,6 +77,10 @@ export function buildFiltersSummary(f: ListingSearchFiltersInput): string {
     parts.push(labels.join(', '))
   }
 
+  if (f.bbox) {
+    parts.push('Zona del mapa')
+  }
+
   let s = parts.filter(Boolean).join(' · ')
   if (s.length > 480) s = `${s.slice(0, 477)}…`
   if (!s) s = 'Búsqueda guardada'

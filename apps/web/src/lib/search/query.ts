@@ -108,6 +108,18 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
     }
   }
 
+  if (merged.bbox) {
+    const { south, north, west, east } = merged.bbox
+    must.push({
+      geo_bounding_box: {
+        location: {
+          top_left: { lat: north, lon: west },
+          bottom_right: { lat: south, lon: east },
+        },
+      },
+    })
+  }
+
   const size = Math.min(merged.limit ?? 24, 50)
   const from = Math.min(merged.offset ?? 0, 500)
 
@@ -133,6 +145,7 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
       'floor',
       'escalera',
       'amenities',
+      'location',
       'primaryImageUrl',
       'publishedAt',
     ],

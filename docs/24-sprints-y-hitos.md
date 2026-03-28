@@ -231,6 +231,19 @@
 
 ---
 
+## Sprint 14 — Mapa en búsqueda (zona visible) ✅
+
+**Objetivo:** lista + mapa en `/buscar`; filtro por rectángulo (doc 38 AA, capa inicial).
+
+- [x] 14.1 API: `bbox` en `listingSearchFiltersSchema`; `listing.search` SQL + Elasticsearch `geo_bounding_box` sobre `location`
+- [x] 14.2 `_source` ES incluye `location`; matching explica “área del mapa”
+- [x] 14.3 UI: Leaflet + «Ver mapa», «Buscar en esta zona», «Quitar filtro de zona»
+- [x] 14.4 Verificar lint/typecheck, commit + push
+
+**Criterios:** el usuario puede acotar resultados al viewport del mapa; solo entran avisos con coordenadas.
+
+---
+
 ## Próximos sprints (backlog)
 
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
@@ -243,4 +256,4 @@
 
 ---
 
-*Actualizado: 2026-03-28*
+*Actualizado: 2026-03-28 (Sprint 14)*

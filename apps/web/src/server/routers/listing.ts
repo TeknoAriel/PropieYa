@@ -509,6 +509,7 @@ export const listingRouter = createTRPCRouter({
         city: input.city,
         neighborhood: input.neighborhood,
         amenities: input.amenities,
+        bbox: input.bbox,
         limit,
         offset,
       })
@@ -600,6 +601,16 @@ export const listingRouter = createTRPCRouter({
             )
           }
         }
+      }
+
+      if (input.bbox) {
+        const { south, north, west, east } = input.bbox
+        conditions.push(sql`${listings.locationLat} IS NOT NULL`)
+        conditions.push(sql`${listings.locationLng} IS NOT NULL`)
+        conditions.push(gte(listings.locationLat, south))
+        conditions.push(lte(listings.locationLat, north))
+        conditions.push(gte(listings.locationLng, west))
+        conditions.push(lte(listings.locationLng, east))
       }
 
       const rows = await ctx.db.query.listings.findMany({

@@ -65,6 +65,7 @@ export const demandRouter = createTRPCRouter({
       const features = {
         q: input.q ?? null,
         amenities: input.amenities ?? [],
+        bbox: input.bbox ?? null,
       }
 
       if (existing) {

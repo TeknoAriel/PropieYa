@@ -50,6 +50,8 @@ export interface SearchFilters {
   city?: string
   neighborhood?: string
   amenities?: string[]
+  /** Filtro por rectángulo (mapa). */
+  bbox?: { south: number; north: number; west: number; east: number }
   limit?: number
   offset?: number
 }

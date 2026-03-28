@@ -1,5 +1,16 @@
 import { z } from 'zod'
 
+/** Rectángulo geográfico (WGS84). Sur ≤ norte, oeste ≤ este (sin cruce de antimeridiano). */
+export const listingSearchBBoxSchema = z
+  .object({
+    south: z.number().gte(-90).lte(90),
+    north: z.number().gte(-90).lte(90),
+    west: z.number().gte(-180).lte(180),
+    east: z.number().gte(-180).lte(180),
+  })
+  .refine((b) => b.south <= b.north, { message: 'bbox: south debe ser <= north' })
+  .refine((b) => b.west <= b.east, { message: 'bbox: west debe ser <= east' })
+
 /** Filtros de búsqueda pública (sin paginación). */
 export const listingSearchFiltersSchema = z.object({
   q: z.string().max(200).optional(),
@@ -20,6 +31,7 @@ export const listingSearchFiltersSchema = z.object({
   city: z.string().max(120).optional(),
   neighborhood: z.string().max(120).optional(),
   amenities: z.array(z.string()).optional(),
+  bbox: listingSearchBBoxSchema.optional(),
 })
 
 export const listingSearchInputSchema = listingSearchFiltersSchema.extend({

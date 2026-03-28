@@ -22,6 +22,8 @@ export interface ExplainMatchFilters {
   city?: string
   neighborhood?: string
   amenities?: string[]
+  /** Rectángulo mapa (WGS84). */
+  bbox?: { south: number; north: number; west: number; east: number }
 }
 
 /** Datos mínimos del aviso (SQL o hit de ES). */
@@ -90,6 +92,34 @@ function listingEscalera(l: ExplainMatchListing): string | null {
 
 function includesInsensitive(hay: string, needle: string): boolean {
   return hay.toLowerCase().includes(needle.toLowerCase())
+}
+
+function listingCoords(
+  listing: ExplainMatchListing & {
+    locationLat?: number | null
+    locationLng?: number | null
+    location?: { lat?: number; lon?: number }
+  }
+): { lat: number; lng: number } | null {
+  if (
+    listing.locationLat != null &&
+    listing.locationLng != null &&
+    !Number.isNaN(Number(listing.locationLat)) &&
+    !Number.isNaN(Number(listing.locationLng))
+  ) {
+    return { lat: Number(listing.locationLat), lng: Number(listing.locationLng) }
+  }
+  const loc = listing.location
+  if (
+    loc &&
+    typeof loc.lat === 'number' &&
+    typeof loc.lon === 'number' &&
+    !Number.isNaN(loc.lat) &&
+    !Number.isNaN(loc.lon)
+  ) {
+    return { lat: loc.lat, lng: loc.lon }
+  }
+  return null
 }
 
 /**
@@ -217,6 +247,27 @@ export function explainMatchReasons(
     }
   }
 
+  if (filters.bbox) {
+    const pt = listingCoords(
+      listing as ExplainMatchListing & {
+        locationLat?: number | null
+        locationLng?: number | null
+        location?: { lat?: number; lon?: number }
+      }
+    )
+    if (pt) {
+      const { south, north, west, east } = filters.bbox
+      if (
+        pt.lat >= south &&
+        pt.lat <= north &&
+        pt.lng >= west &&
+        pt.lng <= east
+      ) {
+        reasons.push('Ubicación: dentro del área elegida en el mapa')
+      }
+    }
+  }
+
   return reasons
 }
 
@@ -259,6 +310,9 @@ export function summarizeSearchFilters(filters: ExplainMatchFilters): string {
     parts.push(`mín. ${filters.minSurface} m²`)
   }
   if (filters.q?.trim()) parts.push(`búsqueda: «${filters.q.trim().slice(0, 80)}»`)
+  if (filters.bbox) {
+    parts.push('área del mapa')
+  }
 
   return parts.length > 0
     ? parts.join(' · ')
@@ -279,5 +333,6 @@ export function completenessFromFilters(filters: ExplainMatchFilters): number {
   if (filters.minSurface != null) bump(10)
   if (filters.q?.trim()) bump(10)
   if (filters.amenities?.length) bump(5)
+  if (filters.bbox) bump(10)
   return score
 }

@@ -22,6 +22,8 @@ export interface SearchHit {
   floor?: number | null
   escalera?: string | null
   amenities?: string[]
+  /** geo_point en índice ES */
+  location?: { lat: number; lon: number }
   primaryImageUrl: string | null
   publishedAt: string | null
 }
