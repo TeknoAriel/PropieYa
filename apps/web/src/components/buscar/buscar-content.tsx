@@ -251,6 +251,10 @@ export function BuscarContent({
           <div>
             <h1 className="text-3xl font-bold text-text-primary">{pageTitle}</h1>
             <p className="mt-2 text-text-secondary">{pageSubtitle}</p>
+            <p className="mt-2 text-sm text-text-tertiary">
+              Novedad: tocá <span className="font-medium text-text-secondary">Más filtros</span>{' '}
+              debajo del formulario para barrio, amenities, superficie y piso.
+            </p>
           </div>
           <div className="flex flex-col items-stretch gap-2 sm:items-end">
             {me ? (
