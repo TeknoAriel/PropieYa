@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Settings,
   LogOut,
+  UserPlus,
 } from '@propieya/ui'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/propiedades', label: 'Propiedades', icon: Building2 },
   { href: '/campos', label: 'Campos', icon: Building2 },
+  { href: '/equipo', label: 'Equipo', icon: UserPlus },
   { href: '/leads', label: 'Leads', icon: Users },
   { href: '/mensajes', label: 'Mensajes', icon: MessageSquare },
   { href: '/configuracion', label: 'Configuración', icon: Settings },

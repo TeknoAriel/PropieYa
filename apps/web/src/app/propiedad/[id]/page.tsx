@@ -8,7 +8,12 @@ import { useParams } from 'next/navigation'
 import { Badge, Button, Card, MessageSquare, Skeleton } from '@propieya/ui'
 
 import { ContactModal } from '@/components/contact-modal'
-import { formatPrice, formatSurface } from '@propieya/shared'
+import { PropertyLocationMap } from '@/components/property/property-location-map'
+import {
+  formatPrice,
+  formatSurface,
+  OPERATION_TYPE_LABELS,
+} from '@propieya/shared'
 import type {
   Currency,
   ListingCommercialSub,
@@ -99,6 +104,77 @@ function ContactButton({
   )
 }
 
+function SimilarSection({ listingId }: { listingId: string }) {
+  const { data = [], isLoading } = trpc.listing.similar.useQuery({ id: listingId })
+
+  if (isLoading) {
+    return (
+      <Card className="p-6 space-y-4">
+        <Skeleton className="h-7 w-56" />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-44 w-full rounded-lg" />
+          ))}
+        </div>
+      </Card>
+    )
+  }
+
+  if (data.length === 0) {
+    return null
+  }
+
+  return (
+    <Card className="p-6 space-y-4">
+      <h2 className="text-lg font-semibold text-text-primary">
+        Propiedades similares
+      </h2>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {data.map((item) => {
+          const addr = item.address as { neighborhood?: string; city?: string } | null
+          const op =
+            OPERATION_TYPE_LABELS[item.operationType as OperationType] ??
+            item.operationType
+          const cur = item.priceCurrency as Currency
+          return (
+            <Link
+              key={item.id}
+              href={`/propiedad/${item.id}`}
+              className="flex gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-surface-secondary"
+            >
+              <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-md bg-surface-secondary">
+                <Image
+                  src={
+                    item.primaryImageUrl ||
+                    'https://placehold.co/400x300/e0ddd8/666660?text=Propiedad'
+                  }
+                  alt={item.title}
+                  fill
+                  sizes="112px"
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-text-tertiary">{op}</p>
+                <p className="font-semibold text-text-primary line-clamp-2">
+                  {item.title}
+                </p>
+                <p className="mt-1 text-sm font-medium text-brand-primary">
+                  {formatPrice(item.priceAmount, cur)}
+                </p>
+                <p className="text-xs text-text-secondary truncate">
+                  {addr?.neighborhood ?? '—'}, {addr?.city ?? '—'}
+                </p>
+              </div>
+            </Link>
+          )
+        })}
+      </div>
+    </Card>
+  )
+}
+
 function CommercialSubSummary({
   commercialSub,
 }: {
@@ -165,6 +241,9 @@ export default function PropiedadPage() {
     surfaceTotal: number
     bedrooms: number | null
     bathrooms: number | null
+    hideExactAddress?: boolean | null
+    locationLat?: number | null
+    locationLng?: number | null
     features?: {
       field?: ListingField | null
       commercialSub?: ListingCommercialSub | null
@@ -214,7 +293,7 @@ export default function PropiedadPage() {
           </div>
           <div className="mt-2">
             <Badge variant="outline">
-              {listing.operationType === 'sale' ? 'Venta' : 'Alquiler'}
+              {OPERATION_TYPE_LABELS[listing.operationType] ?? listing.operationType}
             </Badge>
           </div>
         </div>
@@ -293,6 +372,24 @@ export default function PropiedadPage() {
             </div>
           </Card>
 
+          {listing.hideExactAddress !== true &&
+          listing.locationLat != null &&
+          listing.locationLng != null &&
+          !Number.isNaN(listing.locationLat) &&
+          !Number.isNaN(listing.locationLng) ? (
+            <Card className="p-6 space-y-3">
+              <h2 className="text-lg font-semibold">Ubicación</h2>
+              <p className="text-xs text-text-secondary">
+                Referencia en mapa (OpenStreetMap).
+              </p>
+              <PropertyLocationMap
+                lat={listing.locationLat}
+                lng={listing.locationLng}
+                title={`Ubicación: ${listing.title}`}
+              />
+            </Card>
+          ) : null}
+
           {listing.propertyType === 'land' ? (
             <Card className="p-6 space-y-4">
               <h2 className="text-lg font-semibold">Campo</h2>
@@ -319,6 +416,8 @@ export default function PropiedadPage() {
           )}
         </div>
       </div>
+
+      <SimilarSection listingId={listing.id} />
     </div>
   )
 }

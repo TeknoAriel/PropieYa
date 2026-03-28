@@ -7,6 +7,7 @@ import {
   users,
   userSessions,
   userPreferences,
+  organizations,
   organizationMemberships,
   userTokens,
   type Database,
@@ -113,6 +114,8 @@ export const authRouter = createTRPCRouter({
         }
 
         const passwordHash = await hashPassword(input.password)
+        const accountIntent = input.accountIntent
+
         const [user] = await ctx.db
           .insert(users)
           .values({
@@ -120,6 +123,7 @@ export const authRouter = createTRPCRouter({
             name: input.name.trim(),
             phone: input.phone?.trim() ?? null,
             passwordHash,
+            accountIntent,
           })
           .returning()
 
@@ -129,10 +133,51 @@ export const authRouter = createTRPCRouter({
           userId: user.id,
         })
 
+        if (accountIntent === 'owner_publisher') {
+          const orgName = `Particular — ${input.name.trim()}`
+          const [org] = await ctx.db
+            .insert(organizations)
+            .values({
+              type: 'individual_owner',
+              status: 'active',
+              name: orgName.slice(0, 255),
+              email: user.email,
+              phone: user.phone,
+            })
+            .returning({ id: organizations.id })
+          if (org) {
+            await ctx.db.insert(organizationMemberships).values({
+              userId: user.id,
+              organizationId: org.id,
+              role: 'org_admin',
+            })
+          }
+        } else if (accountIntent === 'agency_publisher') {
+          const rawName = input.organizationName?.trim() ?? ''
+          const [org] = await ctx.db
+            .insert(organizations)
+            .values({
+              type: 'real_estate_agency',
+              status: 'active',
+              name: rawName.slice(0, 255),
+              email: user.email,
+              phone: user.phone,
+            })
+            .returning({ id: organizations.id })
+          if (org) {
+            await ctx.db.insert(organizationMemberships).values({
+              userId: user.id,
+              organizationId: org.id,
+              role: 'org_admin',
+            })
+          }
+        }
+
         return {
           id: user.id,
           email: user.email,
           name: user.name,
+          accountIntent,
         }
       } catch (e) {
         if (e instanceof TRPCError) throw e

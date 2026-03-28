@@ -1,15 +1,33 @@
 import { z } from 'zod'
 
-export const registerSchema = z.object({
-  email: z.string().email('Email inválido'),
-  password: z
-    .string()
-    .min(8, 'La contraseña debe tener al menos 8 caracteres')
-    .regex(/[A-Z]/, 'La contraseña debe tener al menos una mayúscula')
-    .regex(/[0-9]/, 'La contraseña debe tener al menos un número'),
-  name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
-  phone: z.string().optional(),
-})
+import { ACCOUNT_INTENT_VALUES } from '../constants/account-intent'
+
+export const registerSchema = z
+  .object({
+    email: z.string().email('Email inválido'),
+    password: z
+      .string()
+      .min(8, 'La contraseña debe tener al menos 8 caracteres')
+      .regex(/[A-Z]/, 'La contraseña debe tener al menos una mayúscula')
+      .regex(/[0-9]/, 'La contraseña debe tener al menos un número'),
+    name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
+    phone: z.string().optional(),
+    accountIntent: z.enum(ACCOUNT_INTENT_VALUES).default('seeker'),
+    /** Obligatorio si accountIntent === agency_publisher */
+    organizationName: z.string().max(255).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.accountIntent === 'agency_publisher' &&
+      (!data.organizationName || data.organizationName.trim().length < 2)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Indicá el nombre de la inmobiliaria (mínimo 2 caracteres)',
+        path: ['organizationName'],
+      })
+    }
+  })
 
 export const loginSchema = z.object({
   email: z.string().email('Email inválido'),

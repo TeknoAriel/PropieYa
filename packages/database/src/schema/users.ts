@@ -19,6 +19,13 @@ export const users = pgTable(
     avatarUrl: text('avatar_url'),
     locale: varchar('locale', { length: 10 }).notNull().default('es-AR'),
     timezone: varchar('timezone', { length: 50 }).notNull().default('America/Argentina/Buenos_Aires'),
+    /**
+     * Rol de onboarding: buscador, dueño publicador o inmobiliaria.
+     * Ver packages/shared `ACCOUNT_INTENT_VALUES`.
+     */
+    accountIntent: varchar('account_intent', { length: 32 })
+      .notNull()
+      .default('seeker'),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

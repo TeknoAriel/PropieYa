@@ -1,13 +1,15 @@
 'use client'
 
 import { Button, Input, Card } from '@propieya/ui'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { setTokens } from '@/lib/auth-store'
 import { safeInternalPath } from '@/lib/safe-redirect'
 import { trpc } from '@/lib/trpc'
+
+const WEB_REGISTER_BASE =
+  `${(process.env.NEXT_PUBLIC_WEB_APP_URL || 'https://propieyaweb.vercel.app').replace(/\/$/, '')}/registro`
 
 const MAGIC_LINK_UI =
   process.env.NEXT_PUBLIC_MAGIC_LINK_TEST_MODE === '1'
@@ -125,9 +127,15 @@ export default function LoginPage() {
 
         <div className="mt-6 text-center text-sm text-text-secondary">
           ¿No tenés cuenta?{' '}
-          <Link href="/register" className="text-brand-primary hover:underline">
+          <a
+            href={`${WEB_REGISTER_BASE}?intent=agency_publisher`}
+            className="text-brand-primary hover:underline"
+          >
             Registrate en el portal
-          </Link>
+          </a>{' '}
+          <span className="block mt-1 text-xs text-text-tertiary">
+            (dueños e inmobiliarias: también podés elegir otro tipo en el portal)
+          </span>
         </div>
 
         {MAGIC_LINK_UI ? (

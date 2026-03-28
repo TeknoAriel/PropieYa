@@ -6,7 +6,12 @@ import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 
 import { Badge, Button, Card, Input, Skeleton } from '@propieya/ui'
-import { formatPrice, OPERATION_TYPE_LABELS } from '@propieya/shared'
+import {
+  AMENITY_LABELS,
+  formatPrice,
+  OPERATION_TYPE_LABELS,
+  SEARCH_FILTER_AMENITIES,
+} from '@propieya/shared'
 import type { Currency, OperationType, PropertyType } from '@propieya/shared'
 
 import { getAccessToken } from '@/lib/auth-storage'
@@ -122,6 +127,7 @@ export function BuscarContent({
   const utils = trpc.useUtils()
   const [canAuth, setCanAuth] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
+  const [alertSaved, setAlertSaved] = useState(false)
 
   useEffect(() => {
     setCanAuth(!!getAccessToken())
@@ -146,11 +152,24 @@ export function BuscarContent({
     (searchParams.get('tipo') as PropertyType) ?? ''
   )
   const [city, setCity] = useState(searchParams.get('ciudad') ?? '')
-  const [neighborhood] = useState(searchParams.get('barrio') ?? '')
+  const [neighborhood, setNeighborhood] = useState(searchParams.get('barrio') ?? '')
   const [minPrice, setMinPrice] = useState(searchParams.get('min') ?? '')
   const [maxPrice, setMaxPrice] = useState(searchParams.get('max') ?? '')
-  const [minBedrooms] = useState(searchParams.get('dorm') ?? '')
-  const [minSurface] = useState(searchParams.get('sup') ?? '')
+  const [minBedrooms, setMinBedrooms] = useState(searchParams.get('dorm') ?? '')
+  const [minSurface, setMinSurface] = useState(searchParams.get('sup') ?? '')
+  const [maxSurface, setMaxSurface] = useState('')
+  const [minBathrooms, setMinBathrooms] = useState('')
+  const [minGarages, setMinGarages] = useState('')
+  const [floorMin, setFloorMin] = useState('')
+  const [floorMax, setFloorMax] = useState('')
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([])
+  const [showAdvanced, setShowAdvanced] = useState(false)
+
+  const toggleAmenity = (key: string) => {
+    setSelectedAmenities((prev) =>
+      prev.includes(key) ? prev.filter((x) => x !== key) : [...prev, key]
+    )
+  }
 
   const filters = useMemo(
     () => ({
@@ -163,6 +182,12 @@ export function BuscarContent({
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
       minBedrooms: minBedrooms ? Number(minBedrooms) : undefined,
       minSurface: minSurface ? Number(minSurface) : undefined,
+      maxSurface: maxSurface ? Number(maxSurface) : undefined,
+      minBathrooms: minBathrooms ? Number(minBathrooms) : undefined,
+      minGarages: minGarages ? Number(minGarages) : undefined,
+      floorMin: floorMin ? Number(floorMin) : undefined,
+      floorMax: floorMax ? Number(floorMax) : undefined,
+      amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined,
       limit: 24,
       offset: 0,
     }),
@@ -177,6 +202,12 @@ export function BuscarContent({
       maxPrice,
       minBedrooms,
       minSurface,
+      maxSurface,
+      minBathrooms,
+      minGarages,
+      floorMin,
+      floorMax,
+      selectedAmenities,
     ]
   )
 
@@ -190,11 +221,24 @@ export function BuscarContent({
     return rest
   }, [filters])
 
+  const alertPayload = useMemo(() => {
+    const { limit: _l, offset: _o, ...rest } = filters
+    return rest
+  }, [filters])
+
   const saveProfile = trpc.demand.upsertFromSearchFilters.useMutation({
     onSuccess: () => {
       setProfileSaved(true)
       void utils.demand.getMyProfile.invalidate()
       window.setTimeout(() => setProfileSaved(false), 4000)
+    },
+  })
+
+  const createAlert = trpc.searchAlert.create.useMutation({
+    onSuccess: () => {
+      setAlertSaved(true)
+      void utils.searchAlert.getMyFeed.invalidate()
+      window.setTimeout(() => setAlertSaved(false), 4000)
     },
   })
 
@@ -221,6 +265,16 @@ export function BuscarContent({
                     ? 'Guardando…'
                     : 'Guardar filtros en mi perfil'}
                 </Button>
+                <Button
+                  type="button"
+                  variant="default"
+                  disabled={createAlert.isPending}
+                  onClick={() => createAlert.mutate(alertPayload)}
+                >
+                  {createAlert.isPending
+                    ? 'Creando…'
+                    : 'Crear alerta con estos filtros'}
+                </Button>
                 <div className="flex flex-wrap gap-2">
                   <Button asChild variant="outline" size="sm">
                     <Link href="/perfil-demanda">Perfil de demanda</Link>
@@ -246,6 +300,11 @@ export function BuscarContent({
         {profileSaved ? (
           <p className="text-sm text-semantic-success">
             Perfil actualizado con estos filtros.
+          </p>
+        ) : null}
+        {alertSaved ? (
+          <p className="text-sm text-semantic-success">
+            Alerta creada. Podés verla en Mis alertas.
           </p>
         ) : null}
 
@@ -311,6 +370,100 @@ export function BuscarContent({
               onChange={(e) => setMaxPrice(e.target.value)}
             />
           </div>
+          <div className="mt-3 flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAdvanced((v) => !v)}
+            >
+              {showAdvanced ? 'Ocultar filtros avanzados' : 'Más filtros'}
+            </Button>
+          </div>
+          {showAdvanced ? (
+            <div className="mt-4 space-y-4 border-t border-border pt-4">
+              <p className="text-sm font-medium text-text-primary">
+                Ubicación y superficie
+              </p>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Input
+                  placeholder="Barrio"
+                  value={neighborhood}
+                  onChange={(e) => setNeighborhood(e.target.value)}
+                />
+                <Input
+                  type="number"
+                  placeholder="Dorm. mín."
+                  value={minBedrooms}
+                  onChange={(e) => setMinBedrooms(e.target.value)}
+                  min={0}
+                />
+                <Input
+                  type="number"
+                  placeholder="Baños mín."
+                  value={minBathrooms}
+                  onChange={(e) => setMinBathrooms(e.target.value)}
+                  min={0}
+                />
+                <Input
+                  type="number"
+                  placeholder="Cocheras mín."
+                  value={minGarages}
+                  onChange={(e) => setMinGarages(e.target.value)}
+                  min={0}
+                />
+                <Input
+                  type="number"
+                  placeholder="Superficie mín. (m²)"
+                  value={minSurface}
+                  onChange={(e) => setMinSurface(e.target.value)}
+                  min={0}
+                />
+                <Input
+                  type="number"
+                  placeholder="Superficie máx. (m²)"
+                  value={maxSurface}
+                  onChange={(e) => setMaxSurface(e.target.value)}
+                  min={0}
+                />
+                <Input
+                  type="number"
+                  placeholder="Piso desde"
+                  value={floorMin}
+                  onChange={(e) => setFloorMin(e.target.value)}
+                  min={0}
+                />
+                <Input
+                  type="number"
+                  placeholder="Piso hasta"
+                  value={floorMax}
+                  onChange={(e) => setFloorMax(e.target.value)}
+                  min={0}
+                />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-text-primary mb-2">
+                  Amenities
+                </p>
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                  {SEARCH_FILTER_AMENITIES.map((key) => (
+                    <label
+                      key={key}
+                      className="flex cursor-pointer items-center gap-2 text-sm text-text-secondary"
+                    >
+                      <input
+                        type="checkbox"
+                        className="rounded border-border"
+                        checked={selectedAmenities.includes(key)}
+                        onChange={() => toggleAmenity(key)}
+                      />
+                      {AMENITY_LABELS[key]}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </Card>
       </div>
 

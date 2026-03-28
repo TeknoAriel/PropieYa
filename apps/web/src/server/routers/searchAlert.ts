@@ -4,7 +4,10 @@ import { z } from 'zod'
 
 import { listings, notifications, searchAlerts } from '@propieya/database'
 
+import { buildFiltersSummary } from '../../lib/search-filter-summary'
+
 import { createTRPCRouter, protectedProcedure } from '../trpc'
+import { listingSearchFiltersSchema } from './listing-search-input'
 
 type FeedNotificationItem = {
   kind: 'notification'
@@ -31,6 +34,35 @@ type FeedSavedSearchItem = {
 type FeedItem = FeedNotificationItem | FeedSavedSearchItem
 
 export const searchAlertRouter = createTRPCRouter({
+  create: protectedProcedure
+    .input(
+      listingSearchFiltersSchema.extend({
+        name: z.string().max(255).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { name, ...filterFields } = input
+      const filtersSummary = buildFiltersSummary(filterFields)
+
+      const [row] = await ctx.db
+        .insert(searchAlerts)
+        .values({
+          userId: ctx.session.userId,
+          name: name?.trim() || null,
+          filters: filterFields as Record<string, unknown>,
+          filtersSummary,
+          isActive: true,
+          updatedAt: new Date(),
+        })
+        .returning({ id: searchAlerts.id })
+
+      if (!row) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'No se pudo crear la alerta' })
+      }
+
+      return { id: row.id, filtersSummary }
+    }),
+
   /** Notificaciones de match + alertas guardadas, orden unificado por fecha. */
   getMyFeed: protectedProcedure.query(async ({ ctx }): Promise<FeedItem[]> => {
     const userId = ctx.session.userId

@@ -89,3 +89,14 @@ export const orgProcedure = protectedProcedure.use(({ ctx, next }) => {
     },
   })
 })
+
+/** Gestión de equipo: coordinadores y admins de org. */
+export const orgMembersProcedure = orgProcedure.use(({ ctx, next }) => {
+  if (!ctx.session.permissions.includes('org:members')) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Sin permiso para gestionar el equipo',
+    })
+  }
+  return next({ ctx })
+})

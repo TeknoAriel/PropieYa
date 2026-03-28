@@ -84,5 +84,6 @@ export {
   Sun,
   TrendingDown,
   TrendingUp,
+  UserPlus,
   Users,
 } from 'lucide-react'
