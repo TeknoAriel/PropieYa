@@ -180,6 +180,8 @@
 
 ## Próximos sprints (backlog)
 
+**Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
+
 - Sprint 10: Alertas guardadas
 - Sprint 11: Gestión de organización (invitar miembros)
 - Sprint 12: Ficha propiedad mejorada (mapa, similares)

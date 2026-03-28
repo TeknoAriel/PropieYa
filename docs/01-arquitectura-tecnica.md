@@ -193,6 +193,8 @@ Además de tRPC, endpoints REST para:
 
 ## 6. Búsqueda (Elasticsearch)
 
+**Criterios de facets dinámicos, mapa geoespacial completo y semántica:** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` (secciones Y, AA, AB) — guían la evolución del mapping, queries y capa de sinónimos.
+
 ### 6.1 Índice de Propiedades
 
 ```json

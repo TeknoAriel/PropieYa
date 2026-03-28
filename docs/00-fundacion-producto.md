@@ -23,6 +23,8 @@ Propieya es una plataforma inmobiliaria conversacional-first, diseñada para cap
 
 **Lo que NO entra en MVP:** White-label completo, módulo desarrollistas, hub de inversiones, tokenización, analytics avanzado, multi-tenant real. Se diseñan las interfaces y el data model para soportarlos, pero no se implementan.
 
+**Criterios extendidos (MLS-ready real, filtros facetados, mapa profundo, semántica y UX por capas):** ver **`docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md`** — complementa este documento para backlog y arquitectura evolutiva.
+
 ---
 
 ## 2. Replanteo Crítico del Producto
