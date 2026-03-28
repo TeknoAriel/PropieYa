@@ -1,0 +1,77 @@
+# Abre un PR main ← deploy/infra cuando main va atrasada (sin push directo a main).
+# Permisos: el token del workflow puede crear PRs en el mismo repo.
+name: Proponer sincronización main
+
+on:
+  push:
+    branches: [deploy/infra]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  open-pr-if-needed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Crear PR si main no incluye deploy/infra
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          owner="${REPO%%/*}"
+          repo="${REPO#*/}"
+          api="https://api.github.com/repos/${owner}/${repo}"
+
+          # Comparar base=main, head=deploy/infra
+          cmp=$(curl -fsS -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${api}/compare/main...deploy/infra")
+
+          status=$(echo "$cmp" | jq -r '.status')
+          ahead=$(echo "$cmp" | jq -r '.ahead_by // 0')
+          behind=$(echo "$cmp" | jq -r '.behind_by // 0')
+
+          echo "compare main...deploy/infra: status=$status ahead_by=$ahead behind_by=$behind"
+
+          if [ "$status" = "identical" ] || [ "${ahead:-0}" -eq 0 ]; then
+            echo "No hace falta PR (main ya alineada o sin commits en deploy/infra)."
+            exit 0
+          fi
+
+          existing=$(curl -fsS -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${api}/pulls?state=open&head=${owner}:deploy/infra&base=main")
+
+          count=$(echo "$existing" | jq 'length')
+          if [ "$count" -gt 0 ]; then
+            num=$(echo "$existing" | jq -r '.[0].number')
+            echo "Ya existe PR abierto: #$num"
+            exit 0
+          fi
+
+          body="Sincroniza main con deploy/infra (portal ya desplegado vía Promote). ahead_by=${ahead}"
+
+          resp=$(curl -sS -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${api}/pulls" \
+            -d "$(jq -n \
+              --arg title "chore: sincronizar main con deploy/infra" \
+              --arg body "$body" \
+              '{title: $title, head: "deploy/infra", base: "main", body: $body}')")
+
+          code=$(echo "$resp" | tail -n1)
+          body_out=$(echo "$resp" | sed '$d')
+          echo "$body_out" | jq .
+          if [ "$code" = "201" ]; then
+            echo "PR creado."
+          elif [ "$code" = "422" ]; then
+            echo "No se pudo crear (p. ej. ya existe o conflicto). Código 422."
+            exit 0
+          else
+            echo "::error::Fallo HTTP $code al crear PR"
+            exit 1
+          fi
