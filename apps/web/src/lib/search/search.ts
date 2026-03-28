@@ -29,6 +29,7 @@ export interface SearchHit {
   location?: { lat: number; lon: number }
   primaryImageUrl: string | null
   publishedAt: string | null
+  updatedAt?: string | null
 }
 
 export interface SearchResult {

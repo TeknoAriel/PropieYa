@@ -35,6 +35,7 @@ export function listingToEsDoc(row: ListingRow): Record<string, unknown> {
     orientation: row.orientation ?? null,
     primaryImageUrl: row.primaryImageUrl ?? null,
     publishedAt: row.publishedAt,
+    updatedAt: row.updatedAt,
     createdAt: row.createdAt,
     amenities: row.amenities ?? [],
   }

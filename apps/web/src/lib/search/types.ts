@@ -29,6 +29,7 @@ export interface ListingRow {
   orientation?: string | null
   primaryImageUrl: string | null
   publishedAt: Date | null
+  updatedAt: Date
   createdAt: Date
   amenities?: string[]
 }

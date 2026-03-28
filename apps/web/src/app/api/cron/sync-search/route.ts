@@ -75,6 +75,7 @@ export async function GET(req: NextRequest) {
         orientation: features.orientation ?? null,
         primaryImageUrl: r.primaryImageUrl,
         publishedAt: r.publishedAt,
+        updatedAt: r.updatedAt,
         createdAt: r.createdAt,
         amenities: features.amenities ?? [],
       }

@@ -143,7 +143,11 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
 
   return {
     query: { bool: { must } },
-    sort: [{ publishedAt: { order: 'desc', unmapped_type: 'date' } }],
+    sort: [
+      { publishedAt: { order: 'desc', unmapped_type: 'date' } },
+      { updatedAt: { order: 'desc', unmapped_type: 'date' } },
+      { createdAt: { order: 'desc', unmapped_type: 'date' } },
+    ],
     size,
     from,
     _source: [
@@ -161,7 +165,6 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
       'bathrooms',
       'garages',
       'totalRooms',
-      'surfaceCovered',
       'floor',
       'escalera',
       'orientation',
@@ -169,6 +172,7 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
       'location',
       'primaryImageUrl',
       'publishedAt',
+      'updatedAt',
     ],
   }
 }

@@ -40,6 +40,18 @@ function sanitizeIlikeFragment(raw: string): string {
   return raw.trim().slice(0, 120).replace(/[%_\\]/g, ' ').replace(/\s+/g, ' ')
 }
 
+/** Listados: más reciente arriba. Público: por publicación + desempate. Panel (mis avisos): por última modificación. */
+const ORDER_PUBLIC_RECENCY = [
+  desc(listings.publishedAt),
+  desc(listings.updatedAt),
+  desc(listings.createdAt),
+]
+
+const ORDER_PANEL_RECENCY = [
+  desc(listings.updatedAt),
+  desc(listings.createdAt),
+]
+
 export const listingRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createListingSchema)
@@ -237,7 +249,7 @@ export const listingRouter = createTRPCRouter({
 
       return ctx.db.query.listings.findMany({
         where: and(...conditions),
-        orderBy: [desc(listings.createdAt)],
+        orderBy: ORDER_PANEL_RECENCY,
         limit: input.limit,
       })
     }),
@@ -435,7 +447,7 @@ export const listingRouter = createTRPCRouter({
 
       const rows = await ctx.db.query.listings.findMany({
         where: and(...conditions),
-        orderBy: [desc(listings.publishedAt)],
+        orderBy: ORDER_PUBLIC_RECENCY,
         limit: input.limit,
       })
 
@@ -480,7 +492,7 @@ export const listingRouter = createTRPCRouter({
     .query(async ({ input, ctx }) => {
       const result = await ctx.db.query.listings.findMany({
         where: eq(listings.status, 'active'),
-        orderBy: [desc(listings.publishedAt)],
+        orderBy: ORDER_PUBLIC_RECENCY,
         limit: input.limit,
       })
 
@@ -639,7 +651,7 @@ export const listingRouter = createTRPCRouter({
 
       const rows = await ctx.db.query.listings.findMany({
         where: and(...conditions),
-        orderBy: [desc(listings.publishedAt)],
+        orderBy: ORDER_PUBLIC_RECENCY,
         limit,
         offset,
       })
@@ -753,7 +765,7 @@ export const listingRouter = createTRPCRouter({
 
       const hits = await ctx.db.query.listings.findMany({
         where: and(...conditions),
-        orderBy: [desc(listings.publishedAt)],
+        orderBy: ORDER_PUBLIC_RECENCY,
         limit: filters.limit ?? 24,
         offset: filters.offset ?? 0,
       })

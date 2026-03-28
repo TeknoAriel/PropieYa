@@ -85,6 +85,7 @@ async function main() {
       orientation: features.orientation ?? null,
       primaryImageUrl: r.primaryImageUrl,
       publishedAt: r.publishedAt,
+      updatedAt: r.updatedAt,
       createdAt: r.createdAt,
       amenities: features.amenities ?? [],
     }

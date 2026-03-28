@@ -286,6 +286,24 @@
 
 ---
 
+## Sprint 18 — Orden de listados: más reciente arriba ✅
+
+**Objetivo:** regla de producto única: en listados de negocio, lo más reciente aparece primero; criterio explícito según contexto.
+
+**Regla**
+
+- **Portal / búsqueda pública** (activos): orden principal `publishedAt` descendente; desempate `updatedAt`, luego `createdAt` (misma idea en SQL fallback y en Elasticsearch).
+- **Panel “mis avisos”** (`listing.listMine`): orden por última modificación: `updatedAt` descendente, luego `createdAt`.
+- **Otros listados ya alineados:** leads por `createdAt` desc; alertas / notificaciones / feed por fecha reciente; miembros e invitaciones de org por fecha desc.
+
+- [x] 18.1 Router `listing`: constantes `ORDER_PUBLIC_RECENCY` y `ORDER_PANEL_RECENCY`; `similar`, `getFeatured`, SQL de `search` / `searchConversational` y `listMine` usan esos criterios
+- [x] 18.2 Elasticsearch: campo `updatedAt` en mapping, documento indexado, sort en cascada alineado a SQL; cron `sync-search` y script `sync-search:local` envían `updatedAt`
+- [x] 18.3 Verificar `pnpm verify`, commit + push
+
+**Criterios:** listados de avisos en portal y panel reflejan “más reciente arriba” con criterio documentado; ES y SQL coinciden en intención de orden.
+
+---
+
 ## Próximos sprints (backlog)
 
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
@@ -298,4 +316,4 @@
 
 ---
 
-*Actualizado: 2026-03-28 (Sprint 17)*
+*Actualizado: 2026-03-27 (Sprint 18)*
