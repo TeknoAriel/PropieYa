@@ -1,0 +1,6 @@
+{
+  "framework": "nextjs",
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "buildCommand": "cd ../.. && pnpm exec turbo run build --filter=@propieya/panel --force",
+  "ignoreCommand": "cd ../.. && npx --yes turbo-ignore@2 @propieya/panel"
+}
