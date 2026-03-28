@@ -4,7 +4,7 @@ La base en Neon (o la que use `DATABASE_URL` en Vercel) **no tiene las tablas** 
 
 ## Solución
 
-1. **Obtener DATABASE_URL** de Vercel → propieya-web → Settings → Environment Variables
+1. **Obtener DATABASE_URL** de Vercel → **propie-ya-web** → Settings → Environment Variables
 2. **Desde tu máquina:**
    ```bash
    cd /Users/arielcarnevali/Propieya
@@ -12,5 +12,17 @@ La base en Neon (o la que use `DATABASE_URL` en Vercel) **no tiene las tablas** 
    ```
    O: `DATABASE_URL="postgresql://..." pnpm db:push`
 3. **Reintentá** registro o login en `/registro` y en el panel.
+
+## Después del schema: importar propiedades (Yumblin)
+
+En la raíz del repo, con la **misma** `DATABASE_URL` de producción:
+
+```bash
+DATABASE_URL="postgresql://..." pnpm exec tsx scripts/seed-org-for-import.ts
+DATABASE_URL="postgresql://..." pnpm import:yumblin
+DATABASE_URL="postgresql://..." pnpm publish:imported
+```
+
+Opcional: `./scripts/verificar-ingestion.sh` (pull de env desde Vercel en `apps/web` + import + ES). Ver `docs/35-VERIFICACION-INGESTA.md`.
 
 Ver `docs/31-DEPURAR-PRODUCCION.md` para más pasos de depuración.

@@ -14,10 +14,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
-  echo "❌ Definí DATABASE_URL (la misma que usa Vercel en propieya-web)"
+  echo "❌ Definí DATABASE_URL (la misma que usa Vercel en propie-ya-web)"
   echo ""
   echo "Dónde conseguirla:"
-  echo "  https://vercel.com/teknoariels-projects/propieya-web/settings/environment-variables"
+  echo "  https://vercel.com/teknoariels-projects/propie-ya-web/settings/environment-variables"
   echo ""
   echo "Ejecutá:"
   echo '  DATABASE_URL="postgresql://user:pass@host/db?sslmode=require" ./scripts/db-push-produccion.sh'
