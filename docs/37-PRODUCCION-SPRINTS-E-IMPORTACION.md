@@ -13,7 +13,11 @@
 
 ### GitHub: commits con “X” roja
 
-- En PRs `deploy/infra` → `main`, a veces fallan checks del **Vercel GitHub App** (build duplicado o preview) mientras el **workflow Promote** en `deploy/infra` ya desplegó bien. Mirar **qué check** falló (Actions vs Vercel). El criterio de producción operativa es: `GET /` = 200 y `GET /api/health` = 200 tras configurar env.
+- **Histórico:** en la lista de commits del PR, la X refleja el estado **del momento en que se pusheó** ese commit (p. ej. iteraciones de deploy); no reescribe el pasado aunque hoy el código sea bueno.
+- **Estado combinado:** si el mismo repo tiene enlazados **varios proyectos Vercel** (web + panel), **uno solo en rojo** (p. ej. preview de `propieya-panel`) marca todo el commit como fallido aunque `propie-ya-web` esté en verde y el Promote ya haya publicado el portal.
+- **Mitigación en repo:** `apps/panel/vercel.json` usa `ignoreCommand` con `turbo-ignore` para **no construir el panel** cuando el cambio no afecta `@propieya/panel`, evitando falsos rojos en PRs solo-web.
+- **Duplicado web:** si siguen dos proyectos “portal” (`propieya_web` vs `propie-ya-web`), conviene dejar uno solo (`docs/11-vercel-proyecto-duplicado.md`).
+- Criterio de producción: `GET /` = 200, `GET /api/health` y `/api/version` coherentes con `deploy/infra`.
 
 ---
 
