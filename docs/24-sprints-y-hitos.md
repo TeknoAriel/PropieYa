@@ -178,15 +178,51 @@
 
 ---
 
+## Sprint 10 — Alertas guardadas ✅
+
+**Objetivo:** persistir filtros de búsqueda como alerta (`search_alerts`) y resumen legible.
+
+- [x] 10.1 `buildFiltersSummary` + `searchAlert.create` (input alineado con `listingSearchFiltersSchema`)
+- [x] 10.2 UI `/buscar`: botón “Crear alerta con estos filtros” (usuario autenticado)
+- [x] 10.3 Verificar lint/typecheck, commit + push
+
+**Criterios:** el usuario logueado puede guardar una alerta desde la búsqueda; el feed en `/mis-alertas` la lista.
+
+---
+
+## Sprint 11 — Gestión de organización (invitaciones) ✅
+
+**Objetivo:** invitar miembros por email con token y aceptación en el portal.
+
+- [x] 11.1 Router `organization`: `listMembers`, `listPendingInvites`, `createInvite`, `revokeInvite`, `acceptInvite`
+- [x] 11.2 `orgMembersProcedure` (permiso `org:members`) y JWT actualizado al aceptar
+- [x] 11.3 Portal: `/aceptar-invitacion`, login/registro con `next` para volver al flujo
+- [x] 11.4 Panel: página `/equipo` + enlace en sidebar
+- [x] 11.5 Verificar lint/typecheck, commit + push
+
+**Criterios:** un admin/coordinador genera enlace; el invitado acepta con el mismo email y obtiene acceso al panel.
+
+---
+
+## Sprint 12 — Ficha propiedad mejorada (similares) ✅
+
+**Objetivo:** sugerir avisos parecidos en la ficha pública.
+
+- [x] 12.1 `listing.similar` (misma operación/tipo, ciudad si hay, precio ±30% si se muestra precio)
+- [x] 12.2 UI ficha: bloque “Propiedades similares”
+- [x] 12.3 Verificar lint/typecheck, commit + push
+
+**Criterios:** la ficha muestra hasta 6 similares cuando existen.
+
+**Pendiente de producto (doc 38):** mapa en ficha, facets dinámicos, MLS, semántica — no cubierto en este sprint.
+
+---
+
 ## Próximos sprints (backlog)
 
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
 
 **Onboarding y monetización (registro por persona, MP stub):** `docs/40-ONBOARDING-PERSONAS-Y-FLUJOS.md`, `docs/39-MONETIZACION-MERCADOPAGO.md`. Tras pull: `pnpm db:push` para `users.account_intent` y `payment_webhook_events`.
-
-- Sprint 10: Alertas guardadas
-- Sprint 11: Gestión de organización (invitar miembros)
-- Sprint 12: Ficha propiedad mejorada (mapa, similares)
 
 ---
 

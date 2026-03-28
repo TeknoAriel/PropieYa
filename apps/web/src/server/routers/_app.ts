@@ -4,6 +4,7 @@ import { demandRouter } from './demand'
 import { healthRouter } from './health'
 import { leadRouter } from './lead'
 import { listingRouter } from './listing'
+import { organizationRouter } from './organization'
 import { searchAlertRouter } from './searchAlert'
 
 export const appRouter = createTRPCRouter({
@@ -12,6 +13,7 @@ export const appRouter = createTRPCRouter({
   health: healthRouter,
   lead: leadRouter,
   listing: listingRouter,
+  organization: organizationRouter,
   searchAlert: searchAlertRouter,
 })
 

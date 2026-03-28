@@ -39,9 +39,16 @@ export function RegisterContent() {
     setAccountIntent(intentFromQuery(q))
   }, [searchParams])
 
+  const nextAfterRegister = searchParams.get('next')
+
   const registerMutation = trpc.auth.register.useMutation({
     onSuccess: () => {
-      router.push('/login?registered=1')
+      const base = '/login?registered=1'
+      const url =
+        nextAfterRegister && nextAfterRegister.startsWith('/') && !nextAfterRegister.startsWith('//')
+          ? `${base}&next=${encodeURIComponent(nextAfterRegister)}`
+          : base
+      router.push(url)
     },
     onError: (err) => {
       setError(err.message || 'No se pudo crear la cuenta')

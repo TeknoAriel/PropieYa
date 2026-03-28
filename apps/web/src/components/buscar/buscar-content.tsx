@@ -122,6 +122,7 @@ export function BuscarContent({
   const utils = trpc.useUtils()
   const [canAuth, setCanAuth] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
+  const [alertSaved, setAlertSaved] = useState(false)
 
   useEffect(() => {
     setCanAuth(!!getAccessToken())
@@ -190,11 +191,24 @@ export function BuscarContent({
     return rest
   }, [filters])
 
+  const alertPayload = useMemo(() => {
+    const { limit: _l, offset: _o, ...rest } = filters
+    return rest
+  }, [filters])
+
   const saveProfile = trpc.demand.upsertFromSearchFilters.useMutation({
     onSuccess: () => {
       setProfileSaved(true)
       void utils.demand.getMyProfile.invalidate()
       window.setTimeout(() => setProfileSaved(false), 4000)
+    },
+  })
+
+  const createAlert = trpc.searchAlert.create.useMutation({
+    onSuccess: () => {
+      setAlertSaved(true)
+      void utils.searchAlert.getMyFeed.invalidate()
+      window.setTimeout(() => setAlertSaved(false), 4000)
     },
   })
 
@@ -221,6 +235,16 @@ export function BuscarContent({
                     ? 'Guardando…'
                     : 'Guardar filtros en mi perfil'}
                 </Button>
+                <Button
+                  type="button"
+                  variant="default"
+                  disabled={createAlert.isPending}
+                  onClick={() => createAlert.mutate(alertPayload)}
+                >
+                  {createAlert.isPending
+                    ? 'Creando…'
+                    : 'Crear alerta con estos filtros'}
+                </Button>
                 <div className="flex flex-wrap gap-2">
                   <Button asChild variant="outline" size="sm">
                     <Link href="/perfil-demanda">Perfil de demanda</Link>
@@ -246,6 +270,11 @@ export function BuscarContent({
         {profileSaved ? (
           <p className="text-sm text-semantic-success">
             Perfil actualizado con estos filtros.
+          </p>
+        ) : null}
+        {alertSaved ? (
+          <p className="text-sm text-semantic-success">
+            Alerta creada. Podés verla en Mis alertas.
           </p>
         ) : null}
 

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { z } from 'zod'
-import { eq, and, desc, ilike, or, gte, lte, sql, count } from 'drizzle-orm'
+import { eq, and, desc, ilike, or, gte, lte, sql, count, ne, inArray } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
 import {
@@ -389,6 +389,85 @@ export const listingRouter = createTRPCRouter({
         ...listing,
         media,
       }
+    }),
+
+  /** Avisos similares (misma operación y tipo, ciudad si existe, banda de precio ±30%). */
+  similar: publicProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        limit: z.number().min(1).max(12).default(6),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const base = await ctx.db.query.listings.findFirst({
+        where: and(eq(listings.id, input.id), eq(listings.status, 'active')),
+      })
+
+      if (!base) {
+        return []
+      }
+
+      const conditions = [
+        eq(listings.status, 'active'),
+        ne(listings.id, input.id),
+        eq(listings.operationType, base.operationType),
+        eq(listings.propertyType, base.propertyType),
+      ]
+
+      const addr = base.address as Record<string, unknown> | null | undefined
+      const cityRaw = typeof addr?.city === 'string' ? addr.city : ''
+      const city = sanitizeIlikeFragment(cityRaw)
+      if (city.length > 0) {
+        conditions.push(
+          sql`COALESCE(${listings.address}->>'city', '') ILIKE ${`%${city}%`}`
+        )
+      }
+
+      const price = Number(base.priceAmount)
+      if (!Number.isNaN(price) && price > 0 && base.showPrice !== false) {
+        const low = Math.max(0, Math.floor(price * 0.7))
+        const high = Math.ceil(price * 1.3)
+        conditions.push(gte(listings.priceAmount, low))
+        conditions.push(lte(listings.priceAmount, high))
+      }
+
+      const rows = await ctx.db.query.listings.findMany({
+        where: and(...conditions),
+        orderBy: [desc(listings.publishedAt)],
+        limit: input.limit,
+      })
+
+      if (rows.length === 0) {
+        return []
+      }
+
+      const ids = rows.map((r) => r.id)
+      const allMedia = await ctx.db.query.listingMedia.findMany({
+        where: inArray(listingMedia.listingId, ids),
+        orderBy: [desc(listingMedia.isPrimary), listingMedia.order],
+      })
+
+      const primaryByListing = new Map<string, string>()
+      for (const m of allMedia) {
+        if (!primaryByListing.has(m.listingId)) {
+          primaryByListing.set(m.listingId, m.url)
+        }
+      }
+
+      return rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        operationType: row.operationType,
+        propertyType: row.propertyType,
+        priceAmount: row.priceAmount,
+        priceCurrency: row.priceCurrency,
+        address: row.address,
+        surfaceTotal: row.surfaceTotal,
+        bedrooms: row.bedrooms,
+        bathrooms: row.bathrooms,
+        primaryImageUrl: primaryByListing.get(row.id) ?? null,
+      }))
     }),
 
   getFeatured: publicProcedure

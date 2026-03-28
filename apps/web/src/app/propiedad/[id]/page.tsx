@@ -8,7 +8,11 @@ import { useParams } from 'next/navigation'
 import { Badge, Button, Card, MessageSquare, Skeleton } from '@propieya/ui'
 
 import { ContactModal } from '@/components/contact-modal'
-import { formatPrice, formatSurface } from '@propieya/shared'
+import {
+  formatPrice,
+  formatSurface,
+  OPERATION_TYPE_LABELS,
+} from '@propieya/shared'
 import type {
   Currency,
   ListingCommercialSub,
@@ -96,6 +100,77 @@ function ContactButton({
         onOpenChange={setOpen}
       />
     </>
+  )
+}
+
+function SimilarSection({ listingId }: { listingId: string }) {
+  const { data = [], isLoading } = trpc.listing.similar.useQuery({ id: listingId })
+
+  if (isLoading) {
+    return (
+      <Card className="p-6 space-y-4">
+        <Skeleton className="h-7 w-56" />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-44 w-full rounded-lg" />
+          ))}
+        </div>
+      </Card>
+    )
+  }
+
+  if (data.length === 0) {
+    return null
+  }
+
+  return (
+    <Card className="p-6 space-y-4">
+      <h2 className="text-lg font-semibold text-text-primary">
+        Propiedades similares
+      </h2>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {data.map((item) => {
+          const addr = item.address as { neighborhood?: string; city?: string } | null
+          const op =
+            OPERATION_TYPE_LABELS[item.operationType as OperationType] ??
+            item.operationType
+          const cur = item.priceCurrency as Currency
+          return (
+            <Link
+              key={item.id}
+              href={`/propiedad/${item.id}`}
+              className="flex gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-surface-secondary"
+            >
+              <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-md bg-surface-secondary">
+                <Image
+                  src={
+                    item.primaryImageUrl ||
+                    'https://placehold.co/400x300/e0ddd8/666660?text=Propiedad'
+                  }
+                  alt={item.title}
+                  fill
+                  sizes="112px"
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-text-tertiary">{op}</p>
+                <p className="font-semibold text-text-primary line-clamp-2">
+                  {item.title}
+                </p>
+                <p className="mt-1 text-sm font-medium text-brand-primary">
+                  {formatPrice(item.priceAmount, cur)}
+                </p>
+                <p className="text-xs text-text-secondary truncate">
+                  {addr?.neighborhood ?? '—'}, {addr?.city ?? '—'}
+                </p>
+              </div>
+            </Link>
+          )
+        })}
+      </div>
+    </Card>
   )
 }
 
@@ -319,6 +394,8 @@ export default function PropiedadPage() {
           )}
         </div>
       </div>
+
+      <SimilarSection listingId={listing.id} />
     </div>
   )
 }

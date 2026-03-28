@@ -1,8 +1,8 @@
 import { Suspense } from 'react'
 
-import { LoginForm } from './login-form'
+import { AceptarInvitacionContent } from './aceptar-content'
 
-export default function LoginPage() {
+export default function AceptarInvitacionPage() {
   return (
     <Suspense
       fallback={
@@ -11,7 +11,7 @@ export default function LoginPage() {
         </div>
       }
     >
-      <LoginForm />
+      <AceptarInvitacionContent />
     </Suspense>
   )
 }
