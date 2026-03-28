@@ -19,6 +19,8 @@ function mergeFilters(filters: SearchFilters): SearchFilters {
   const extracted = extractFiltersFromQuery(filters.q)
   return {
     ...filters,
+    operationType: filters.operationType ?? extracted.operationType,
+    propertyType: filters.propertyType ?? extracted.propertyType,
     amenities: [...new Set([...(filters.amenities ?? []), ...(extracted.amenities ?? [])])],
     minSurface: extracted.minSurface ?? filters.minSurface,
     maxSurface: extracted.maxSurface ?? filters.maxSurface,

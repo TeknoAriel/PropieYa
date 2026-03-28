@@ -6,9 +6,15 @@
  */
 
 import { SEARCH_TERM_TO_AMENITY } from './amenity-mapping'
-import type { Amenity } from './types/listing'
+import {
+  matchOperationTypeFromText,
+  matchPropertyTypeFromText,
+} from './search-semantics'
+import type { Amenity, OperationType, PropertyType } from './types/listing'
 
 export interface ExtractedFilters {
+  operationType?: OperationType
+  propertyType?: PropertyType
   amenities?: Amenity[]
   minSurface?: number
   maxSurface?: number
@@ -57,6 +63,11 @@ export function extractFiltersFromQuery(q: string): ExtractedFilters {
   const filters: ExtractedFilters = {}
   const lower = q.toLowerCase().trim()
   if (!lower) return filters
+
+  const op = matchOperationTypeFromText(lower)
+  if (op) filters.operationType = op
+  const pt = matchPropertyTypeFromText(lower)
+  if (pt) filters.propertyType = pt
 
   // Amenities
   const amenities: Amenity[] = []

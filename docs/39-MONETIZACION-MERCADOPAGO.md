@@ -13,8 +13,9 @@ Ofrecer una **pasarela tipo marketplace** (Mercado Pago es el estándar en Latam
 
 | Pieza | Ubicación |
 |-------|-----------|
-| Webhook HTTP 200 + persistencia cruda | `apps/web/src/app/api/payments/mercadopago/webhook/route.ts` |
-| Tabla auditoría / idempotencia futura | `payment_webhook_events` en `packages/database/src/schema/billing.ts` |
+| Webhook HTTP 200 + persistencia; idempotencia si hay `data.id` / `body.id` | `apps/web/src/app/api/payments/mercadopago/webhook/route.ts` |
+| Validación HMAC opcional (`x-signature`, manifest oficial MP) | `apps/web/src/lib/payments/mercadopago-webhook-verify.ts` — activa si `MERCADOPAGO_WEBHOOK_SECRET` está definido |
+| Tabla auditoría | `payment_webhook_events` en `packages/database/src/schema/billing.ts` |
 
 Tras `pnpm db:push` (o migración equivalente), los eventos entrantes se guardan en `payment_webhook_events`.
 
@@ -29,8 +30,8 @@ Ver `.env.example` — prefijos sugeridos:
 
 ## Próximos pasos técnicos (orden sugerido)
 
-1. **Verificar firma** del webhook (`x-signature` / `x-request-id` según documentación actual de Mercado Pago).
-2. **Idempotencia:** `UNIQUE (provider, external_eventId)` donde `externalEventId` no sea null.
+1. **Verificar firma** — implementado de forma opcional con `MERCADOPAGO_WEBHOOK_SECRET` (sin secreto, el endpoint sigue aceptando notificaciones para desarrollo/simulador).
+2. **Idempotencia** — lectura previa por `(provider, external_eventId)` antes de insertar; pendiente índice único parcial en DB si se quiere garantía a nivel SQL.
 3. **Modelo de negocio en DB:** `products` / `subscriptions` / `orders` ligados a `organization_id` o `user_id`.
 4. **Checkout Pro** o **API de pagos** desde el panel (crear preferencia, redirigir, IPN/webhook confirma).
 5. **Panel:** pantalla “Facturación” y activación de destacados tras pago aprobado.

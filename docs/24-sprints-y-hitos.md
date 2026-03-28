@@ -304,6 +304,31 @@
 
 ---
 
+## Sprint 19 — Semántica de búsqueda en texto (operación, tipo, amenities) ✅
+
+**Objetivo:** capa AB de `docs/38`: misma lógica de sinónimos para barra de búsqueda (ES) y fallback conversacional sin duplicar mapas en `llm.ts`.
+
+- [x] 19.1 `packages/shared/src/search-semantics.ts`: operación (venta/alquiler/temporal) y tipo de propiedad (frases y `ph` con límite de palabra)
+- [x] 19.2 `extractFiltersFromQuery` devuelve `operationType` / `propertyType`; `mergeFilters` en `apps/web/src/lib/search/query.ts` los aplica si el usuario no los fijó en UI
+- [x] 19.3 `apps/web/src/lib/llm.ts` fallback usa solo `extractFiltersFromQuery` para esos campos; más términos en `SEARCH_TERM_TO_AMENITY` (quincho, barbacoa, natación)
+- [x] 19.4 Verificar `pnpm verify`, commit + push
+
+**Criterios:** una consulta tipo “alquiler departamento Palermo con pileta” refuerza filtros desde `q` alineados al modelo interno.
+
+---
+
+## Sprint 20 — Webhook Mercado Pago: firma e idempotencia ✅
+
+**Objetivo:** avanzar `docs/39` sin romper entornos sin secreto.
+
+- [x] 20.1 Validación HMAC-SHA256 con `x-signature` / `x-request-id` / `data.id` (query o body), normalización de id alfanumérico
+- [x] 20.2 Idempotencia: si ya existe evento con mismo `provider` + `externalEventId`, responder 200 sin duplicar fila
+- [x] 20.3 Documentar en `docs/39`; verificar `pnpm verify`, commit + push
+
+**Criterios:** con `MERCADOPAGO_WEBHOOK_SECRET` solo entran notificaciones firmadas; reintentos de MP no duplican auditoría.
+
+---
+
 ## Próximos sprints (backlog)
 
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
@@ -316,4 +341,4 @@
 
 ---
 
-*Actualizado: 2026-03-27 (Sprint 18)*
+*Actualizado: 2026-03-27 (Sprints 19–20)*

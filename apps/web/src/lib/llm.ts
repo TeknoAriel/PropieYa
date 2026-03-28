@@ -20,31 +20,6 @@ export interface ExtractedIntention {
   q?: string
 }
 
-const OPERATION_MAP: Record<string, 'sale' | 'rent' | 'temporary_rent'> = {
-  venta: 'sale',
-  vender: 'sale',
-  comprar: 'sale',
-  compra: 'sale',
-  alquiler: 'rent',
-  alquilar: 'rent',
-  temporal: 'temporary_rent',
-  temporario: 'temporary_rent',
-}
-
-const PROPERTY_MAP: Record<string, string> = {
-  departamento: 'apartment',
-  depto: 'apartment',
-  monoambiente: 'apartment',
-  casa: 'house',
-  ph: 'ph',
-  terreno: 'land',
-  oficina: 'office',
-  local: 'commercial',
-  galpon: 'warehouse',
-  galpón: 'warehouse',
-  cochera: 'parking',
-}
-
 function getOpenAIClient(): OpenAI | null {
   const key = process.env.OPENAI_API_KEY
   if (!key?.trim()) return null
@@ -127,21 +102,8 @@ function fallbackExtract(message: string): ExtractedIntention {
   const lower = message.toLowerCase().trim()
   const out: ExtractedIntention = {}
 
-  // Operación
-  for (const [term, op] of Object.entries(OPERATION_MAP)) {
-    if (lower.includes(term)) {
-      out.operationType = op
-      break
-    }
-  }
-
-  // Tipo de propiedad
-  for (const [term, pt] of Object.entries(PROPERTY_MAP)) {
-    if (lower.includes(term)) {
-      out.propertyType = pt
-      break
-    }
-  }
+  if (extracted.operationType) out.operationType = extracted.operationType
+  if (extracted.propertyType) out.propertyType = extracted.propertyType
 
   out.minPrice = extracted.minPrice
   out.maxPrice = extracted.maxPrice
