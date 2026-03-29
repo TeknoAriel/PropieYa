@@ -97,25 +97,25 @@ jobs:
           }
           JSON
           cd apps/web
-          npx --yes vercel@37 pull --yes --environment=production --token "${VERCEL_TOKEN}"
+          npx --yes vercel@41 pull --yes --environment=production --token "${VERCEL_TOKEN}"
 
-      # Build en el runner (mismo vercel.json / turbo que producción) y subida prebuilt.
-      # Evita fallos del builder remoto que no reproducían `pnpm verify`.
-      - name: Vercel build (apps/web, artefacto prebuilt)
+      # Patrón Vercel: pull (production) → build --prod → deploy --prebuilt --prod.
+      # Si build --prod falla en el runner, fallback a deploy remoto (misma cwd apps/web).
+      - name: Deploy producción (Vercel build --prod + prebuilt o remoto)
         env:
           TURBO_FORCE: "1"
         run: |
           set -euo pipefail
           cd apps/web
-          npx --yes vercel@37 build --token "${VERCEL_TOKEN}"
-
-      - name: Deploy producción (prebuilt → prod)
-        run: |
-          set -euo pipefail
-          cd apps/web
-          out="$(npx --yes vercel@37 deploy --prebuilt --prod --yes --token "${VERCEL_TOKEN}" \
-            --meta "githubSha=${GITHUB_SHA}" \
-            --meta "githubRepo=${GITHUB_REPOSITORY}")"
+          TOKEN="${VERCEL_TOKEN}"
+          META=( --meta "githubSha=${GITHUB_SHA}" --meta "githubRepo=${GITHUB_REPOSITORY}" )
+          if npx --yes vercel@41 build --prod --token "${TOKEN}"; then
+            echo "::notice::vercel build --prod OK → deploy --prebuilt"
+            out="$(npx --yes vercel@41 deploy --prebuilt --prod --yes --token "${TOKEN}" "${META[@]}")"
+          else
+            echo "::warning::vercel build --prod falló en Actions → deploy remoto (build en Vercel)"
+            out="$(npx --yes vercel@41 deploy --prod --yes --token "${TOKEN}" "${META[@]}")"
+          fi
           echo "$out"
           url="$(echo "$out" | grep -Eo 'https?://[^ ]+\\.vercel\\.app' | tail -n 1 || true)"
           if [ -n "${url:-}" ]; then
