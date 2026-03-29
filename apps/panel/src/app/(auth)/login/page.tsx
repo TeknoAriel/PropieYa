@@ -1,5 +1,6 @@
 'use client'
 
+import { formatTrpcUserMessage } from '@propieya/shared'
 import { Button, Input, Card } from '@propieya/ui'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -39,7 +40,7 @@ export default function LoginPage() {
       router.push(redirectTo)
     },
     onError: (err) => {
-      setError(err.message ?? 'Error al iniciar sesión')
+      setError(formatTrpcUserMessage(err) || 'Error al iniciar sesión')
     },
   })
 
@@ -125,17 +126,27 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-text-secondary">
-          ¿No tenés cuenta?{' '}
-          <a
-            href={`${WEB_REGISTER_BASE}?intent=agency_publisher`}
-            className="text-brand-primary hover:underline"
-          >
-            Registrate en el portal
-          </a>{' '}
-          <span className="block mt-1 text-xs text-text-tertiary">
-            (dueños e inmobiliarias: también podés elegir otro tipo en el portal)
-          </span>
+        <div className="mt-6 space-y-3 text-center text-sm text-text-secondary">
+          <p>
+            ¿No tenés cuenta? Registrate en el portal según tu perfil:
+          </p>
+          <div className="flex flex-col gap-2 text-sm">
+            <a
+              href={`${WEB_REGISTER_BASE}?intent=owner_publisher`}
+              className="text-brand-primary hover:underline"
+            >
+              Soy particular y publico mi propiedad
+            </a>
+            <a
+              href={`${WEB_REGISTER_BASE}?intent=agency_publisher`}
+              className="text-brand-primary hover:underline"
+            >
+              Soy inmobiliaria o equipo
+            </a>
+            <a href={WEB_REGISTER_BASE} className="text-text-tertiary hover:underline text-xs">
+              Otro tipo de cuenta (elegir en el registro)
+            </a>
+          </div>
         </div>
 
         {MAGIC_LINK_UI ? (

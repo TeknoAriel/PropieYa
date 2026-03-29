@@ -50,6 +50,7 @@ export async function syncListingToSearch(
     orientation: features.orientation ?? null,
     primaryImageUrl: row.primaryImageUrl,
     publishedAt: row.publishedAt,
+    updatedAt: row.updatedAt,
     createdAt: row.createdAt,
     amenities: features.amenities ?? [],
   }

@@ -19,9 +19,15 @@ export interface ExplainMatchFilters {
   floorMin?: number
   floorMax?: number
   escalera?: string
+  orientation?: string
+  minSurfaceCovered?: number
+  maxSurfaceCovered?: number
+  minTotalRooms?: number
   city?: string
   neighborhood?: string
   amenities?: string[]
+  /** Rectángulo mapa (WGS84). */
+  bbox?: { south: number; north: number; west: number; east: number }
 }
 
 /** Datos mínimos del aviso (SQL o hit de ES). */
@@ -41,6 +47,9 @@ export interface ExplainMatchListing {
   amenities?: string[]
   floor?: number | null
   escalera?: string | null
+  surfaceCovered?: number | null
+  totalRooms?: number | null
+  orientation?: string | null
 }
 
 function normAddr(addr: unknown): { city?: string; neighborhood?: string } {
@@ -88,8 +97,67 @@ function listingEscalera(l: ExplainMatchListing): string | null {
   return null
 }
 
+function listingOrientation(l: ExplainMatchListing): string | null {
+  if (typeof l.orientation === 'string' && l.orientation.trim()) {
+    return l.orientation.trim()
+  }
+  const f = l.features
+  if (f && typeof f === 'object' && 'orientation' in f) {
+    const o = (f as { orientation?: unknown }).orientation
+    if (typeof o === 'string' && o.trim()) return o.trim()
+  }
+  return null
+}
+
+function listingSurfaceCovered(l: ExplainMatchListing): number | null {
+  if (typeof l.surfaceCovered === 'number' && !Number.isNaN(l.surfaceCovered)) {
+    return l.surfaceCovered
+  }
+  return null
+}
+
+function listingTotalRooms(l: ExplainMatchListing): number | null {
+  if (typeof l.totalRooms === 'number' && !Number.isNaN(l.totalRooms)) {
+    return l.totalRooms
+  }
+  const f = l.features
+  if (f && typeof f === 'object' && 'totalRooms' in f) {
+    const t = (f as { totalRooms?: unknown }).totalRooms
+    if (typeof t === 'number' && !Number.isNaN(t)) return t
+  }
+  return null
+}
+
 function includesInsensitive(hay: string, needle: string): boolean {
   return hay.toLowerCase().includes(needle.toLowerCase())
+}
+
+function listingCoords(
+  listing: ExplainMatchListing & {
+    locationLat?: number | null
+    locationLng?: number | null
+    location?: { lat?: number; lon?: number }
+  }
+): { lat: number; lng: number } | null {
+  if (
+    listing.locationLat != null &&
+    listing.locationLng != null &&
+    !Number.isNaN(Number(listing.locationLat)) &&
+    !Number.isNaN(Number(listing.locationLng))
+  ) {
+    return { lat: Number(listing.locationLat), lng: Number(listing.locationLng) }
+  }
+  const loc = listing.location
+  if (
+    loc &&
+    typeof loc.lat === 'number' &&
+    typeof loc.lon === 'number' &&
+    !Number.isNaN(loc.lat) &&
+    !Number.isNaN(loc.lon)
+  ) {
+    return { lat: loc.lat, lng: loc.lon }
+  }
+  return null
 }
 
 /**
@@ -191,6 +259,39 @@ export function explainMatchReasons(
     }
   }
 
+  if (filters.orientation?.trim()) {
+    const want = filters.orientation.trim()
+    const got = listingOrientation(listing)
+    if (got === want) {
+      reasons.push(`Orientación: ${got}`)
+    }
+  }
+
+  const sc = listingSurfaceCovered(listing)
+  if (filters.minSurfaceCovered !== undefined && sc != null) {
+    if (sc >= filters.minSurfaceCovered) {
+      reasons.push(
+        `Sup. cubierta: ${Math.round(sc)} m² (mínimo ${filters.minSurfaceCovered} m²)`
+      )
+    }
+  }
+  if (filters.maxSurfaceCovered !== undefined && sc != null) {
+    if (sc <= filters.maxSurfaceCovered) {
+      reasons.push(
+        `Sup. cubierta: ${Math.round(sc)} m² (máximo ${filters.maxSurfaceCovered} m²)`
+      )
+    }
+  }
+
+  const tr = listingTotalRooms(listing)
+  if (filters.minTotalRooms !== undefined && tr != null) {
+    if (tr >= filters.minTotalRooms) {
+      reasons.push(
+        `Ambientes: ${tr} (pediste al menos ${filters.minTotalRooms})`
+      )
+    }
+  }
+
   const lam = listingAmenities(listing)
   const lamSet = new Set(lam)
   if (filters.amenities?.length) {
@@ -214,6 +315,27 @@ export function explainMatchReasons(
       (includesInsensitive(title, frag) || includesInsensitive(desc, frag))
     ) {
       reasons.push('Texto: coincide con tu búsqueda')
+    }
+  }
+
+  if (filters.bbox) {
+    const pt = listingCoords(
+      listing as ExplainMatchListing & {
+        locationLat?: number | null
+        locationLng?: number | null
+        location?: { lat?: number; lon?: number }
+      }
+    )
+    if (pt) {
+      const { south, north, west, east } = filters.bbox
+      if (
+        pt.lat >= south &&
+        pt.lat <= north &&
+        pt.lng >= west &&
+        pt.lng <= east
+      ) {
+        reasons.push('Ubicación: dentro del área elegida en el mapa')
+      }
     }
   }
 
@@ -258,7 +380,25 @@ export function summarizeSearchFilters(filters: ExplainMatchFilters): string {
   if (filters.minSurface !== undefined) {
     parts.push(`mín. ${filters.minSurface} m²`)
   }
+  if (filters.minSurfaceCovered !== undefined) {
+    parts.push(`cubierta ≥ ${filters.minSurfaceCovered} m²`)
+  }
+  if (filters.maxSurfaceCovered !== undefined) {
+    parts.push(`cubierta ≤ ${filters.maxSurfaceCovered} m²`)
+  }
+  if (filters.minTotalRooms !== undefined) {
+    parts.push(`≥ ${filters.minTotalRooms} ambientes`)
+  }
+  if (filters.orientation?.trim()) {
+    parts.push(`orientación ${filters.orientation.trim()}`)
+  }
+  if (filters.escalera?.trim()) {
+    parts.push(`esc. ${filters.escalera.trim()}`)
+  }
   if (filters.q?.trim()) parts.push(`búsqueda: «${filters.q.trim().slice(0, 80)}»`)
+  if (filters.bbox) {
+    parts.push('área del mapa')
+  }
 
   return parts.length > 0
     ? parts.join(' · ')
@@ -277,7 +417,12 @@ export function completenessFromFilters(filters: ExplainMatchFilters): number {
   if (filters.minPrice != null || filters.maxPrice != null) bump(15)
   if (filters.minBedrooms != null) bump(10)
   if (filters.minSurface != null) bump(10)
+  if (filters.minSurfaceCovered != null || filters.maxSurfaceCovered != null) bump(5)
+  if (filters.minTotalRooms != null) bump(5)
+  if (filters.orientation?.trim()) bump(3)
+  if (filters.escalera?.trim()) bump(3)
   if (filters.q?.trim()) bump(10)
   if (filters.amenities?.length) bump(5)
+  if (filters.bbox) bump(10)
   return score
 }

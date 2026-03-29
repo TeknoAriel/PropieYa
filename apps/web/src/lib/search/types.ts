@@ -29,6 +29,7 @@ export interface ListingRow {
   orientation?: string | null
   primaryImageUrl: string | null
   publishedAt: Date | null
+  updatedAt: Date
   createdAt: Date
   amenities?: string[]
 }
@@ -47,9 +48,15 @@ export interface SearchFilters {
   floorMin?: number
   floorMax?: number
   escalera?: string
+  orientation?: string
+  minSurfaceCovered?: number
+  maxSurfaceCovered?: number
+  minTotalRooms?: number
   city?: string
   neighborhood?: string
   amenities?: string[]
+  /** Filtro por rectángulo (mapa). */
+  bbox?: { south: number; north: number; west: number; east: number }
   limit?: number
   offset?: number
 }

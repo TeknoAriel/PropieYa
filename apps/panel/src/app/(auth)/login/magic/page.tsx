@@ -1,5 +1,6 @@
 'use client'
 
+import { formatTrpcUserMessage } from '@propieya/shared'
 import { Button, Card } from '@propieya/ui'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -39,7 +40,7 @@ function MagicLoginInner() {
           router.push(redirectTo)
         },
         onError: (err) => {
-          setError(err.message ?? 'No se pudo validar el enlace')
+          setError(formatTrpcUserMessage(err) || 'No se pudo validar el enlace')
         },
       }
     )

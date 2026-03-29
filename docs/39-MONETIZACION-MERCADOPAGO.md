@@ -13,8 +13,9 @@ Ofrecer una **pasarela tipo marketplace** (Mercado Pago es el estándar en Latam
 
 | Pieza | Ubicación |
 |-------|-----------|
-| Webhook HTTP 200 + persistencia cruda | `apps/web/src/app/api/payments/mercadopago/webhook/route.ts` |
-| Tabla auditoría / idempotencia futura | `payment_webhook_events` en `packages/database/src/schema/billing.ts` |
+| Webhook HTTP 200 + persistencia; idempotencia con `ON CONFLICT` + índice único | `apps/web/src/app/api/payments/mercadopago/webhook/route.ts` |
+| Validación HMAC opcional (`x-signature`, manifest MP con partes opcionales `id` / `request-id`, tolerancia de `ts`) | `apps/web/src/lib/payments/mercadopago-webhook-verify.ts` — activa si `MERCADOPAGO_WEBHOOK_SECRET` está definido |
+| Tabla auditoría + **único parcial** `(provider, external_event_id)` donde id no es null | `payment_webhook_events` en `packages/database/src/schema/billing.ts` |
 
 Tras `pnpm db:push` (o migración equivalente), los eventos entrantes se guardan en `payment_webhook_events`.
 
@@ -24,16 +25,16 @@ Ver `.env.example` — prefijos sugeridos:
 
 - `MERCADOPAGO_ACCESS_TOKEN` — API privada (servidor).
 - `MERCADOPAGO_PUBLIC_KEY` — front Checkout Bricks / SDK si se usa en cliente.
-- `MERCADOPAGO_WEBHOOK_SECRET` — validación de firma (implementar según doc oficial MP).
+- `MERCADOPAGO_WEBHOOK_SECRET` — secreto del panel MP para validar `x-signature` (HMAC); si no está definido, el webhook no exige firma (solo entornos de prueba).
+- `MERCADOPAGO_WEBHOOK_TS_SKEW_MS` — margen de reloj en ms para el `ts` del header (default `600000`). Pon `0` para desactivar el control.
 - `MERCADOPAGO_CLIENT_ID` / `MERCADOPAGO_CLIENT_SECRET` — OAuth si aplica.
 
 ## Próximos pasos técnicos (orden sugerido)
 
-1. **Verificar firma** del webhook (`x-signature` / `x-request-id` según documentación actual de Mercado Pago).
-2. **Idempotencia:** `UNIQUE (provider, external_eventId)` donde `externalEventId` no sea null.
-3. **Modelo de negocio en DB:** `products` / `subscriptions` / `orders` ligados a `organization_id` o `user_id`.
-4. **Checkout Pro** o **API de pagos** desde el panel (crear preferencia, redirigir, IPN/webhook confirma).
-5. **Panel:** pantalla “Facturación” y activación de destacados tras pago aprobado.
+1. **Webhook base** — firma opcional (`MERCADOPAGO_WEBHOOK_SECRET`), manifest alineado a MP (partes opcionales), tolerancia de `ts` (`MERCADOPAGO_WEBHOOK_TS_SKEW_MS`), idempotencia SQL. **Notificaciones QR:** MP indica que no usan el mismo esquema de firma; en apps solo QR, no configurar secreto en ese entorno o usar URL de notificación separada.
+2. **Modelo de negocio en DB:** `products` / `subscriptions` / `orders` ligados a `organization_id` o `user_id`.
+3. **Checkout Pro** o **API de pagos** desde el panel (crear preferencia, redirigir, IPN/webhook confirma).
+4. **Panel:** pantalla “Facturación” y activación de destacados tras pago aprobado.
 
 ## Documentación externa
 

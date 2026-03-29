@@ -2,8 +2,26 @@
 
 Referencia del feed XML Zonaprop (Kiteprop) para identificar **todos** los campos que sirven como filtros de búsqueda por texto o asistente. **No usamos este XML como importador** (se usa Yumblin/JSON), pero la estructura es referencia para mapear campos.
 
-**URL referencia:**  
+**URL referencia (feed completo OpenNavent, ~tens MB):**  
 https://static.kiteprop.com/kp/difusions/13d87da051c790afaf09c7afd094f151d7d06290/zonaprop.xml
+
+**Muestra en repo (un solo aviso):** `docs/samples/zonaprop-kiteprop-one-aviso.xml`  
+**Mapeo código:** `packages/shared/src/xml/zonaprop-opennavent-map.ts` (`OPENNAVENT_XML_STRUCTURE`, `OPENNAVENT_CARACTERISTICA_NOMBRE_TO_ROLE`).
+
+### Estructura OpenNavent (Kiteprop)
+
+| XML | Uso en Propieya |
+|-----|-----------------|
+| `OpenNavent` / `Avisos` / `Aviso` | Un listing |
+| `codigoAviso`, `claveReferencia` | Referencia externa / trazabilidad |
+| `titulo`, `descripcion` | `title`, `description` |
+| `tipoDePropiedad/tipo` | `propertyType` (normalizar texto → enum) |
+| `precios/precio`: `monto`, `moneda`, `operacion` | `priceAmount`, `priceCurrency`, `operationType` |
+| `valorMantenimiento` | `price.expenses` (expensas / mantenimiento) |
+| `localizacion`: `Ubicacion`, `direccion`, `latitud`, `longitud`, `codigoPostal`, `muestraMapa` | `address`, `location`, `hideExactAddress` según mapa |
+| `caracteristicas/caracteristica`: `nombre` (`CATEGORIA|CLAVE`), `valor` o `idValor` | Dormitorios, baños, superficies, amenities, etc. (ver mapa TS) |
+
+Las claves `nombre` tipo `PRINCIPALES|DORMITORIO`, `MEDIDAS|SUPERFICIE_CUBIERTA`, `SERVICIOS|ASCENSOR` se resuelven a roles internos en `opennaventCharacteristicRole()`.
 
 ---
 
@@ -59,7 +77,8 @@ https://static.kiteprop.com/kp/difusions/13d87da051c790afaf09c7afd094f151d7d0629
 
 ## Implementación
 
-- **Mapeo XML → campos:** `packages/shared/src/xml/property-ficha-map.ts`
+- **OpenNavent (estructura real del feed):** `packages/shared/src/xml/zonaprop-opennavent-map.ts`
+- **Mapeo XML → campos genéricos:** `packages/shared/src/xml/property-ficha-map.ts`
 - **Extracción de texto:** `packages/shared/src/search-term-extractor.ts` (`extractFiltersFromQuery`)
 - **Amenities:** `packages/shared/src/amenity-mapping.ts`
 - **Mapper Yumblin:** `packages/shared/src/xml/yumblin-mapper.ts`

@@ -1,5 +1,16 @@
 import { z } from 'zod'
 
+/** Rectángulo geográfico (WGS84). Sur ≤ norte, oeste ≤ este (sin cruce de antimeridiano). */
+export const listingSearchBBoxSchema = z
+  .object({
+    south: z.number().gte(-90).lte(90),
+    north: z.number().gte(-90).lte(90),
+    west: z.number().gte(-180).lte(180),
+    east: z.number().gte(-180).lte(180),
+  })
+  .refine((b) => b.south <= b.north, { message: 'bbox: south debe ser <= north' })
+  .refine((b) => b.west <= b.east, { message: 'bbox: west debe ser <= east' })
+
 /** Filtros de búsqueda pública (sin paginación). */
 export const listingSearchFiltersSchema = z.object({
   q: z.string().max(200).optional(),
@@ -17,9 +28,18 @@ export const listingSearchFiltersSchema = z.object({
   floorMin: z.number().int().min(0).optional(),
   floorMax: z.number().int().min(0).optional(),
   escalera: z.string().max(10).optional(),
+  /** Filtro por orientación (mismo enum que `features.orientation` en listings). */
+  orientation: z
+    .enum(['N', 'S', 'E', 'W', 'NE', 'NW', 'SE', 'SW'])
+    .optional(),
+  minSurfaceCovered: z.number().nonnegative().optional(),
+  maxSurfaceCovered: z.number().nonnegative().optional(),
+  /** Ambientes totales (`PRINCIPALES|AMBIENTE` en OpenNavent → `totalRooms`). */
+  minTotalRooms: z.number().int().min(0).max(50).optional(),
   city: z.string().max(120).optional(),
   neighborhood: z.string().max(120).optional(),
   amenities: z.array(z.string()).optional(),
+  bbox: listingSearchBBoxSchema.optional(),
 })
 
 export const listingSearchInputSchema = listingSearchFiltersSchema.extend({

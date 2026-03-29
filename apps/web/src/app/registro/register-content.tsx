@@ -8,6 +8,7 @@ import { Button, Card, Input } from '@propieya/ui'
 import {
   ACCOUNT_INTENT_LABELS,
   ACCOUNT_INTENT_VALUES,
+  formatTrpcUserMessage,
   type AccountIntent,
 } from '@propieya/shared'
 
@@ -51,7 +52,7 @@ export function RegisterContent() {
       router.push(url)
     },
     onError: (err) => {
-      setError(err.message || 'No se pudo crear la cuenta')
+      setError(formatTrpcUserMessage(err) || 'No se pudo crear la cuenta')
     },
   })
 
@@ -157,13 +158,18 @@ export function RegisterContent() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-            <Input
-              type="password"
-              placeholder="Mínimo 8 caracteres, 1 mayúscula y 1 número"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <div className="space-y-1">
+              <Input
+                type="password"
+                placeholder="Contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <p className="text-xs text-text-tertiary">
+                Mínimo 8 caracteres, al menos una mayúscula y un número.
+              </p>
+            </div>
             <div className="flex gap-2">
               <Button
                 type="button"

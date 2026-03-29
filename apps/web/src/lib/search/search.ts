@@ -19,11 +19,17 @@ export interface SearchHit {
   bedrooms: number | null
   bathrooms: number | null
   garages?: number | null
+  totalRooms?: number | null
+  surfaceCovered?: number | null
   floor?: number | null
   escalera?: string | null
+  orientation?: string | null
   amenities?: string[]
+  /** geo_point en índice ES */
+  location?: { lat: number; lon: number }
   primaryImageUrl: string | null
   publishedAt: string | null
+  updatedAt?: string | null
 }
 
 export interface SearchResult {

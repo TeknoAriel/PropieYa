@@ -40,6 +40,10 @@ coverage
 .eslintcache
 tmp-*.zip
 
+# Dump completo del XML OpenNavent/Kiteprop (~80MB+); usar solo la muestra en docs/samples/
+docs/samples/zonaprop-kiteprop-sample.xml
+docs/samples/zonaprop-kiteprop-full-feed.xml
+
 # Credenciales locales (no subir)
 DEPLOY-CREDENTIALS.local.txt
 

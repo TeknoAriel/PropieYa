@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
+import { formatTrpcUserMessage } from '@propieya/shared'
 import { Button, Card, Input } from '@propieya/ui'
 
 import { setAccessToken } from '@/lib/auth-storage'
@@ -34,7 +35,7 @@ export function LoginForm() {
       router.push(safeNext(nextParam))
     },
     onError: (err) => {
-      setError(err.message || 'No se pudo iniciar sesión')
+      setError(formatTrpcUserMessage(err) || 'No se pudo iniciar sesión')
     },
   })
 

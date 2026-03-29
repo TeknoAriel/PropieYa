@@ -231,6 +231,115 @@
 
 ---
 
+## Sprint 14 — Mapa en búsqueda (zona visible) ✅
+
+**Objetivo:** lista + mapa en `/buscar`; filtro por rectángulo (doc 38 AA, capa inicial).
+
+- [x] 14.1 API: `bbox` en `listingSearchFiltersSchema`; `listing.search` SQL + Elasticsearch `geo_bounding_box` sobre `location`
+- [x] 14.2 `_source` ES incluye `location`; matching explica “área del mapa”
+- [x] 14.3 UI: Leaflet + «Ver mapa», «Buscar en esta zona», «Quitar filtro de zona»
+- [x] 14.4 Verificar lint/typecheck, commit + push
+
+**Criterios:** el usuario puede acotar resultados al viewport del mapa; solo entran avisos con coordenadas.
+
+---
+
+## Sprint 15 — Registro legible + guía Publicar / panel ✅
+
+**Objetivo:** que los errores de validación Zod no se muestren como JSON; aclarar el camino buscador vs publicador hacia el panel.
+
+- [x] 15.1 Web: `formatTrpcUserMessage` (zodError + fallback si `message` es JSON) y uso en registro + login — desde S16 vive en `@propieya/shared`
+- [x] 15.2 Registro paso 2: texto de ayuda bajo contraseña alineado a `registerSchema`
+- [x] 15.3 `/publicar`: pasos concretos (registro con intent, panel → Propiedades → Nueva) y enlaces
+- [x] 15.4 Verificar lint/typecheck, commit + push
+
+**Criterios:** el usuario ve un mensaje claro ante contraseña inválida; la página Publicar explica el flujo sin asumir que el panel “está listo” sin contexto.
+
+---
+
+## Sprint 16 — Panel publicador: onboarding y errores legibles ✅
+
+**Objetivo:** cerrar el hueco “panel para publicar”: registro desde login, primer aviso guiado, Zod legible en panel y salto a la ficha tras crear.
+
+- [x] 16.1 `formatTrpcUserMessage` en `@propieya/shared`; web importa desde shared (sin duplicar en apps/web)
+- [x] 16.2 Panel: login con enlaces a registro (particular / inmobiliaria / otro); `formatTrpcUserMessage` en login, magic link, nueva propiedad, edición, campos/nueva
+- [x] 16.3 Tras `listing.create` (propiedad o campo): redirección a `/propiedades/[id]` para fotos, dirección y publicar
+- [x] 16.4 Dashboard: card onboarding si hay 0 avisos; lista Propiedades vacía con CTA “Nueva propiedad”
+- [x] 16.5 Verificar lint/typecheck, commit + push
+
+**Criterios:** el publicador entiende el camino portal → panel → borrador → ficha → publicar; los errores de validación no se muestran como JSON.
+
+---
+
+## Sprint 17 — XML OpenNavent (Zonaprop/Kiteprop) + filtros y ficha ✅
+
+**Objetivo:** incorporar el feed real OpenNavent como referencia en repo (muestra liviana), mapeo en código, campos alineados a búsqueda y edición en panel.
+
+- [x] 17.1 Muestra `docs/samples/zonaprop-kiteprop-one-aviso.xml` + README; `.gitignore` al dump completo (~80MB); doc `36` actualizada con estructura `<OpenNavent>/<Avisos>/<Aviso>`
+- [x] 17.2 `packages/shared/src/xml/zonaprop-opennavent-map.ts` (URL feed, roles `PRINCIPALES|*` → modelo interno)
+- [x] 17.3 `createListingSchema.features.escalera`; create en panel con `escalera: null`
+- [x] 17.4 Búsqueda: `orientation`, `minSurfaceCovered`, `maxSurfaceCovered`, `minTotalRooms` + ES/SQL + explain + resumen alertas/perfil + **escalera en UI** `/buscar`
+- [x] 17.5 Panel editar ficha: superficie cubierta, ambientes totales, piso, pisos edificio, orientación, escalera (indexación ES al publicar)
+- [x] 17.6 Verificar lint/typecheck, commit + push
+
+**Criterios:** el XML de referencia está documentado y trazable en código; los filtros avanzados cubren campos del feed; el publicador puede cargar datos que entran en SQL/ES como el modelo XML.
+
+---
+
+## Sprint 18 — Orden de listados: más reciente arriba ✅
+
+**Objetivo:** regla de producto única: en listados de negocio, lo más reciente aparece primero; criterio explícito según contexto.
+
+**Regla**
+
+- **Portal / búsqueda pública** (activos): orden principal `publishedAt` descendente; desempate `updatedAt`, luego `createdAt` (misma idea en SQL fallback y en Elasticsearch).
+- **Panel “mis avisos”** (`listing.listMine`): orden por última modificación: `updatedAt` descendente, luego `createdAt`.
+- **Otros listados ya alineados:** leads por `createdAt` desc; alertas / notificaciones / feed por fecha reciente; miembros e invitaciones de org por fecha desc.
+
+- [x] 18.1 Router `listing`: constantes `ORDER_PUBLIC_RECENCY` y `ORDER_PANEL_RECENCY`; `similar`, `getFeatured`, SQL de `search` / `searchConversational` y `listMine` usan esos criterios
+- [x] 18.2 Elasticsearch: campo `updatedAt` en mapping, documento indexado, sort en cascada alineado a SQL; cron `sync-search` y script `sync-search:local` envían `updatedAt`
+- [x] 18.3 Verificar `pnpm verify`, commit + push
+
+**Criterios:** listados de avisos en portal y panel reflejan “más reciente arriba” con criterio documentado; ES y SQL coinciden en intención de orden.
+
+---
+
+## Sprint 19 — Semántica de búsqueda en texto (operación, tipo, amenities) ✅
+
+**Objetivo:** capa AB de `docs/38`: misma lógica de sinónimos para barra de búsqueda (ES) y fallback conversacional sin duplicar mapas en `llm.ts`.
+
+- [x] 19.1 `packages/shared/src/search-semantics.ts`: operación (venta/alquiler/temporal) y tipo de propiedad (frases y `ph` con límite de palabra)
+- [x] 19.2 `extractFiltersFromQuery` devuelve `operationType` / `propertyType`; `mergeFilters` en `apps/web/src/lib/search/query.ts` los aplica si el usuario no los fijó en UI
+- [x] 19.3 `apps/web/src/lib/llm.ts` fallback usa solo `extractFiltersFromQuery` para esos campos; más términos en `SEARCH_TERM_TO_AMENITY` (quincho, barbacoa, natación)
+- [x] 19.4 Verificar `pnpm verify`, commit + push
+
+**Criterios:** una consulta tipo “alquiler departamento Palermo con pileta” refuerza filtros desde `q` alineados al modelo interno.
+
+---
+
+## Sprint 20 — Webhook Mercado Pago: firma e idempotencia ✅
+
+**Objetivo:** avanzar `docs/39` sin romper entornos sin secreto.
+
+- [x] 20.1 Validación HMAC-SHA256 con `x-signature`; manifest MP con partes opcionales (`id` si hay `data.id`, `request-id`, `ts`); normalización de id alfanumérico; tolerancia de reloj (`MERCADOPAGO_WEBHOOK_TS_SKEW_MS`, default 10 min)
+- [x] 20.2 Idempotencia: índice único parcial en DB `(provider, external_event_id)` + `ON CONFLICT DO NOTHING` + `200` + `{ duplicate: true }` si ya existía
+- [x] 20.3 Documentar en `docs/39` y `.env.example`; `pnpm db:push` en cada entorno tras el cambio de schema; verificar `pnpm verify`, commit + push
+
+**Criterios:** con `MERCADOPAGO_WEBHOOK_SECRET` solo entran notificaciones firmadas (salvo entornos sin secreto); reintentos de MP no duplican fila ni en carrera concurrente.
+
+**Realizado (Sprint 20 completo en código)**
+
+- Webhook + `mercadopago-webhook-verify.ts` (manifest flexible, `ts` en segundos o ms, skew configurable).
+- `payment_webhook_events`: `payment_webhook_provider_external_uidx` único parcial; webhook sin `findFirst` previo.
+
+**Fuera de Sprint 20** (monetización producto)
+
+- Modelo `orders` / `subscriptions`, Checkout Pro, pantalla Facturación, destacados tras pago (ver `docs/39`).
+
+**Nota QR Mercado Pago:** notificaciones QR no verifican firma igual; sin secreto en ese flujo o URL separada — documentado en `docs/39`.
+
+---
+
 ## Próximos sprints (backlog)
 
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
@@ -243,4 +352,4 @@
 
 ---
 
-*Actualizado: 2026-03-28*
+*Actualizado: 2026-03-29 (Sprint 20 ampliado: DB + manifest + ts)*

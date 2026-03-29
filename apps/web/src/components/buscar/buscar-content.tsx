@@ -2,10 +2,20 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 
 import { Badge, Button, Card, Input, Skeleton } from '@propieya/ui'
+import type { BuscarMapBBox } from '@/components/buscar/buscar-search-map'
+
+const BuscarSearchMap = dynamic(
+  () => import('./buscar-search-map').then((mod) => mod.BuscarSearchMap),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="min-h-[280px] w-full rounded-lg" />,
+  }
+)
 import {
   AMENITY_LABELS,
   formatPrice,
@@ -37,6 +47,29 @@ type BuscarListingCardData = {
   bathrooms: number | null
   primaryImageUrl: string | null
   matchReasons?: string[]
+  locationLat?: number | null
+  locationLng?: number | null
+  location?: { lat?: number; lon?: number }
+}
+
+function pinsFromListings(list: BuscarListingCardData[]) {
+  const out: { id: string; title: string; lat: number; lng: number }[] = []
+  for (const l of list) {
+    let lat: number | undefined
+    let lng: number | undefined
+    if (l.location?.lat != null && l.location?.lon != null) {
+      lat = l.location.lat
+      lng = l.location.lon
+    }
+    if (l.locationLat != null && l.locationLng != null) {
+      lat = Number(l.locationLat)
+      lng = Number(l.locationLng)
+    }
+    if (lat != null && lng != null && !Number.isNaN(lat) && !Number.isNaN(lng)) {
+      out.push({ id: l.id, title: l.title, lat, lng })
+    }
+  }
+  return out
 }
 
 function ListingCard({ listing }: { listing: BuscarListingCardData }) {
@@ -162,8 +195,17 @@ export function BuscarContent({
   const [minGarages, setMinGarages] = useState('')
   const [floorMin, setFloorMin] = useState('')
   const [floorMax, setFloorMax] = useState('')
+  const [escalera, setEscalera] = useState('')
+  const [minSurfaceCovered, setMinSurfaceCovered] = useState('')
+  const [maxSurfaceCovered, setMaxSurfaceCovered] = useState('')
+  const [minTotalRooms, setMinTotalRooms] = useState('')
+  const [orientation, setOrientation] = useState<
+    '' | 'N' | 'S' | 'E' | 'W' | 'NE' | 'NW' | 'SE' | 'SW'
+  >('')
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([])
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [mapBbox, setMapBbox] = useState<BuscarMapBBox | null>(null)
+  const [showMap, setShowMap] = useState(false)
 
   const toggleAmenity = (key: string) => {
     setSelectedAmenities((prev) =>
@@ -187,7 +229,17 @@ export function BuscarContent({
       minGarages: minGarages ? Number(minGarages) : undefined,
       floorMin: floorMin ? Number(floorMin) : undefined,
       floorMax: floorMax ? Number(floorMax) : undefined,
+      escalera: escalera.trim() || undefined,
+      orientation: orientation || undefined,
+      minSurfaceCovered: minSurfaceCovered
+        ? Number(minSurfaceCovered)
+        : undefined,
+      maxSurfaceCovered: maxSurfaceCovered
+        ? Number(maxSurfaceCovered)
+        : undefined,
+      minTotalRooms: minTotalRooms ? Number(minTotalRooms) : undefined,
       amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined,
+      bbox: mapBbox ?? undefined,
       limit: 24,
       offset: 0,
     }),
@@ -207,7 +259,13 @@ export function BuscarContent({
       minGarages,
       floorMin,
       floorMax,
+      escalera,
+      orientation,
+      minSurfaceCovered,
+      maxSurfaceCovered,
+      minTotalRooms,
       selectedAmenities,
+      mapBbox,
     ]
   )
 
@@ -215,6 +273,8 @@ export function BuscarContent({
     trpc.listing.search.useQuery(filters)
 
   const listings = listingsRaw as unknown as BuscarListingCardData[]
+
+  const mapPins = useMemo(() => pinsFromListings(listings), [listings])
 
   const demandPayload = useMemo(() => {
     const { limit: _l, offset: _o, ...rest } = filters
@@ -251,6 +311,10 @@ export function BuscarContent({
           <div>
             <h1 className="text-3xl font-bold text-text-primary">{pageTitle}</h1>
             <p className="mt-2 text-text-secondary">{pageSubtitle}</p>
+            <p className="mt-2 text-sm text-text-tertiary">
+              Novedad: tocá <span className="font-medium text-text-secondary">Más filtros</span>{' '}
+              debajo del formulario para barrio, amenities, superficie y piso.
+            </p>
           </div>
           <div className="flex flex-col items-stretch gap-2 sm:items-end">
             {me ? (
@@ -370,7 +434,18 @@ export function BuscarContent({
               onChange={(e) => setMaxPrice(e.target.value)}
             />
           </div>
-          <div className="mt-3 flex justify-end">
+          <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+            {!showMap ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mr-auto"
+                onClick={() => setShowMap(true)}
+              >
+                Ver mapa
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="outline"
@@ -440,6 +515,52 @@ export function BuscarContent({
                   onChange={(e) => setFloorMax(e.target.value)}
                   min={0}
                 />
+                <Input
+                  placeholder="Escalera (ej. A, B)"
+                  value={escalera}
+                  onChange={(e) => setEscalera(e.target.value)}
+                  maxLength={10}
+                />
+                <select
+                  className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={orientation}
+                  onChange={(e) =>
+                    setOrientation(
+                      e.target.value as typeof orientation
+                    )
+                  }
+                >
+                  <option value="">Orientación (cualquiera)</option>
+                  <option value="N">Norte</option>
+                  <option value="S">Sur</option>
+                  <option value="E">Este</option>
+                  <option value="W">Oeste</option>
+                  <option value="NE">Noreste</option>
+                  <option value="NW">Noroeste</option>
+                  <option value="SE">Sureste</option>
+                  <option value="SW">Suroeste</option>
+                </select>
+                <Input
+                  type="number"
+                  placeholder="Sup. cubierta mín. (m²)"
+                  value={minSurfaceCovered}
+                  onChange={(e) => setMinSurfaceCovered(e.target.value)}
+                  min={0}
+                />
+                <Input
+                  type="number"
+                  placeholder="Sup. cubierta máx. (m²)"
+                  value={maxSurfaceCovered}
+                  onChange={(e) => setMaxSurfaceCovered(e.target.value)}
+                  min={0}
+                />
+                <Input
+                  type="number"
+                  placeholder="Ambientes mín."
+                  value={minTotalRooms}
+                  onChange={(e) => setMinTotalRooms(e.target.value)}
+                  min={0}
+                />
               </div>
               <div>
                 <p className="text-sm font-medium text-text-primary mb-2">
@@ -465,6 +586,48 @@ export function BuscarContent({
             </div>
           ) : null}
         </Card>
+
+        {showMap ? (
+          <Card className="p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium text-text-primary">Mapa</p>
+              <div className="flex flex-wrap gap-2">
+                {mapBbox ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMapBbox(null)}
+                  >
+                    Quitar filtro de zona
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowMap(false)
+                    setMapBbox(null)
+                  }}
+                >
+                  Ocultar mapa
+                </Button>
+              </div>
+            </div>
+            <BuscarSearchMap pins={mapPins} onApplyZona={setMapBbox} />
+            <p className="text-xs text-text-tertiary">
+              Solo se marcan avisos con ubicación. Mové el mapa y tocá «Buscar en esta zona» para
+              filtrar por el rectángulo visible.
+            </p>
+            {mapPins.length === 0 && !isLoading ? (
+              <p className="text-sm text-text-secondary">
+                No hay resultados con pin en este momento (falta geolocalización en los avisos o
+                los filtros no devolvieron coincidencias con coordenadas).
+              </p>
+            ) : null}
+          </Card>
+        ) : null}
       </div>
 
       {isError ? (

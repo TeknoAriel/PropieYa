@@ -50,6 +50,7 @@ export const listingsMapping: Record<string, EsMappingProperty> = {
   orientation: { type: 'keyword' },
   primaryImageUrl: { type: 'keyword', index: false },
   publishedAt: { type: 'date' },
+  updatedAt: { type: 'date' },
   createdAt: { type: 'date' },
   amenities: { type: 'keyword' },
 }

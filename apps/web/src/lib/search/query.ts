@@ -19,6 +19,8 @@ function mergeFilters(filters: SearchFilters): SearchFilters {
   const extracted = extractFiltersFromQuery(filters.q)
   return {
     ...filters,
+    operationType: filters.operationType ?? extracted.operationType,
+    propertyType: filters.propertyType ?? extracted.propertyType,
     amenities: [...new Set([...(filters.amenities ?? []), ...(extracted.amenities ?? [])])],
     minSurface: extracted.minSurface ?? filters.minSurface,
     maxSurface: extracted.maxSurface ?? filters.maxSurface,
@@ -91,6 +93,24 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
   if (merged.escalera?.trim()) {
     must.push({ term: { escalera: merged.escalera.trim().toUpperCase() } })
   }
+  if (merged.orientation?.trim()) {
+    must.push({ term: { orientation: merged.orientation.trim() } })
+  }
+  if (merged.minSurfaceCovered !== undefined) {
+    must.push({
+      range: { surfaceCovered: { gte: merged.minSurfaceCovered } },
+    })
+  }
+  if (merged.maxSurfaceCovered !== undefined) {
+    must.push({
+      range: { surfaceCovered: { lte: merged.maxSurfaceCovered } },
+    })
+  }
+  if (merged.minTotalRooms !== undefined) {
+    must.push({
+      range: { totalRooms: { gte: merged.minTotalRooms } },
+    })
+  }
   if (merged.city?.trim()) {
     const c = sanitize(merged.city)
     if (c.length > 0) {
@@ -108,12 +128,28 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
     }
   }
 
+  if (merged.bbox) {
+    const { south, north, west, east } = merged.bbox
+    must.push({
+      geo_bounding_box: {
+        location: {
+          top_left: { lat: north, lon: west },
+          bottom_right: { lat: south, lon: east },
+        },
+      },
+    })
+  }
+
   const size = Math.min(merged.limit ?? 24, 50)
   const from = Math.min(merged.offset ?? 0, 500)
 
   return {
     query: { bool: { must } },
-    sort: [{ publishedAt: { order: 'desc', unmapped_type: 'date' } }],
+    sort: [
+      { publishedAt: { order: 'desc', unmapped_type: 'date' } },
+      { updatedAt: { order: 'desc', unmapped_type: 'date' } },
+      { createdAt: { order: 'desc', unmapped_type: 'date' } },
+    ],
     size,
     from,
     _source: [
@@ -130,11 +166,15 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
       'bedrooms',
       'bathrooms',
       'garages',
+      'totalRooms',
       'floor',
       'escalera',
+      'orientation',
       'amenities',
+      'location',
       'primaryImageUrl',
       'publishedAt',
+      'updatedAt',
     ],
   }
 }
