@@ -353,6 +353,23 @@
 
 ---
 
+## Sprint 22 — Búsqueda por frase: extraer filtros y no romper full-text ✅
+
+**Objetivo:** una sola caja `q` debe interpretar frases largas (operación, tipo, dormitorios, tamaño, amenities) sin exigir que título/descripción contengan el texto entero; SQL fallback alineado a ES.
+
+**Problema real:** `mergeFilters` + `multi_match` sobre el `q` completo ANDaba filtros estructurados con “toda la frase” en título → **0 resultados** salvo coincidencia literal. El fallback SQL **no** aplicaba `extractFiltersFromQuery`.
+
+- [x] 22.1 `extractFiltersFromQueryDetailed` + `stripConsumedPartsFromQuery` + `mergePublicSearchFromQuery` en `@propieya/shared`
+- [x] 22.2 ES: `multi_match` solo sobre **texto residual**; amenities como varios `term` (AND, como SQL)
+- [x] 22.3 SQL `listing.search`: mismo merge + ILIKE solo sobre residual
+- [x] 22.4 Heurística **grande / amplio / espacioso** → `minSurface` 100 m²; **parque** → jardín (amenity)
+- [x] 22.5 `matchOperationSpanInOriginalQuery` + `PROPERTY_PHRASES_SORTED` para spans de operación/tipo
+- [x] 22.6 Verificar `pnpm verify`, doc + commit + push
+
+**Criterios:** consulta tipo *“casa para comprar 2 dormitorios grande con jardin pileta quincho y garage”* aplica filtros estructurados y deja el full-text vacío o mínimo (p. ej. barrio suelto), sin exigir la frase completa en el aviso.
+
+---
+
 ## Próximos sprints (backlog)
 
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
@@ -365,4 +382,4 @@
 
 ---
 
-*Actualizado: 2026-03-29 (Sprint 21: clusters mapa /buscar)*
+*Actualizado: 2026-03-29 (Sprint 22: búsqueda por frase + residual full-text)*

@@ -136,7 +136,7 @@ export const SEARCH_TERM_TO_AMENITY: Array<{ terms: string[]; amenity: Amenity }
   { terms: ['apto credito', 'apto crédito', 'financiacion', 'financiación'], amenity: 'credit_approved' },
   { terms: ['pileta', 'piscina', 'natacion', 'natación'], amenity: 'pool' },
   { terms: ['parrilla', 'asador', 'quincho', 'bbq', 'barbacoa'], amenity: 'bbq' },
-  { terms: ['jardin', 'jardín'], amenity: 'garden' },
+  { terms: ['jardin', 'jardín', 'parque', 'parques'], amenity: 'garden' },
   { terms: ['ascensor'], amenity: 'elevator' },
   { terms: ['portero', 'conserje'], amenity: 'doorman' },
 ]
