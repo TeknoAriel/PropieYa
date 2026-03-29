@@ -83,28 +83,32 @@ jobs:
       - name: Verify (lint + typecheck + build)
         run: pnpm verify
 
-      - name: Linkear proyecto web para CLI
+      # El proyecto web en Vercel tiene Root Directory = apps/web (docs/33, DEPLOY-PASOS).
+      # Link + pull + deploy deben ejecutarse desde apps/web; .vercel en la raíz del repo
+      # provocaba desalineación y fallos intermitentes del CLI con monorepo.
+      - name: Linkear proyecto web y pull (apps/web)
         run: |
           set -euo pipefail
-          mkdir -p .vercel
-          cat > .vercel/project.json <<JSON
+          mkdir -p apps/web/.vercel
+          cat > apps/web/.vercel/project.json <<JSON
           {
             "orgId": "${VERCEL_ORG_ID}",
             "projectId": "${VERCEL_PROJECT_ID}"
           }
           JSON
+          cd apps/web
+          npx --yes vercel@37 pull --yes --environment=production --token "${VERCEL_TOKEN}"
 
-      - name: Pull config producción (Vercel)
-        run: npx --yes vercel@37 pull --yes --environment=production --token "${VERCEL_TOKEN}"
-
-      - name: Deploy producción (Vercel build remoto, sin prebuilt)
+      - name: Deploy producción (Vercel desde apps/web)
         env:
           TURBO_FORCE: "1"
         run: |
           set -euo pipefail
-          out="$(npx --yes vercel@37 deploy --prod --yes --token "${VERCEL_TOKEN}")"
+          cd apps/web
+          out="$(npx --yes vercel@37 deploy --prod --yes --token "${VERCEL_TOKEN}" \
+            --meta "githubSha=${GITHUB_SHA}" \
+            --meta "githubRepo=${GITHUB_REPOSITORY}")"
           echo "$out"
-          # La última URL suele ser el deployment/production URL
           url="$(echo "$out" | grep -Eo 'https?://[^ ]+\\.vercel\\.app' | tail -n 1 || true)"
           if [ -n "${url:-}" ]; then
             echo "DEPLOY_URL=$url" >> "$GITHUB_ENV"
