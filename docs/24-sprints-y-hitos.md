@@ -327,6 +327,19 @@
 
 **Criterios:** con `MERCADOPAGO_WEBHOOK_SECRET` solo entran notificaciones firmadas; reintentos de MP no duplican auditoría.
 
+**Realizado (alcance Sprint 20)**
+
+- Endpoint `POST /api/payments/mercadopago/webhook`: JSON válido, persistencia en `payment_webhook_events`.
+- Firma: si `MERCADOPAGO_WEBHOOK_SECRET` está definido, se exige manifest `id;request-id;ts` y coincidencia HMAC-SHA256 (`mercadopago-webhook-verify.ts`); sin secreto, el endpoint sigue abierto (dev/simulador).
+- Idempotencia en aplicación: misma clave `mercadopago` + `externalEventId` (desde `data.id` o `body.id`) → `200` + `{ duplicate: true }` sin segundo insert.
+
+**Pendiente / fuera de alcance de este sprint** (sigue en `docs/39` y futuros sprints)
+
+- **DB:** índice único parcial `(provider, external_event_id)` para idempotencia fuerte ante carreras (hoy solo `findFirst` + insert).
+- **MP avanzado:** manifest sin `id` cuando MP omite el campo (doc MP: quitar partes vacías del template); ventana de tolerancia sobre `ts`; flujos QR que no traen firma.
+- **Producto:** modelo `orders` / `subscriptions`, Checkout Pro, pantalla Facturación en panel, activar destacados u otros productos tras pago.
+- **CI/deploy:** el ítem 20.3 asume push a `deploy/infra` hecho; si el commit del sprint no está en `origin`, hay que pushear para alinear producción.
+
 ---
 
 ## Próximos sprints (backlog)

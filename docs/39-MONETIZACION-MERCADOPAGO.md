@@ -25,7 +25,7 @@ Ver `.env.example` — prefijos sugeridos:
 
 - `MERCADOPAGO_ACCESS_TOKEN` — API privada (servidor).
 - `MERCADOPAGO_PUBLIC_KEY` — front Checkout Bricks / SDK si se usa en cliente.
-- `MERCADOPAGO_WEBHOOK_SECRET` — validación de firma (implementar según doc oficial MP).
+- `MERCADOPAGO_WEBHOOK_SECRET` — secreto del panel MP para validar `x-signature` (HMAC); si no está definido, el webhook no exige firma (solo entornos de prueba).
 - `MERCADOPAGO_CLIENT_ID` / `MERCADOPAGO_CLIENT_SECRET` — OAuth si aplica.
 
 ## Próximos pasos técnicos (orden sugerido)
