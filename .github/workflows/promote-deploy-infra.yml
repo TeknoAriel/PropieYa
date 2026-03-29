@@ -99,13 +99,21 @@ jobs:
           cd apps/web
           npx --yes vercel@37 pull --yes --environment=production --token "${VERCEL_TOKEN}"
 
-      - name: Deploy producción (Vercel desde apps/web)
+      # Build en el runner (mismo vercel.json / turbo que producción) y subida prebuilt.
+      # Evita fallos del builder remoto que no reproducían `pnpm verify`.
+      - name: Vercel build (apps/web, artefacto prebuilt)
         env:
           TURBO_FORCE: "1"
         run: |
           set -euo pipefail
           cd apps/web
-          out="$(npx --yes vercel@37 deploy --prod --yes --token "${VERCEL_TOKEN}" \
+          npx --yes vercel@37 build --token "${VERCEL_TOKEN}"
+
+      - name: Deploy producción (prebuilt → prod)
+        run: |
+          set -euo pipefail
+          cd apps/web
+          out="$(npx --yes vercel@37 deploy --prebuilt --prod --yes --token "${VERCEL_TOKEN}" \
             --meta "githubSha=${GITHUB_SHA}" \
             --meta "githubRepo=${GITHUB_REPOSITORY}")"
           echo "$out"
