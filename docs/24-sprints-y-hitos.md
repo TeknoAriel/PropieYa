@@ -340,6 +340,19 @@
 
 ---
 
+## Sprint 21 — Mapa en búsqueda: clusters (zoom bajo) ✅
+
+**Objetivo:** capa AA de `docs/38`: agrupar pins en `/buscar` cuando hay muchos marcadores y el zoom es amplio; al acercar, spiderfy / pins individuales.
+
+- [x] 21.1 Dependencia `leaflet.markercluster` + tipos en `apps/web`
+- [x] 21.2 `BuscarSearchMap`: `L.markerClusterGroup` imperativo (compatible con `react-leaflet` 4), estilos default del plugin, `disableClusteringAtZoom: 16`
+- [x] 21.3 Popups con enlace a ficha; título escapado para HTML
+- [x] 21.4 Verificar `pnpm verify`, commit + push
+
+**Criterios:** con varios avisos geolocalizados, el mapa muestra clusters que se desglosan al hacer zoom o clic; sin paquete `react-leaflet-cluster` (peer incompatible con RL4).
+
+---
+
 ## Próximos sprints (backlog)
 
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
@@ -352,4 +365,4 @@
 
 ---
 
-*Actualizado: 2026-03-29 (Sprint 20 ampliado: DB + manifest + ts)*
+*Actualizado: 2026-03-29 (Sprint 21: clusters mapa /buscar)*

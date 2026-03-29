@@ -90,7 +90,7 @@ No basta un mapa con pins: la geografía es **eje de producto**.
 - Compatibilidad con **variantes de ubicación** y jerarquías (ciudad, partido, polígono administrativo, etc.).  
 - Integración con **filtros manuales** y **asistente IA** (misma query unificada).
 
-**Estado actual:** hay `locationLat` / `locationLng` en listings y hooks en schemas de búsqueda; la **UI mapa completa** y **viewport/polígono** son trabajo mayor pendiente.
+**Estado actual:** hay `locationLat` / `locationLng` en listings y hooks en schemas de búsqueda; **viewport (bbox)** y lista sincronizada en `/buscar`; **clusters** en zoom bajo (Sprint 21). Pendiente mayor: **polígono / radio**, jerarquías de zona, alertas por área dibujada.
 
 ---
 
