@@ -83,30 +83,25 @@ jobs:
       - name: Verify (lint + typecheck + build)
         run: pnpm verify
 
-      # El proyecto web en Vercel tiene Root Directory = apps/web (docs/33, DEPLOY-PASOS).
-      # Link + pull + deploy deben ejecutarse desde apps/web; .vercel en la raíz del repo
-      # provocaba desalineación y fallos intermitentes del CLI con monorepo.
-      - name: Linkear proyecto web y pull (apps/web)
+      # Root Directory del proyecto web en Vercel = apps/web (docs/33). pull/deploy desde la
+      # raíz del monorepo para que el CLI suba packages/* y lockfile; solo apps/web rompe el build remoto.
+      - name: Linkear proyecto web y pull (raíz monorepo)
         run: |
           set -euo pipefail
-          mkdir -p apps/web/.vercel
-          cat > apps/web/.vercel/project.json <<JSON
+          mkdir -p .vercel
+          cat > .vercel/project.json <<JSON
           {
             "orgId": "${VERCEL_ORG_ID}",
             "projectId": "${VERCEL_PROJECT_ID}"
           }
           JSON
-          cd apps/web
           npx --yes vercel@41 pull --yes --environment=production --token "${VERCEL_TOKEN}"
 
-      # Build en los runners de Vercel (deploy --prod) evita fallos de vercel build/--prebuilt
-      # en ubuntu-latest (monorepo, output prebuilt). pull alinea env de production.
-      - name: Deploy producción (Vercel remoto desde apps/web)
+      - name: Deploy producción (Vercel remoto, raíz monorepo)
         env:
           TURBO_FORCE: "1"
         run: |
           set -euo pipefail
-          cd apps/web
           TOKEN="${VERCEL_TOKEN}"
           META=( --meta "githubSha=${GITHUB_SHA}" --meta "githubRepo=${GITHUB_REPOSITORY}" )
           if ! out=$(npx --yes vercel@41 deploy --prod --yes --token "${TOKEN}" "${META[@]}" 2>&1); then
