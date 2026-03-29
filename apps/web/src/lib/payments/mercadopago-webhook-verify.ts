@@ -1,5 +1,6 @@
 /**
  * Validación de firma HMAC de webhooks Mercado Pago (x-signature).
+ * Manifest según doc oficial: solo incluir partes presentes (id, request-id, ts).
  * @see https://www.mercadopago.com.ar/developers/en/docs/your-integrations/notifications/webhooks
  */
 
@@ -30,18 +31,64 @@ export function normalizeMercadoPagoDataId(id: string): string {
   return s
 }
 
+/** `ts` del header: segundos (10 dígitos típico) o milisegundos. */
+export function mercadoPagoSignatureTsToMs(ts: string): number {
+  const n = parseInt(ts, 10)
+  if (!Number.isFinite(n)) return Number.NaN
+  return ts.length >= 13 ? n : n * 1000
+}
+
 /**
- * Comprueba manifest `id:...;request-id:...;ts:...;` con HMAC-SHA256.
+ * Arma el string firmado por MP: orden id → request-id → ts; omitir claves ausentes.
+ */
+export function buildMercadoPagoSignatureManifest(opts: {
+  dataId?: string | null
+  xRequestId?: string | null
+  ts: string
+}): string {
+  let m = ''
+  const rawId = opts.dataId?.trim()
+  if (rawId) {
+    m += `id:${normalizeMercadoPagoDataId(rawId)};`
+  }
+  const rid = opts.xRequestId?.trim()
+  if (rid) {
+    m += `request-id:${rid};`
+  }
+  m += `ts:${opts.ts};`
+  return m
+}
+
+/**
+ * Comprueba HMAC-SHA256 del manifest y opcionalmente antigüedad de `ts`.
  */
 export function verifyMercadoPagoWebhookSignature(opts: {
   secret: string
   xSignature: string | null
   xRequestId: string | null
-  dataId: string
+  /** Si viene vacío, el manifest no incluye `id:` (caso doc MP). */
+  dataId?: string | null
+  /**
+   * Tolerancia de reloj en ms (default 600_000). Si ≤ 0, no se valida el ts.
+   */
+  maxSkewMs?: number
 }): boolean {
   const parsed = parseMercadoPagoXSignature(opts.xSignature)
-  if (!parsed || !opts.xRequestId?.trim()) return false
-  const manifest = `id:${opts.dataId};request-id:${opts.xRequestId.trim()};ts:${parsed.ts};`
+  if (!parsed) return false
+
+  const skewCap = opts.maxSkewMs ?? 600_000
+  if (skewCap > 0) {
+    const tMs = mercadoPagoSignatureTsToMs(parsed.ts)
+    if (!Number.isFinite(tMs)) return false
+    if (Math.abs(Date.now() - tMs) > skewCap) return false
+  }
+
+  const manifest = buildMercadoPagoSignatureManifest({
+    dataId: opts.dataId,
+    xRequestId: opts.xRequestId,
+    ts: parsed.ts,
+  })
+
   const expected = createHmac('sha256', opts.secret).update(manifest).digest('hex')
   if (expected.length !== parsed.v1.length) return false
   try {

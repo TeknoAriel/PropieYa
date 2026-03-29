@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import {
   pgTable,
   uuid,
@@ -5,6 +6,7 @@ import {
   jsonb,
   timestamp,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
 
 /**
@@ -26,9 +28,9 @@ export const paymentWebhookEvents = pgTable(
   },
   (table) => ({
     providerIdx: index('payment_webhook_events_provider_idx').on(table.provider),
-    externalIdx: index('payment_webhook_events_external_idx').on(
-      table.provider,
-      table.externalEventId
-    ),
+    /** Idempotencia fuerte ante carreras: un solo evento por (proveedor, id externo). */
+    providerExternalUnique: uniqueIndex('payment_webhook_provider_external_uidx')
+      .on(table.provider, table.externalEventId)
+      .where(sql`${table.externalEventId} is not null`),
   })
 )

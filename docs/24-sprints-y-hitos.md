@@ -321,24 +321,22 @@
 
 **Objetivo:** avanzar `docs/39` sin romper entornos sin secreto.
 
-- [x] 20.1 Validación HMAC-SHA256 con `x-signature` / `x-request-id` / `data.id` (query o body), normalización de id alfanumérico
-- [x] 20.2 Idempotencia: si ya existe evento con mismo `provider` + `externalEventId`, responder 200 sin duplicar fila
-- [x] 20.3 Documentar en `docs/39`; verificar `pnpm verify`, commit + push
+- [x] 20.1 Validación HMAC-SHA256 con `x-signature`; manifest MP con partes opcionales (`id` si hay `data.id`, `request-id`, `ts`); normalización de id alfanumérico; tolerancia de reloj (`MERCADOPAGO_WEBHOOK_TS_SKEW_MS`, default 10 min)
+- [x] 20.2 Idempotencia: índice único parcial en DB `(provider, external_event_id)` + `ON CONFLICT DO NOTHING` + `200` + `{ duplicate: true }` si ya existía
+- [x] 20.3 Documentar en `docs/39` y `.env.example`; `pnpm db:push` en cada entorno tras el cambio de schema; verificar `pnpm verify`, commit + push
 
-**Criterios:** con `MERCADOPAGO_WEBHOOK_SECRET` solo entran notificaciones firmadas; reintentos de MP no duplican auditoría.
+**Criterios:** con `MERCADOPAGO_WEBHOOK_SECRET` solo entran notificaciones firmadas (salvo entornos sin secreto); reintentos de MP no duplican fila ni en carrera concurrente.
 
-**Realizado (alcance Sprint 20)**
+**Realizado (Sprint 20 completo en código)**
 
-- Endpoint `POST /api/payments/mercadopago/webhook`: JSON válido, persistencia en `payment_webhook_events`.
-- Firma: si `MERCADOPAGO_WEBHOOK_SECRET` está definido, se exige manifest `id;request-id;ts` y coincidencia HMAC-SHA256 (`mercadopago-webhook-verify.ts`); sin secreto, el endpoint sigue abierto (dev/simulador).
-- Idempotencia en aplicación: misma clave `mercadopago` + `externalEventId` (desde `data.id` o `body.id`) → `200` + `{ duplicate: true }` sin segundo insert.
+- Webhook + `mercadopago-webhook-verify.ts` (manifest flexible, `ts` en segundos o ms, skew configurable).
+- `payment_webhook_events`: `payment_webhook_provider_external_uidx` único parcial; webhook sin `findFirst` previo.
 
-**Pendiente / fuera de alcance de este sprint** (sigue en `docs/39` y futuros sprints)
+**Fuera de Sprint 20** (monetización producto)
 
-- **DB:** índice único parcial `(provider, external_event_id)` para idempotencia fuerte ante carreras (hoy solo `findFirst` + insert).
-- **MP avanzado:** manifest sin `id` cuando MP omite el campo (doc MP: quitar partes vacías del template); ventana de tolerancia sobre `ts`; flujos QR que no traen firma.
-- **Producto:** modelo `orders` / `subscriptions`, Checkout Pro, pantalla Facturación en panel, activar destacados u otros productos tras pago.
-- **CI/deploy:** el ítem 20.3 asume push a `deploy/infra` hecho; si el commit del sprint no está en `origin`, hay que pushear para alinear producción.
+- Modelo `orders` / `subscriptions`, Checkout Pro, pantalla Facturación, destacados tras pago (ver `docs/39`).
+
+**Nota QR Mercado Pago:** notificaciones QR no verifican firma igual; sin secreto en ese flujo o URL separada — documentado en `docs/39`.
 
 ---
 
@@ -354,4 +352,4 @@
 
 ---
 
-*Actualizado: 2026-03-27 (Sprints 19–20)*
+*Actualizado: 2026-03-29 (Sprint 20 ampliado: DB + manifest + ts)*

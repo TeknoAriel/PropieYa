@@ -1,5 +1,3 @@
-import { and, eq } from 'drizzle-orm'
-
 import { getDb, paymentWebhookEvents } from '@propieya/database'
 
 import {
@@ -10,9 +8,18 @@ import {
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+function readWebhookTsSkewMs(): number {
+  const raw = process.env.MERCADOPAGO_WEBHOOK_TS_SKEW_MS?.trim()
+  if (raw === '0') return 0
+  if (raw === undefined || raw === '') return 600_000
+  const n = Number(raw)
+  return Number.isFinite(n) && n >= 0 ? n : 600_000
+}
+
 /**
- * Webhook Mercado Pago: auditoría + idempotencia por `externalEventId`.
+ * Webhook Mercado Pago: auditoría + idempotencia por `externalEventId` (índice único parcial en DB).
  * Si `MERCADOPAGO_WEBHOOK_SECRET` está definido, valida `x-signature` (HMAC-SHA256).
+ * Manifest alineado a MP: puede omitir `id` y/o `request-id` si no aplican.
  * Documentación: docs/39-MONETIZACION-MERCADOPAGO.md
  */
 export async function POST(request: Request) {
@@ -44,9 +51,10 @@ export async function POST(request: Request) {
       secret,
       xSignature: request.headers.get('x-signature'),
       xRequestId: request.headers.get('x-request-id'),
-      dataId: dataIdNorm,
+      dataId: dataIdNorm || undefined,
+      maxSkewMs: readWebhookTsSkewMs(),
     })
-    if (!dataIdNorm || !ok) {
+    if (!ok) {
       return new Response(JSON.stringify({ ok: false, error: 'invalid_signature' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
@@ -70,28 +78,26 @@ export async function POST(request: Request) {
   const db = getDb()
   const extSlice = externalId ? externalId.slice(0, 128) : null
 
-  if (extSlice) {
-    const existing = await db.query.paymentWebhookEvents.findFirst({
-      where: and(
-        eq(paymentWebhookEvents.provider, 'mercadopago'),
-        eq(paymentWebhookEvents.externalEventId, extSlice)
-      ),
-    })
-    if (existing) {
+  try {
+    const inserted = await db
+      .insert(paymentWebhookEvents)
+      .values({
+        provider: 'mercadopago',
+        externalEventId: extSlice,
+        eventType: eventType.slice(0, 64),
+        payload: body as object,
+      })
+      .onConflictDoNothing({
+        target: [paymentWebhookEvents.provider, paymentWebhookEvents.externalEventId],
+      })
+      .returning({ id: paymentWebhookEvents.id })
+
+    if (extSlice && inserted.length === 0) {
       return new Response(JSON.stringify({ ok: true, duplicate: true }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       })
     }
-  }
-
-  try {
-    await db.insert(paymentWebhookEvents).values({
-      provider: 'mercadopago',
-      externalEventId: extSlice,
-      eventType: eventType.slice(0, 64),
-      payload: body as object,
-    })
   } catch (err) {
     console.error('[mercadopago webhook] persist error', err)
   }
