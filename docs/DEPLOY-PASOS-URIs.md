@@ -73,7 +73,7 @@ Workflow: **`.github/workflows/promote-deploy-infra.yml`**
 
 1. Install dependencies
 2. `pnpm verify`
-3. `vercel pull` (production) + **`vercel build --prod`** + `vercel deploy --prebuilt --prod` desde **`apps/web`**; si el build falla, **fallback** a `vercel deploy --prod`. CLI `vercel@41`.
+3. `vercel pull` (production) + **`vercel deploy --prod`** desde **`apps/web`** (el build corre en Vercel; evita prebuilt en el runner). CLI `vercel@41`.
 4. Smoke tests estrictos:
    - `/` debe ser 2xx
    - `/api/health` debe ser 200 o 503

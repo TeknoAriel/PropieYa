@@ -99,9 +99,9 @@ jobs:
           cd apps/web
           npx --yes vercel@41 pull --yes --environment=production --token "${VERCEL_TOKEN}"
 
-      # Patrón Vercel: pull (production) → build --prod → deploy --prebuilt --prod.
-      # Si build --prod falla en el runner, fallback a deploy remoto (misma cwd apps/web).
-      - name: Deploy producción (Vercel build --prod + prebuilt o remoto)
+      # Build en los runners de Vercel (deploy --prod) evita fallos de vercel build/--prebuilt
+      # en ubuntu-latest (monorepo, output prebuilt). pull alinea env de production.
+      - name: Deploy producción (Vercel remoto desde apps/web)
         env:
           TURBO_FORCE: "1"
         run: |
@@ -109,27 +109,10 @@ jobs:
           cd apps/web
           TOKEN="${VERCEL_TOKEN}"
           META=( --meta "githubSha=${GITHUB_SHA}" --meta "githubRepo=${GITHUB_REPOSITORY}" )
-          # Con set -e, out="$(vercel deploy ...)" aborta el job si deploy falla sin entrar al fallback.
-          # Usar if ! out=$(...) para capturar fallo y probar deploy remoto.
-          if npx --yes vercel@41 build --prod --token "${TOKEN}"; then
-            echo "::notice::vercel build --prod OK → deploy --prebuilt"
-            if ! out=$(npx --yes vercel@41 deploy --prebuilt --prod --yes --token "${TOKEN}" "${META[@]}" 2>&1); then
-              echo "::warning::deploy --prebuilt falló; últimas líneas:"
-              echo "$out" | tail -n 40
-              echo "::warning::Intentando deploy remoto (build en Vercel)"
-              if ! out=$(npx --yes vercel@41 deploy --prod --yes --token "${TOKEN}" "${META[@]}" 2>&1); then
-                echo "::error::Deploy remoto falló tras fallo de --prebuilt"
-                echo "$out" | tail -n 80
-                exit 1
-              fi
-            fi
-          else
-            echo "::warning::vercel build --prod falló en Actions → deploy remoto (build en Vercel)"
-            if ! out=$(npx --yes vercel@41 deploy --prod --yes --token "${TOKEN}" "${META[@]}" 2>&1); then
-              echo "::error::Deploy remoto falló"
-              echo "$out" | tail -n 80
-              exit 1
-            fi
+          if ! out=$(npx --yes vercel@41 deploy --prod --yes --token "${TOKEN}" "${META[@]}" 2>&1); then
+            echo "::error::vercel deploy --prod falló"
+            echo "$out" | tail -n 100
+            exit 1
           fi
           echo "$out"
           url="$(echo "$out" | grep -Eo 'https?://[^ ]+\\.vercel\\.app' | tail -n 1 || true)"
