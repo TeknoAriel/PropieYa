@@ -7,11 +7,23 @@
 import { matchPropertyTypeFromText } from './search-semantics'
 import type { PropertyType } from './types/listing'
 
-/** Coincidencia exacta tras normalizar (minúsculas, espacios, guiones bajos). */
+/**
+ * Clave estable para lookup: minúsculas, espacios → guión bajo (como Kiteprop/OpenNavent).
+ */
+function feedTypeKey(raw: unknown): string {
+  return String(raw ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+}
+
+/** Coincidencia exacta por código de feed (español + inglés Kiteprop/Yumblin). */
 const FEED_TYPE_EXACT: Record<string, PropertyType> = {
   departamento: 'apartment',
   departamentos: 'apartment',
   apartment: 'apartment',
+  apartments: 'apartment',
   depto: 'apartment',
   deptos: 'apartment',
   dto: 'apartment',
@@ -21,19 +33,42 @@ const FEED_TYPE_EXACT: Record<string, PropertyType> = {
   piso: 'apartment',
   casa: 'house',
   house: 'house',
+  houses: 'house',
   ph: 'ph',
   terreno: 'land',
   land: 'land',
   lote: 'land',
+  residential_lands: 'land',
+  residential_land: 'land',
+  industrial_lands: 'land',
+  industrial_land: 'land',
+  cemetery_lots: 'land',
+  cemetery_lot: 'land',
+  farms: 'land',
+  farm: 'land',
   oficina: 'office',
   office: 'office',
+  offices: 'office',
   local: 'commercial',
   commercial: 'commercial',
+  retail_spaces: 'commercial',
+  retail_space: 'commercial',
+  businesses: 'commercial',
+  business: 'commercial',
+  medical_spaces: 'commercial',
+  medical_space: 'commercial',
   galpon: 'warehouse',
   galpón: 'warehouse',
   warehouse: 'warehouse',
+  warehouses: 'warehouse',
+  industrial_warehouses: 'warehouse',
+  industrial_warehouse: 'warehouse',
+  boat_storages: 'warehouse',
+  boat_storage: 'warehouse',
   cochera: 'parking',
   parking: 'parking',
+  parking_spaces: 'parking',
+  parking_space: 'parking',
   duplex: 'house',
   dúplex: 'house',
   triplex: 'house',
@@ -41,26 +76,19 @@ const FEED_TYPE_EXACT: Record<string, PropertyType> = {
   emprendimiento: 'development_unit',
 }
 
-function normalizeRaw(raw: unknown): string {
-  return String(raw ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/_/g, ' ')
-    .replace(/\s+/g, ' ')
-}
-
 /**
  * Mapea texto de feed a `PropertyType`. Si falta o es ambiguo, usa `apartment`
  * (comportamiento histórico para feeds que solo envían “departamento”).
  */
 export function mapFeedPropertyType(raw: unknown): PropertyType {
-  const s = normalizeRaw(raw)
-  if (!s) return 'apartment'
+  const key = feedTypeKey(raw)
+  if (!key) return 'apartment'
 
-  const exact = FEED_TYPE_EXACT[s]
+  const exact = FEED_TYPE_EXACT[key]
   if (exact) return exact
 
-  const fromSemantics = matchPropertyTypeFromText(s)
+  const spaced = key.replace(/_/g, ' ')
+  const fromSemantics = matchPropertyTypeFromText(spaced)
   if (fromSemantics) return fromSemantics
 
   return 'apartment'
