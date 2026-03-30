@@ -17,9 +17,12 @@ if (envFile) {
   config()
 }
 
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 
 import { db, listings } from '@propieya/database'
+
+/** Palabra completa "casa" / "casas" (evita cascada, casamiento, etc.). */
+const WORD_CASA_RE = '[[:<:]](casa|casas)[[:>:]]'
 
 async function main() {
   if (!process.env.DATABASE_URL?.trim()) {
@@ -62,6 +65,64 @@ async function main() {
     for (const r of odd) {
       console.log(`  "${r.propertyType}": ${r.count}`)
     }
+  }
+
+  const suspiciousWhere = and(
+    eq(listings.status, 'active'),
+    eq(listings.propertyType, 'apartment'),
+    sql`(${listings.title} ~* ${WORD_CASA_RE} OR ${listings.description} ~* ${WORD_CASA_RE})`
+  )
+
+  const [suspRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(listings)
+    .where(suspiciousWhere)
+
+  const suspicious = suspRow?.count ?? 0
+  console.log(
+    '\nSospechosos: apartment activo pero título o descripción contienen la palabra "casa/casas" (regex palabra completa):'
+  )
+  console.log(`  count: ${suspicious}`)
+
+  if (suspicious > 0) {
+    const samples = await db
+      .select({
+        id: listings.id,
+        title: listings.title,
+        propertyType: listings.propertyType,
+      })
+      .from(listings)
+      .where(suspiciousWhere)
+      .limit(12)
+
+    console.log('\n  Muestra (máx. 12):')
+    for (const r of samples) {
+      const t = r.title.length > 72 ? `${r.title.slice(0, 69)}…` : r.title
+      console.log(`    ${r.id}  [${r.propertyType}]  ${t}`)
+    }
+  }
+
+  console.log('\n--- Conclusión automática (orientativa) ---')
+  if (odd.length > 0) {
+    console.log(
+      '  Hay tipos no canónicos: conviene corregir datos o reimportar con mapper actualizado.'
+    )
+  } else if (suspicious > 0) {
+    console.log(
+      `  Hay ${suspicious} avisos apartment con "casa" en texto: probable clasificación de feed/import.`
+    )
+    console.log(
+      '  Reimportar con el mapper actual (`mapFeedPropertyType`) puede corregir si el feed envía tipo explícito; si no, revisar manual o reglas SQL puntuales.'
+    )
+  } else if (!byType.some((r) => r.propertyType === 'house') && total > 0) {
+    console.log(
+      '  Ningún listing activo es tipo `house`: búsqueda por "casa" como tipo estructural no devolverá filas hasta que existan `house` o se reclasifique.'
+    )
+    console.log(
+      '  Si el feed trae casas como otro código, reimportar tras el último mapper suele ser el camino más barato.'
+    )
+  } else {
+    console.log('  Distribución coherente con enums; reimport no obligatorio por esta auditoría.')
   }
 }
 
