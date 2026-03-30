@@ -42,7 +42,7 @@ jobs:
             fi
           done
           if [ "$missing" -ne 0 ]; then
-            echo "::error::Configurar secrets en https://github.com/TeknoAriel/PropieYa/settings/secrets/actions"
+            echo "::error::Configurar secrets en https://github.com/kiteprop/ia-propieya/settings/secrets/actions"
             exit 1
           fi
 

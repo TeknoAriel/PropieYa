@@ -4,6 +4,35 @@
 
 ---
 
+## Repositorio Git oficial
+
+| Qué | Valor |
+|-----|--------|
+| **Remoto (SSH)** | `git@github.com:kiteprop/ia-propieya.git` |
+| **Web** | https://github.com/kiteprop/ia-propieya |
+
+**Primera subida (repo vacío, rama `main`):** con el historial actual en `deploy/infra`:
+
+```bash
+git push -u origin deploy/infra:main
+```
+
+**Seguir usando el flujo de deploy** (rama `deploy/infra` en el mismo remoto):
+
+```bash
+git push -u origin deploy/infra
+```
+
+El remoto anterior puede quedar como respaldo, por ejemplo:
+
+```bash
+git remote add old-propiya https://github.com/TeknoAriel/PropieYa.git
+```
+
+Si `git push` devuelve *Repository not found*: crear el repo vacío en la org **kiteprop**, comprobar que tu usuario tiene acceso y que la clave SSH en https://github.com/settings/keys está asociada a esa cuenta (o usar HTTPS + PAT).
+
+---
+
 ## URLs canónicas (NO cambiar)
 
 | Recurso | URL exacta |
@@ -18,7 +47,7 @@
 
 ### A1. Permisos de GitHub Actions
 
-1. Ir a: **https://github.com/TeknoAriel/PropieYa/settings/actions**
+1. Ir a: **https://github.com/kiteprop/ia-propieya/settings/actions**
 2. En **Actions permissions**: permitir acciones (all actions/reusable workflows)
 3. En **Workflow permissions**:
    - **Read and write permissions**
@@ -27,7 +56,7 @@
 
 ### A2. Secretos Vercel en GitHub (obligatorio)
 
-Ir a: **https://github.com/TeknoAriel/PropieYa/settings/secrets/actions** y crear:
+Ir a: **https://github.com/kiteprop/ia-propieya/settings/secrets/actions** y crear:
 
 - `VERCEL_TOKEN`
 - `VERCEL_ORG_ID`
@@ -109,8 +138,8 @@ Corregir secreto y volver a pushear `deploy/infra`.
 
 ## Resumen de URLs
 
-- https://github.com/TeknoAriel/PropieYa/settings/actions
-- https://github.com/TeknoAriel/PropieYa/settings/secrets/actions
+- https://github.com/kiteprop/ia-propieya/settings/actions
+- https://github.com/kiteprop/ia-propieya/settings/secrets/actions
 - https://propieyaweb.vercel.app
 - https://propieyaweb.vercel.app/api/health
 - https://propieyaweb.vercel.app/api/version

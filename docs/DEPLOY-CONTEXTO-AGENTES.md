@@ -11,7 +11,7 @@
 | **URL pública del portal** | `https://propieyaweb.vercel.app` (ver `docs/CANONICAL-URLS.md`) |
 | **Proyecto Vercel activo (web)** | `propie-ya-web` (team `teknoariels-projects`) |
 | **Dominio Vercel del proyecto** | `propie-ya-web.vercel.app` (alias interno; el canónico de producto es `propieyaweb.vercel.app`) |
-| **Repositorio** | `TeknoAriel/PropieYa` |
+| **Repositorio** | `kiteprop/ia-propieya` |
 | **Root Directory en Vercel** | `apps/web` |
 | **Rama de integración deploy** | Push a `deploy/infra` → workflow → **Vercel CLI** (portal). **`main` debe fusionarse con `deploy/infra`** para mantener el repo y el deploy del panel (Git) alineados; el workflow **no** mergea solo. |
 | **Secretos GitHub** | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` deben apuntar al proyecto **`propie-ya-web`** (el workflow Promote **falla** si el ID no resuelve a ese nombre vía API Vercel). |
@@ -33,7 +33,7 @@
 
 2. **No crear** un segundo “proyecto web” en Vercel sin actualizar `docs/CANONICAL-URLS.md`, este archivo y `docs/33-VERCEL-CONFIG-PROYECTO-WEB.md`.
 
-3. **Un solo flujo de producción:** un solo repositorio (`TeknoAriel/PropieYa`); cambios al portal en `deploy/infra`, `pnpm verify`, push, workflow Promote + Vercel CLI al proyecto **`propie-ya-web`**. Después, **fusionar `deploy/infra` → `main`** (PR o merge) para alinear clones y el panel. Verificación: `pnpm verificar:deploy` y/o `pnpm verificar:ruta-produccion`. Lista de sprints: `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md`.
+3. **Un solo flujo de producción:** un solo repositorio (`kiteprop/ia-propieya`); cambios al portal en `deploy/infra`, `pnpm verify`, push, workflow Promote + Vercel CLI al proyecto **`propie-ya-web`**. Después, **fusionar `deploy/infra` → `main`** (PR o merge) para alinear clones y el panel. Verificación: `pnpm verificar:deploy` y/o `pnpm verificar:ruta-produccion`. Lista de sprints: `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md`.
 
 4. **Antes de cualquier push** que dispare CI/deploy: `pnpm verify` (lint + typecheck + build).
 
@@ -52,8 +52,8 @@
 | Version | https://propieyaweb.vercel.app/api/version |
 | Proyecto web Vercel (settings) | https://vercel.com/teknoariels-projects/propie-ya-web/settings |
 | Dominios del proyecto web | https://vercel.com/teknoariels-projects/propie-ya-web/settings/domains |
-| Secretos GitHub Actions | https://github.com/TeknoAriel/PropieYa/settings/secrets/actions |
-| Workflow deploy | https://github.com/TeknoAriel/PropieYa/actions/workflows/promote-deploy-infra.yml |
+| Secretos GitHub Actions | https://github.com/kiteprop/ia-propieya/settings/secrets/actions |
+| Workflow deploy | https://github.com/kiteprop/ia-propieya/actions/workflows/promote-deploy-infra.yml |
 
 ---
 

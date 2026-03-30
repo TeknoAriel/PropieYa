@@ -15,6 +15,8 @@ El agente anota aquí fallos que **no puede resolver** sin acción externa (GitH
 | 2026-03-27 | **Portal “vacío” / sin propiedades / listados en cero** pese a código de sprints en repo | **`DATABASE_URL` ausente en Vercel** (proyecto **`propie-ya-web`**, Production). `/api/health` → `503` y `checks.database.error` lo indica. **Un paso:** Vercel → proyecto web → Settings → Environment Variables → pegar `DATABASE_URL` de Neon (misma cadena que en el proyecto viejo o desde Neon dashboard). Redeploy. Ver `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md`. |
 | 2026-03-29 | **Web sin cambios visibles** (`/api/version` queda en `b4067f2`): el código nuevo está en Git pero no en Vercel | **Causa habitual:** run del workflow **Promote** falla en deploy; el portal queda en el último deploy **exitoso**. **Repo (iteraciones):** `pull` + `deploy --prod` desde **raíz del monorepo** (incluye `packages/*`; deploy solo desde `apps/web` rompía el build remoto); CLI `vercel@41`. Producción también se actualiza si **Vercel está enlazado a `main`** y se mergea. Si sigue en rojo: [Actions → Promote](https://github.com/TeknoAriel/PropieYa/actions/workflows/promote-deploy-infra.yml) → log del paso Deploy; [secretos](https://github.com/TeknoAriel/PropieYa/settings/secrets/actions). |
 
+| 2026-03-30 | **Migración repo** a `kiteprop/ia-propieya` | Tras el primer push: en **Vercel** → proyecto web → Settings → Git → conectar el nuevo repo; en **GitHub** del nuevo repo → Settings → Secrets → volver a cargar `VERCEL_*` si hace falta; Actions en https://github.com/kiteprop/ia-propieya/actions |
+
 Formato al añadir fila:
 
 ```markdown
