@@ -14,22 +14,16 @@
 
 ---
 
-## Estado actual (antes de Sprint 1)
+## Estado actual (resumen marzo 2026)
 
 | Área | Estado |
 |------|--------|
 | Apps web + panel | ✅ |
-| Auth (JWT, login, register, refresh) | ✅ |
-| CRUD propiedades + upload S3 | ✅ |
-| Ficha edición panel (galería, publicar) | ✅ |
-| Cron import Yumblin | ✅ |
-| Búsqueda SQL (portal) | ✅ |
-| next/image panel galería | ✅ |
-| next/image portal | ❌ (4 warnings lint) |
-| Sistema vigencia | ❌ |
-| Elasticsearch | ❌ (búsqueda en SQL) |
-| Leads | ❌ |
-| Conversacional | ❌ |
+| Auth, CRUD, vigencia, leads, ES + fallback SQL | ✅ |
+| Import Yumblin/Kiteprop + mapeo `property_type` EN/ES | ✅ |
+| Búsqueda, mapa, clusters, demanda, alertas, org invitaciones | ✅ |
+| Asistente (IA + reglas) y semántica en `q` | ✅ |
+| Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40` |
 
 ---
 
@@ -384,6 +378,20 @@
 
 ---
 
+## Sprint 24 — Importación tipada + semántica rural (doc 38 AB) ✅
+
+**Objetivo:** cerrar la brecha “todo cae en apartment” cuando el feed envía códigos en inglés; documentar operación; ampliar sinónimos rurales en búsqueda por texto; herramientas de depuración feed↔DB.
+
+- [x] 24.1 `mapFeedPropertyType`: códigos Kiteprop (`houses`, `apartments`, `residential_lands`, …) + alias `lots` / `agricultural_land`
+- [x] 24.2 `mapYumblinItem`: `getValue` insensible a mayúsculas/guiones; prioridad `typeproperty` anidado; alias precio/superficie/operación
+- [x] 24.3 `search-semantics`: frases rurales (finca, estancia, loteo, fracción rural, uso agrícola, zona rural, …)
+- [x] 24.4 Scripts `pnpm audit:yumblin-fields`, `pnpm diff:import-types`; doc `docs/37` sección feed + hash
+- [x] 24.5 Verificar `pnpm verify`, actualizar este doc, commit + push
+
+**Criterios:** un import tras deploy recalcula tipos alineados al feed; el operador puede auditar con scripts; búsqueda por texto reconoce más variantes rurales (doc 38 AB).
+
+---
+
 ## Próximos sprints (backlog)
 
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
@@ -396,4 +404,4 @@
 
 ---
 
-*Actualizado: 2026-03-30 (Sprint 23: asistente visible en home + tono fundacional)*
+*Actualizado: 2026-03-30 (Sprint 24: import tipos feed EN + semántica rural + herramientas audit/diff)*

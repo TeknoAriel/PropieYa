@@ -25,6 +25,7 @@
     "sync-search:local": "pnpm exec tsx scripts/sync-search-local.ts",
     "audit:listing-types": "pnpm exec tsx scripts/audit-listing-property-types.ts",
     "audit:yumblin-fields": "pnpm exec tsx scripts/audit-yumblin-fields.ts",
+    "diff:import-types": "pnpm exec tsx scripts/diff-import-property-types.ts",
     "verificar:prod": "bash scripts/verificar-produccion.sh",
     "diagnostico:prod": "bash scripts/diagnostico-produccion.sh",
     "verificar:deploy": "bash scripts/verificar-deploy-esperar.sh --wait 3",
