@@ -112,18 +112,18 @@ const conversacionPrimero: PortalCopyPack = {
   id: 'conversacion_primero',
   title: 'Conversación primero — Propuesta disruptiva baseline',
   ruleSummary:
-    'Hero centrado en el asistente; términos humanos (“contale”, “intención”) con CTAs de mercado reconocibles (venta, alquiler, filtros).',
+    'Hero centrado en el asistente; tono institucional sin perder cercanía; CTAs de mercado (venta, alquiler, filtros).',
   hero: {
-    line1: 'No es otro buscador de casillas.',
-    line2Accent: 'Hablá con intención. Propieya entiende.',
+    line1: 'No es solo un buscador de filtros.',
+    line2Accent: 'Expresá tu intención. Propieya interpreta.',
     subtitle:
-      'Dejá atrás el formulario infinito: una conversación abierta traduce lo que querés en búsqueda real — misma potencia que los filtros, otro paradigma.',
+      'Una conversación clara traduce lo que buscás en criterios precisos — la misma potencia que los filtros avanzados, con otro punto de partida.',
     placeholder:
-      'Contale en una frase: operación, zona, tipología, lo que no negociás…',
+      'Describí en una frase: operación, zona, tipología y prioridades…',
     filterLink: 'Modo clásico: mapa y filtros',
     assistantBadge: 'Asistente Propieya',
     assistantPitch:
-      'Interpretamos tu mensaje (con IA si está configurada, o reglas locales si no) y te llevamos a resultados con el mismo motor que /buscar.',
+      'Analizamos tu consulta (con IA si está disponible, o con reglas locales) y te orientamos a resultados con el mismo motor que /buscar.',
   },
   heroExamples: [
     'Casa en venta, 2 dormitorios, grande, con pileta y quincho',
@@ -147,7 +147,7 @@ const conversacionPrimero: PortalCopyPack = {
       {
         title: 'Contale a Propieya',
         description:
-          'Una frase vale más que diez dropdowns. Operación, zona, tamaño, detalles que te importan.',
+          'Una frase concreta resume operación, zona, tamaño y prioridades — sin recorrer filtro por filtro.',
       },
       {
         title: 'Traducimos a búsqueda',

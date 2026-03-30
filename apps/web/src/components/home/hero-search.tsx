@@ -101,7 +101,7 @@ export function HeroSearch() {
     assistantCfg != null
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-surface-secondary to-surface-primary py-20 md:py-32">
+    <section className="relative overflow-hidden bg-gradient-to-b from-surface-secondary to-surface-primary py-10 pb-12 md:py-12 md:pb-14 lg:py-14 lg:pb-16">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-brand-secondary/20 blur-3xl" />
@@ -111,18 +111,18 @@ export function HeroSearch() {
       <div className="container relative mx-auto px-4">
         <div className="mx-auto max-w-3xl text-center">
           {/* Headline */}
-          <h1 className="text-4xl font-bold tracking-tight text-text-primary md:text-5xl lg:text-6xl">
+          <h1 className="text-3xl font-bold tracking-tight text-text-primary sm:text-[1.75rem] md:text-4xl lg:text-[2.35rem] lg:leading-tight">
             {pack.hero.line1}
             <br />
             <span className="text-brand-primary">{pack.hero.line2Accent}</span>
           </h1>
 
-          <p className="mt-6 text-lg text-text-secondary md:text-xl">
+          <p className="mt-4 text-base leading-relaxed text-text-secondary md:mt-5 md:text-lg">
             {pack.hero.subtitle}
           </p>
 
           {showAssistantStrip ? (
-            <div className="mt-8 flex flex-col items-center gap-3">
+            <div className="mt-5 flex flex-col items-center gap-2.5 md:mt-6">
               <div className="flex flex-wrap items-center justify-center gap-2">
                 {(pack.hero.assistantBadge != null ||
                   pack.hero.assistantPitch != null) && (
@@ -200,7 +200,7 @@ export function HeroSearch() {
           </div>
 
           {/* Example chips */}
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
+          <div className="mt-4 flex flex-wrap justify-center gap-2 md:mt-5">
             {pack.heroExamples.map((example) => (
               <button
                 key={example}
@@ -215,7 +215,7 @@ export function HeroSearch() {
           </div>
 
           {/* Traditional search link */}
-          <div className="mt-8">
+          <div className="mt-5 md:mt-6">
             <Link
               href="/buscar"
               className="inline-flex items-center gap-2 text-sm text-text-tertiary transition-colors hover:text-text-secondary"
