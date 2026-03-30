@@ -75,6 +75,14 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 - `./scripts/verificar-ingestion.sh` — flujo completo: env pull, import, publish drafts, sync ES — ver `docs/35-VERIFICACION-INGESTA.md`
 - Pipeline detallado: `docs/32-PIPELINE-DEPLOY-COMPLETO.md`
 
+### Tipos de propiedad en feed Kiteprop / Yumblin (inglés y alias)
+
+- El campo habitual es **`property_type`** con códigos en **inglés** (`houses`, `apartments`, `residential_lands`, `retail_spaces`, etc.), no solo español.
+- **`mapFeedPropertyType`** (`packages/shared/src/map-feed-property-type.ts`) normaliza esos códigos al enum interno (`house`, `apartment`, `land`, …).
+- El mapper JSON (**`mapYumblinItem`**) también resuelve claves con **mayúsculas/guiones** equivalentes (`typeProperty`, `type_property`, …) y busca **`typeproperty` anidado** si existiera.
+- El hash **`computeImportContentHash`** incluye `propertyType`: si el mapper pasa a devolver otro tipo para el mismo aviso, el **siguiente import** detecta cambio y hace **UPDATE** de la fila (no hace falta migración SQL manual salvo casos fuera del feed).
+- **Depuración:** `pnpm audit:yumblin-fields` (distribución en el JSON remoto), `pnpm audit:listing-types` (SQL + sospechosos “casa” en texto), `pnpm diff:import-types` (feed mapper vs DB por `external_id`).
+
 ---
 
 ## 4. Health y diagnóstico
@@ -84,4 +92,4 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 
 ---
 
-*Actualizado: 2026-03-27*
+*Actualizado: 2026-03-30*

@@ -14,22 +14,16 @@
 
 ---
 
-## Estado actual (antes de Sprint 1)
+## Estado actual (resumen marzo 2026)
 
 | Área | Estado |
 |------|--------|
 | Apps web + panel | ✅ |
-| Auth (JWT, login, register, refresh) | ✅ |
-| CRUD propiedades + upload S3 | ✅ |
-| Ficha edición panel (galería, publicar) | ✅ |
-| Cron import Yumblin | ✅ |
-| Búsqueda SQL (portal) | ✅ |
-| next/image panel galería | ✅ |
-| next/image portal | ❌ (4 warnings lint) |
-| Sistema vigencia | ❌ |
-| Elasticsearch | ❌ (búsqueda en SQL) |
-| Leads | ❌ |
-| Conversacional | ❌ |
+| Auth, CRUD, vigencia, leads, ES + fallback SQL | ✅ |
+| Import Yumblin/Kiteprop + mapeo `property_type` EN/ES | ✅ |
+| Búsqueda, mapa, clusters, demanda, alertas, org invitaciones | ✅ |
+| Asistente (IA + reglas) y semántica en `q` | ✅ |
+| Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40` |
 
 ---
 
@@ -340,6 +334,64 @@
 
 ---
 
+## Sprint 21 — Mapa en búsqueda: clusters (zoom bajo) ✅
+
+**Objetivo:** capa AA de `docs/38`: agrupar pins en `/buscar` cuando hay muchos marcadores y el zoom es amplio; al acercar, spiderfy / pins individuales.
+
+- [x] 21.1 Dependencia `leaflet.markercluster` + tipos en `apps/web`
+- [x] 21.2 `BuscarSearchMap`: `L.markerClusterGroup` imperativo (compatible con `react-leaflet` 4), estilos default del plugin, `disableClusteringAtZoom: 16`
+- [x] 21.3 Popups con enlace a ficha; título escapado para HTML
+- [x] 21.4 Verificar `pnpm verify`, commit + push
+
+**Criterios:** con varios avisos geolocalizados, el mapa muestra clusters que se desglosan al hacer zoom o clic; sin paquete `react-leaflet-cluster` (peer incompatible con RL4).
+
+---
+
+## Sprint 22 — Búsqueda por frase: extraer filtros y no romper full-text ✅
+
+**Objetivo:** una sola caja `q` debe interpretar frases largas (operación, tipo, dormitorios, tamaño, amenities) sin exigir que título/descripción contengan el texto entero; SQL fallback alineado a ES.
+
+**Problema real:** `mergeFilters` + `multi_match` sobre el `q` completo ANDaba filtros estructurados con “toda la frase” en título → **0 resultados** salvo coincidencia literal. El fallback SQL **no** aplicaba `extractFiltersFromQuery`.
+
+- [x] 22.1 `extractFiltersFromQueryDetailed` + `stripConsumedPartsFromQuery` + `mergePublicSearchFromQuery` en `@propieya/shared`
+- [x] 22.2 ES: `multi_match` solo sobre **texto residual**; amenities como varios `term` (AND, como SQL)
+- [x] 22.3 SQL `listing.search`: mismo merge + ILIKE solo sobre residual
+- [x] 22.4 Heurística **grande / amplio / espacioso** → `minSurface` 100 m²; **parque** → jardín (amenity)
+- [x] 22.5 `matchOperationSpanInOriginalQuery` + `PROPERTY_PHRASES_SORTED` para spans de operación/tipo
+- [x] 22.6 Verificar `pnpm verify`, doc + commit + push
+
+**Criterios:** consulta tipo *“casa para comprar 2 dormitorios grande con jardin pileta quincho y garage”* aplica filtros estructurados y deja el full-text vacío o mínimo (p. ej. barrio suelto), sin exigir la frase completa en el aviso.
+
+---
+
+## Sprint 23 — Asistente visible: innovación en home + tono fundacional ✅
+
+**Objetivo:** que el portal muestre de inmediato el diferencial conversacional-first (`docs/00`): propuesta de búsqueda distinta, copy y términos alineados al pack **`conversacion_primero`** (default), asistente “con color” sin depender solo de la API key.
+
+- [x] 23.1 Hero: badge `assistantBadge`, microcopy `assistantPitch`, chip **IA conectada / modo reglas** (`/api/assistant-config`)
+- [x] 23.2 Contenedor del input (borde marca, sombra, blur) cuando hay strip de asistente; accesibilidad básica (`aria-label`)
+- [x] 23.3 Prompt sistema `llm.ts`: paradigma Propieya, intención humana → JSON, frases largas y matices
+- [x] 23.4 `docs/41-ASISTENTE-PORTAL.md` actualizado; pack default ya `conversacion_primero` en `portal-packs` + `.env.example`
+- [x] 23.5 Verificar `pnpm verify`, `docs/24`, commit + push
+
+**Criterios:** un visitante entiende que no es “otro buscador de casillas”; ve si la extracción puede usar IA o reglas; el tono refleja directrices del proyecto.
+
+---
+
+## Sprint 24 — Importación tipada + semántica rural (doc 38 AB) ✅
+
+**Objetivo:** cerrar la brecha “todo cae en apartment” cuando el feed envía códigos en inglés; documentar operación; ampliar sinónimos rurales en búsqueda por texto; herramientas de depuración feed↔DB.
+
+- [x] 24.1 `mapFeedPropertyType`: códigos Kiteprop (`houses`, `apartments`, `residential_lands`, …) + alias `lots` / `agricultural_land`
+- [x] 24.2 `mapYumblinItem`: `getValue` insensible a mayúsculas/guiones; prioridad `typeproperty` anidado; alias precio/superficie/operación
+- [x] 24.3 `search-semantics`: frases rurales (finca, estancia, loteo, fracción rural, uso agrícola, zona rural, …)
+- [x] 24.4 Scripts `pnpm audit:yumblin-fields`, `pnpm diff:import-types`; doc `docs/37` sección feed + hash
+- [x] 24.5 Verificar `pnpm verify`, actualizar este doc, commit + push
+
+**Criterios:** un import tras deploy recalcula tipos alineados al feed; el operador puede auditar con scripts; búsqueda por texto reconoce más variantes rurales (doc 38 AB).
+
+---
+
 ## Próximos sprints (backlog)
 
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
@@ -352,4 +404,4 @@
 
 ---
 
-*Actualizado: 2026-03-29 (Sprint 20 ampliado: DB + manifest + ts)*
+*Actualizado: 2026-03-30 (Sprint 24: import tipos feed EN + semántica rural + herramientas audit/diff)*

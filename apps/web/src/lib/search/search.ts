@@ -57,7 +57,8 @@ export async function searchListings(
         ? result.hits.total
         : (result.hits.total as { value: number })?.value ?? 0
     return { hits, total, fromEs: true }
-  } catch {
+  } catch (err) {
+    console.error('[searchListings] Elasticsearch error:', err)
     return { hits: [], total: 0, fromEs: false }
   }
 }

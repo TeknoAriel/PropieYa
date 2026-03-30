@@ -11,7 +11,7 @@ export function HowItWorks() {
   const steps = pack.howItWorks.steps
 
   return (
-    <section className="py-16 md:py-24 bg-surface-secondary">
+    <section className="py-12 md:py-20 bg-surface-secondary">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-2xl font-bold text-text-primary md:text-3xl">

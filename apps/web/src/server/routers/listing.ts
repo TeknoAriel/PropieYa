@@ -14,6 +14,7 @@ import {
   createListingSchema,
   updateListingSchema,
   LISTING_VALIDITY,
+  mergePublicSearchFromQuery,
   SEARCH_FILTER_AMENITIES,
   withMatchReasons,
   type ExplainMatchFilters,
@@ -530,16 +531,21 @@ export const listingRouter = createTRPCRouter({
         offset,
       })
 
-      if (esResult.fromEs) {
+      // Si ES responde pero el índice está vacío o desincronizado, total=0 y antes
+      // no había fallback: el buscador quedaba en silencio. SQL es fuente de verdad.
+      if (esResult.fromEs && esResult.total > 0) {
         return withMatchReasons(
           explainFilters as ExplainMatchFilters,
           esResult.hits
         )
       }
 
+      const merged = mergePublicSearchFromQuery(input)
+      const { residualTextQuery, ...sqlInput } = merged
+
       const conditions = [eq(listings.status, 'active')]
-      if (input.q?.trim()) {
-        const frag = sanitizeIlikeFragment(input.q)
+      if (residualTextQuery.trim()) {
+        const frag = sanitizeIlikeFragment(residualTextQuery)
         if (frag.length > 0) {
           const pat = `%${frag}%`
           conditions.push(
@@ -550,87 +556,87 @@ export const listingRouter = createTRPCRouter({
           )
         }
       }
-      if (input.operationType) {
-        conditions.push(eq(listings.operationType, input.operationType))
+      if (sqlInput.operationType) {
+        conditions.push(eq(listings.operationType, sqlInput.operationType))
       }
-      if (input.propertyType) {
-        conditions.push(eq(listings.propertyType, input.propertyType))
+      if (sqlInput.propertyType) {
+        conditions.push(eq(listings.propertyType, sqlInput.propertyType))
       }
-      if (input.minPrice !== undefined) {
-        conditions.push(gte(listings.priceAmount, input.minPrice))
+      if (sqlInput.minPrice !== undefined) {
+        conditions.push(gte(listings.priceAmount, sqlInput.minPrice))
       }
-      if (input.maxPrice !== undefined) {
-        conditions.push(lte(listings.priceAmount, input.maxPrice))
+      if (sqlInput.maxPrice !== undefined) {
+        conditions.push(lte(listings.priceAmount, sqlInput.maxPrice))
       }
-      if (input.minBedrooms !== undefined) {
-        conditions.push(gte(listings.bedrooms, input.minBedrooms))
+      if (sqlInput.minBedrooms !== undefined) {
+        conditions.push(gte(listings.bedrooms, sqlInput.minBedrooms))
       }
-      if (input.minBathrooms !== undefined) {
-        conditions.push(gte(listings.bathrooms, input.minBathrooms))
+      if (sqlInput.minBathrooms !== undefined) {
+        conditions.push(gte(listings.bathrooms, sqlInput.minBathrooms))
       }
-      if (input.minGarages !== undefined) {
-        conditions.push(gte(listings.garages, input.minGarages))
+      if (sqlInput.minGarages !== undefined) {
+        conditions.push(gte(listings.garages, sqlInput.minGarages))
       }
-      if (input.minSurface !== undefined) {
-        conditions.push(gte(listings.surfaceTotal, input.minSurface))
+      if (sqlInput.minSurface !== undefined) {
+        conditions.push(gte(listings.surfaceTotal, sqlInput.minSurface))
       }
-      if (input.maxSurface !== undefined) {
-        conditions.push(lte(listings.surfaceTotal, input.maxSurface))
+      if (sqlInput.maxSurface !== undefined) {
+        conditions.push(lte(listings.surfaceTotal, sqlInput.maxSurface))
       }
-      if (input.floorMin !== undefined) {
+      if (sqlInput.floorMin !== undefined) {
         conditions.push(
-          sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) >= ${input.floorMin}`
+          sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) >= ${sqlInput.floorMin}`
         )
       }
-      if (input.floorMax !== undefined) {
+      if (sqlInput.floorMax !== undefined) {
         conditions.push(
-          sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) <= ${input.floorMax}`
+          sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) <= ${sqlInput.floorMax}`
         )
       }
-      if (input.escalera?.trim()) {
+      if (sqlInput.escalera?.trim()) {
         conditions.push(
-          sql`(${listings.features}->>'escalera') = ${input.escalera.trim().toUpperCase()}`
+          sql`(${listings.features}->>'escalera') = ${sqlInput.escalera.trim().toUpperCase()}`
         )
       }
-      if (input.orientation) {
+      if (sqlInput.orientation) {
         conditions.push(
-          sql`(${listings.features}->>'orientation') = ${input.orientation}`
+          sql`(${listings.features}->>'orientation') = ${sqlInput.orientation}`
         )
       }
-      if (input.minSurfaceCovered !== undefined) {
+      if (sqlInput.minSurfaceCovered !== undefined) {
         conditions.push(
-          sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} >= ${input.minSurfaceCovered}`
+          sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} >= ${sqlInput.minSurfaceCovered}`
         )
       }
-      if (input.maxSurfaceCovered !== undefined) {
+      if (sqlInput.maxSurfaceCovered !== undefined) {
         conditions.push(
-          sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} <= ${input.maxSurfaceCovered}`
+          sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} <= ${sqlInput.maxSurfaceCovered}`
         )
       }
-      if (input.minTotalRooms !== undefined) {
+      if (sqlInput.minTotalRooms !== undefined) {
         conditions.push(
-          sql`${listings.totalRooms} IS NOT NULL AND ${listings.totalRooms} >= ${input.minTotalRooms}`
+          sql`${listings.totalRooms} IS NOT NULL AND ${listings.totalRooms} >= ${sqlInput.minTotalRooms}`
         )
       }
-      if (input.city?.trim()) {
-        const c = sanitizeIlikeFragment(input.city)
+      if (sqlInput.city?.trim()) {
+        const c = sanitizeIlikeFragment(sqlInput.city)
         if (c.length > 0) {
           conditions.push(
             sql`COALESCE(${listings.address}->>'city', '') ILIKE ${`%${c}%`}`
           )
         }
       }
-      if (input.neighborhood?.trim()) {
-        const n = sanitizeIlikeFragment(input.neighborhood)
+      if (sqlInput.neighborhood?.trim()) {
+        const n = sanitizeIlikeFragment(sqlInput.neighborhood)
         if (n.length > 0) {
           conditions.push(
             sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${`%${n}%`}`
           )
         }
       }
-      if (input.amenities && input.amenities.length > 0) {
+      if (sqlInput.amenities && sqlInput.amenities.length > 0) {
         const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
-        for (const a of input.amenities) {
+        for (const a of sqlInput.amenities) {
           if (allowed.includes(a)) {
             conditions.push(
               sql`(${listings.features}->'amenities') @> to_jsonb(ARRAY[${a}]::text[])`
@@ -639,8 +645,8 @@ export const listingRouter = createTRPCRouter({
         }
       }
 
-      if (input.bbox) {
-        const { south, north, west, east } = input.bbox
+      if (sqlInput.bbox) {
+        const { south, north, west, east } = sqlInput.bbox
         conditions.push(sql`${listings.locationLat} IS NOT NULL`)
         conditions.push(sql`${listings.locationLng} IS NOT NULL`)
         conditions.push(gte(listings.locationLat, south))
@@ -690,7 +696,7 @@ export const listingRouter = createTRPCRouter({
 
       const esResult = await searchListings(filters)
 
-      if (esResult.fromEs) {
+      if (esResult.fromEs && esResult.total > 0) {
         return {
           filters,
           hits: withMatchReasons(explainFilters, esResult.hits),

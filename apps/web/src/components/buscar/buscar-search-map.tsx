@@ -3,9 +3,7 @@
 import { useEffect } from 'react'
 import L from 'leaflet'
 import {
-  CircleMarker,
   MapContainer,
-  Popup,
   TileLayer,
   useMap,
 } from 'react-leaflet'
@@ -13,6 +11,9 @@ import {
 import { Button } from '@propieya/ui'
 
 import 'leaflet/dist/leaflet.css'
+import 'leaflet.markercluster/dist/MarkerCluster.css'
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
+import 'leaflet.markercluster'
 
 export type BuscarMapBBox = {
   south: number
@@ -44,6 +45,51 @@ function FitBounds({ points }: { points: [number, number][] }) {
       map.fitBounds(b, { padding: [32, 32], maxZoom: 15 })
     }
   }, [map, points])
+  return null
+}
+
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/"/g, '&quot;')
+}
+
+/** Agrupa marcadores en zoom bajo (doc 38 AA — clusters). */
+function ClusteredPins({ pins }: { pins: BuscarMapPin[] }) {
+  const map = useMap()
+
+  useEffect(() => {
+    const mcg = L.markerClusterGroup({
+      chunkedLoading: true,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      maxClusterRadius: 56,
+      disableClusteringAtZoom: 16,
+    })
+
+    for (const p of pins) {
+      const cm = L.circleMarker([p.lat, p.lng], {
+        radius: 8,
+        color: '#2563eb',
+        fillColor: '#3b82f6',
+        fillOpacity: 0.85,
+        weight: 2,
+      })
+      const safeTitle = escapeHtml(p.title)
+      cm.bindPopup(
+        `<a href="/propiedad/${escapeHtml(p.id)}" class="text-sm font-medium text-blue-600 hover:underline">${safeTitle}</a>`,
+      )
+      mcg.addLayer(cm)
+    }
+
+    map.addLayer(mcg)
+    return () => {
+      mcg.clearLayers()
+      map.removeLayer(mcg)
+    }
+  }, [map, pins])
+
   return null
 }
 
@@ -104,28 +150,7 @@ export function BuscarSearchMap({ pins, onApplyZona }: BuscarSearchMapProps) {
         />
         <FitBounds points={points} />
         <ZonaControls onApplyZona={onApplyZona} />
-        {pins.map((p) => (
-          <CircleMarker
-            key={p.id}
-            center={[p.lat, p.lng]}
-            radius={8}
-            pathOptions={{
-              color: '#2563eb',
-              fillColor: '#3b82f6',
-              fillOpacity: 0.85,
-              weight: 2,
-            }}
-          >
-            <Popup>
-              <a
-                href={`/propiedad/${p.id}`}
-                className="text-sm font-medium text-brand-primary hover:underline"
-              >
-                {p.title}
-              </a>
-            </Popup>
-          </CircleMarker>
-        ))}
+        <ClusteredPins pins={pins} />
       </MapContainer>
     </div>
   )
