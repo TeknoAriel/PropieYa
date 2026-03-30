@@ -370,6 +370,20 @@
 
 ---
 
+## Sprint 23 — Asistente visible: innovación en home + tono fundacional ✅
+
+**Objetivo:** que el portal muestre de inmediato el diferencial conversacional-first (`docs/00`): propuesta de búsqueda distinta, copy y términos alineados al pack **`conversacion_primero`** (default), asistente “con color” sin depender solo de la API key.
+
+- [x] 23.1 Hero: badge `assistantBadge`, microcopy `assistantPitch`, chip **IA conectada / modo reglas** (`/api/assistant-config`)
+- [x] 23.2 Contenedor del input (borde marca, sombra, blur) cuando hay strip de asistente; accesibilidad básica (`aria-label`)
+- [x] 23.3 Prompt sistema `llm.ts`: paradigma Propieya, intención humana → JSON, frases largas y matices
+- [x] 23.4 `docs/41-ASISTENTE-PORTAL.md` actualizado; pack default ya `conversacion_primero` en `portal-packs` + `.env.example`
+- [x] 23.5 Verificar `pnpm verify`, `docs/24`, commit + push
+
+**Criterios:** un visitante entiende que no es “otro buscador de casillas”; ve si la extracción puede usar IA o reglas; el tono refleja directrices del proyecto.
+
+---
+
 ## Próximos sprints (backlog)
 
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
@@ -382,4 +396,4 @@
 
 ---
 
-*Actualizado: 2026-03-29 (Sprint 22: búsqueda por frase + residual full-text)*
+*Actualizado: 2026-03-30 (Sprint 23: asistente visible en home + tono fundacional)*
