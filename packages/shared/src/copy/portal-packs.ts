@@ -3,7 +3,11 @@
  * Activar con NEXT_PUBLIC_PORTAL_COPY_PACK=<id> (ver PORTAL_COPY_PACK_IDS).
  */
 
-export const PORTAL_COPY_PACK_IDS = ['regla_portal_v1', 'variante_b_cercano'] as const
+export const PORTAL_COPY_PACK_IDS = [
+  'regla_portal_v1',
+  'variante_b_cercano',
+  'conversacion_primero',
+] as const
 export type PortalCopyPackId = (typeof PORTAL_COPY_PACK_IDS)[number]
 
 export type PortalHowStep = {
@@ -24,6 +28,10 @@ export type PortalCopyPack = {
     subtitle: string
     placeholder: string
     filterLink: string
+    /** Marca visual del asistente (Sprint 23). */
+    assistantBadge?: string
+    /** Microcopy bajo el badge: propuesta conversacional-first. */
+    assistantPitch?: string
   }
   heroExamples: string[]
   nav: { buscar: string; venta: string; alquiler: string }
@@ -96,6 +104,71 @@ const reglaPortalV1: PortalCopyPack = {
 }
 
 /** Variante B — más inductivo en hero; nav igual de funcional */
+/**
+ * Pack por defecto (Sprint 23): alinea tono con docs/00 — conversacional-first,
+ * lenguaje rioplatense claro, propuesta distinta al “portal con chat”.
+ */
+const conversacionPrimero: PortalCopyPack = {
+  id: 'conversacion_primero',
+  title: 'Conversación primero — Propuesta disruptiva baseline',
+  ruleSummary:
+    'Hero centrado en el asistente; términos humanos (“contale”, “intención”) con CTAs de mercado reconocibles (venta, alquiler, filtros).',
+  hero: {
+    line1: 'No es otro buscador de casillas.',
+    line2Accent: 'Hablá con intención. Propieya entiende.',
+    subtitle:
+      'Dejá atrás el formulario infinito: una conversación abierta traduce lo que querés en búsqueda real — misma potencia que los filtros, otro paradigma.',
+    placeholder:
+      'Contale en una frase: operación, zona, tipología, lo que no negociás…',
+    filterLink: 'Modo clásico: mapa y filtros',
+    assistantBadge: 'Asistente Propieya',
+    assistantPitch:
+      'Interpretamos tu mensaje (con IA si está configurada, o reglas locales si no) y te llevamos a resultados con el mismo motor que /buscar.',
+  },
+  heroExamples: [
+    'Casa en venta, 2 dormitorios, grande, con pileta y quincho',
+    'Alquiler temporario cerca del mar, 4 personas',
+    'PH a refaccionar en CABA, presupuesto ajustado',
+    'Local a la calle, inversión, zona comercial fuerte',
+  ],
+  nav: { buscar: 'Buscar', venta: 'Venta', alquiler: 'Alquiler' },
+  cta: { login: 'Iniciar sesión', publish: 'Publicar' },
+  featured: {
+    title: 'Elegí por intuición o por dato',
+    subtitle: 'Avisos activos para explorar — el asistente y los filtros comparten el mismo índice.',
+    viewAll: 'Ver todas',
+    viewAllMobile: 'Ver todas las propiedades',
+  },
+  howItWorks: {
+    sectionTitle: 'Una forma distinta de buscar propiedades',
+    sectionSubtitle:
+      'Innovación con los pies en el mercado: comprar, alquilar y tipologías siguen siendo los anclas; el cambio es cómo empezás.',
+    steps: [
+      {
+        title: 'Contale a Propieya',
+        description:
+          'Una frase vale más que diez dropdowns. Operación, zona, tamaño, detalles que te importan.',
+      },
+      {
+        title: 'Traducimos a búsqueda',
+        description:
+          'Tu intención se convierte en filtros y texto residual sobre el mismo motor SQL/Elasticsearch.',
+      },
+      {
+        title: 'Refiná como prefieras',
+        description:
+          'Seguí en conversación o pasá al mapa y a los filtros avanzados sin perder contexto.',
+      },
+      {
+        title: 'Por qué encaja cada aviso',
+        description:
+          'Matching explicado: sabés qué cumple y qué no antes de escribir al publicador.',
+      },
+    ],
+  },
+}
+
+/** Variante B — más inductivo en hero; nav igual de funcional */
 const varianteBCercano: PortalCopyPack = {
   id: 'variante_b_cercano',
   title: 'Variante B — Hero más cercano (misma navegación funcional)',
@@ -134,6 +207,7 @@ const varianteBCercano: PortalCopyPack = {
 export const PORTAL_COPY_PACKS: Record<PortalCopyPackId, PortalCopyPack> = {
   regla_portal_v1: reglaPortalV1,
   variante_b_cercano: varianteBCercano,
+  conversacion_primero: conversacionPrimero,
 }
 
 export function resolvePortalCopyPack(
@@ -143,5 +217,5 @@ export function resolvePortalCopyPack(
   if (key && key in PORTAL_COPY_PACKS) {
     return PORTAL_COPY_PACKS[key]
   }
-  return PORTAL_COPY_PACKS.regla_portal_v1
+  return PORTAL_COPY_PACKS.conversacion_primero
 }
