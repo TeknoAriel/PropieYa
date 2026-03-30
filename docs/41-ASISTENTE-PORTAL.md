@@ -15,6 +15,17 @@ Ver `.env.example`:
 - `OPENAI_API_KEY` — opcional; si falta, el asistente sigue funcionando en modo reglas.
 - `OPENAI_MODEL` — ej. `gpt-4o-mini`.
 
+## Si `GET /api/assistant-config` devuelve `openAiConfigured: false`
+
+Ese JSON **no se edita** en el portal: el servidor lo calcula (`true` solo si `OPENAI_API_KEY` tiene valor en runtime).
+
+1. **Proyecto Vercel correcto:** variables en el proyecto cuyo **Root Directory** es `apps/web` (no el del panel).
+2. **Variable exacta:** nombre `OPENAI_API_KEY`, valor la clave de OpenAI (sin espacios al inicio/final).
+3. **Entorno:** marcar **Production** (y Preview si quieres IA en previews).
+4. **Redeploy** del deployment de producción tras guardar variables (hasta entonces el runtime puede seguir sin la clave).
+
+Si `model` ya es `gpt-4o-mini`, **no hace falta cambiar nada** en código ni en `OPENAI_MODEL` salvo que quieras otro modelo.
+
 ## Copy y tono
 
 - Pack por defecto: **`conversacion_primero`** (`NEXT_PUBLIC_PORTAL_COPY_PACK`). Otros: `regla_portal_v1`, `variante_b_cercano` (ver `docs/18-copy-portal-ab.md`).
