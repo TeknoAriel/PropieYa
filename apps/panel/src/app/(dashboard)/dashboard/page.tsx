@@ -35,7 +35,7 @@ export default function DashboardPage() {
     {
       label: 'Activos',
       value: by.active ?? 0,
-      icon: Building2,
+    icon: Building2,
       hint: 'Publicados en el portal',
     },
     {
@@ -106,12 +106,12 @@ export default function DashboardPage() {
             ))
           : cards.map((c) => (
               <Card key={c.label} className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="p-2 rounded-lg bg-brand-primary/10">
+            <div className="flex items-start justify-between">
+              <div className="p-2 rounded-lg bg-brand-primary/10">
                     <c.icon className="h-5 w-5 text-brand-primary" />
-                  </div>
-                </div>
-                <div className="mt-3">
+              </div>
+            </div>
+            <div className="mt-3">
                   <p className="text-2xl font-bold text-text-primary">
                     {c.value}
                   </p>
@@ -119,9 +119,9 @@ export default function DashboardPage() {
                     {c.label}
                   </p>
                   <p className="text-xs text-text-tertiary mt-1">{c.hint}</p>
-                </div>
-              </Card>
-            ))}
+            </div>
+          </Card>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -137,10 +137,10 @@ export default function DashboardPage() {
             </Link>
           </div>
           {leadsLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
                   className="h-14 rounded-lg bg-surface-secondary animate-pulse"
                 />
               ))}
@@ -159,8 +159,8 @@ export default function DashboardPage() {
                     className="flex items-center gap-3 p-3 rounded-lg bg-surface-secondary hover:bg-surface-elevated transition-colors"
                   >
                     <div className="h-10 w-10 rounded-full bg-brand-primary/20 flex items-center justify-center shrink-0">
-                      <Users className="h-5 w-5 text-brand-primary" />
-                    </div>
+                  <Users className="h-5 w-5 text-brand-primary" />
+                </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-text-primary truncate">
                         {lead.contactName}
@@ -168,11 +168,11 @@ export default function DashboardPage() {
                       <p className="text-xs text-text-tertiary truncate">
                         {lead.listingTitle} · {relativeTime(lead.createdAt)}
                       </p>
-                    </div>
+                </div>
                     <ArrowRight className="h-4 w-4 text-text-tertiary shrink-0" />
                   </Link>
                 </li>
-              ))}
+            ))}
             </ul>
           )}
         </Card>
@@ -197,13 +197,13 @@ export default function DashboardPage() {
             <div className="flex justify-between py-2 border-b border-border">
               <dt className="text-text-secondary">Vendido / alquilado</dt>
               <dd className="font-medium text-text-primary">{by.sold ?? 0}</dd>
-            </div>
+                </div>
             <div className="flex justify-between py-2">
               <dt className="text-text-secondary">Dados de baja</dt>
               <dd className="font-medium text-text-primary">
                 {by.withdrawn ?? 0}
               </dd>
-            </div>
+              </div>
           </dl>
           <div className="mt-4 pt-4 border-t border-border">
             <Link

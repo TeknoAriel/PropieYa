@@ -31,18 +31,20 @@ export function FeaturedListings() {
   const listings = listingsRaw as unknown as FeaturedListingCardData[]
 
   return (
-    <section className="pt-6 pb-14 md:pt-8 md:pb-20">
+    <section className="py-16 md:py-24">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between mb-6 md:mb-8">
+        <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-2xl font-bold text-text-primary md:text-3xl">
-              {pack.featured.title}
+              Propiedades destacadas
             </h2>
-            <p className="mt-2 text-text-secondary">{pack.featured.subtitle}</p>
+            <p className="mt-2 text-text-secondary">
+              Las últimas publicaciones de nuestra plataforma
+            </p>
           </div>
           <Button variant="outline" asChild className="hidden md:flex">
             <Link href="/buscar">
-              {pack.featured.viewAll}
+              Ver todas
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
