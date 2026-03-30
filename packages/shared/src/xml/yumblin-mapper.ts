@@ -6,7 +6,8 @@
  */
 
 import { extractAmenitiesFromFeedItem } from '../amenity-mapping'
-import type { Amenity, OperationType, PropertyType } from '../types/listing'
+import { mapFeedPropertyType } from '../map-feed-property-type'
+import type { Amenity, OperationType } from '../types/listing'
 
 type JsonItem = Record<string, unknown>
 
@@ -38,24 +39,6 @@ const OP_MAP: Record<string, OperationType> = {
   rent: 'rent',
   temporal: 'temporary_rent',
   temporary_rent: 'temporary_rent',
-}
-
-const TYPE_MAP: Record<string, PropertyType> = {
-  departamento: 'apartment',
-  apartment: 'apartment',
-  casa: 'house',
-  house: 'house',
-  ph: 'ph',
-  terreno: 'land',
-  land: 'land',
-  oficina: 'office',
-  office: 'office',
-  local: 'commercial',
-  commercial: 'commercial',
-  galpon: 'warehouse',
-  warehouse: 'warehouse',
-  cochera: 'parking',
-  parking: 'parking',
 }
 
 export interface YumblinListingInput {
@@ -136,8 +119,8 @@ export function mapYumblinItem(
     operationType = OP_MAP[opRaw] ?? 'sale'
   }
 
-  const typeRaw = String(getValue(item, 'property_type', 'tipo_propiedad', 'tipo') ?? 'departamento').toLowerCase()
-  const propertyType = TYPE_MAP[typeRaw] ?? 'apartment'
+  const typeRaw = getValue(item, 'property_type', 'tipo_propiedad', 'tipo')
+  const propertyType = mapFeedPropertyType(typeRaw ?? '')
 
   const lat = getValue(item, 'latitude', 'lat', 'latitud') as number | string | null
   const lng = getValue(item, 'longitude', 'lng', 'longitud', 'lon') as number | string | null

@@ -531,7 +531,9 @@ export const listingRouter = createTRPCRouter({
         offset,
       })
 
-      if (esResult.fromEs) {
+      // Si ES responde pero el índice está vacío o desincronizado, total=0 y antes
+      // no había fallback: el buscador quedaba en silencio. SQL es fuente de verdad.
+      if (esResult.fromEs && esResult.total > 0) {
         return withMatchReasons(
           explainFilters as ExplainMatchFilters,
           esResult.hits
@@ -694,7 +696,7 @@ export const listingRouter = createTRPCRouter({
 
       const esResult = await searchListings(filters)
 
-      if (esResult.fromEs) {
+      if (esResult.fromEs && esResult.total > 0) {
         return {
           filters,
           hits: withMatchReasons(explainFilters, esResult.hits),
