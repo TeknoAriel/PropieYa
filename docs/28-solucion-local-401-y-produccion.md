@@ -51,7 +51,7 @@ Si Promote falla, `main` no se actualiza y producción sigue en la versión ante
 
 ### Forzar actualización
 
-1. Ejecutar Promote manualmente: https://github.com/TeknoAriel/PropieYa/actions → "Promote deploy/infra → main" → **Run workflow**
+1. Ejecutar Promote manualmente: https://github.com/kiteprop/ia-propieya/actions → "Promote deploy/infra → main" → **Run workflow**
 
 2. O mergear el PR manualmente: si hay un PR abierto `deploy/infra` → `main`, mergealo desde GitHub.
 

@@ -8,7 +8,7 @@ URLs directas y valores a configurar para que el deploy funcione.
 
 ## 1. Permisos de Actions (crear/aprobar PRs)
 
-**URL:** https://github.com/TeknoAriel/PropieYa/settings/actions
+**URL:** https://github.com/kiteprop/ia-propieya/settings/actions
 
 1. Bajar hasta **"Workflow permissions"**
 2. Marcar: **"Read and write permissions"**
@@ -19,7 +19,7 @@ URLs directas y valores a configurar para que el deploy funcione.
 
 ## 2. Ruleset de main — quitar "Require status checks"
 
-**URL:** https://github.com/TeknoAriel/PropieYa/settings/rules
+**URL:** https://github.com/kiteprop/ia-propieya/settings/rules
 
 1. Abrir la regla que protege `main`
 2. En **"Rules"**, buscar **"Require status checks to pass before merging"**
@@ -34,7 +34,7 @@ Evita el error "Required status check 'Typecheck' is expected". El Promote ya ve
 
 Si todo lo anterior está bien y el workflow sigue fallando:
 
-**URL del PR:** https://github.com/TeknoAriel/PropieYa/pull/3
+**URL del PR:** https://github.com/kiteprop/ia-propieya/pull/3
 
 1. Abrir el PR
 2. Si los checks están en verde, usar **"Merge pull request"**

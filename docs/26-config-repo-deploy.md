@@ -23,7 +23,7 @@
 
 ### 1. Habilitar que Actions cree PRs
 
-1. Ir a: **https://github.com/TeknoAriel/PropieYa/settings/actions**
+1. Ir a: **https://github.com/kiteprop/ia-propieya/settings/actions**
 2. Bajar a **"Workflow permissions"**
 3. Marcar: **"Allow GitHub Actions to create and approve pull requests"**
 4. Guardar
@@ -32,7 +32,7 @@
 
 Si el merge falla con "Required status check 'Typecheck'":
 
-1. Ir a: **https://github.com/TeknoAriel/PropieYa/settings/rules**
+1. Ir a: **https://github.com/kiteprop/ia-propieya/settings/rules**
 2. Editar la regla de `main`
 3. En **Rules** → eliminar **"Require status checks to pass before merging"**
 4. Guardar

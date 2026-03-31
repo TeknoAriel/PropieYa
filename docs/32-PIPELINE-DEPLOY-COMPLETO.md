@@ -102,8 +102,8 @@ Required status check "Typecheck" is expected.
 | Health API | https://propieyaweb.vercel.app/api/health |
 | Version API | https://propieyaweb.vercel.app/api/version |
 | Variables Vercel (web) | https://vercel.com/teknoariels-projects/propieya-web/settings/environment-variables |
-| Reglas del repo | https://github.com/TeknoAriel/PropieYa/rules |
-| Actions Promote | https://github.com/TeknoAriel/PropieYa/actions/workflows/promote-deploy-infra.yml |
+| Reglas del repo | https://github.com/kiteprop/ia-propieya/rules |
+| Actions Promote | https://github.com/kiteprop/ia-propieya/actions/workflows/promote-deploy-infra.yml |
 
 ---
 

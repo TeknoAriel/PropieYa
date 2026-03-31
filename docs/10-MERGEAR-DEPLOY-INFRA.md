@@ -7,7 +7,7 @@
 Abrí en el navegador:
 
 ```
-https://github.com/TeknoAriel/PropieYa/compare/main...deploy/infra
+https://github.com/kiteprop/ia-propieya/compare/main...deploy/infra
 ```
 
 ---
@@ -34,6 +34,6 @@ Listo. Vercel va a detectar el nuevo commit en `main` y hará un deploy automát
 
 | Acción | URL |
 |--------|-----|
-| Crear PR | https://github.com/TeknoAriel/PropieYa/compare/main...deploy/infra |
-| Ver PRs abiertos | https://github.com/TeknoAriel/PropieYa/pulls |
-| Repo | https://github.com/TeknoAriel/PropieYa |
+| Crear PR | https://github.com/kiteprop/ia-propieya/compare/main...deploy/infra |
+| Ver PRs abiertos | https://github.com/kiteprop/ia-propieya/pulls |
+| Repo | https://github.com/kiteprop/ia-propieya |
