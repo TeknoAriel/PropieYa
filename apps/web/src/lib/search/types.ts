@@ -55,6 +55,9 @@ export interface SearchFilters {
   city?: string
   neighborhood?: string
   amenities?: string[]
+  geoPoint?: { lat: number; lng: number }
+  /** Radio en metros (requiere `geoPoint`). */
+  geoRadius?: number
   /**
    * Facets escalables (Sprint 26). Inicialmente convivirá con `amenities`.
    * El backend debe interpretar esto de forma compatible.

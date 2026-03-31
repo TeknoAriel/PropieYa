@@ -133,6 +133,15 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
     })
   }
 
+  if (rest.geoPoint && rest.geoRadius) {
+    must.push({
+      geo_distance: {
+        distance: `${Math.round(rest.geoRadius)}m`,
+        location: { lat: rest.geoPoint.lat, lon: rest.geoPoint.lng },
+      },
+    })
+  }
+
   const size = Math.min(rest.limit ?? 24, 50)
   const from = Math.min(rest.offset ?? 0, 500)
 

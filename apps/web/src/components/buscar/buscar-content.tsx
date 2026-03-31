@@ -205,6 +205,10 @@ export function BuscarContent({
   const [selectedAmenityFacets, setSelectedAmenityFacets] = useState<string[]>([])
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [mapBbox, setMapBbox] = useState<BuscarMapBBox | null>(null)
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(
+    null
+  )
+  const [geoRadiusMeters, setGeoRadiusMeters] = useState('3000')
   const [showMap, setShowMap] = useState(false)
 
   const toggleAmenityFacet = (key: string) => {
@@ -245,6 +249,9 @@ export function BuscarContent({
         selectedAmenityFacets.length > 0
           ? { flags: selectedAmenityFacets }
           : undefined,
+      geoPoint: mapCenter ?? undefined,
+      geoRadius:
+        mapCenter && geoRadiusMeters ? Number(geoRadiusMeters) : undefined,
       bbox: mapBbox ?? undefined,
       limit: 24,
       offset: 0,
@@ -272,6 +279,8 @@ export function BuscarContent({
       minTotalRooms,
       selectedAmenityFacets,
       mapBbox,
+      mapCenter,
+      geoRadiusMeters,
     ]
   )
 
@@ -608,6 +617,16 @@ export function BuscarContent({
                     Quitar filtro de zona
                   </Button>
                 ) : null}
+                {mapCenter ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMapCenter(null)}
+                  >
+                    Quitar radio
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   variant="outline"
@@ -615,13 +634,45 @@ export function BuscarContent({
                   onClick={() => {
                     setShowMap(false)
                     setMapBbox(null)
+                    setMapCenter(null)
                   }}
                 >
                   Ocultar mapa
                 </Button>
               </div>
             </div>
-            <BuscarSearchMap pins={mapPins} onApplyZona={setMapBbox} />
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                type="number"
+                min={200}
+                max={50000}
+                step={100}
+                value={geoRadiusMeters}
+                onChange={(e) => setGeoRadiusMeters(e.target.value)}
+                className="w-[180px]"
+                placeholder="Radio (m)"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={!mapCenter || !geoRadiusMeters}
+                onClick={() => {
+                  // Re-aplica el radio con el centro actual (estado ya actualizado por el mapa).
+                  setMapCenter((c) => (c ? { ...c } : c))
+                }}
+              >
+                Buscar alrededor
+              </Button>
+              <span className="text-xs text-text-tertiary">
+                Centro = mapa (move). Radio en metros.
+              </span>
+            </div>
+            <BuscarSearchMap
+              pins={mapPins}
+              onApplyZona={setMapBbox}
+              onCenterChange={setMapCenter}
+            />
             <p className="text-xs text-text-tertiary">
               Solo se marcan avisos con ubicación. Mové el mapa y tocá «Buscar en esta zona» para
               filtrar por el rectángulo visible.

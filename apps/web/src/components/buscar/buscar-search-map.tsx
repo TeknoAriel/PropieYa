@@ -31,6 +31,26 @@ export type BuscarMapPin = {
 
 const BA_DEFAULT: [number, number] = [-34.6037, -58.3816]
 
+function CurrentCenterReporter({
+  onCenter,
+}: {
+  onCenter: (center: { lat: number; lng: number }) => void
+}) {
+  const map = useMap()
+  useEffect(() => {
+    const report = () => {
+      const c = map.getCenter()
+      onCenter({ lat: c.lat, lng: c.lng })
+    }
+    report()
+    map.on('moveend', report)
+    return () => {
+      map.off('moveend', report)
+    }
+  }, [map, onCenter])
+  return null
+}
+
 function FitBounds({ points }: { points: [number, number][] }) {
   const map = useMap()
   useEffect(() => {
@@ -127,9 +147,14 @@ function ZonaControls({
 type BuscarSearchMapProps = {
   pins: BuscarMapPin[]
   onApplyZona: (bbox: BuscarMapBBox) => void
+  onCenterChange?: (center: { lat: number; lng: number }) => void
 }
 
-export function BuscarSearchMap({ pins, onApplyZona }: BuscarSearchMapProps) {
+export function BuscarSearchMap({
+  pins,
+  onApplyZona,
+  onCenterChange,
+}: BuscarSearchMapProps) {
   const first = pins[0]
   const center: [number, number] = first
     ? [first.lat, first.lng]
@@ -149,6 +174,7 @@ export function BuscarSearchMap({ pins, onApplyZona }: BuscarSearchMapProps) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <FitBounds points={points} />
+        {onCenterChange ? <CurrentCenterReporter onCenter={onCenterChange} /> : null}
         <ZonaControls onApplyZona={onApplyZona} />
         <ClusteredPins pins={pins} />
       </MapContainer>

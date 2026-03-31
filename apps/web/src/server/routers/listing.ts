@@ -526,6 +526,8 @@ export const listingRouter = createTRPCRouter({
         city: input.city,
         neighborhood: input.neighborhood,
         amenities: input.amenities,
+        geoPoint: input.geoPoint,
+        geoRadius: input.geoRadius,
         facets: input.facets,
         bbox: input.bbox,
         limit,
@@ -680,6 +682,22 @@ export const listingRouter = createTRPCRouter({
         conditions.push(lte(listings.locationLat, north))
         conditions.push(gte(listings.locationLng, west))
         conditions.push(lte(listings.locationLng, east))
+      }
+
+      // Búsqueda por radio (Sprint 26): aproximación por bounding box.
+      if (sqlInput.geoPoint && sqlInput.geoRadius) {
+        const { lat, lng } = sqlInput.geoPoint
+        const rMeters = sqlInput.geoRadius
+        const rKm = rMeters / 1000
+        const latDelta = rKm / 111
+        const lngDelta = rKm / (111 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)))
+
+        conditions.push(sql`${listings.locationLat} IS NOT NULL`)
+        conditions.push(sql`${listings.locationLng} IS NOT NULL`)
+        conditions.push(gte(listings.locationLat, lat - latDelta))
+        conditions.push(lte(listings.locationLat, lat + latDelta))
+        conditions.push(gte(listings.locationLng, lng - lngDelta))
+        conditions.push(lte(listings.locationLng, lng + lngDelta))
       }
 
       const rows = await ctx.db.query.listings.findMany({

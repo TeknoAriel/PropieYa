@@ -39,6 +39,14 @@ export const listingSearchFiltersSchema = z.object({
   city: z.string().max(120).optional(),
   neighborhood: z.string().max(120).optional(),
   amenities: z.array(z.string()).optional(),
+  geoPoint: z
+    .object({
+      lat: z.number().gte(-90).lte(90),
+      lng: z.number().gte(-180).lte(180),
+    })
+    .optional(),
+  /** Radio en metros (hasta 50km). Requiere `geoPoint`. */
+  geoRadius: z.number().positive().max(50000).optional(),
   facets: z
     .object({
       flags: z.array(z.string().max(80)).max(200).optional(),
