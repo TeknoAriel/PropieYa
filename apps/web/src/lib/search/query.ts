@@ -133,6 +133,16 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
     })
   }
 
+  if (rest.polygon && rest.polygon.length >= 3) {
+    must.push({
+      geo_polygon: {
+        location: {
+          points: rest.polygon.map((p) => ({ lat: p.lat, lon: p.lng })),
+        },
+      },
+    })
+  }
+
   if (rest.geoPoint && rest.geoRadius) {
     must.push({
       geo_distance: {

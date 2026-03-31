@@ -5,7 +5,10 @@ import L from 'leaflet'
 import {
   MapContainer,
   TileLayer,
+  Polygon,
+  Polyline,
   useMap,
+  useMapEvents,
 } from 'react-leaflet'
 
 import { Button } from '@propieya/ui'
@@ -28,6 +31,8 @@ export type BuscarMapPin = {
   lat: number
   lng: number
 }
+
+export type BuscarMapPoint = { lat: number; lng: number }
 
 const BA_DEFAULT: [number, number] = [-34.6037, -58.3816]
 
@@ -113,6 +118,43 @@ function ClusteredPins({ pins }: { pins: BuscarMapPin[] }) {
   return null
 }
 
+function PolygonDrawClicks({
+  enabled,
+  onVertex,
+}: {
+  enabled: boolean
+  onVertex: (lat: number, lng: number) => void
+}) {
+  useMapEvents({
+    click(e) {
+      if (!enabled) return
+      onVertex(e.latlng.lat, e.latlng.lng)
+    },
+  })
+  return null
+}
+
+function PolygonDraftOverlay({ ring }: { ring: BuscarMapPoint[] }) {
+  if (ring.length < 2) return null
+  const positions = ring.map((p) => [p.lat, p.lng] as [number, number])
+  if (ring.length >= 3) {
+    return (
+      <Polygon
+        positions={positions}
+        pathOptions={{
+          color: '#2563eb',
+          fillColor: '#3b82f6',
+          fillOpacity: 0.12,
+          weight: 2,
+        }}
+      />
+    )
+  }
+  return (
+    <Polyline positions={positions} pathOptions={{ color: '#2563eb', weight: 2 }} />
+  )
+}
+
 function ZonaControls({
   onApplyZona,
 }: {
@@ -148,12 +190,20 @@ type BuscarSearchMapProps = {
   pins: BuscarMapPin[]
   onApplyZona: (bbox: BuscarMapBBox) => void
   onCenterChange?: (center: { lat: number; lng: number }) => void
+  /** Vértices del polígono (búsqueda por área dibujada). */
+  polygonRing?: BuscarMapPoint[]
+  /** Si true, cada clic en el mapa agrega un vértice. */
+  polygonDrawMode?: boolean
+  onPolygonVertex?: (p: BuscarMapPoint) => void
 }
 
 export function BuscarSearchMap({
   pins,
   onApplyZona,
   onCenterChange,
+  polygonRing = [],
+  polygonDrawMode = false,
+  onPolygonVertex,
 }: BuscarSearchMapProps) {
   const first = pins[0]
   const center: [number, number] = first
@@ -175,6 +225,15 @@ export function BuscarSearchMap({
         />
         <FitBounds points={points} />
         {onCenterChange ? <CurrentCenterReporter onCenter={onCenterChange} /> : null}
+        {onPolygonVertex ? (
+          <>
+            <PolygonDrawClicks
+              enabled={polygonDrawMode}
+              onVertex={(lat, lng) => onPolygonVertex({ lat, lng })}
+            />
+            <PolygonDraftOverlay ring={polygonRing} />
+          </>
+        ) : null}
         <ZonaControls onApplyZona={onApplyZona} />
         <ClusteredPins pins={pins} />
       </MapContainer>

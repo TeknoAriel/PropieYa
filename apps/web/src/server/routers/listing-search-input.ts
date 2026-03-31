@@ -64,6 +64,17 @@ export const listingSearchFiltersSchema = z.object({
     })
     .optional(),
   bbox: listingSearchBBoxSchema.optional(),
+  /** Polígono WGS84 (≥3 vértices, orden del contorno). ES: geo_polygon; SQL: ray casting. */
+  polygon: z
+    .array(
+      z.object({
+        lat: z.number().gte(-90).lte(90),
+        lng: z.number().gte(-180).lte(180),
+      })
+    )
+    .min(3)
+    .max(60)
+    .optional(),
 })
 
 export const listingSearchInputSchema = listingSearchFiltersSchema.extend({

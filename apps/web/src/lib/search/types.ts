@@ -70,6 +70,8 @@ export interface SearchFilters {
   }
   /** Filtro por rectángulo (mapa). */
   bbox?: { south: number; north: number; west: number; east: number }
+  /** Polígono (mapa); orden de vértices = contorno. */
+  polygon?: { lat: number; lng: number }[]
   limit?: number
   offset?: number
 }

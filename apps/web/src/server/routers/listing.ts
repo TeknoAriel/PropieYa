@@ -31,6 +31,7 @@ import {
   removeListingFromSearch,
 } from '../../lib/search/sync'
 import { searchListings } from '../../lib/search/search'
+import { sqlPointInPolygonLngLat } from '../../lib/search/point-in-polygon-sql'
 import { extractIntentionFromMessage } from '../../lib/llm'
 import { checkRateLimit } from '../../lib/rate-limit'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
@@ -530,6 +531,7 @@ export const listingRouter = createTRPCRouter({
         geoRadius: input.geoRadius,
         facets: input.facets,
         bbox: input.bbox,
+        polygon: input.polygon,
         limit,
         offset,
       })
@@ -548,6 +550,7 @@ export const listingRouter = createTRPCRouter({
       const sqlInput = {
         ...sqlInputBase,
         facets: input.facets,
+        polygon: input.polygon,
       }
 
       const conditions = [eq(listings.status, 'active')]
@@ -698,6 +701,18 @@ export const listingRouter = createTRPCRouter({
         conditions.push(lte(listings.locationLat, lat + latDelta))
         conditions.push(gte(listings.locationLng, lng - lngDelta))
         conditions.push(lte(listings.locationLng, lng + lngDelta))
+      }
+
+      if (sqlInput.polygon && sqlInput.polygon.length >= 3) {
+        conditions.push(sql`${listings.locationLat} IS NOT NULL`)
+        conditions.push(sql`${listings.locationLng} IS NOT NULL`)
+        conditions.push(
+          sqlPointInPolygonLngLat(
+            listings.locationLng,
+            listings.locationLat,
+            sqlInput.polygon
+          )
+        )
       }
 
       const rows = await ctx.db.query.listings.findMany({

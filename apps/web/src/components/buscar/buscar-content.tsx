@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 
 import { Badge, Button, Card, Input, Skeleton } from '@propieya/ui'
-import type { BuscarMapBBox } from '@/components/buscar/buscar-search-map'
+import type { BuscarMapBBox, BuscarMapPoint } from '@/components/buscar/buscar-search-map'
 
 const BuscarSearchMap = dynamic(
   () => import('./buscar-search-map').then((mod) => mod.BuscarSearchMap),
@@ -208,7 +208,11 @@ export function BuscarContent({
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(
     null
   )
+  /** Solo aplica filtro por radio tras «Buscar alrededor» (no en cada movimiento del mapa). */
+  const [applyRadiusFilter, setApplyRadiusFilter] = useState(false)
   const [geoRadiusMeters, setGeoRadiusMeters] = useState('3000')
+  const [mapPolygonRing, setMapPolygonRing] = useState<BuscarMapPoint[]>([])
+  const [polygonDrawMode, setPolygonDrawMode] = useState(false)
   const [showMap, setShowMap] = useState(false)
 
   const toggleAmenityFacet = (key: string) => {
@@ -249,10 +253,14 @@ export function BuscarContent({
         selectedAmenityFacets.length > 0
           ? { flags: selectedAmenityFacets }
           : undefined,
-      geoPoint: mapCenter ?? undefined,
+      geoPoint:
+        applyRadiusFilter && mapCenter ? mapCenter : undefined,
       geoRadius:
-        mapCenter && geoRadiusMeters ? Number(geoRadiusMeters) : undefined,
+        applyRadiusFilter && mapCenter && geoRadiusMeters
+          ? Number(geoRadiusMeters)
+          : undefined,
       bbox: mapBbox ?? undefined,
+      polygon: mapPolygonRing.length >= 3 ? mapPolygonRing : undefined,
       limit: 24,
       offset: 0,
     }),
@@ -280,7 +288,9 @@ export function BuscarContent({
       selectedAmenityFacets,
       mapBbox,
       mapCenter,
+      applyRadiusFilter,
       geoRadiusMeters,
+      mapPolygonRing,
     ]
   )
 
@@ -617,14 +627,27 @@ export function BuscarContent({
                     Quitar filtro de zona
                   </Button>
                 ) : null}
-                {mapCenter ? (
+                {applyRadiusFilter ? (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setMapCenter(null)}
+                    onClick={() => setApplyRadiusFilter(false)}
                   >
                     Quitar radio
+                  </Button>
+                ) : null}
+                {mapPolygonRing.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setMapPolygonRing([])
+                      setPolygonDrawMode(false)
+                    }}
+                  >
+                    Quitar polígono
                   </Button>
                 ) : null}
                 <Button
@@ -634,7 +657,9 @@ export function BuscarContent({
                   onClick={() => {
                     setShowMap(false)
                     setMapBbox(null)
-                    setMapCenter(null)
+                    setApplyRadiusFilter(false)
+                    setMapPolygonRing([])
+                    setPolygonDrawMode(false)
                   }}
                 >
                   Ocultar mapa
@@ -657,25 +682,42 @@ export function BuscarContent({
                 variant="secondary"
                 size="sm"
                 disabled={!mapCenter || !geoRadiusMeters}
-                onClick={() => {
-                  // Re-aplica el radio con el centro actual (estado ya actualizado por el mapa).
-                  setMapCenter((c) => (c ? { ...c } : c))
-                }}
+                onClick={() => setApplyRadiusFilter(true)}
               >
                 Buscar alrededor
               </Button>
               <span className="text-xs text-text-tertiary">
-                Centro = mapa (move). Radio en metros.
+                Centro del mapa al moverlo; tocá «Buscar alrededor» para filtrar por radio.
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-text-secondary">
+                <input
+                  type="checkbox"
+                  className="rounded border-border"
+                  checked={polygonDrawMode}
+                  onChange={(e) => setPolygonDrawMode(e.target.checked)}
+                />
+                Dibujar polígono (clics en el mapa)
+              </label>
+              <span className="text-xs text-text-tertiary">
+                {mapPolygonRing.length} vértice
+                {mapPolygonRing.length === 1 ? '' : 's'}
+                {mapPolygonRing.length >= 3 ? ' · filtro activo' : ' · mín. 3 para filtrar'}
               </span>
             </div>
             <BuscarSearchMap
               pins={mapPins}
               onApplyZona={setMapBbox}
               onCenterChange={setMapCenter}
+              polygonRing={mapPolygonRing}
+              polygonDrawMode={polygonDrawMode}
+              onPolygonVertex={(p) => setMapPolygonRing((prev) => [...prev, p])}
             />
             <p className="text-xs text-text-tertiary">
               Solo se marcan avisos con ubicación. Mové el mapa y tocá «Buscar en esta zona» para
-              filtrar por el rectángulo visible.
+              filtrar por el rectángulo visible. Con 3+ vértices en polígono se filtra por el área
+              dibujada.
             </p>
             {mapPins.length === 0 && !isLoading ? (
               <p className="text-sm text-text-secondary">
