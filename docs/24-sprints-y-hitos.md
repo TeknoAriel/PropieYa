@@ -428,3 +428,23 @@
 ---
 
 *Actualizado: 2026-03-27 (Sprint 25 — tareas agente completadas; 25.6–25.9 manual)*
+
+---
+
+## Sprint 26 — Facets escalables + mapa (polígono/radio) + dedup MLS-ready
+
+**Objetivo:** pasar de “filtros hardcodeados” a un sistema **facetado escalable** (catálogo + tipado + UI progresiva), sumar búsqueda por **polígono/radio** en mapa, y dejar una base **dedup** explícita (MLS-ready) sin romper producción.
+
+### Tareas (agente / CI)
+
+- [ ] 26.1 **Catálogo de facets (backend):** definir modelo interno de facets (id estable, tipo `bool/enum/range/text`, labels) y fuente de verdad (DB o `packages/shared`)
+- [ ] 26.2 **Mapeo de feeds → facets:** extender/centralizar el mapeo (Yumblin/Zonaprop) para poblar `features`/facets sin perder claves crudas importantes
+- [ ] 26.3 **Schema tipado de búsqueda:** extender `packages/shared/src/schemas/search.ts` para soportar facets dinámicos (manteniendo compatibilidad con filtros actuales)
+- [ ] 26.4 **API search unificada:** aceptar facets en `listing.search` (SQL y ES) y garantizar que el mismo contrato sirva a UI + asistente + alertas
+- [ ] 26.5 **Elasticsearch mapping + index:** materializar facets frecuentes en ES (y dejar resto en `features`); reindex seguro
+- [ ] 26.6 **UI progresiva (web /buscar):** capa “Esenciales” + “Más opciones” (avanzados) + chips/sugerencias desde catálogo
+- [ ] 26.7 **Mapa: polígono/radio:** agregar búsqueda por área dibujada (polígono) y por radio; unificar con bbox/clusters existentes
+- [ ] 26.8 **Dedup MLS-ready (base):** reglas mínimas + persistencia de “duplicate group” o marca; no borrar datos, solo agrupar/ocultar por preferencia
+- [ ] 26.9 **Verificación:** `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** filtros extensibles sin tocar UI por cada amenity nuevo; `/buscar` sigue simple por defecto; polígono/radio reduce inventario por geografía real; dedup no rompe publicaciones ni leads.

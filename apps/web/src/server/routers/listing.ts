@@ -526,6 +526,7 @@ export const listingRouter = createTRPCRouter({
         city: input.city,
         neighborhood: input.neighborhood,
         amenities: input.amenities,
+        facets: input.facets,
         bbox: input.bbox,
         limit,
         offset,
@@ -541,7 +542,11 @@ export const listingRouter = createTRPCRouter({
       }
 
       const merged = mergePublicSearchFromQuery(input)
-      const { residualTextQuery, ...sqlInput } = merged
+      const { residualTextQuery, ...sqlInputBase } = merged
+      const sqlInput = {
+        ...sqlInputBase,
+        facets: input.facets,
+      }
 
       const conditions = [eq(listings.status, 'active')]
       if (residualTextQuery.trim()) {
@@ -645,6 +650,28 @@ export const listingRouter = createTRPCRouter({
         }
       }
 
+      // Facets flags/excludes (Sprint 26). Inicialmente se interpretan como amenities.
+      if (sqlInput.facets?.flags && sqlInput.facets.flags.length > 0) {
+        const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
+        for (const f of sqlInput.facets.flags) {
+          if (allowed.includes(f)) {
+            conditions.push(
+              sql`(${listings.features}->'amenities') @> to_jsonb(ARRAY[${f}]::text[])`
+            )
+          }
+        }
+      }
+      if (sqlInput.facets?.excludeFlags && sqlInput.facets.excludeFlags.length > 0) {
+        const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
+        for (const f of sqlInput.facets.excludeFlags) {
+          if (allowed.includes(f)) {
+            conditions.push(
+              sql`NOT ((${listings.features}->'amenities') @> to_jsonb(ARRAY[${f}]::text[]) )`
+            )
+          }
+        }
+      }
+
       if (sqlInput.bbox) {
         const { south, north, west, east } = sqlInput.bbox
         conditions.push(sql`${listings.locationLat} IS NOT NULL`)
@@ -693,6 +720,7 @@ export const listingRouter = createTRPCRouter({
         limit: 24,
         offset: 0,
       }
+      // Nota: facets aún no se extraen desde texto; solo via UI (Sprint 26).
 
       const esResult = await searchListings(filters)
 

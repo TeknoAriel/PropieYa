@@ -39,6 +39,22 @@ export const listingSearchFiltersSchema = z.object({
   city: z.string().max(120).optional(),
   neighborhood: z.string().max(120).optional(),
   amenities: z.array(z.string()).optional(),
+  facets: z
+    .object({
+      flags: z.array(z.string().max(80)).max(200).optional(),
+      excludeFlags: z.array(z.string().max(80)).max(200).optional(),
+      enums: z.record(z.string().max(80), z.array(z.string().max(80)).max(50)).optional(),
+      ranges: z
+        .record(
+          z.string().max(80),
+          z.object({
+            min: z.number().nullable().optional(),
+            max: z.number().nullable().optional(),
+          })
+        )
+        .optional(),
+    })
+    .optional(),
   bbox: listingSearchBBoxSchema.optional(),
 })
 

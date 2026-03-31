@@ -17,11 +17,24 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
   const merged = mergePublicSearchFromQuery(filters)
   const { residualTextQuery, ...rest } = merged
   const must: Record<string, unknown>[] = [{ term: { status: 'active' } }]
+  const mustNot: Record<string, unknown>[] = []
 
   /** Cada amenity como `term` (AND), alineado al SQL con varios `@>`. */
   if ((rest.amenities?.length ?? 0) > 0) {
     for (const a of rest.amenities!) {
       must.push({ term: { amenities: a } })
+    }
+  }
+
+  /** Facets flags/excludes (Sprint 26). Inicialmente se materializan como amenities. */
+  if ((rest.facets?.flags?.length ?? 0) > 0) {
+    for (const f of rest.facets!.flags!) {
+      must.push({ term: { amenities: f } })
+    }
+  }
+  if ((rest.facets?.excludeFlags?.length ?? 0) > 0) {
+    for (const f of rest.facets!.excludeFlags!) {
+      mustNot.push({ term: { amenities: f } })
     }
   }
 
@@ -124,7 +137,7 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
   const from = Math.min(rest.offset ?? 0, 500)
 
   return {
-    query: { bool: { must } },
+    query: { bool: { must, ...(mustNot.length > 0 ? { must_not: mustNot } : {}) } },
     sort: [
       { publishedAt: { order: 'desc', unmapped_type: 'date' } },
       { updatedAt: { order: 'desc', unmapped_type: 'date' } },

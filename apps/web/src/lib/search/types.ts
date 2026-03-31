@@ -55,6 +55,16 @@ export interface SearchFilters {
   city?: string
   neighborhood?: string
   amenities?: string[]
+  /**
+   * Facets escalables (Sprint 26). Inicialmente convivirá con `amenities`.
+   * El backend debe interpretar esto de forma compatible.
+   */
+  facets?: {
+    flags?: string[]
+    excludeFlags?: string[]
+    enums?: Record<string, string[]>
+    ranges?: Record<string, { min?: number | null; max?: number | null }>
+  }
   /** Filtro por rectángulo (mapa). */
   bbox?: { south: number; north: number; west: number; east: number }
   limit?: number
