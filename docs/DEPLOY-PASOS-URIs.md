@@ -11,6 +11,12 @@
 | **Remoto (SSH)** | `git@github.com:kiteprop/ia-propieya.git` |
 | **Web** | https://github.com/kiteprop/ia-propieya |
 
+**Slug real:** si el repositorio tiene otro nombre (p. ej. `propieya.ia`), confirmalo en **https://github.com/orgs/kiteprop/repositories** y ajustá el remoto:
+
+```bash
+git remote set-url origin git@github.com:kiteprop/NOMBRE-EXACTO-DEL-REPO.git
+```
+
 **Primera subida (repo vacío, rama `main`):** con el historial actual en `deploy/infra`:
 
 ```bash
