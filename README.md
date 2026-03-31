@@ -2,6 +2,10 @@
 
 **Plataforma inmobiliaria conversacional-first** para búsqueda de propiedades con intención, matching explicado y leads enriquecidos.
 
+| Repositorio oficial | https://github.com/kiteprop/ia-propieya |
+|---------------------|----------------------------------------|
+| Clonar (SSH) | `git clone git@github.com:kiteprop/ia-propieya.git` |
+
 ---
 
 ## Visión
@@ -62,8 +66,8 @@ propieya/
 
 ```bash
 # 1. Clonar el repositorio
-git clone <repo-url>
-cd propieya
+git clone git@github.com:kiteprop/ia-propieya.git
+cd ia-propieya
 
 # 2. Instalar dependencias
 pnpm install
@@ -121,6 +125,7 @@ pnpm format           # Formatear código
 
 - [Documento Fundacional](./docs/00-fundacion-producto.md) - Visión de producto, MVP, flujos
 - [Arquitectura Técnica](./docs/01-arquitectura-tecnica.md) - Stack, decisiones, estructura
+- [Deploy y URLs canónicas](./docs/DEPLOY-PASOS-URIs.md) - Flujo `deploy/infra`, Vercel, GitHub Actions
 
 ---
 

@@ -392,6 +392,29 @@
 
 ---
 
+## Sprint 25 — Repo oficial kiteprop + higiene post-migración
+
+**Objetivo:** que el monorepo quede **coherente** con `kiteprop/ia-propieya` (documentación raíz, `package.json`, verificación local del remoto) y dejar trazado qué sigue **solo manual** (Vercel, secretos, archivado del repo viejo).
+
+### Tareas (agente / CI)
+
+- [x] 25.1 `README.md`: URL oficial de clonado + enlace a deploy canónico
+- [x] 25.2 `package.json`: campo `repository` apuntando a `kiteprop/ia-propieya`
+- [x] 25.3 Script `scripts/verify-repo-remote.sh` + `pnpm verify:repo-remote` (comprueba `origin`)
+- [x] 25.4 `pnpm verify` y push a `origin/deploy/infra`
+- [x] 25.5 Actualizar pie de este doc (fecha / sprint)
+
+### Tareas (solo humano / dashboard)
+
+- [ ] 25.6 **GitHub → Settings → Secrets:** `VERCEL_*` en https://github.com/kiteprop/ia-propieya/settings/secrets/actions
+- [ ] 25.7 **Actions:** último run verde en https://github.com/kiteprop/ia-propieya/actions
+- [ ] 25.8 **Vercel web:** Git conectado a `kiteprop/ia-propieya` (proyecto `propie-ya-web`)
+- [ ] 25.9 **Opcional:** archivar `TeknoAriel/PropieYa` o dejar nota en README del fork histórico
+
+**Criterios:** clone desde README coincide con repo oficial; script opcional detecta remoto incorrecto; producción sigue en `docs/DEPLOY-PASOS-URIs.md`.
+
+---
+
 ## Próximos sprints (backlog)
 
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
@@ -404,4 +427,4 @@
 
 ---
 
-*Actualizado: 2026-03-30 (Sprint 24: import tipos feed EN + semántica rural + herramientas audit/diff)*
+*Actualizado: 2026-03-27 (Sprint 25 — tareas agente completadas; 25.6–25.9 manual)*
