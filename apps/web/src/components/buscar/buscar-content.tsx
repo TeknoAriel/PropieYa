@@ -202,13 +202,13 @@ export function BuscarContent({
   const [orientation, setOrientation] = useState<
     '' | 'N' | 'S' | 'E' | 'W' | 'NE' | 'NW' | 'SE' | 'SW'
   >('')
-  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([])
+  const [selectedAmenityFacets, setSelectedAmenityFacets] = useState<string[]>([])
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [mapBbox, setMapBbox] = useState<BuscarMapBBox | null>(null)
   const [showMap, setShowMap] = useState(false)
 
-  const toggleAmenity = (key: string) => {
-    setSelectedAmenities((prev) =>
+  const toggleAmenityFacet = (key: string) => {
+    setSelectedAmenityFacets((prev) =>
       prev.includes(key) ? prev.filter((x) => x !== key) : [...prev, key]
     )
   }
@@ -238,7 +238,13 @@ export function BuscarContent({
         ? Number(maxSurfaceCovered)
         : undefined,
       minTotalRooms: minTotalRooms ? Number(minTotalRooms) : undefined,
-      amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined,
+      // Compat: amenities históricos + facets (Sprint 26).
+      amenities:
+        selectedAmenityFacets.length > 0 ? selectedAmenityFacets : undefined,
+      facets:
+        selectedAmenityFacets.length > 0
+          ? { flags: selectedAmenityFacets }
+          : undefined,
       bbox: mapBbox ?? undefined,
       limit: 24,
       offset: 0,
@@ -264,7 +270,7 @@ export function BuscarContent({
       minSurfaceCovered,
       maxSurfaceCovered,
       minTotalRooms,
-      selectedAmenities,
+      selectedAmenityFacets,
       mapBbox,
     ]
   )
@@ -564,7 +570,7 @@ export function BuscarContent({
               </div>
               <div>
                 <p className="text-sm font-medium text-text-primary mb-2">
-                  Amenities
+                  Más opciones (amenities)
                 </p>
                 <div className="flex flex-wrap gap-x-4 gap-y-2">
                   {SEARCH_FILTER_AMENITIES.map((key) => (
@@ -575,8 +581,8 @@ export function BuscarContent({
                       <input
                         type="checkbox"
                         className="rounded border-border"
-                        checked={selectedAmenities.includes(key)}
-                        onChange={() => toggleAmenity(key)}
+                        checked={selectedAmenityFacets.includes(key)}
+                        onChange={() => toggleAmenityFacet(key)}
                       />
                       {AMENITY_LABELS[key]}
                     </label>
