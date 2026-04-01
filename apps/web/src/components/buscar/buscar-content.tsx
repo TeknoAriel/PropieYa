@@ -24,6 +24,7 @@ import {
 } from '@propieya/shared'
 import type { Currency, OperationType, PropertyType } from '@propieya/shared'
 
+import { BuscarRecentSearches } from '@/components/buscar/buscar-recent-searches'
 import { getAccessToken } from '@/lib/auth-storage'
 import { sanitizeListingCoordinates } from '@/lib/map-geo'
 import { trpc } from '@/lib/trpc'
@@ -404,6 +405,8 @@ export function BuscarContent({
             {S.alertSaved}
           </p>
         ) : null}
+
+        {me ? <BuscarRecentSearches /> : null}
 
         <Card className="p-4 space-y-4">
           <div>

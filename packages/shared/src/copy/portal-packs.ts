@@ -285,6 +285,13 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Zona, operación y números clave. El mapa y los filtros avanzados usan el mismo motor.',
   facetChipsTitle: 'Sugerencias rápidas',
   facetChipsHint: 'Del catálogo de amenities; podés afinar la lista completa en «Más filtros».',
+
+  /** Sprint 28.9 — historial (usuarios logueados) */
+  recentSearchesTitle: 'Tus búsquedas recientes',
+  recentSearchesEmpty:
+    'Cuando ejecutes búsquedas con la sesión iniciada, van a aparecer acá (mismo motor que /buscar).',
+  recentSearchesHint:
+    'Solo vos ves esta lista; cada fila resume filtros y cantidad de resultados en ese momento.',
 } as const
 
 /** Ficha de propiedad: contacto y confianza (Sprint 28.8, voseo). */

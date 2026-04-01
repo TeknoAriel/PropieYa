@@ -85,11 +85,26 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 
 ---
 
-## 4. Health y diagnóstico
+## 4. Jobs, sync y calidad de datos (visibilidad operativa)
+
+| Job / comando | Qué hace | Si falla |
+|----------------|----------|----------|
+| Cron `GET /api/cron/import-yumblin` | Import Yumblin/Kiteprop | `CRON_SECRET`, `DATABASE_URL`, logs del deploy |
+| Cron `GET /api/cron/sync-search` | Listings activos → Elasticsearch | `ELASTICSEARCH_URL`, índice; luego `/api/health` |
+| `pnpm reindex:es` (= `sync-search:local`) | Reindex manual | Mismo; ver `docs/DEPLOY-PASOS-URIs.md` |
+| `pnpm dedup:apply` | Marca duplicados (`dedup_canonical_id`) | DB; conviene `reindex:es` después |
+
+**Geo:** avisos sin `location_lat` / `location_lng` no generan pin en el mapa de `/buscar`.
+
+**Vigencia:** `expires_at` y flujo de renovación afectan estado en panel (`/propiedades`).
+
+---
+
+## 5. Health y diagnóstico
 
 - `https://propieyaweb.vercel.app/api/health` — **200** si DB OK; **503** “degradado” si falta `DATABASE_URL` u otro servicio (app igual puede estar desplegada).
 - `pnpm diagnostico:prod` — script del repo.
 
 ---
 
-*Actualizado: 2026-03-30*
+*Actualizado: 2026-04-01 (Sprint 28.12 — tabla jobs/sync)*

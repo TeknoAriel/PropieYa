@@ -436,7 +436,7 @@
 
 ---
 
-*Actualizado: 2026-04-01 (Sprint 29 — docs 42–43 directiva + anexo masterplan; Sprint 28 pendientes 28.6–28.12)*
+*Actualizado: 2026-04-01 (Sprint 26 facets+mapa+dedup cerrado; Sprint 28 pendientes 28.6–28.12)*
 
 ---
 
@@ -477,7 +477,7 @@
 
 ---
 
-## Sprint 28 — Producto “más que avisos” + sitio completo + copy unificado (largo)
+## Sprint 28 — Producto “más que avisos” + sitio completo + copy unificado (largo) ✅
 
 **Objetivo:** anclar el portal en la propuesta de valor de `docs/41-PROPUESTA-VALOR-PORTAL.md` (descubrimiento, decisión, confianza, inventario), cerrar **enlaces rotos del footer**, alinear **copy de búsqueda** con esa voz, y dejar un **backlog ejecutable** para siguientes iteraciones en automata.
 
@@ -491,19 +491,19 @@
 - [x] 28.3 Rutas: `/nosotros`, `/contacto`, `/planes`, `/terminos`, `/privacidad`, `/cookies`, `/emprendimientos` (contenido alineado a doc 41; legales en versión preliminar)
 - [x] 28.4 Footer: enlace **Panel de gestión** a `NEXT_PUBLIC_PANEL_URL` (ya no `/panel` inexistente)
 - [x] 28.5 Header o menú móvil: enlaces útiles (Buscar, Nosotros, Contacto) si falta cobertura en pantallas chicas
-- [ ] 28.6 **Opcional:** formulario de contacto (sin backend) → `mailto:` o tRPC `lead` genérico
+- [x] 28.6 Formulario de contacto en `/contacto`: armado de `mailto:` + copiar texto (`ContactoForm`, `NEXT_PUBLIC_CONTACT_EMAIL`)
 
 ### C — Copy y UX de búsqueda
 
 - [x] 28.7 `PORTAL_SEARCH_UX_COPY` en `packages/shared` + uso en `buscar-content`, mapa y páginas `/buscar`, `/venta`, `/alquiler`
 - [x] 28.8 Revisar fichas `/propiedad/[id]` y modales de contacto: tono voseo + nota de confianza (`PORTAL_LISTING_UX_COPY`)
-- [ ] 28.9 **Opcional:** UI “búsquedas recientes” (`searchHistory.listMine`) para usuarios logueados
+- [x] 28.9 UI “búsquedas recientes” en `/buscar` (`searchHistory.listMine`, `BuscarRecentSearches`)
 
 ### D — Inventario y datos (producto “sólido”)
 
-- [ ] 28.10 Continuar Sprint 26: facets catálogo + ES mapping/reindex (`26.5`) cuando prioridad
-- [ ] 28.11 Continuar Sprint 26: dedup MLS-ready (`26.8`)
-- [ ] 28.12 Jobs/sync: documentar o mejorar visibilidad de calidad de datos (vigencia, geo) en panel o métricas internas
+- [x] 28.10 Sprint 26.5 cerrado (facets + ES + reindex)
+- [x] 28.11 Sprint 26.8 cerrado (dedup MLS base)
+- [x] 28.12 Jobs/sync y calidad de datos: tabla en `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md` §4
 
 ### E — Cierre de sprint (agente)
 
