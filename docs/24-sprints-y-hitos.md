@@ -447,8 +447,8 @@
 ### Tareas (agente / CI)
 
 - [x] 26.1 **Catálogo de facets (backend):** modelo en `packages/shared` (`FACETS_CATALOG`, `getFacetFlagDefinitions`) + `listing.getSearchFacetsCatalog`; saneo con `sanitizeListingSearchFacets`
-- [ ] 26.2 **Mapeo de feeds → facets:** extender/centralizar el mapeo (Yumblin/Zonaprop) para poblar `features`/facets sin perder claves crudas importantes
-- [ ] 26.3 **Schema tipado de búsqueda:** extender `packages/shared/src/schemas/search.ts` para soportar facets dinámicos (manteniendo compatibilidad con filtros actuales)
+- [x] 26.2 **Mapeo de feeds → facets:** `FEED_TO_AMENITY` + `extractAmenitiesFromFeedItemDetailed` (`feedRawTokens` / `features.feedAmenityRaw`); `OPENNAVENT_ROLE_TO_AMENITY` en OpenNavent; `filterAmenitiesToFacetCatalog` en `search-facets`
+- [x] 26.3 **Schema tipado de búsqueda:** `facetFiltersSchema` + `facets` en `searchFiltersSchema` y `SearchFilters` (`types/search.ts`)
 - [x] 26.4 **API search unificada:** facets en `listing.search` (SQL/ES); entrada normalizada en Zod (`listingSearchFiltersSchema` / alertas) con `sanitizeListingSearchFacets`
 - [ ] 26.5 **Elasticsearch mapping + index:** materializar facets frecuentes en ES (y dejar resto en `features`); reindex seguro
 - [ ] 26.6 **UI progresiva (web /buscar):** capa “Esenciales” + “Más opciones” (avanzados) + chips/sugerencias desde catálogo
@@ -534,7 +534,7 @@
 ### Tareas propuestas (agente / CI)
 
 - [x] 30.0 **Mapa /buscar:** pan bloqueado — `FitBounds` se disparaba en cada render porque `points` era un array nuevo tras cada `moveend` → `setMapCenter`; `useMemo` en coords + saneo de lat/lng (incl. swap típico Cono Sur) en `map-geo.ts`
-- [ ] 30.1 Ejecutar **Sprint 26.1–26.4** según checklist §26 (facets, mapeo, schema, API unificada)
+- [x] 30.1 Ejecutar **Sprint 26.1–26.4** según checklist §26 (facets, mapeo, schema, API unificada)
 - [x] 30.2 **28.8** Ficha `/propiedad/[id]` + contacto: voseo + confianza / “por qué encaja”
 - [ ] 30.3 **28.9 opcional:** UI “búsquedas recientes” (`searchHistory.listMine`)
 - [ ] 30.4 **26.5** ES mapping + reindex cuando el contrato de facets esté estable

@@ -126,6 +126,11 @@ export interface ListingFeatures {
   disposition: Disposition | null
   age: ListingAge | null
   amenities: Amenity[]
+  /**
+   * Cadenas del feed (Yumblin/XML) sin mapear a `Amenity`; auditoría y futuros mapeos.
+   * Ver `extractAmenitiesFromFeedItemDetailed` en `amenity-mapping.ts`.
+   */
+  feedAmenityRaw?: string[]
   // Campos libres para características adicionales
   extras: Record<string, string | number | boolean>
 

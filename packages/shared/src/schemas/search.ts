@@ -1,5 +1,23 @@
 import { z } from 'zod'
 
+/** Alineado a `listing.search` / `sanitizeListingSearchFacets` (`search-facets.ts`). */
+export const facetFiltersSchema = z.object({
+  flags: z.array(z.string().max(80)).max(200).optional(),
+  excludeFlags: z.array(z.string().max(80)).max(200).optional(),
+  enums: z
+    .record(z.string().max(80), z.array(z.string().max(80)).max(50))
+    .optional(),
+  ranges: z
+    .record(
+      z.string().max(80),
+      z.object({
+        min: z.number().nullable().optional(),
+        max: z.number().nullable().optional(),
+      })
+    )
+    .optional(),
+})
+
 const propertyTypes = [
   'apartment',
   'house',
@@ -59,6 +77,8 @@ export const searchFiltersSchema = z.object({
   totalRoomsMin: z.number().int().min(0).optional(),
   garagesMin: z.number().int().min(0).optional(),
   amenities: z.array(z.string()).optional(),
+  /** Facets catalogados (flags/enums/ranges); mismo contrato que búsqueda pública de listings. */
+  facets: facetFiltersSchema.optional(),
   petFriendly: z.boolean().optional(),
   furnished: z.boolean().optional(),
   excludeIds: z.array(z.string()).optional(),
@@ -82,6 +102,7 @@ export const searchSuggestSchema = z.object({
   limit: z.number().int().positive().max(20).default(10),
 })
 
+export type FacetFiltersInput = z.infer<typeof facetFiltersSchema>
 export type SearchFiltersInput = z.infer<typeof searchFiltersSchema>
 export type SearchRequestInput = z.infer<typeof searchRequestSchema>
 export type SearchSuggestInput = z.infer<typeof searchSuggestSchema>

@@ -169,6 +169,7 @@ export const createListingSchema = z.object({
       })
       .nullable(),
     amenities: z.array(z.enum(amenities)),
+    feedAmenityRaw: z.array(z.string().max(120)).max(150).optional(),
     extras: z.record(z.union([z.string(), z.number(), z.boolean()])),
 
     // Subrubro comercial/oficina (opcional).

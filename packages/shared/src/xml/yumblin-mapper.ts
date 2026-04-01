@@ -5,7 +5,7 @@
  * Uso: ver scripts/import-yumblin-json.ts
  */
 
-import { extractAmenitiesFromFeedItem } from '../amenity-mapping'
+import { extractAmenitiesFromFeedItemDetailed } from '../amenity-mapping'
 import { mapFeedPropertyType } from '../map-feed-property-type'
 import type { Amenity, OperationType } from '../types/listing'
 
@@ -329,7 +329,9 @@ export function mapYumblinItem(
   const orientationVal = getValue(item, 'orientation', 'orientacion', 'orientación')
   const orientation = orientationVal != null ? String(orientationVal).trim().slice(0, 10) : null
 
-  const amenities = extractAmenitiesFromFeedItem(item as Record<string, unknown>)
+  const { amenities, feedRawTokens } = extractAmenitiesFromFeedItemDetailed(
+    item as Record<string, unknown>
+  )
 
   const features: Record<string, unknown> = {
     amenities,
@@ -337,6 +339,7 @@ export function mapYumblinItem(
     totalFloors: Number.isFinite(totalFloors) ? totalFloors : null,
     orientation: orientation ?? null,
     escalera: escalera ?? null,
+    ...(feedRawTokens.length > 0 ? { feedAmenityRaw: feedRawTokens } : {}),
   }
 
   return {

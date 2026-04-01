@@ -120,6 +120,13 @@ export const FACET_FLAG_IDS_SET: ReadonlySet<string> = new Set(
   getFacetFlagDefinitions().map((f) => f.id)
 )
 
+/** Flags del catálogo (intersección con amenities guardadas en listing). */
+export function filterAmenitiesToFacetCatalog(
+  ids: readonly Amenity[]
+): Amenity[] {
+  return ids.filter((id): id is Amenity => FACET_FLAG_IDS_SET.has(id))
+}
+
 const FACET_ENUM_IDS_SET: ReadonlySet<string> = new Set(
   FACETS_CATALOG.filter((f) => f.type === 'enum').map((f) => f.id)
 )
