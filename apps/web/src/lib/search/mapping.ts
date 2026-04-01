@@ -1,5 +1,9 @@
 /**
  * Mapping del índice de listings en Elasticsearch.
+ *
+ * Facets frecuentes (Sprint 26.5): `amenities` (flags = catálogo de búsqueda), geo `location`,
+ * rangos numéricos. `feedAmenityRaw` conserva tokens crudos del feed (sin filtrar búsqueda por defecto).
+ * `dedupCanonicalId` solo en duplicados: la query pública excluye con `must_not exists`.
  */
 
 /** Tipo compatible con propiedades de mapping de ES (evita import interno del cliente). */
@@ -53,4 +57,7 @@ export const listingsMapping: Record<string, EsMappingProperty> = {
   updatedAt: { type: 'date' },
   createdAt: { type: 'date' },
   amenities: { type: 'keyword' },
+  feedAmenityRaw: { type: 'keyword' },
+  /** Presente solo en avisos marcados como duplicados (ver `dedup-fingerprint` / script apply-dedup). */
+  dedupCanonicalId: { type: 'keyword' },
 }

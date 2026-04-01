@@ -32,6 +32,8 @@ export interface ListingRow {
   updatedAt: Date
   createdAt: Date
   amenities?: string[]
+  feedAmenityRaw?: string[]
+  dedupCanonicalId?: string | null
 }
 
 export interface SearchFilters {

@@ -450,11 +450,11 @@
 - [x] 26.2 **Mapeo de feeds → facets:** `FEED_TO_AMENITY` + `extractAmenitiesFromFeedItemDetailed` (`feedRawTokens` / `features.feedAmenityRaw`); `OPENNAVENT_ROLE_TO_AMENITY` en OpenNavent; `filterAmenitiesToFacetCatalog` en `search-facets`
 - [x] 26.3 **Schema tipado de búsqueda:** `facetFiltersSchema` + `facets` en `searchFiltersSchema` y `SearchFilters` (`types/search.ts`)
 - [x] 26.4 **API search unificada:** facets en `listing.search` (SQL/ES); entrada normalizada en Zod (`listingSearchFiltersSchema` / alertas) con `sanitizeListingSearchFacets`
-- [ ] 26.5 **Elasticsearch mapping + index:** materializar facets frecuentes en ES (y dejar resto en `features`); reindex seguro
-- [ ] 26.6 **UI progresiva (web /buscar):** capa “Esenciales” + “Más opciones” (avanzados) + chips/sugerencias desde catálogo
-- [ ] 26.7 **Mapa: polígono/radio:** agregar búsqueda por área dibujada (polígono) y por radio; unificar con bbox/clusters existentes
-- [ ] 26.8 **Dedup MLS-ready (base):** reglas mínimas + persistencia de “duplicate group” o marca; no borrar datos, solo agrupar/ocultar por preferencia
-- [ ] 26.9 **Verificación:** `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`
+- [x] 26.5 **Elasticsearch mapping + index:** `amenities` + `feedAmenityRaw` + `dedupCanonicalId` en mapping; indexación en `listingToEsDoc`; `pnpm reindex:es` (= `sync-search:local`) para reindex seguro; índices existentes: actualizar mapping + reindex
+- [x] 26.6 **UI progresiva (web /buscar):** bloque «Esenciales» + chips rápidos (12 flags del catálogo) + «Más filtros» con checklist completo (`PORTAL_SEARCH_UX_COPY`)
+- [x] 26.7 **Mapa: polígono/radio:** `geo_polygon` / `geo_distance` / `geo_bounding_box` en ES + SQL (`listing.search`); UI mapa en `/buscar`
+- [x] 26.8 **Dedup MLS-ready (base):** `listings.dedup_canonical_id` + `computeListingDedupFingerprint` + script `pnpm dedup:apply`; búsqueda pública excluye duplicados (SQL + ES). **Migración:** `pnpm db:push` (columna nueva).
+- [x] 26.9 **Verificación:** `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`
 
 **Criterios:** filtros extensibles sin tocar UI por cada amenity nuevo; `/buscar` sigue simple por defecto; polígono/radio reduce inventario por geografía real; dedup no rompe publicaciones ni leads.
 

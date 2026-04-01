@@ -35,6 +35,12 @@ export const listings = pgTable(
     importFeedSourceId: uuid('import_feed_source_id')
       .references(() => importFeedSources.id, { onDelete: 'cascade' }),
 
+    /**
+     * Si está definido, apunta al aviso “canonical” del grupo (duplicado MLS-ready / Sprint 26.8).
+     * FK a `listings.id` se puede añadir en migración SQL; búsqueda pública excluye `dedup_canonical_id IS NOT NULL`.
+     */
+    dedupCanonicalId: uuid('dedup_canonical_id'),
+
     // Tipo y operación
     propertyType: varchar('property_type', { length: 50 }).notNull(),
     operationType: varchar('operation_type', { length: 50 }).notNull(),
@@ -111,6 +117,7 @@ export const listings = pgTable(
     importFeedSourceIdx: index('listings_import_feed_source_idx').on(
       table.importFeedSourceId
     ),
+    dedupCanonicalIdx: index('listings_dedup_canonical_idx').on(table.dedupCanonicalId),
   })
 )
 

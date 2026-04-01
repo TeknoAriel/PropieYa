@@ -278,6 +278,13 @@ export const PORTAL_SEARCH_UX_COPY = {
   searchAroundHint:
     'Centro del mapa al moverlo; tocá «Buscar alrededor» para filtrar por radio.',
   amenitiesSectionTitle: 'Más opciones (amenities)',
+
+  /** Sprint 26.6 — búsqueda progresiva */
+  essentialsSectionTitle: 'Esenciales',
+  essentialsSectionSubtitle:
+    'Zona, operación y números clave. El mapa y los filtros avanzados usan el mismo motor.',
+  facetChipsTitle: 'Sugerencias rápidas',
+  facetChipsHint: 'Del catálogo de amenities; podés afinar la lista completa en «Más filtros».',
 } as const
 
 /** Ficha de propiedad: contacto y confianza (Sprint 28.8, voseo). */

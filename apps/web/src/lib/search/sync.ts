@@ -18,6 +18,7 @@ export async function syncListingToSearch(
   if (!row || row.status !== 'active') return
   const features = (row.features ?? {}) as {
     amenities?: string[]
+    feedAmenityRaw?: string[]
     floor?: number | null
     totalFloors?: number | null
     escalera?: string | null
@@ -53,6 +54,8 @@ export async function syncListingToSearch(
     updatedAt: row.updatedAt,
     createdAt: row.createdAt,
     amenities: features.amenities ?? [],
+    feedAmenityRaw: features.feedAmenityRaw ?? [],
+    dedupCanonicalId: row.dedupCanonicalId ?? null,
   }
   await indexListing(doc)
 }

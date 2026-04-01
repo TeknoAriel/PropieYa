@@ -220,6 +220,7 @@ export function BuscarContent({
   const [showMap, setShowMap] = useState(false)
 
   const facetFlagDefinitions = useMemo(() => getFacetFlagDefinitions(), [])
+  const facetChips = useMemo(() => facetFlagDefinitions.slice(0, 12), [facetFlagDefinitions])
 
   const toggleAmenityFacet = (key: string) => {
     setSelectedAmenityFacets((prev) =>
@@ -404,7 +405,15 @@ export function BuscarContent({
           </p>
         ) : null}
 
-        <Card className="p-4">
+        <Card className="p-4 space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-text-primary">
+              {S.essentialsSectionTitle}
+            </h2>
+            <p className="mt-1 text-sm text-text-secondary">
+              {S.essentialsSectionSubtitle}
+            </p>
+          </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Input
               placeholder={S.keywordPlaceholder}
@@ -454,6 +463,11 @@ export function BuscarContent({
               onChange={(e) => setCity(e.target.value)}
             />
             <Input
+              placeholder="Barrio"
+              value={neighborhood}
+              onChange={(e) => setNeighborhood(e.target.value)}
+            />
+            <Input
               type="number"
               placeholder="Precio mín."
               value={minPrice}
@@ -465,8 +479,41 @@ export function BuscarContent({
               value={maxPrice}
               onChange={(e) => setMaxPrice(e.target.value)}
             />
+            <Input
+              type="number"
+              placeholder="Dorm. mín."
+              value={minBedrooms}
+              onChange={(e) => setMinBedrooms(e.target.value)}
+              min={0}
+            />
+            <Input
+              type="number"
+              placeholder="Superficie mín. (m²)"
+              value={minSurface}
+              onChange={(e) => setMinSurface(e.target.value)}
+              min={0}
+            />
           </div>
-          <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+          <div>
+            <p className="text-sm font-medium text-text-primary">{S.facetChipsTitle}</p>
+            <p className="text-xs text-text-tertiary mt-0.5">{S.facetChipsHint}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {facetChips.map((facet) => (
+                <Button
+                  key={facet.id}
+                  type="button"
+                  size="sm"
+                  variant={
+                    selectedAmenityFacets.includes(facet.id) ? 'default' : 'outline'
+                  }
+                  onClick={() => toggleAmenityFacet(facet.id)}
+                >
+                  {facet.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {!showMap ? (
               <Button
                 type="button"
@@ -494,18 +541,6 @@ export function BuscarContent({
               </p>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Input
-                  placeholder="Barrio"
-                  value={neighborhood}
-                  onChange={(e) => setNeighborhood(e.target.value)}
-                />
-                <Input
-                  type="number"
-                  placeholder="Dorm. mín."
-                  value={minBedrooms}
-                  onChange={(e) => setMinBedrooms(e.target.value)}
-                  min={0}
-                />
-                <Input
                   type="number"
                   placeholder="Baños mín."
                   value={minBathrooms}
@@ -517,13 +552,6 @@ export function BuscarContent({
                   placeholder="Cocheras mín."
                   value={minGarages}
                   onChange={(e) => setMinGarages(e.target.value)}
-                  min={0}
-                />
-                <Input
-                  type="number"
-                  placeholder="Superficie mín. (m²)"
-                  value={minSurface}
-                  onChange={(e) => setMinSurface(e.target.value)}
                   min={0}
                 />
                 <Input
