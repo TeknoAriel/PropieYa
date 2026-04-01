@@ -26,6 +26,7 @@ import {
 import type { Currency, OperationType, PropertyType } from '@propieya/shared'
 
 import { getAccessToken } from '@/lib/auth-storage'
+import { sanitizeListingCoordinates } from '@/lib/map-geo'
 import { trpc } from '@/lib/trpc'
 
 export type BuscarContentProps = {
@@ -67,7 +68,10 @@ function pinsFromListings(list: BuscarListingCardData[]) {
       lng = Number(l.locationLng)
     }
     if (lat != null && lng != null && !Number.isNaN(lat) && !Number.isNaN(lng)) {
-      out.push({ id: l.id, title: l.title, lat, lng })
+      const ok = sanitizeListingCoordinates(lat, lng)
+      if (ok) {
+        out.push({ id: l.id, title: l.title, lat: ok.lat, lng: ok.lng })
+      }
     }
   }
   return out

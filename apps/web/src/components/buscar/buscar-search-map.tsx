@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import {
   MapContainer,
@@ -57,6 +57,11 @@ function CurrentCenterReporter({
   return null
 }
 
+/**
+ * Ajusta el viewport cuando cambia el set de coordenadas (prop `points` estable
+ * vía useMemo en el padre). Sin eso, cada moveend → setState → nuevo array →
+ * este efecto recorría el mapa y bloqueaba el desplazamiento.
+ */
 function FitBounds({ points }: { points: [number, number][] }) {
   const map = useMap()
   useEffect(() => {
@@ -206,11 +211,15 @@ export function BuscarSearchMap({
   polygonDrawMode = false,
   onPolygonVertex,
 }: BuscarSearchMapProps) {
+  const points = useMemo(
+    () => pins.map((p) => [p.lat, p.lng] as [number, number]),
+    [pins]
+  )
+
   const first = pins[0]
   const center: [number, number] = first
     ? [first.lat, first.lng]
     : BA_DEFAULT
-  const points: [number, number][] = pins.map((p) => [p.lat, p.lng])
 
   return (
     <div className="relative overflow-hidden rounded-lg border border-border">
@@ -219,6 +228,11 @@ export function BuscarSearchMap({
         zoom={pins.length > 0 ? 13 : 11}
         className="h-[min(420px,55vh)] w-full min-h-[280px] z-0"
         scrollWheelZoom
+        dragging
+        touchZoom
+        doubleClickZoom
+        boxZoom
+        keyboard
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

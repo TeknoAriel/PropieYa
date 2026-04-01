@@ -533,6 +533,7 @@
 
 ### Tareas propuestas (agente / CI)
 
+- [x] 30.0 **Mapa /buscar:** pan bloqueado — `FitBounds` se disparaba en cada render porque `points` era un array nuevo tras cada `moveend` → `setMapCenter`; `useMemo` en coords + saneo de lat/lng (incl. swap típico Cono Sur) en `map-geo.ts`
 - [ ] 30.1 Ejecutar **Sprint 26.1–26.4** según checklist §26 (facets, mapeo, schema, API unificada)
 - [ ] 30.2 **28.8** Ficha `/propiedad/[id]` + contacto: voseo + confianza / “por qué encaja”
 - [ ] 30.3 **28.9 opcional:** UI “búsquedas recientes” (`searchHistory.listMine`)
