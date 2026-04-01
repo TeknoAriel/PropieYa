@@ -23,6 +23,7 @@
 | Import Yumblin/Kiteprop + mapeo `property_type` EN/ES | ✅ |
 | Búsqueda, mapa, clusters, demanda, alertas, org invitaciones | ✅ |
 | Asistente (IA + reglas) y semántica en `q` | ✅ |
+| Historial de búsqueda (DB + API) | `listing.search` persiste en `search_history` si hay sesión; `searchHistory.listMine` |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40` |
 
 ---
@@ -427,7 +428,7 @@
 
 ---
 
-*Actualizado: 2026-03-27 (Sprint 25 — tareas agente completadas; 25.6–25.9 manual)*
+*Actualizado: 2026-03-31 (Sprint 27 — historial de búsqueda; Sprint 26 en curso según checklist)*
 
 ---
 
@@ -448,3 +449,20 @@
 - [ ] 26.9 **Verificación:** `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`
 
 **Criterios:** filtros extensibles sin tocar UI por cada amenity nuevo; `/buscar` sigue simple por defecto; polígono/radio reduce inventario por geografía real; dedup no rompe publicaciones ni leads.
+
+---
+
+## Sprint 27 — Historial de búsqueda (usuarios logueados) ✅
+
+**Objetivo:** registrar cada `listing.search` con sesión en `search_history` (filtros + conteo + tiempo) sin bloquear la respuesta; exponer lectura propia vía tRPC para futura UI o panel.
+
+### Tareas (agente / CI)
+
+- [x] 27.1 Persistir filas en `search_history` desde `listing.search` (camino ES con resultados y camino SQL/fallback), solo si `ctx.session?.userId`
+- [x] 27.2 Router `searchHistory.listMine` (protegido, últimas N) y registro en `appRouter`
+- [ ] 27.3 **Opcional:** UI en web “búsquedas recientes” (reutilizar `listMine`)
+- [x] 27.4 `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** usuarios logueados dejan rastro auditable de búsquedas; fallos de insert no afectan resultados; prod con tabla aplicada (`pnpm db:push` si faltaba `search_history`).
+
+**Nota:** alertas guardadas siguen en `searchAlert` + `search_alerts`; este sprint es historial pasivo por request.

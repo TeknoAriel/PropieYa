@@ -4,11 +4,13 @@ import { z } from 'zod'
 import { eq, and, desc, ilike, or, gte, lte, sql, count, ne, inArray } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
+import type { Database } from '@propieya/database'
 import {
   listings,
   listingMedia,
   organizations,
   organizationMemberships,
+  searchHistory,
 } from '@propieya/database'
 import {
   createListingSchema,
@@ -40,6 +42,33 @@ import { listingSearchInputSchema } from './listing-search-input'
 /** Evita que el usuario inyecte comodines ILIKE (%, _). */
 function sanitizeIlikeFragment(raw: string): string {
   return raw.trim().slice(0, 120).replace(/[%_\\]/g, ' ').replace(/\s+/g, ' ')
+}
+
+/** Historial de búsqueda (usuarios logueados). No bloquea la respuesta si falla el insert. */
+function persistSearchHistoryRow(
+  db: Database,
+  opts: {
+    userId: string
+    filters: Record<string, unknown>
+    resultCount: number
+    startedAt: number
+  }
+): void {
+  void (async () => {
+    try {
+      await db.insert(searchHistory).values({
+        userId: opts.userId,
+        sessionId: randomUUID(),
+        conversationId: null,
+        filters: opts.filters,
+        sort: null,
+        resultCount: opts.resultCount,
+        processingTimeMs: Date.now() - opts.startedAt,
+      })
+    } catch {
+      // no bloquear búsqueda
+    }
+  })()
 }
 
 /** Listados: más reciente arriba. Público: por publicación + desempate. Panel (mis avisos): por última modificación. */
@@ -505,6 +534,10 @@ export const listingRouter = createTRPCRouter({
   search: publicProcedure
     .input(listingSearchInputSchema)
     .query(async ({ input, ctx }) => {
+      const startedAt = Date.now()
+      const sessionUserId = ctx.session?.userId
+      const filtersSnapshot = JSON.parse(JSON.stringify(input)) as Record<string, unknown>
+
       const { limit, offset, ...explainFilters } = input
       const esResult = await searchListings({
         q: input.q,
@@ -539,6 +572,14 @@ export const listingRouter = createTRPCRouter({
       // Si ES responde pero el índice está vacío o desincronizado, total=0 y antes
       // no había fallback: el buscador quedaba en silencio. SQL es fuente de verdad.
       if (esResult.fromEs && esResult.total > 0) {
+        if (sessionUserId) {
+          persistSearchHistoryRow(ctx.db, {
+            userId: sessionUserId,
+            filters: filtersSnapshot,
+            resultCount: esResult.total,
+            startedAt,
+          })
+        }
         return withMatchReasons(
           explainFilters as ExplainMatchFilters,
           esResult.hits
@@ -715,12 +756,27 @@ export const listingRouter = createTRPCRouter({
         )
       }
 
+      const whereClause = and(...conditions)
+      const [totalRow] = await ctx.db
+        .select({ c: count() })
+        .from(listings)
+        .where(whereClause)
+      const sqlTotal = Number(totalRow?.c ?? 0)
+
       const rows = await ctx.db.query.listings.findMany({
-        where: and(...conditions),
+        where: whereClause,
         orderBy: ORDER_PUBLIC_RECENCY,
         limit,
         offset,
       })
+      if (sessionUserId) {
+        persistSearchHistoryRow(ctx.db, {
+          userId: sessionUserId,
+          filters: filtersSnapshot,
+          resultCount: sqlTotal,
+          startedAt,
+        })
+      }
       return withMatchReasons(explainFilters as ExplainMatchFilters, rows)
     }),
 
