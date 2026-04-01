@@ -30,6 +30,8 @@ Lo más valioso es detectar que un portal moderno **ya no compite solo por aviso
 
 ## Referencias
 
+- **Directiva operativa (anti-Frankenstein, capas, prioridades):** `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`
+- **Matriz y backlog integrables:** `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md`
 - Sprints y ejecución: `docs/24-sprints-y-hitos.md`
 - Criterios MLS / filtros / mapa: `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md`
 

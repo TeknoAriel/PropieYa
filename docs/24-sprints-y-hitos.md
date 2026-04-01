@@ -25,7 +25,8 @@
 | Asistente (IA + reglas) y semántica en `q` | ✅ |
 | Historial de búsqueda (DB + API) | `listing.search` persiste en `search_history` si hay sesión; `searchHistory.listMine` |
 | Norte de producto (portal) | `docs/41-PROPUESTA-VALOR-PORTAL.md` — descubrimiento, decisión, confianza, inventario |
-| Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40` |
+| Directiva evolutiva + matriz backlog | `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`, `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md` |
+| Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 
 ---
 
@@ -421,6 +422,10 @@
 
 **Norte estratégico del portal (decisiones de copy y prioridad):** `docs/41-PROPUESTA-VALOR-PORTAL.md`.
 
+**Directiva operativa (anti-Frankenstein, capas A–D, monetización por fases, modo agente):** `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`.
+
+**Anexo masterplan — matriz, clasificación y backlog priorizado:** `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md`.
+
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
 
 **Onboarding y monetización (registro por persona, MP stub):** `docs/40-ONBOARDING-PERSONAS-Y-FLUJOS.md`, `docs/39-MONETIZACION-MERCADOPAGO.md`. Tras pull: `pnpm db:push` para `users.account_intent` y `payment_webhook_events`.
@@ -431,7 +436,7 @@
 
 ---
 
-*Actualizado: 2026-04-01 (Sprint 28 — páginas footer, menú móvil, copy búsqueda, doc 41; pendientes 28.6–28.12)*
+*Actualizado: 2026-04-01 (Sprint 29 — docs 42–43 directiva + anexo masterplan; Sprint 28 pendientes 28.6–28.12)*
 
 ---
 
@@ -505,3 +510,33 @@
 - [x] 28.13 `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`
 
 **Criterios:** ningún link del footer principal lleva a 404; búsqueda y títulos reflejan “mismo motor” y decisión informada; doc 41 es la referencia explícita para futuras features.
+
+---
+
+## Sprint 29 — Directiva operativa + anexo masterplan (documentación) ✅
+
+**Objetivo:** incorporar el bloque de conocimiento y directiva como **fuente oficial complementaria**, y producir el **anexo al masterplan** con matriz, clasificación, recomendaciones y backlog limpio.
+
+### Tareas (agente / CI)
+
+- [x] 29.1 Publicar `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md` (principio anti-Frankenstein, núcleo, capas A–D, MLS, búsqueda/filtros/mapa/semántica, monetización por fases, modo agente)
+- [x] 29.2 Publicar `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md` (matriz, clasificación, recomendaciones, backlog priorizado alineado a Sprint 26)
+- [x] 29.3 Referencias cruzadas: `docs/00-fundacion-producto.md`, `docs/41-PROPUESTA-VALOR-PORTAL.md`, `AGENTS.md`, tabla “Estado actual” y “Próximos sprints” en este archivo
+
+**Criterios:** nuevas épicas se enmarcan en doc 42 §1 y en la matriz doc 43; ejecución técnica sigue Sprint 26/28 sin mezclar add-ons IA al core.
+
+---
+
+## Sprint 30 — Programado (siguiente bloque en automata)
+
+**Objetivo:** avanzar **P1** de `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md` §5 y cerrar **28.8–28.9** donde aplique, sin abrir módulos sueltos.
+
+### Tareas propuestas (agente / CI)
+
+- [ ] 30.1 Ejecutar **Sprint 26.1–26.4** según checklist §26 (facets, mapeo, schema, API unificada)
+- [ ] 30.2 **28.8** Ficha `/propiedad/[id]` + contacto: voseo + confianza / “por qué encaja”
+- [ ] 30.3 **28.9 opcional:** UI “búsquedas recientes” (`searchHistory.listMine`)
+- [ ] 30.4 **26.5** ES mapping + reindex cuando el contrato de facets esté estable
+- [ ] 30.5 `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** cada entrega pasa el test anti-Frankenstein (`docs/42` §1); no se suman herramientas de decisión dispersas fuera del plan del “Centro de decisión” (`docs/43` §2 matriz).

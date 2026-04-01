@@ -14,4 +14,6 @@
 
 **Sprints y hitos:** `docs/24-sprints-y-hitos.md` — ejecutar en orden, sin preguntar cada paso.
 
+**Directiva de producto (anti-Frankenstein, capas, prioridades):** `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`. **Matriz y backlog:** `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md`. **Norte corto portal:** `docs/41-PROPUESTA-VALOR-PORTAL.md`.
+
 **GitHub bypass (una vez):** `docs/12-bypass-github-actions.md`.

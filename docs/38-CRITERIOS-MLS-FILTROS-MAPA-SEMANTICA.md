@@ -5,6 +5,8 @@
 **Tipo:** Criterios de producto y arquitectura — complementa `docs/00-fundacion-producto.md`  
 **Objetivo del portal:** combinar **experiencia conversacional cálida y moderna** con **estructura de búsqueda profunda**, MLS-ready, geoespacial y altamente filtrable, **sin abrumar**.
 
+**Orden de evolución y anti-Frankenstein:** `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md` · **Matriz/backlog:** `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md`.
+
 ---
 
 ## X. Capacidades MLS-ready reales
