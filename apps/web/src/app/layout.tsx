@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 
+import { PORTAL_SITE_DESCRIPTION } from '@propieya/shared'
+
 import '@propieya/ui/styles'
 import './globals.css'
 import { CopyPackBanner } from '@/components/layout/copy-pack-banner'
@@ -15,11 +17,10 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Propieya - Encontrá tu propiedad ideal',
+    default: 'Propieya — encontrá tu próximo lugar',
     template: '%s | Propieya',
   },
-  description:
-    'Plataforma inmobiliaria conversacional. Buscá propiedades hablando en lenguaje natural.',
+  description: PORTAL_SITE_DESCRIPTION,
   keywords: ['inmobiliaria', 'propiedades', 'departamentos', 'casas', 'alquiler', 'venta'],
 }
 

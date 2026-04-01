@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
+import { PORTAL_VOICE_CTA } from '@propieya/shared'
 import { Button, Card, Skeleton } from '@propieya/ui'
 
 import { AlertFeedCard } from '@/components/alertas/feed-card'
@@ -45,7 +46,7 @@ export default function MisAlertasPage() {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button asChild>
-              <Link href="/login">Iniciar sesión</Link>
+              <Link href="/login">{PORTAL_VOICE_CTA.login}</Link>
             </Button>
             <Button asChild variant="outline">
               <Link href="/registro">Crear cuenta</Link>

@@ -1,5 +1,7 @@
 import Link from 'next/link'
 
+import { PORTAL_BRAND_FOOTER_TAGLINE } from '@propieya/shared'
+
 export function Footer() {
   return (
     <footer className="border-t border-border bg-surface-secondary">
@@ -9,7 +11,7 @@ export function Footer() {
           <div className="space-y-4">
             <span className="text-xl font-bold text-brand-primary">Propieya</span>
             <p className="text-sm text-text-secondary">
-              La plataforma inmobiliaria donde podés buscar hablando.
+              {PORTAL_BRAND_FOOTER_TAGLINE}
             </p>
           </div>
 
@@ -40,7 +42,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm text-text-secondary">
               <li>
                 <Link href="/publicar" className="hover:text-text-primary transition-colors">
-                  Publicar propiedad
+                  Publicá tu aviso
                 </Link>
               </li>
               <li>

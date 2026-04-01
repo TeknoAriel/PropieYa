@@ -1,7 +1,25 @@
 /**
  * Packs de copy del portal para pruebas A/B y reglas de lenguaje.
  * Activar con NEXT_PUBLIC_PORTAL_COPY_PACK=<id> (ver PORTAL_COPY_PACK_IDS).
+ *
+ * Voz canónica: voseo rioplatense, propuesta conversacional-first + mapa/filtros,
+ * transparencia técnica cuando aporta confianza (mismo motor SQL/Elasticsearch).
  */
+
+export const PORTAL_VOICE_CTA = {
+  login: 'Iniciá sesión',
+  loginSubmit: 'Ingresá',
+  loginSubmitPending: 'Ingresando…',
+  publish: 'Publicá',
+} as const
+
+/** Pie de portal: misma promesa que la home (frase o filtros, mismo motor). */
+export const PORTAL_BRAND_FOOTER_TAGLINE =
+  'Podés arrancar con una frase o ir al mapa y los filtros avanzados: es el mismo motor de avisos.'
+
+/** Meta description y referencias SEO del sitio público. */
+export const PORTAL_SITE_DESCRIPTION =
+  'Contale a Propieya qué buscás o usá mapa y filtros; tu intención se traduce al mismo motor SQL/Elasticsearch.'
 
 export const PORTAL_COPY_PACK_IDS = [
   'regla_portal_v1',
@@ -44,21 +62,53 @@ export type PortalCopyPack = {
   }
 }
 
+const HOW_IT_WORKS_PROPOSAL_STEPS: PortalHowStep[] = [
+  {
+    title: 'Contale a Propieya',
+    description:
+      'Una frase concreta resume operación, zona, tamaño y prioridades — sin recorrer filtro por filtro.',
+  },
+  {
+    title: 'Traducimos a búsqueda',
+    description:
+      'Tu intención se convierte en filtros y texto residual sobre el mismo motor SQL/Elasticsearch.',
+  },
+  {
+    title: 'Refiná como prefieras',
+    description:
+      'Seguí en conversación o pasá al mapa y a los filtros avanzados sin perder contexto.',
+  },
+  {
+    title: 'Por qué encaja cada aviso',
+    description:
+      'Matching explicado: sabés qué cumple y qué no antes de escribir al publicador.',
+  },
+]
+
+function howItWorksProposal(): PortalCopyPack['howItWorks'] {
+  return {
+    sectionTitle: 'Una forma distinta de buscar propiedades',
+    sectionSubtitle:
+      'Innovación con los pies en el mercado: comprar, alquilar y tipologías siguen siendo los anclas; el cambio es cómo empezás.',
+    steps: HOW_IT_WORKS_PROPOSAL_STEPS,
+  }
+}
+
 /** Regla portal oficial — diferenciación emocional + claridad funcional */
 const reglaPortalV1: PortalCopyPack = {
   id: 'regla_portal_v1',
   title:
     'Regla portal v1 — Diferenciación emocional + claridad funcional (baseline)',
   ruleSummary:
-    'Titulares humanos y cálidos; navegación y CTAs con términos de mercado reconocibles. Sin reemplazar lo funcional por poesía.',
+    'Voseo + propuesta de los 4 pasos (home); hero puede variar en matiz emocional; CTAs y “cómo funciona” alineados a la propuesta única.',
   hero: {
     line1: 'Encontrá tu próximo lugar',
-    line2Accent: 'Te guiamos paso a paso',
+    line2Accent: 'contando lo que buscás',
     subtitle:
-      'Descubrí oportunidades para vivir o invertir. Tu búsqueda, más clara: hablá en natural y nosotros ordenamos las opciones.',
+      'Una frase ordena operación, zona y prioridades. Es el mismo criterio que detrás del mapa y los filtros, con otro punto de partida.',
     placeholder:
       'Ej: 3 ambientes luminosos en Palermo, hasta tanto en venta o alquiler…',
-    filterLink: 'Prefiero buscar con filtros tradicionales',
+    filterLink: 'Modo clásico: mapa y filtros',
   },
   heroExamples: [
     '3 ambientes en Palermo con balcón',
@@ -67,40 +117,17 @@ const reglaPortalV1: PortalCopyPack = {
     'Alquiler en Belgrano cerca del subte',
   ],
   nav: { buscar: 'Buscar', venta: 'Venta', alquiler: 'Alquiler' },
-  cta: { login: 'Iniciar sesión', publish: 'Publicar' },
+  cta: {
+    login: PORTAL_VOICE_CTA.login,
+    publish: PORTAL_VOICE_CTA.publish,
+  },
   featured: {
     title: 'Propiedades destacadas',
-    subtitle: 'Las últimas publicaciones de nuestra plataforma',
+    subtitle: 'Los últimos avisos activos para explorar.',
     viewAll: 'Ver todas',
     viewAllMobile: 'Ver todas las propiedades',
   },
-  howItWorks: {
-    sectionTitle: '¿Cómo funciona?',
-    sectionSubtitle:
-      'Una forma más natural de buscar, con la seriedad que necesitás para decidir.',
-    steps: [
-      {
-        title: 'Contanos qué buscás',
-        description:
-          'Escribí en lenguaje natural. Los técnicos los dejamos para cuando elijas categoría o ficha.',
-      },
-      {
-        title: 'Te entendemos',
-        description:
-          'Interpretamos tu búsqueda y te mostramos opciones relevantes, sin perder claridad.',
-      },
-      {
-        title: 'Refiná tu búsqueda',
-        description:
-          'Ajustá con conversación o filtros: departamento, casa, local, oficina, campo…',
-      },
-      {
-        title: 'Encontrá tu lugar',
-        description:
-          'Te ayudamos a ver por qué cada propiedad puede encajar con vos.',
-      },
-    ],
-  },
+  howItWorks: howItWorksProposal(),
 }
 
 /** Variante B — más inductivo en hero; nav igual de funcional */
@@ -112,7 +139,7 @@ const conversacionPrimero: PortalCopyPack = {
   id: 'conversacion_primero',
   title: 'Conversación primero — Propuesta disruptiva baseline',
   ruleSummary:
-    'Hero centrado en el asistente; tono institucional sin perder cercanía; CTAs de mercado (venta, alquiler, filtros).',
+    'Hero conversacional-first; “Cómo funciona” y CTAs compartidos con el resto de packs (misma propuesta de 4 pasos y voseo).',
   hero: {
     line1: 'No es solo un buscador de filtros.',
     line2Accent: 'Expresá tu intención. Propieya interpreta.',
@@ -132,40 +159,18 @@ const conversacionPrimero: PortalCopyPack = {
     'Local a la calle, inversión, zona comercial fuerte',
   ],
   nav: { buscar: 'Buscar', venta: 'Venta', alquiler: 'Alquiler' },
-  cta: { login: 'Iniciar sesión', publish: 'Publicar' },
+  cta: {
+    login: PORTAL_VOICE_CTA.login,
+    publish: PORTAL_VOICE_CTA.publish,
+  },
   featured: {
     title: 'Elegí por intuición o por dato',
-    subtitle: 'Avisos activos para explorar — el asistente y los filtros comparten el mismo índice.',
+    subtitle:
+      'Avisos activos para explorar: el asistente y los filtros comparten el mismo índice.',
     viewAll: 'Ver todas',
     viewAllMobile: 'Ver todas las propiedades',
   },
-  howItWorks: {
-    sectionTitle: 'Una forma distinta de buscar propiedades',
-    sectionSubtitle:
-      'Innovación con los pies en el mercado: comprar, alquilar y tipologías siguen siendo los anclas; el cambio es cómo empezás.',
-    steps: [
-      {
-        title: 'Contale a Propieya',
-        description:
-          'Una frase concreta resume operación, zona, tamaño y prioridades — sin recorrer filtro por filtro.',
-      },
-      {
-        title: 'Traducimos a búsqueda',
-        description:
-          'Tu intención se convierte en filtros y texto residual sobre el mismo motor SQL/Elasticsearch.',
-      },
-      {
-        title: 'Refiná como prefieras',
-        description:
-          'Seguí en conversación o pasá al mapa y a los filtros avanzados sin perder contexto.',
-      },
-      {
-        title: 'Por qué encaja cada aviso',
-        description:
-          'Matching explicado: sabés qué cumple y qué no antes de escribir al publicador.',
-      },
-    ],
-  },
+  howItWorks: howItWorksProposal(),
 }
 
 /** Variante B — más inductivo en hero; nav igual de funcional */
@@ -173,14 +178,14 @@ const varianteBCercano: PortalCopyPack = {
   id: 'variante_b_cercano',
   title: 'Variante B — Hero más cercano (misma navegación funcional)',
   ruleSummary:
-    'Mismo principio que v1 con tono más cercano en titulares; menús y categorías sin cambios poéticos.',
+    'Hero más cercano en titulares; misma sección “Cómo funciona” y CTAs voseados que el resto de packs.',
   hero: {
     line1: 'Tu próximo hogar o inversión',
     line2Accent: 'empieza con una conversación simple',
     subtitle:
-      'Sin formularios eternos: decinos qué buscás y te mostramos caminos claros, de compra, alquiler o inversión.',
+      'Decinos qué buscás y te mostramos caminos claros; podés seguir en conversación o pasar al mapa y los filtros sin perder contexto.',
     placeholder: 'Contanos qué imaginas: zona, ambientes, presupuesto…',
-    filterLink: 'Ir a búsqueda con filtros clásicos',
+    filterLink: 'Modo clásico: mapa y filtros',
   },
   heroExamples: [
     'Quiero algo luminoso para familia, 3 dormitorios',
@@ -189,19 +194,17 @@ const varianteBCercano: PortalCopyPack = {
     'Campo mixto en provincia de Buenos Aires',
   ],
   nav: { buscar: 'Buscar', venta: 'Venta', alquiler: 'Alquiler' },
-  cta: { login: 'Iniciar sesión', publish: 'Publicar' },
+  cta: {
+    login: PORTAL_VOICE_CTA.login,
+    publish: PORTAL_VOICE_CTA.publish,
+  },
   featured: {
     title: 'Oportunidades destacadas',
-    subtitle: 'Publicaciones recientes para explorar',
+    subtitle: 'Avisos recientes para explorar.',
     viewAll: 'Ver todas',
     viewAllMobile: 'Ver todas las propiedades',
   },
-  howItWorks: {
-    sectionTitle: 'Tu búsqueda, en simple',
-    sectionSubtitle:
-      'Innovador y amable, pero con etiquetas que conocés: comprar, alquilar, tipología.',
-    steps: reglaPortalV1.howItWorks.steps,
-  },
+  howItWorks: howItWorksProposal(),
 }
 
 export const PORTAL_COPY_PACKS: Record<PortalCopyPackId, PortalCopyPack> = {
