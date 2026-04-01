@@ -70,7 +70,7 @@ export function HeroSearch() {
   }
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-surface-secondary to-surface-primary py-10 pb-10 md:py-11 md:pb-11 lg:py-12 lg:pb-12">
+    <section className="relative overflow-hidden bg-gradient-to-b from-surface-secondary to-surface-primary pb-0 pt-6 md:pt-8 md:pb-0">
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-brand-secondary/20 blur-3xl" />
         <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-brand-primary/10 blur-3xl" />
@@ -84,11 +84,11 @@ export function HeroSearch() {
             <span className="text-brand-primary">{pack.hero.line2Accent}</span>
           </h1>
 
-          <p className="mt-3 text-base leading-relaxed text-text-secondary md:mt-4 md:text-lg">
+          <p className="mt-2 text-sm leading-snug text-text-secondary md:mt-3 md:text-base md:leading-relaxed">
             {pack.hero.subtitle}
           </p>
 
-          <div className="mt-5 md:mt-6">
+          <div className="mt-3 md:mt-4">
             <form onSubmit={handleSubmit}>
               <div className="relative">
                 <Input
@@ -122,12 +122,13 @@ export function HeroSearch() {
             </form>
           </div>
 
-          <div className="mt-4 md:mt-5">
+          {/* En desktop el nav ya enlaza a /buscar; en móvil el menú aún no despliega enlaces. */}
+          <div className="mt-2 md:hidden">
             <Link
               href="/buscar"
-              className="inline-flex items-center gap-2 text-sm text-text-tertiary transition-colors hover:text-text-secondary"
+              className="inline-flex items-center gap-1.5 text-xs text-text-tertiary transition-colors hover:text-text-secondary"
             >
-              <Filter className="h-4 w-4" />
+              <Filter className="h-3.5 w-3.5 shrink-0" />
               {pack.hero.filterLink}
             </Link>
           </div>
