@@ -20,6 +20,7 @@ import {
   AMENITY_LABELS,
   formatPrice,
   OPERATION_TYPE_LABELS,
+  PORTAL_SEARCH_UX_COPY as S,
   SEARCH_FILTER_AMENITIES,
 } from '@propieya/shared'
 import type { Currency, OperationType, PropertyType } from '@propieya/shared'
@@ -125,7 +126,7 @@ function ListingCard({ listing }: { listing: BuscarListingCardData }) {
 
           {listing.matchReasons && listing.matchReasons.length > 0 ? (
             <div className="mt-3 rounded-md border border-border/60 bg-surface-secondary/80 px-3 py-2 text-xs text-text-secondary">
-              <p className="mb-1 font-medium text-text-primary">Por qué coincide</p>
+              <p className="mb-1 font-medium text-text-primary">{S.matchWhyTitle}</p>
               <ul className="list-inside list-disc space-y-0.5">
                 {listing.matchReasons.slice(0, 5).map((r, i) => (
                   <li key={`${listing.id}-reason-${i}`}>{r}</li>
@@ -337,8 +338,9 @@ export function BuscarContent({
             <h1 className="text-3xl font-bold text-text-primary">{pageTitle}</h1>
             <p className="mt-2 text-text-secondary">{pageSubtitle}</p>
             <p className="mt-2 text-sm text-text-tertiary">
-              Novedad: tocá <span className="font-medium text-text-secondary">Más filtros</span>{' '}
-              debajo del formulario para barrio, amenities, superficie y piso.
+              {S.hintAdvancedLead}{' '}
+              <span className="font-medium text-text-secondary">{S.hintAdvancedStrong}</span>{' '}
+              {S.hintAdvancedTail}
             </p>
           </div>
           <div className="flex flex-col items-stretch gap-2 sm:items-end">
@@ -351,8 +353,8 @@ export function BuscarContent({
                   onClick={() => saveProfile.mutate(demandPayload)}
                 >
                   {saveProfile.isPending
-                    ? 'Guardando…'
-                    : 'Guardar filtros en mi perfil'}
+                    ? S.saveProfilePending
+                    : S.saveProfile}
                 </Button>
                 <Button
                   type="button"
@@ -361,8 +363,8 @@ export function BuscarContent({
                   onClick={() => createAlert.mutate(alertPayload)}
                 >
                   {createAlert.isPending
-                    ? 'Creando…'
-                    : 'Crear alerta con estos filtros'}
+                    ? S.createAlertPending
+                    : S.createAlert}
                 </Button>
                 <div className="flex flex-wrap gap-2">
                   <Button asChild variant="outline" size="sm">
@@ -377,30 +379,30 @@ export function BuscarContent({
             <div className="flex flex-wrap gap-2">
               {opLocked ? (
                 <Button asChild variant="outline" size="sm">
-                  <Link href="/buscar">Todas las operaciones</Link>
+                  <Link href="/buscar">{S.allOperations}</Link>
                 </Button>
               ) : null}
               <Button asChild variant="outline" size="sm">
-                <Link href="/">Inicio</Link>
+                <Link href="/">{S.homeLink}</Link>
               </Button>
             </div>
           </div>
         </div>
         {profileSaved ? (
           <p className="text-sm text-semantic-success">
-            Perfil actualizado con estos filtros.
+            {S.profileSaved}
           </p>
         ) : null}
         {alertSaved ? (
           <p className="text-sm text-semantic-success">
-            Alerta creada. Podés verla en Mis alertas.
+            {S.alertSaved}
           </p>
         ) : null}
 
         <Card className="p-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Input
-              placeholder="Palabras clave (título, descripción)"
+              placeholder={S.keywordPlaceholder}
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
@@ -421,7 +423,7 @@ export function BuscarContent({
                   setOperationType(e.target.value as OperationType | '')
                 }
               >
-                <option value="">Todas las operaciones</option>
+                <option value="">{S.allOperations}</option>
                 <option value="sale">Venta</option>
                 <option value="rent">Alquiler</option>
                 <option value="temporary_rent">Alquiler temporal</option>
@@ -468,7 +470,7 @@ export function BuscarContent({
                 className="mr-auto"
                 onClick={() => setShowMap(true)}
               >
-                Ver mapa
+                {S.showMap}
               </Button>
             ) : null}
             <Button
@@ -477,13 +479,13 @@ export function BuscarContent({
               size="sm"
               onClick={() => setShowAdvanced((v) => !v)}
             >
-              {showAdvanced ? 'Ocultar filtros avanzados' : 'Más filtros'}
+              {showAdvanced ? S.hideAdvanced : S.moreFilters}
             </Button>
           </div>
           {showAdvanced ? (
             <div className="mt-4 space-y-4 border-t border-border pt-4">
               <p className="text-sm font-medium text-text-primary">
-                Ubicación y superficie
+                {S.advancedSectionLocation}
               </p>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Input
@@ -589,7 +591,7 @@ export function BuscarContent({
               </div>
               <div>
                 <p className="text-sm font-medium text-text-primary mb-2">
-                  Más opciones (amenities)
+                  {S.amenitiesSectionTitle}
                 </p>
                 <div className="flex flex-wrap gap-x-4 gap-y-2">
                   {SEARCH_FILTER_AMENITIES.map((key) => (
@@ -615,7 +617,7 @@ export function BuscarContent({
         {showMap ? (
           <Card className="p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium text-text-primary">Mapa</p>
+              <p className="text-sm font-medium text-text-primary">{S.mapSectionTitle}</p>
               <div className="flex flex-wrap gap-2">
                 {mapBbox ? (
                   <Button
@@ -624,7 +626,7 @@ export function BuscarContent({
                     size="sm"
                     onClick={() => setMapBbox(null)}
                   >
-                    Quitar filtro de zona
+                    {S.clearBboxFilter}
                   </Button>
                 ) : null}
                 {applyRadiusFilter ? (
@@ -634,7 +636,7 @@ export function BuscarContent({
                     size="sm"
                     onClick={() => setApplyRadiusFilter(false)}
                   >
-                    Quitar radio
+                    {S.clearRadius}
                   </Button>
                 ) : null}
                 {mapPolygonRing.length > 0 ? (
@@ -647,7 +649,7 @@ export function BuscarContent({
                       setPolygonDrawMode(false)
                     }}
                   >
-                    Quitar polígono
+                    {S.polygonRemove}
                   </Button>
                 ) : null}
                 <Button
@@ -662,7 +664,7 @@ export function BuscarContent({
                     setPolygonDrawMode(false)
                   }}
                 >
-                  Ocultar mapa
+                  {S.hideMap}
                 </Button>
               </div>
             </div>
@@ -684,10 +686,10 @@ export function BuscarContent({
                 disabled={!mapCenter || !geoRadiusMeters}
                 onClick={() => setApplyRadiusFilter(true)}
               >
-                Buscar alrededor
+                {S.searchAround}
               </Button>
               <span className="text-xs text-text-tertiary">
-                Centro del mapa al moverlo; tocá «Buscar alrededor» para filtrar por radio.
+                {S.searchAroundHint}
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
@@ -698,12 +700,16 @@ export function BuscarContent({
                   checked={polygonDrawMode}
                   onChange={(e) => setPolygonDrawMode(e.target.checked)}
                 />
-                Dibujar polígono (clics en el mapa)
+                {S.polygonDrawLabel}
               </label>
               <span className="text-xs text-text-tertiary">
-                {mapPolygonRing.length} vértice
-                {mapPolygonRing.length === 1 ? '' : 's'}
-                {mapPolygonRing.length >= 3 ? ' · filtro activo' : ' · mín. 3 para filtrar'}
+                {mapPolygonRing.length}{' '}
+                {mapPolygonRing.length === 1
+                  ? S.polygonVertexSingular
+                  : S.polygonVertexPlural}
+                {mapPolygonRing.length >= 3
+                  ? ` ${S.polygonFilterActive}`
+                  : ` ${S.polygonMinVertices}`}
               </span>
             </div>
             <BuscarSearchMap
@@ -714,15 +720,10 @@ export function BuscarContent({
               polygonDrawMode={polygonDrawMode}
               onPolygonVertex={(p) => setMapPolygonRing((prev) => [...prev, p])}
             />
-            <p className="text-xs text-text-tertiary">
-              Solo se marcan avisos con ubicación. Mové el mapa y tocá «Buscar en esta zona» para
-              filtrar por el rectángulo visible. Con 3+ vértices en polígono se filtra por el área
-              dibujada.
-            </p>
+            <p className="text-xs text-text-tertiary">{S.mapHelp}</p>
             {mapPins.length === 0 && !isLoading ? (
               <p className="text-sm text-text-secondary">
-                No hay resultados con pin en este momento (falta geolocalización en los avisos o
-                los filtros no devolvieron coincidencias con coordenadas).
+                {S.mapNoPins}
               </p>
             ) : null}
           </Card>
@@ -732,11 +733,11 @@ export function BuscarContent({
       {isError ? (
         <Card className="p-6">
           <p className="text-sm text-text-primary">
-            No pudimos cargar resultados.{' '}
+            {S.loadError}{' '}
             {error?.message?.includes('DATABASE') ||
             error?.message?.includes('required')
-              ? 'Revisá que DATABASE_URL esté definida en Vercel (proyecto web, Production).'
-              : (error?.message ?? 'Intentá de nuevo más tarde.')}
+              ? S.loadErrorDbHint
+              : (error?.message ?? S.loadErrorRetry)}
           </p>
         </Card>
       ) : isLoading ? (
@@ -755,7 +756,7 @@ export function BuscarContent({
       ) : listings.length === 0 ? (
         <Card className="p-6">
           <p className="text-text-secondary">
-            No hay resultados. Probá con otros filtros o ampliá la búsqueda.
+            {S.emptyResults}
           </p>
         </Card>
       ) : (

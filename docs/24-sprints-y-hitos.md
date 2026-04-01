@@ -24,6 +24,7 @@
 | Búsqueda, mapa, clusters, demanda, alertas, org invitaciones | ✅ |
 | Asistente (IA + reglas) y semántica en `q` | ✅ |
 | Historial de búsqueda (DB + API) | `listing.search` persiste en `search_history` si hay sesión; `searchHistory.listMine` |
+| Norte de producto (portal) | `docs/41-PROPUESTA-VALOR-PORTAL.md` — descubrimiento, decisión, confianza, inventario |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40` |
 
 ---
@@ -418,6 +419,8 @@
 
 ## Próximos sprints (backlog)
 
+**Norte estratégico del portal (decisiones de copy y prioridad):** `docs/41-PROPUESTA-VALOR-PORTAL.md`.
+
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
 
 **Onboarding y monetización (registro por persona, MP stub):** `docs/40-ONBOARDING-PERSONAS-Y-FLUJOS.md`, `docs/39-MONETIZACION-MERCADOPAGO.md`. Tras pull: `pnpm db:push` para `users.account_intent` y `payment_webhook_events`.
@@ -428,7 +431,7 @@
 
 ---
 
-*Actualizado: 2026-03-31 (Sprint 27 — historial de búsqueda; Sprint 26 en curso según checklist)*
+*Actualizado: 2026-04-01 (Sprint 28 — páginas footer, menú móvil, copy búsqueda, doc 41; pendientes 28.6–28.12)*
 
 ---
 
@@ -466,3 +469,39 @@
 **Criterios:** usuarios logueados dejan rastro auditable de búsquedas; fallos de insert no afectan resultados; prod con tabla aplicada (`pnpm db:push` si faltaba `search_history`).
 
 **Nota:** alertas guardadas siguen en `searchAlert` + `search_alerts`; este sprint es historial pasivo por request.
+
+---
+
+## Sprint 28 — Producto “más que avisos” + sitio completo + copy unificado (largo)
+
+**Objetivo:** anclar el portal en la propuesta de valor de `docs/41-PROPUESTA-VALOR-PORTAL.md` (descubrimiento, decisión, confianza, inventario), cerrar **enlaces rotos del footer**, alinear **copy de búsqueda** con esa voz, y dejar un **backlog ejecutable** para siguientes iteraciones en automata.
+
+### A — Documentación y criterio
+
+- [x] 28.1 Publicar `docs/41-PROPUESTA-VALOR-PORTAL.md` (norte de decisión + tabla de implicancias)
+- [x] 28.2 Referenciar doc 41 en este archivo y en tabla “Estado actual”
+
+### B — Páginas y navegación (web)
+
+- [x] 28.3 Rutas: `/nosotros`, `/contacto`, `/planes`, `/terminos`, `/privacidad`, `/cookies`, `/emprendimientos` (contenido alineado a doc 41; legales en versión preliminar)
+- [x] 28.4 Footer: enlace **Panel de gestión** a `NEXT_PUBLIC_PANEL_URL` (ya no `/panel` inexistente)
+- [x] 28.5 Header o menú móvil: enlaces útiles (Buscar, Nosotros, Contacto) si falta cobertura en pantallas chicas
+- [ ] 28.6 **Opcional:** formulario de contacto (sin backend) → `mailto:` o tRPC `lead` genérico
+
+### C — Copy y UX de búsqueda
+
+- [x] 28.7 `PORTAL_SEARCH_UX_COPY` en `packages/shared` + uso en `buscar-content`, mapa y páginas `/buscar`, `/venta`, `/alquiler`
+- [ ] 28.8 Revisar fichas `/propiedad/[id]` y modales de contacto: tono voseo + “por qué encaja / confianza”
+- [ ] 28.9 **Opcional:** UI “búsquedas recientes” (`searchHistory.listMine`) para usuarios logueados
+
+### D — Inventario y datos (producto “sólido”)
+
+- [ ] 28.10 Continuar Sprint 26: facets catálogo + ES mapping/reindex (`26.5`) cuando prioridad
+- [ ] 28.11 Continuar Sprint 26: dedup MLS-ready (`26.8`)
+- [ ] 28.12 Jobs/sync: documentar o mejorar visibilidad de calidad de datos (vigencia, geo) en panel o métricas internas
+
+### E — Cierre de sprint (agente)
+
+- [x] 28.13 `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** ningún link del footer principal lleva a 404; búsqueda y títulos reflejan “mismo motor” y decisión informada; doc 41 es la referencia explícita para futuras features.

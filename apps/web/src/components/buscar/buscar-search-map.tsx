@@ -11,6 +11,7 @@ import {
   useMapEvents,
 } from 'react-leaflet'
 
+import { PORTAL_SEARCH_UX_COPY } from '@propieya/shared'
 import { Button } from '@propieya/ui'
 
 import 'leaflet/dist/leaflet.css'
@@ -179,7 +180,7 @@ function ZonaControls({
             })
           }}
         >
-          Buscar en esta zona
+          {PORTAL_SEARCH_UX_COPY.searchThisArea}
         </Button>
       </div>
     </div>

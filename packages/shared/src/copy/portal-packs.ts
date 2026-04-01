@@ -207,6 +207,79 @@ const varianteBCercano: PortalCopyPack = {
   howItWorks: howItWorksProposal(),
 }
 
+/**
+ * Copy de /buscar (y variantes venta/alquiler): alineado a docs/41-PROPUESTA-VALOR-PORTAL.md
+ * (descubrimiento, decisión, confianza; mismo motor).
+ */
+export const PORTAL_SEARCH_UX_COPY = {
+  buscarTitle: 'Buscá propiedades',
+  buscarSubtitle:
+    'Descubrimiento y decisión con el mismo motor que la home: mapa, filtros y criterios claros en cada aviso.',
+  ventaTitle: 'Propiedades en venta',
+  ventaSubtitle:
+    'Avisos activos en venta. Refiná con mapa y filtros para decidir con más contexto.',
+  alquilerTitle: 'Propiedades en alquiler',
+  alquilerSubtitle:
+    'Alquiler tradicional o temporal. Misma búsqueda y matching explicado que en el resto del portal.',
+
+  hintAdvancedLead: 'Podés tocar',
+  hintAdvancedStrong: 'Más filtros',
+  hintAdvancedTail:
+    'debajo del formulario para barrio, amenities, superficie y piso.',
+
+  saveProfile: 'Guardar filtros en mi perfil',
+  saveProfilePending: 'Guardando…',
+  createAlert: 'Crear alerta con estos filtros',
+  createAlertPending: 'Creando…',
+
+  allOperations: 'Todas las operaciones',
+  homeLink: 'Inicio',
+
+  profileSaved: 'Perfil actualizado con estos filtros.',
+  alertSaved: 'Alerta creada. Podés verla en Mis alertas.',
+
+  keywordPlaceholder: 'Palabras clave (título, descripción)',
+
+  showMap: 'Ver mapa',
+  moreFilters: 'Más filtros',
+  hideAdvanced: 'Ocultar filtros avanzados',
+
+  advancedSectionLocation: 'Ubicación y superficie',
+
+  matchWhyTitle: 'Por qué encaja',
+
+  loadError: 'No pudimos cargar los resultados.',
+  loadErrorDbHint:
+    'Revisá que DATABASE_URL esté definida en Vercel (proyecto web, Production).',
+  loadErrorRetry: 'Intentá de nuevo más tarde.',
+
+  emptyResults: 'No hay resultados. Probá con otros filtros o ampliá la búsqueda.',
+
+  mapHelp:
+    'Solo se marcan avisos con ubicación. Mové el mapa y tocá «Buscar en esta zona» para filtrar por el rectángulo visible. Con 3+ vértices en polígono se filtra por el área dibujada.',
+
+  mapNoPins:
+    'No hay resultados con pin en este momento (falta geolocalización en los avisos o los filtros no devolvieron coincidencias con coordenadas).',
+
+  polygonRemove: 'Quitar polígono',
+  polygonDrawLabel: 'Dibujar polígono (clics en el mapa)',
+  polygonVertexSingular: 'vértice',
+  polygonVertexPlural: 'vértices',
+  polygonFilterActive: '· filtro activo',
+  polygonMinVertices: '· mín. 3 para filtrar',
+
+  searchThisArea: 'Buscar en esta zona',
+
+  mapSectionTitle: 'Mapa',
+  clearBboxFilter: 'Quitar filtro de zona',
+  clearRadius: 'Quitar radio',
+  hideMap: 'Ocultar mapa',
+  searchAround: 'Buscar alrededor',
+  searchAroundHint:
+    'Centro del mapa al moverlo; tocá «Buscar alrededor» para filtrar por radio.',
+  amenitiesSectionTitle: 'Más opciones (amenities)',
+} as const
+
 export const PORTAL_COPY_PACKS: Record<PortalCopyPackId, PortalCopyPack> = {
   regla_portal_v1: reglaPortalV1,
   variante_b_cercano: varianteBCercano,
