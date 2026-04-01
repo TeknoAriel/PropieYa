@@ -7,7 +7,10 @@ import { listings, notifications, searchAlerts } from '@propieya/database'
 import { buildFiltersSummary } from '../../lib/search-filter-summary'
 
 import { createTRPCRouter, protectedProcedure } from '../trpc'
-import { listingSearchFiltersSchema } from './listing-search-input'
+import {
+  listingSearchFiltersBaseSchema,
+} from './listing-search-input'
+import { sanitizeListingSearchFacets } from '@propieya/shared'
 
 type FeedNotificationItem = {
   kind: 'notification'
@@ -36,9 +39,14 @@ type FeedItem = FeedNotificationItem | FeedSavedSearchItem
 export const searchAlertRouter = createTRPCRouter({
   create: protectedProcedure
     .input(
-      listingSearchFiltersSchema.extend({
-        name: z.string().max(255).optional(),
-      })
+      listingSearchFiltersBaseSchema
+        .extend({
+          name: z.string().max(255).optional(),
+        })
+        .transform((data) => ({
+          ...data,
+          facets: sanitizeListingSearchFacets(data.facets),
+        }))
     )
     .mutation(async ({ ctx, input }) => {
       const { name, ...filterFields } = input

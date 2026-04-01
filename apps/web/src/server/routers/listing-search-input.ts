@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { sanitizeListingSearchFacets } from '@propieya/shared'
+
 /** Rectángulo geográfico (WGS84). Sur ≤ norte, oeste ≤ este (sin cruce de antimeridiano). */
 export const listingSearchBBoxSchema = z
   .object({
@@ -11,8 +13,8 @@ export const listingSearchBBoxSchema = z
   .refine((b) => b.south <= b.north, { message: 'bbox: south debe ser <= north' })
   .refine((b) => b.west <= b.east, { message: 'bbox: west debe ser <= east' })
 
-/** Filtros de búsqueda pública (sin paginación). */
-export const listingSearchFiltersSchema = z.object({
+/** Filtros de búsqueda pública (sin paginación), sin normalizar facets. */
+export const listingSearchFiltersBaseSchema = z.object({
   q: z.string().max(200).optional(),
   operationType: z
     .enum(['sale', 'rent', 'temporary_rent'])
@@ -77,10 +79,23 @@ export const listingSearchFiltersSchema = z.object({
     .optional(),
 })
 
-export const listingSearchInputSchema = listingSearchFiltersSchema.extend({
-  limit: z.number().min(1).max(50).default(24),
-  offset: z.number().min(0).max(500).default(0),
-})
+/** Filtros con `facets` saneados contra el catálogo (evita ids inyectados). */
+export const listingSearchFiltersSchema = listingSearchFiltersBaseSchema.transform(
+  (data) => ({
+    ...data,
+    facets: sanitizeListingSearchFacets(data.facets),
+  })
+)
+
+export const listingSearchInputSchema = listingSearchFiltersBaseSchema
+  .extend({
+    limit: z.number().min(1).max(50).default(24),
+    offset: z.number().min(0).max(500).default(0),
+  })
+  .transform((data) => ({
+    ...data,
+    facets: sanitizeListingSearchFacets(data.facets),
+  }))
 
 export type ListingSearchFiltersInput = z.infer<typeof listingSearchFiltersSchema>
 export type ListingSearchInput = z.infer<typeof listingSearchInputSchema>

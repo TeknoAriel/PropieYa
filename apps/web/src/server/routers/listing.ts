@@ -17,6 +17,7 @@ import {
   updateListingSchema,
   LISTING_VALIDITY,
   mergePublicSearchFromQuery,
+  FACETS_CATALOG,
   SEARCH_FILTER_AMENITIES,
   withMatchReasons,
   type ExplainMatchFilters,
@@ -529,6 +530,11 @@ export const listingRouter = createTRPCRouter({
 
       return result
     }),
+
+  /** Catálogo de facets (flags/enums/ranges) para UI y clientes; alineado a `sanitizeListingSearchFacets`. */
+  getSearchFacetsCatalog: publicProcedure.query(() => ({
+    facets: FACETS_CATALOG,
+  })),
 
   /** Búsqueda pública (solo avisos activos). Usa ES si está configurado, fallback a SQL. */
   search: publicProcedure

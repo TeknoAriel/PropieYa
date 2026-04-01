@@ -446,10 +446,10 @@
 
 ### Tareas (agente / CI)
 
-- [ ] 26.1 **Catálogo de facets (backend):** definir modelo interno de facets (id estable, tipo `bool/enum/range/text`, labels) y fuente de verdad (DB o `packages/shared`)
+- [x] 26.1 **Catálogo de facets (backend):** modelo en `packages/shared` (`FACETS_CATALOG`, `getFacetFlagDefinitions`) + `listing.getSearchFacetsCatalog`; saneo con `sanitizeListingSearchFacets`
 - [ ] 26.2 **Mapeo de feeds → facets:** extender/centralizar el mapeo (Yumblin/Zonaprop) para poblar `features`/facets sin perder claves crudas importantes
 - [ ] 26.3 **Schema tipado de búsqueda:** extender `packages/shared/src/schemas/search.ts` para soportar facets dinámicos (manteniendo compatibilidad con filtros actuales)
-- [ ] 26.4 **API search unificada:** aceptar facets en `listing.search` (SQL y ES) y garantizar que el mismo contrato sirva a UI + asistente + alertas
+- [x] 26.4 **API search unificada:** facets en `listing.search` (SQL/ES); entrada normalizada en Zod (`listingSearchFiltersSchema` / alertas) con `sanitizeListingSearchFacets`
 - [ ] 26.5 **Elasticsearch mapping + index:** materializar facets frecuentes en ES (y dejar resto en `features`); reindex seguro
 - [ ] 26.6 **UI progresiva (web /buscar):** capa “Esenciales” + “Más opciones” (avanzados) + chips/sugerencias desde catálogo
 - [ ] 26.7 **Mapa: polígono/radio:** agregar búsqueda por área dibujada (polígono) y por radio; unificar con bbox/clusters existentes
@@ -496,7 +496,7 @@
 ### C — Copy y UX de búsqueda
 
 - [x] 28.7 `PORTAL_SEARCH_UX_COPY` en `packages/shared` + uso en `buscar-content`, mapa y páginas `/buscar`, `/venta`, `/alquiler`
-- [ ] 28.8 Revisar fichas `/propiedad/[id]` y modales de contacto: tono voseo + “por qué encaja / confianza”
+- [x] 28.8 Revisar fichas `/propiedad/[id]` y modales de contacto: tono voseo + nota de confianza (`PORTAL_LISTING_UX_COPY`)
 - [ ] 28.9 **Opcional:** UI “búsquedas recientes” (`searchHistory.listMine`) para usuarios logueados
 
 ### D — Inventario y datos (producto “sólido”)
@@ -535,7 +535,7 @@
 
 - [x] 30.0 **Mapa /buscar:** pan bloqueado — `FitBounds` se disparaba en cada render porque `points` era un array nuevo tras cada `moveend` → `setMapCenter`; `useMemo` en coords + saneo de lat/lng (incl. swap típico Cono Sur) en `map-geo.ts`
 - [ ] 30.1 Ejecutar **Sprint 26.1–26.4** según checklist §26 (facets, mapeo, schema, API unificada)
-- [ ] 30.2 **28.8** Ficha `/propiedad/[id]` + contacto: voseo + confianza / “por qué encaja”
+- [x] 30.2 **28.8** Ficha `/propiedad/[id]` + contacto: voseo + confianza / “por qué encaja”
 - [ ] 30.3 **28.9 opcional:** UI “búsquedas recientes” (`searchHistory.listMine`)
 - [ ] 30.4 **26.5** ES mapping + reindex cuando el contrato de facets esté estable
 - [ ] 30.5 `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`

@@ -17,11 +17,10 @@ const BuscarSearchMap = dynamic(
   }
 )
 import {
-  AMENITY_LABELS,
   formatPrice,
+  getFacetFlagDefinitions,
   OPERATION_TYPE_LABELS,
   PORTAL_SEARCH_UX_COPY as S,
-  SEARCH_FILTER_AMENITIES,
 } from '@propieya/shared'
 import type { Currency, OperationType, PropertyType } from '@propieya/shared'
 
@@ -219,6 +218,8 @@ export function BuscarContent({
   const [mapPolygonRing, setMapPolygonRing] = useState<BuscarMapPoint[]>([])
   const [polygonDrawMode, setPolygonDrawMode] = useState(false)
   const [showMap, setShowMap] = useState(false)
+
+  const facetFlagDefinitions = useMemo(() => getFacetFlagDefinitions(), [])
 
   const toggleAmenityFacet = (key: string) => {
     setSelectedAmenityFacets((prev) =>
@@ -598,18 +599,18 @@ export function BuscarContent({
                   {S.amenitiesSectionTitle}
                 </p>
                 <div className="flex flex-wrap gap-x-4 gap-y-2">
-                  {SEARCH_FILTER_AMENITIES.map((key) => (
+                  {facetFlagDefinitions.map((facet) => (
                     <label
-                      key={key}
+                      key={facet.id}
                       className="flex cursor-pointer items-center gap-2 text-sm text-text-secondary"
                     >
                       <input
                         type="checkbox"
                         className="rounded border-border"
-                        checked={selectedAmenityFacets.includes(key)}
-                        onChange={() => toggleAmenityFacet(key)}
+                        checked={selectedAmenityFacets.includes(facet.id)}
+                        onChange={() => toggleAmenityFacet(facet.id)}
                       />
-                      {AMENITY_LABELS[key]}
+                      {facet.label}
                     </label>
                   ))}
                 </div>

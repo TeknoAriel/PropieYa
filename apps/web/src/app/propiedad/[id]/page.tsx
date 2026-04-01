@@ -13,6 +13,7 @@ import {
   formatPrice,
   formatSurface,
   OPERATION_TYPE_LABELS,
+  PORTAL_LISTING_UX_COPY as L,
 } from '@propieya/shared'
 import type {
   Currency,
@@ -92,7 +93,7 @@ function ContactButton({
     <>
       <Button onClick={() => setOpen(true)} className="w-full">
         <MessageSquare className="h-4 w-4 mr-2" />
-        Contactar
+        {L.contactButton}
       </Button>
       <ContactModal
         listingId={listingId}
@@ -349,10 +350,9 @@ export default function PropiedadPage() {
 
         <div className="space-y-4">
           <Card className="p-6 space-y-4">
-            <h2 className="text-lg font-semibold">¿Te interesa?</h2>
-            <p className="text-sm text-text-secondary">
-              Consultá por esta propiedad y te responderán a la brevedad.
-            </p>
+            <h2 className="text-lg font-semibold">{L.sidebarTitle}</h2>
+            <p className="text-sm text-text-secondary">{L.sidebarLead}</p>
+            <p className="text-xs text-text-tertiary leading-relaxed">{L.trustNote}</p>
             <ContactButton
               listingId={listing.id}
               listingTitle={listing.title}

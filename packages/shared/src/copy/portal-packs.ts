@@ -280,6 +280,31 @@ export const PORTAL_SEARCH_UX_COPY = {
   amenitiesSectionTitle: 'Más opciones (amenities)',
 } as const
 
+/** Ficha de propiedad: contacto y confianza (Sprint 28.8, voseo). */
+export const PORTAL_LISTING_UX_COPY = {
+  contactButton: 'Escribinos',
+  sidebarTitle: '¿Te interesa?',
+  sidebarLead:
+    'Escribinos: el publicador te responde por el canal habitual. No compartimos tu email con terceros.',
+  trustNote:
+    'Los avisos pasan por el mismo motor de búsqueda que el resto del portal; si ves algo raro, avisanos.',
+  modalTitle: 'Consultá por esta propiedad',
+  modalDescriptionIdle:
+    'Completá el formulario: te responden a la brevedad. Referencia del aviso:',
+  modalSuccessTitle: 'Listo',
+  modalSuccessBody: 'Gracias. Si no ves respuesta en tu casilla, revisá spam o la carpeta de promociones.',
+  modalNameLabel: 'Nombre',
+  modalNamePlaceholder: 'Cómo te llamamos',
+  modalEmailLabel: 'Email',
+  modalEmailPlaceholder: 'tu@email.com',
+  modalMessageLabel: 'Mensaje',
+  modalMessagePlaceholder: 'Contanos qué necesitás saber…',
+  modalCancel: 'Cancelar',
+  modalSubmit: 'Enviar',
+  modalSubmitPending: 'Enviando…',
+  modalSentOk: 'Mensaje enviado',
+} as const
+
 export const PORTAL_COPY_PACKS: Record<PortalCopyPackId, PortalCopyPack> = {
   regla_portal_v1: reglaPortalV1,
   variante_b_cercano: varianteBCercano,
