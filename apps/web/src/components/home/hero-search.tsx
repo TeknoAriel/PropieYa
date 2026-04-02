@@ -5,33 +5,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 import { Button, Input, ArrowRight, Filter } from '@propieya/ui'
+import { buildPortalBuscarUrl } from '@propieya/shared'
 
 import { getPortalPack } from '@/lib/portal-copy'
 import { trpc } from '@/lib/trpc'
-
-function buildBuscarUrl(filters: {
-  q?: string
-  operationType?: string
-  propertyType?: string
-  city?: string
-  neighborhood?: string
-  minPrice?: number
-  maxPrice?: number
-  minBedrooms?: number
-  minSurface?: number
-}): string {
-  const params = new URLSearchParams()
-  if (filters.q) params.set('q', filters.q)
-  if (filters.operationType) params.set('op', filters.operationType)
-  if (filters.propertyType) params.set('tipo', filters.propertyType)
-  if (filters.city) params.set('ciudad', filters.city)
-  if (filters.neighborhood) params.set('barrio', filters.neighborhood)
-  if (filters.minPrice != null) params.set('min', String(filters.minPrice))
-  if (filters.maxPrice != null) params.set('max', String(filters.maxPrice))
-  if (filters.minBedrooms != null) params.set('dorm', String(filters.minBedrooms))
-  if (filters.minSurface != null) params.set('sup', String(filters.minSurface))
-  return `/buscar?${params.toString()}`
-}
 
 const PLACEHOLDER_ROTATE_MS = 5500
 
@@ -58,7 +35,7 @@ export function HeroSearch() {
 
   const searchConversational = trpc.listing.searchConversational.useMutation({
     onSuccess: (data) => {
-      const url = buildBuscarUrl(data.filters)
+      const url = buildPortalBuscarUrl(data.filters)
       router.push(url)
     },
   })

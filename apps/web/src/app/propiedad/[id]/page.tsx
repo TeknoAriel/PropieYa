@@ -9,6 +9,7 @@ import { Badge, Button, Card, MessageSquare, Skeleton } from '@propieya/ui'
 
 import { ContactModal } from '@/components/contact-modal'
 import { ListingTrustPanel } from '@/components/property/listing-trust-panel'
+import { ListingRelatedSearches } from '@/components/property/listing-related-searches'
 import { PropertyLocationMap } from '@/components/property/property-location-map'
 import {
   formatPrice,
@@ -426,7 +427,21 @@ export default function PropiedadPage() {
         </div>
       </div>
 
-      <SimilarSection listingId={listing.id} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-1">
+          <ListingRelatedSearches
+            operationType={listing.operationType}
+            propertyType={listing.propertyType}
+            city={addressCity !== '—' ? addressCity : null}
+            neighborhood={
+              addressNeighborhood !== '—' ? addressNeighborhood : null
+            }
+          />
+        </div>
+        <div className="lg:col-span-2">
+          <SimilarSection listingId={listing.id} />
+        </div>
+      </div>
     </div>
   )
 }

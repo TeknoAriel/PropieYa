@@ -27,7 +27,9 @@
 | Norte de producto (portal) | `docs/41-PROPUESTA-VALOR-PORTAL.md` — descubrimiento, decisión, confianza, inventario |
 | Directiva evolutiva + matriz backlog | `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`, `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md` |
 | Sprint 30 (mapa, recientes, doc ES/reindex) | ✅ |
-| Sprint 31 (P1 confianza en ficha) | ✅ — siguiente: doc 43 §5 P2 sugerencias / relacionadas |
+| Sprint 31 (P1 confianza en ficha) | ✅ |
+| Sprint 32 (P2 descubrimiento: chips + relacionadas) | ✅ |
+| Siguiente backlog doc 43 §5 | P2 Centro de decisión (diseño + widget) o profundidad mapa/filtros |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Infra GitHub/Vercel nuevo repo (Sprint 25.6–25.8) | Confirmar secretos `VERCEL_*`, Actions verde y Git del proyecto web → `docs/DEPLOY-PASOS-URIs.md` Parte A |
 
@@ -439,7 +441,7 @@
 
 ---
 
-*Actualizado: 2026-04-02 (Sprint 31 confianza en ficha; 25.6–25.8 según dashboard)*
+*Actualizado: 2026-03-31 (Sprint 32 descubrimiento inductivo; 25.6–25.8 según dashboard)*
 
 ---
 
@@ -559,3 +561,19 @@
 - [x] 31.4 `pnpm verify` + push `deploy/infra` + alinear `main`
 
 **Criterios:** usuario ve publicación/vigencia, barra de completitud y origen (feed vs portal); coincide con directiva confianza (doc 41/42).
+
+---
+
+## Sprint 32 — P2 descubrimiento (`docs/43` §5) ✅
+
+**Objetivo:** sugerencias inductivas en home y `/buscar`, más enlaces de búsqueda relacionada en ficha, reutilizando el mismo contrato de query que `BuscarContent`.
+
+### Tareas (agente / CI)
+
+- [x] 32.1 `packages/shared`: `buildPortalBuscarUrl` + `PORTAL_INDUCTIVE_CHIPS`; copy `PORTAL_SEARCH_UX_COPY` / `PORTAL_LISTING_UX_COPY`
+- [x] 32.2 Home: `InductiveSearchChips` entre hero y destacados
+- [x] 32.3 `/buscar`: misma franja en card bajo historial (si hay sesión) / encima de esenciales
+- [x] 32.4 Ficha: `ListingRelatedSearches` (tipo+op, ciudad, barrio) + `hero-search` usa URL compartida
+- [x] 32.5 `pnpm verify` + push `deploy/infra` + alinear `main` + `pnpm verificar:deploy`
+
+**Criterios:** enlaces generan URLs con `op`/`tipo`/`ciudad`/`barrio` coherentes con el buscador; sin nuevo endpoint.

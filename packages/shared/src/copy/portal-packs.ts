@@ -292,6 +292,11 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Cuando ejecutes búsquedas con la sesión iniciada, van a aparecer acá (mismo motor que /buscar).',
   recentSearchesHint:
     'Solo vos ves esta lista; cada fila resume filtros y cantidad de resultados en ese momento.',
+
+  /** Sprint 32 — descubrimiento inductivo (mismos params que /buscar). */
+  inductiveExploreTitle: 'Búsquedas para arrancar',
+  inductiveExploreSubtitle:
+    'Atajos con el mismo motor que el buscador; después refinás con mapa o filtros.',
 } as const
 
 /** Ficha de propiedad: contacto y confianza (Sprint 28.8, voseo). */
@@ -327,6 +332,9 @@ export const PORTAL_LISTING_UX_COPY = {
     'Origen: sincronizado desde el feed de socios (mismo inventario que usa la inmobiliaria).',
   sourceManual: 'Origen: publicación gestionada en Propieya.',
   expiringSoonBadge: 'Por vencer',
+
+  /** Sprint 32 — ampliar zona / mismo criterio en el buscador */
+  relatedSearchesTitle: 'Búsquedas relacionadas',
 } as const
 
 export const PORTAL_COPY_PACKS: Record<PortalCopyPackId, PortalCopyPack> = {

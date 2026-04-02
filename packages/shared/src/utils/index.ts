@@ -1,5 +1,6 @@
 export * from './format'
 export * from './validation'
 export * from './url'
+export * from './portal-buscar-url'
 export * from './db-errors'
 export * from './trpc-form-errors'

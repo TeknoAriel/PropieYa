@@ -25,6 +25,7 @@ import {
 import type { Currency, OperationType, PropertyType } from '@propieya/shared'
 
 import { BuscarRecentSearches } from '@/components/buscar/buscar-recent-searches'
+import { InductiveSearchChips } from '@/components/portal/inductive-search-chips'
 import { getAccessToken } from '@/lib/auth-storage'
 import { sanitizeListingCoordinates } from '@/lib/map-geo'
 import { trpc } from '@/lib/trpc'
@@ -407,6 +408,10 @@ export function BuscarContent({
         ) : null}
 
         {me ? <BuscarRecentSearches /> : null}
+
+        <Card className="p-4">
+          <InductiveSearchChips />
+        </Card>
 
         <Card className="p-4 space-y-4">
           <div>
