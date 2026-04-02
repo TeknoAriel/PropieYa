@@ -57,7 +57,7 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 - **Definición:** `apps/web/vercel.json` (y `vercel.json` en raíz si aplica) — schedule **0 6 \* \* \*** (UTC).
 - **Auth:** header `Authorization: Bearer <CRON_SECRET>` si `CRON_SECRET` está definido (recomendado en producción).
 - **Lógica:** `packages/database/src/yumblin-import-sync.ts`, `runYumblinImportSyncAllSources`.
-- **Feed default:** JSON Properstar en static.kiteprop.com (ver `docs/44-IMPORT-PROPERSTAR-Y-DEPURACION.md`). Variable **`YUMBLIN_JSON_URL`** lo sobreescribe. **`IMPORT_WITHDRAW_SCOPE`**: `org` (recomendado, un solo feed) vs `source` (legado). Columna **`import_source_updated_at`**: evita reprocesar ítems si `last_update` del feed no cambió.
+- **Feed default:** JSON Properstar en static.kiteprop.com (ver `docs/44-IMPORT-PROPERSTAR-Y-DEPURACION.md`). Variable **`YUMBLIN_JSON_URL`** lo sobreescribe. **`IMPORT_WITHDRAW_SCOPE`**: `org` (recomendado, un solo feed) vs `source` (legado). Columna **`import_source_updated_at`**: evita reprocesar ítems si `last_update` del feed no cambió (`pnpm db:push` o `docs/sql/add-import-source-updated-at.sql` en Neon).
 - **Org/publisher:** si no hay `IMPORT_ORGANIZATION_ID` / `IMPORT_PUBLISHER_ID`, el código usa la **primera organización** y un **miembro** de esa org (requiere DB ya sembrada).
 
 ### Variables útiles en Vercel (web, Production)

@@ -17,6 +17,8 @@ pnpm db:push
 
 Crea **`listings.import_source_updated_at`**: copia de la **`last_update`** del ítem en el feed para decidir si se omite el reprocesado de ese `external_id`.
 
+**Sin CLI local:** ejecutar en Neon (SQL Editor) el script `docs/sql/add-import-source-updated-at.sql`.
+
 ---
 
 ## 2. Comportamiento
