@@ -2,12 +2,25 @@ import Link from 'next/link'
 
 import { Card } from '@propieya/ui'
 
+import { getPublicInventoryStats } from '@/lib/inventory-stats'
+
 /**
  * Página pública de estado: pendientes conocidos y bloqueos documentados.
  * Útil cuando el deploy está OK; si el sitio entero devuelve 404 de Vercel,
  * esta ruta no cargará hasta corregir el proyecto en Vercel.
  */
-export default function EstadoPage() {
+export default async function EstadoPage() {
+  let inventory = null as Awaited<
+    ReturnType<typeof getPublicInventoryStats>
+  > | null
+  let inventoryError: string | null = null
+  try {
+    inventory = await getPublicInventoryStats()
+  } catch (e) {
+    inventoryError =
+      e instanceof Error ? e.message : 'No se pudieron leer totales de la base'
+  }
+
   return (
     <div className="container mx-auto max-w-3xl px-4 py-12 space-y-8">
       <div>
@@ -56,7 +69,73 @@ export default function EstadoPage() {
             </Link>{' '}
             — commit desplegado (si Vercel inyecta la variable)
           </li>
+          <li>
+            <Link
+              href="/api/inventory-stats"
+              className="text-brand-primary hover:underline"
+            >
+              /api/inventory-stats
+            </Link>{' '}
+            — totales de avisos (manual vs import) y referencia al cron de ingest
+          </li>
         </ul>
+      </Card>
+
+      <Card className="p-6 space-y-3">
+        <h2 className="text-lg font-semibold text-text-primary">
+          Inventario e ingestión
+        </h2>
+        {inventoryError ? (
+          <p className="text-sm text-semantic-error">{inventoryError}</p>
+        ) : inventory ? (
+          <dl className="grid gap-2 text-sm text-text-secondary sm:grid-cols-2">
+            <div>
+              <dt className="font-medium text-text-primary">Total avisos (DB)</dt>
+              <dd>{inventory.totalListings}</dd>
+            </div>
+            <div>
+              <dt className="font-medium text-text-primary">Activos</dt>
+              <dd>{inventory.activeListings}</dd>
+            </div>
+            <div>
+              <dt className="font-medium text-text-primary">
+                Con origen import (<code className="text-xs">source=import</code>)
+              </dt>
+              <dd>{inventory.listingsFromImportSource}</dd>
+            </div>
+            <div>
+              <dt className="font-medium text-text-primary">
+                Activos desde import
+              </dt>
+              <dd>{inventory.activeListingsFromImport}</dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="font-medium text-text-primary">
+                Con <code className="text-xs">external_id</code> (vinculados a feed)
+              </dt>
+              <dd>{inventory.listingsWithExternalId}</dd>
+            </div>
+            <div className="sm:col-span-2 border-t border-border pt-3 mt-1">
+              <dt className="font-medium text-text-primary">Feed JSON</dt>
+              <dd className="mt-1 break-all">
+                {inventory.feedUrlConfigured
+                  ? inventory.feedUrlHint
+                  : `${inventory.feedUrlHint} Variable opcional: YUMBLIN_JSON_URL.`}
+              </dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="font-medium text-text-primary">Cron de sync</dt>
+              <dd className="mt-1">
+                <code className="text-xs bg-surface-secondary px-1 rounded">
+                  GET {inventory.cronIngestPath}
+                </code>
+                <span className="block mt-2 text-text-secondary">
+                  {inventory.cronResponseNote}
+                </span>
+              </dd>
+            </div>
+          </dl>
+        ) : null}
       </Card>
 
       <Card className="p-6 space-y-3">

@@ -116,7 +116,7 @@ function ListingCard({ listing }: { listing: BuscarListingCardData }) {
             {neighborhood}, {city}
           </p>
 
-          <div className="mt-3 flex items-center gap-4 text-sm text-text-tertiary">
+          <div className="mt-3 flex items-center gap-4 text-sm text-text-secondary">
             <span>{listing.surfaceTotal} m²</span>
             {listing.bedrooms !== null && listing.bedrooms > 0 ? (
               <span>{listing.bedrooms} dorm.</span>
@@ -144,6 +144,10 @@ function ListingCard({ listing }: { listing: BuscarListingCardData }) {
     </Link>
   )
 }
+
+/** Selects nativos alineados al tema (evita `bg-background` indefinido y fondo blanco en dark). */
+const BUSCAR_SELECT_CLASS =
+  'w-full rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary'
 
 const PROPERTY_OPTIONS: { value: PropertyType; label: string }[] = [
   { value: 'apartment', label: 'Departamento' },
@@ -439,7 +443,7 @@ export function BuscarContent({
               </div>
             ) : (
               <select
-                className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+                className={BUSCAR_SELECT_CLASS}
                 value={operationType}
                 onChange={(e) =>
                   setOperationType(e.target.value as OperationType | '')
@@ -452,7 +456,7 @@ export function BuscarContent({
               </select>
             )}
             <select
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+              className={BUSCAR_SELECT_CLASS}
               value={propertyType}
               onChange={(e) =>
                 setPropertyType(e.target.value as PropertyType | '')
@@ -504,7 +508,7 @@ export function BuscarContent({
           </div>
           <div>
             <p className="text-sm font-medium text-text-primary">{S.facetChipsTitle}</p>
-            <p className="text-xs text-text-tertiary mt-0.5">{S.facetChipsHint}</p>
+            <p className="text-xs text-text-secondary mt-0.5">{S.facetChipsHint}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {facetChips.map((facet) => (
                 <Button
@@ -590,7 +594,7 @@ export function BuscarContent({
                   maxLength={10}
                 />
                 <select
-                  className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  className={BUSCAR_SELECT_CLASS}
                   value={orientation}
                   onChange={(e) =>
                     setOrientation(
@@ -638,7 +642,7 @@ export function BuscarContent({
                   {facetFlagDefinitions.map((facet) => (
                     <label
                       key={facet.id}
-                      className="flex cursor-pointer items-center gap-2 text-sm text-text-secondary"
+                      className="flex cursor-pointer items-center gap-2 text-sm text-text-primary"
                     >
                       <input
                         type="checkbox"
@@ -734,7 +738,7 @@ export function BuscarContent({
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-text-secondary">
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-text-primary">
                 <input
                   type="checkbox"
                   className="rounded border-border"

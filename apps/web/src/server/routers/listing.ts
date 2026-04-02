@@ -8,6 +8,7 @@ import type { Database } from '@propieya/database'
 import {
   listings,
   listingMedia,
+  listingsSelectPublic,
   organizations,
   organizationMemberships,
   searchHistory,
@@ -158,12 +159,16 @@ export const listingRouter = createTRPCRouter({
   publish: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
-      const existing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, input.id),
-          eq(listings.publisherId, ctx.session.userId)
-        ),
-      })
+      const [existing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, input.id),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
 
       if (!existing) {
         throw new Error('Propiedad no encontrada')
@@ -196,12 +201,16 @@ export const listingRouter = createTRPCRouter({
   renew: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
-      const existing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, input.id),
-          eq(listings.publisherId, ctx.session.userId)
-        ),
-      })
+      const [existing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, input.id),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
 
       if (!existing) {
         throw new Error('Propiedad no encontrada')
@@ -242,12 +251,16 @@ export const listingRouter = createTRPCRouter({
   getMineById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ input, ctx }) => {
-      const listing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, input.id),
-          eq(listings.publisherId, ctx.session.userId)
-        ),
-      })
+      const [listing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, input.id),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
 
       if (!listing) {
         return null
@@ -279,11 +292,12 @@ export const listingRouter = createTRPCRouter({
         conditions.push(ilike(listings.title, `%${input.search}%`))
       }
 
-      return ctx.db.query.listings.findMany({
-        where: and(...conditions),
-        orderBy: ORDER_PANEL_RECENCY,
-        limit: input.limit,
-      })
+      return ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(and(...conditions))
+        .orderBy(...ORDER_PANEL_RECENCY)
+        .limit(input.limit)
     }),
 
   /** Conteos por estado para el dashboard del panel (avisos del publicador). */
@@ -331,12 +345,16 @@ export const listingRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const existing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, input.id),
-          eq(listings.publisherId, ctx.session.userId)
-        ),
-      })
+      const [existing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, input.id),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
 
       if (!existing) {
         throw new Error('Propiedad no encontrada')
@@ -414,12 +432,13 @@ export const listingRouter = createTRPCRouter({
   getById: publicProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ input, ctx }) => {
-      const listing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, input.id),
-          eq(listings.status, 'active')
-        ),
-      })
+      const [listing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(eq(listings.id, input.id), eq(listings.status, 'active'))
+        )
+        .limit(1)
 
       if (!listing) {
         return null
@@ -445,9 +464,13 @@ export const listingRouter = createTRPCRouter({
       })
     )
     .query(async ({ input, ctx }) => {
-      const base = await ctx.db.query.listings.findFirst({
-        where: and(eq(listings.id, input.id), eq(listings.status, 'active')),
-      })
+      const [base] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(eq(listings.id, input.id), eq(listings.status, 'active'))
+        )
+        .limit(1)
 
       if (!base) {
         return []
@@ -477,11 +500,12 @@ export const listingRouter = createTRPCRouter({
         conditions.push(lte(listings.priceAmount, high))
       }
 
-      const rows = await ctx.db.query.listings.findMany({
-        where: and(...conditions),
-        orderBy: ORDER_PUBLIC_RECENCY,
-        limit: input.limit,
-      })
+      const rows = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(and(...conditions))
+        .orderBy(...ORDER_PUBLIC_RECENCY)
+        .limit(input.limit)
 
       if (rows.length === 0) {
         return []
@@ -522,13 +546,12 @@ export const listingRouter = createTRPCRouter({
       })
     )
     .query(async ({ input, ctx }) => {
-      const result = await ctx.db.query.listings.findMany({
-        where: eq(listings.status, 'active'),
-        orderBy: ORDER_PUBLIC_RECENCY,
-        limit: input.limit,
-      })
-
-      return result
+      return ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(eq(listings.status, 'active'))
+        .orderBy(...ORDER_PUBLIC_RECENCY)
+        .limit(input.limit)
     }),
 
   /** Catálogo de facets (flags/enums/ranges) para UI y clientes; alineado a `sanitizeListingSearchFacets`. */
@@ -769,12 +792,13 @@ export const listingRouter = createTRPCRouter({
         .where(whereClause)
       const sqlTotal = Number(totalRow?.c ?? 0)
 
-      const rows = await ctx.db.query.listings.findMany({
-        where: whereClause,
-        orderBy: ORDER_PUBLIC_RECENCY,
-        limit,
-        offset,
-      })
+      const rows = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(whereClause)
+        .orderBy(...ORDER_PUBLIC_RECENCY)
+        .limit(limit)
+        .offset(offset)
       if (sessionUserId) {
         persistSearchHistoryRow(ctx.db, {
           userId: sessionUserId,
@@ -892,12 +916,13 @@ export const listingRouter = createTRPCRouter({
 
       const total = countResult?.count ?? 0
 
-      const hits = await ctx.db.query.listings.findMany({
-        where: and(...conditions),
-        orderBy: ORDER_PUBLIC_RECENCY,
-        limit: filters.limit ?? 24,
-        offset: filters.offset ?? 0,
-      })
+      const hits = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(and(...conditions))
+        .orderBy(...ORDER_PUBLIC_RECENCY)
+        .limit(filters.limit ?? 24)
+        .offset(filters.offset ?? 0)
 
       return {
         filters,
@@ -921,12 +946,16 @@ export const listingRouter = createTRPCRouter({
         )
       }
 
-      const existing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, input.listingId),
-          eq(listings.publisherId, ctx.session.userId)
-        ),
-      })
+      const [existing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, input.listingId),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
 
       if (!existing) {
         throw new Error('Propiedad no encontrada')
@@ -954,12 +983,16 @@ export const listingRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const existing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, input.listingId),
-          eq(listings.publisherId, ctx.session.userId)
-        ),
-      })
+      const [existing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, input.listingId),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
 
       if (!existing) {
         throw new Error('Propiedad no encontrada')
@@ -1016,12 +1049,16 @@ export const listingRouter = createTRPCRouter({
       })
       if (!media) throw new Error('Imagen no encontrada')
 
-      const listing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, media.listingId),
-          eq(listings.publisherId, ctx.session.userId)
-        ),
-      })
+      const [listing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, media.listingId),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
       if (!listing) throw new Error('Propiedad no encontrada')
 
       await ctx.db.delete(listingMedia).where(eq(listingMedia.id, input.mediaId))
@@ -1060,12 +1097,16 @@ export const listingRouter = createTRPCRouter({
       })
       if (!media) throw new Error('Imagen no encontrada')
 
-      const listing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, media.listingId),
-          eq(listings.publisherId, ctx.session.userId)
-        ),
-      })
+      const [listing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, media.listingId),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
       if (!listing) throw new Error('Propiedad no encontrada')
 
       await ctx.db

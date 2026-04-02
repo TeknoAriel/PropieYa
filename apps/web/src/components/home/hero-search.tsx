@@ -74,7 +74,7 @@ export function HeroSearch() {
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={placeholder}
                   disabled={searchConversational.isPending}
-                  className="h-14 pl-5 pr-14 text-base md:text-lg rounded-2xl border-2 border-border bg-surface-primary/90 shadow-md placeholder:text-text-tertiary placeholder:text-[13px] md:placeholder:text-sm focus-visible:ring-brand-primary"
+                  className="h-14 pl-5 pr-14 text-base md:text-lg rounded-2xl border-2 border-border bg-surface-primary/90 shadow-md placeholder:text-text-secondary placeholder:text-[13px] md:placeholder:text-sm focus-visible:ring-brand-primary"
                   aria-label={pack.hero.placeholder}
                 />
                 <Button

@@ -58,6 +58,8 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 - **Auth:** header `Authorization: Bearer <CRON_SECRET>` si `CRON_SECRET` está definido (recomendado en producción).
 - **Lógica:** `packages/database/src/yumblin-import-sync.ts`, `runYumblinImportSyncAllSources`.
 - **Feed default:** JSON Properstar en static.kiteprop.com (ver `docs/44-IMPORT-PROPERSTAR-Y-DEPURACION.md`). Variable **`YUMBLIN_JSON_URL`** lo sobreescribe. **`IMPORT_WITHDRAW_SCOPE`**: `org` (recomendado, un solo feed) vs `source` (legado). Columna **`import_source_updated_at`**: evita reprocesar ítems si `last_update` del feed no cambió (`pnpm db:push` o `docs/sql/add-import-source-updated-at.sql` en Neon).
+- **Si el buscador o tRPC muestran** `column "import_source_updated_at" does not exist` **en Neon:** el esquema Drizzle ya incluye la columna pero la base aún no. Ejecutar **una vez** el SQL en `docs/sql/add-import-source-updated-at.sql` (o `pnpm db:push` contra esa `DATABASE_URL`). El código del portal usa `listingsSelectPublic` en lecturas para tolerar DB atrasada, pero **INSERT/UPDATE del import** siguen necesitando la columna para el sync incremental óptimo.
+- **Totales ingest vs manual (solo agregados):** `GET /api/inventory-stats` y la sección “Inventario e ingestión” en `/estado`. Los contadores por **ejecución** del cron siguen en el JSON de respuesta de `GET /api/cron/import-yumblin` (con `CRON_SECRET` si aplica).
 - **Org/publisher:** si no hay `IMPORT_ORGANIZATION_ID` / `IMPORT_PUBLISHER_ID`, el código usa la **primera organización** y un **miembro** de esa org (requiere DB ya sembrada).
 
 ### Variables útiles en Vercel (web, Production)

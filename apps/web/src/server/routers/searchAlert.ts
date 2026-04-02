@@ -2,7 +2,12 @@ import { TRPCError } from '@trpc/server'
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { listings, notifications, searchAlerts } from '@propieya/database'
+import {
+  listings,
+  listingsSelectPublic,
+  notifications,
+  searchAlerts,
+} from '@propieya/database'
 
 import { buildFiltersSummary } from '../../lib/search-filter-summary'
 
@@ -98,9 +103,11 @@ export const searchAlertRouter = createTRPCRouter({
       const data = n.data as Record<string, unknown> | null
       if (data?.listingId && typeof data.listingId === 'string') {
         listingId = data.listingId
-        const listing = await ctx.db.query.listings.findFirst({
-          where: eq(listings.id, listingId),
-        })
+        const [listing] = await ctx.db
+          .select(listingsSelectPublic)
+          .from(listings)
+          .where(eq(listings.id, listingId))
+          .limit(1)
         if (listing && listing.showPrice !== false) {
           priceLabel = `${listing.priceCurrency} ${Number(listing.priceAmount).toLocaleString('es-AR')}`
         }

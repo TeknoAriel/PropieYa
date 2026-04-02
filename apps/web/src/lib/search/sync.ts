@@ -4,7 +4,7 @@
 
 import { eq } from 'drizzle-orm'
 
-import { listings, type Database } from '@propieya/database'
+import { listings, listingsSelectPublic, type Database } from '@propieya/database'
 import { indexListing, deleteListing } from './indexer'
 import type { ListingRow } from './types'
 
@@ -12,9 +12,11 @@ export async function syncListingToSearch(
   db: Database,
   listingId: string
 ): Promise<void> {
-  const row = await db.query.listings.findFirst({
-    where: eq(listings.id, listingId),
-  })
+  const [row] = await db
+    .select(listingsSelectPublic)
+    .from(listings)
+    .where(eq(listings.id, listingId))
+    .limit(1)
   if (!row || row.status !== 'active') return
   const features = (row.features ?? {}) as {
     amenities?: string[]
