@@ -332,6 +332,17 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Opcional — mismo motor que la búsqueda por frase. Tocá «Más filtros» para ir más al detalle.',
   buscarPageGentleHint:
     'Explorá con calma: los resultados se actualizan solos cuando cambiás criterios.',
+
+  buscarFlowDialogOpen: 'Cómo buscar en Propieya',
+  buscarFlowLinkInline: '¿Cómo funciona la búsqueda?',
+  buscarFlowBannerTeaser:
+    'Podés arrancar con una frase; mapa y filtros son opcionales cuando quieras afinar.',
+  buscarFlowBannerSeeSteps: 'Ver pasos',
+  buscarFlowBannerDismiss: 'No volver a mostrar',
+  mapViewportUpdatesResults:
+    'Los resultados se actualizan según la zona visible del mapa (pan y zoom).',
+  polygonSelfIntersectHint:
+    'Ese punto cruzaría líneas ya dibujadas. Elegí otro vértice o borrá el área y volvé a trazar.',
 } as const
 
 /** Ficha de propiedad: contacto y confianza (Sprint 28.8, voseo). */

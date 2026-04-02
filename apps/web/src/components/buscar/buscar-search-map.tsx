@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import L from 'leaflet'
 import {
   MapContainer,
@@ -58,14 +58,17 @@ function CurrentCenterReporter({
 }
 
 /**
- * Ajusta el viewport cuando cambia el set de coordenadas (prop `points` estable
- * vía useMemo en el padre). Sin eso, cada moveend → setState → nuevo array →
- * este efecto recorría el mapa y bloqueaba el desplazamiento.
+ * Centra el mapa en los pins solo cuando aparecen por primera vez (o tras quedar
+ * sin pins y volver a haber datos). Evita que cada refetch de resultados “robe”
+ * el pan/zoom del usuario cuando el bbox vive actualizado por moveend.
  */
-function FitBounds({ points }: { points: [number, number][] }) {
+function FitBoundsOnce({ points }: { points: [number, number][] }) {
   const map = useMap()
+  const didFit = useRef(false)
   useEffect(() => {
     if (points.length === 0) return
+    if (didFit.current) return
+    didFit.current = true
     if (points.length === 1) {
       const only = points[0]
       if (only) map.setView(only, 14)
@@ -76,6 +79,31 @@ function FitBounds({ points }: { points: [number, number][] }) {
       map.fitBounds(b, { padding: [32, 32], maxZoom: 15 })
     }
   }, [map, points])
+  return null
+}
+
+function ViewportBboxReporter({
+  onBbox,
+}: {
+  onBbox: (bbox: BuscarMapBBox) => void
+}) {
+  const map = useMap()
+  useEffect(() => {
+    const report = () => {
+      const b = map.getBounds()
+      onBbox({
+        south: b.getSouth(),
+        north: b.getNorth(),
+        west: b.getWest(),
+        east: b.getEast(),
+      })
+    }
+    report()
+    map.on('moveend', report)
+    return () => {
+      map.off('moveend', report)
+    }
+  }, [map, onBbox])
   return null
 }
 
@@ -196,6 +224,8 @@ type BuscarSearchMapProps = {
   pins: BuscarMapPin[]
   onApplyZona: (bbox: BuscarMapBBox) => void
   onCenterChange?: (center: { lat: number; lng: number }) => void
+  /** Cada pan/zoom: viewport actual (el padre suele debouncear para filtrar resultados). */
+  onViewportBboxChange?: (bbox: BuscarMapBBox) => void
   /** Vértices del polígono (búsqueda por área dibujada). */
   polygonRing?: BuscarMapPoint[]
   /** Si true, cada clic en el mapa agrega un vértice. */
@@ -207,6 +237,7 @@ export function BuscarSearchMap({
   pins,
   onApplyZona,
   onCenterChange,
+  onViewportBboxChange,
   polygonRing = [],
   polygonDrawMode = false,
   onPolygonVertex,
@@ -238,7 +269,10 @@ export function BuscarSearchMap({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <FitBounds points={points} />
+        <FitBoundsOnce points={points} />
+        {onViewportBboxChange ? (
+          <ViewportBboxReporter onBbox={onViewportBboxChange} />
+        ) : null}
         {onCenterChange ? <CurrentCenterReporter onCenter={onCenterChange} /> : null}
         {onPolygonVertex ? (
           <>

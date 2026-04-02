@@ -4,9 +4,26 @@ import Image from 'next/image'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 
-import { Badge, Button, Card, Input, Skeleton } from '@propieya/ui'
+import {
+  Badge,
+  Button,
+  Card,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Skeleton,
+} from '@propieya/ui'
 import type { BuscarMapBBox, BuscarMapPoint } from '@/components/buscar/buscar-search-map'
 
 const BuscarSearchMap = dynamic(
@@ -32,6 +49,7 @@ import { ConversationalSearchBlock } from '@/components/portal/conversational-se
 import { InductiveSearchChips } from '@/components/portal/inductive-search-chips'
 import { getAccessToken } from '@/lib/auth-storage'
 import { sanitizeListingCoordinates } from '@/lib/map-geo'
+import { newVertexCrossesOpenPolyline } from '@/lib/map-polygon'
 import { trpc } from '@/lib/trpc'
 
 export type BuscarContentProps = {
@@ -153,6 +171,8 @@ function ListingCard({ listing }: { listing: BuscarListingCardData }) {
 const BUSCAR_SELECT_CLASS =
   'w-full rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary'
 
+const FLOW_GUIDE_STORAGE_KEY = 'propieya.buscar.flowGuide.dismissed'
+
 const PROPERTY_OPTIONS: { value: PropertyType; label: string }[] = [
   { value: 'apartment', label: 'Departamento' },
   { value: 'house', label: 'Casa' },
@@ -230,6 +250,12 @@ export function BuscarContent({
   const [showMap, setShowMap] = useState(false)
   /** Filtros clásicos colapsados por defecto para no abrumar; se abren si la URL trae criterios. */
   const [classicFiltersOpen, setClassicFiltersOpen] = useState(false)
+  const [flowDialogOpen, setFlowDialogOpen] = useState(false)
+  const [showFlowBanner, setShowFlowBanner] = useState(false)
+  const [polygonDrawHint, setPolygonDrawHint] = useState<string | null>(null)
+
+  const spatialBlockLiveBboxRef = useRef(false)
+  const mapBboxDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const facetFlagDefinitions = useMemo(() => getFacetFlagDefinitions(), [])
   const facetChips = useMemo(() => facetFlagDefinitions.slice(0, 12), [facetFlagDefinitions])
@@ -278,7 +304,8 @@ export function BuscarContent({
         applyRadiusFilter && mapCenter && geoRadiusMeters
           ? Number(geoRadiusMeters)
           : undefined,
-      bbox: mapBbox ?? undefined,
+      bbox:
+        mapPolygonRing.length >= 3 ? undefined : (mapBbox ?? undefined),
       polygon: mapPolygonRing.length >= 3 ? mapPolygonRing : undefined,
       limit: 24,
       offset: 0,
@@ -417,6 +444,62 @@ export function BuscarContent({
     setPolygonDrawMode(false)
   }, [searchParamsKey, forcedOperation])
 
+  useEffect(() => {
+    try {
+      if (
+        typeof window !== 'undefined' &&
+        localStorage.getItem(FLOW_GUIDE_STORAGE_KEY) !== '1'
+      ) {
+        setShowFlowBanner(true)
+      }
+    } catch {
+      setShowFlowBanner(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    spatialBlockLiveBboxRef.current =
+      polygonDrawMode || mapPolygonRing.length >= 3
+  }, [polygonDrawMode, mapPolygonRing.length])
+
+  useEffect(() => {
+    return () => {
+      const t = mapBboxDebounceRef.current
+      if (t) clearTimeout(t)
+    }
+  }, [])
+
+  const dismissFlowBanner = useCallback(() => {
+    try {
+      localStorage.setItem(FLOW_GUIDE_STORAGE_KEY, '1')
+    } catch {
+      /* ignore */
+    }
+    setShowFlowBanner(false)
+  }, [])
+
+  const handleViewportBbox = useCallback((bbox: BuscarMapBBox) => {
+    if (spatialBlockLiveBboxRef.current) return
+    const prev = mapBboxDebounceRef.current
+    if (prev) clearTimeout(prev)
+    mapBboxDebounceRef.current = setTimeout(() => {
+      mapBboxDebounceRef.current = null
+      setMapBbox(bbox)
+    }, 380)
+  }, [])
+
+  const addPolygonVertexSafe = useCallback((p: BuscarMapPoint) => {
+    setMapPolygonRing((prev) => {
+      if (newVertexCrossesOpenPolyline(prev, p)) {
+        setPolygonDrawHint(S.polygonSelfIntersectHint)
+        window.setTimeout(() => setPolygonDrawHint(null), 5000)
+        return prev
+      }
+      setPolygonDrawHint(null)
+      return [...prev, p]
+    })
+  }, [])
+
   const scrollToElementId = (id: string) => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -441,32 +524,33 @@ export function BuscarContent({
           />
         </Card>
 
-        <div
-          className="rounded-2xl border border-border/50 bg-surface-secondary/25 px-4 py-5 md:px-6"
-          aria-label={S.buscarFlowTitle}
-        >
-          <p className="text-center text-xs font-semibold uppercase tracking-wide text-text-secondary">
-            {S.buscarFlowTitle}
-          </p>
-          <ol className="mt-4 grid gap-3 text-sm text-text-secondary sm:grid-cols-2 lg:grid-cols-4">
-            <li className="flex gap-2">
-              <span className="shrink-0 font-semibold text-brand-primary">1.</span>
-              <span>{S.buscarFlowStep1}</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="shrink-0 font-semibold text-brand-primary">2.</span>
-              <span>{S.buscarFlowStep2}</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="shrink-0 font-semibold text-brand-primary">3.</span>
-              <span>{S.buscarFlowStep3}</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="shrink-0 font-semibold text-brand-primary">4.</span>
-              <span>{S.buscarFlowStep4}</span>
-            </li>
-          </ol>
-        </div>
+        {showFlowBanner ? (
+          <div
+            className="flex flex-col gap-3 rounded-xl border border-brand-primary/20 bg-brand-primary/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+            role="region"
+            aria-label={S.buscarFlowTitle}
+          >
+            <p className="text-sm text-text-secondary">{S.buscarFlowBannerTeaser}</p>
+            <div className="flex flex-shrink-0 flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setFlowDialogOpen(true)}
+              >
+                {S.buscarFlowBannerSeeSteps}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={dismissFlowBanner}
+              >
+                {S.buscarFlowBannerDismiss}
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         {assistantHint ? (
           <Card className="border-brand-primary/25 bg-brand-primary/5 p-5 space-y-3">
@@ -519,9 +603,19 @@ export function BuscarContent({
 
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div className="max-w-2xl">
-            <h1 className="text-2xl font-bold tracking-tight text-text-primary md:text-3xl">
-              {pageTitle}
-            </h1>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-4">
+              <h1 className="text-2xl font-bold tracking-tight text-text-primary md:text-3xl">
+                {pageTitle}
+              </h1>
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto justify-start p-0 text-sm font-medium"
+                onClick={() => setFlowDialogOpen(true)}
+              >
+                {S.buscarFlowLinkInline}
+              </Button>
+            </div>
             <p className="mt-2 text-sm text-text-secondary md:text-base">
               {pageSubtitle}
             </p>
@@ -585,11 +679,6 @@ export function BuscarContent({
 
         {me ? <BuscarRecentSearches /> : null}
 
-        <InductiveSearchChips
-          className="rounded-2xl border border-border/40 bg-surface-secondary/20 px-4 py-5 md:px-6"
-          headingClassName="text-base font-semibold text-text-primary"
-        />
-
         <div className="flex flex-wrap items-center justify-center gap-2 border-y border-border/40 py-4 md:justify-start">
           <Button
             type="button"
@@ -615,6 +704,50 @@ export function BuscarContent({
             </Button>
           ) : null}
         </div>
+
+        <div id="buscar-resultados" className="scroll-mt-24 space-y-6">
+          {isError ? (
+            <Card className="p-6">
+              <p className="text-sm text-text-primary">
+                {S.loadError}{' '}
+                {error?.message?.includes('DATABASE') ||
+                error?.message?.includes('required')
+                  ? S.loadErrorDbHint
+                  : (error?.message ?? S.loadErrorRetry)}
+              </p>
+            </Card>
+          ) : isLoading ? (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="overflow-hidden">
+                  <Skeleton className="h-48 w-full" />
+                  <div className="space-y-3 p-4">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-6 w-1/2" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : listings.length === 0 ? (
+            <Card className="p-6">
+              <p className="text-text-secondary">
+                {S.emptyResults}
+              </p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {listings.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <InductiveSearchChips
+          className="rounded-2xl border border-border/40 bg-surface-secondary/20 px-4 py-5 md:px-6"
+          headingClassName="text-base font-semibold text-text-primary"
+        />
 
         <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
           {!classicFiltersOpen ? (
@@ -973,15 +1106,24 @@ export function BuscarContent({
                   : ` ${S.polygonMinVertices}`}
               </span>
             </div>
+            {polygonDrawHint ? (
+              <p className="text-sm text-semantic-warning" role="status">
+                {polygonDrawHint}
+              </p>
+            ) : null}
             <BuscarSearchMap
               pins={mapPins}
               onApplyZona={setMapBbox}
               onCenterChange={setMapCenter}
+              onViewportBboxChange={handleViewportBbox}
               polygonRing={mapPolygonRing}
               polygonDrawMode={polygonDrawMode}
-              onPolygonVertex={(p) => setMapPolygonRing((prev) => [...prev, p])}
+              onPolygonVertex={addPolygonVertexSafe}
             />
-            <p className="text-xs text-text-tertiary">{S.mapHelp}</p>
+            <div className="space-y-1 text-xs text-text-tertiary">
+              <p>{S.mapViewportUpdatesResults}</p>
+              <p>{S.mapHelp}</p>
+            </div>
             {mapPins.length === 0 && !isLoading ? (
               <p className="text-sm text-text-secondary">
                 {S.mapNoPins}
@@ -991,44 +1133,19 @@ export function BuscarContent({
         ) : null}
       </div>
 
-      <div id="buscar-resultados" className="scroll-mt-24 space-y-6">
-        {isError ? (
-          <Card className="p-6">
-            <p className="text-sm text-text-primary">
-              {S.loadError}{' '}
-              {error?.message?.includes('DATABASE') ||
-              error?.message?.includes('required')
-                ? S.loadErrorDbHint
-                : (error?.message ?? S.loadErrorRetry)}
-            </p>
-          </Card>
-        ) : isLoading ? (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i} className="overflow-hidden">
-                <Skeleton className="h-48 w-full" />
-                <div className="space-y-3 p-4">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-6 w-1/2" />
-                  <Skeleton className="h-4 w-full" />
-                </div>
-              </Card>
-            ))}
-          </div>
-        ) : listings.length === 0 ? (
-          <Card className="p-6">
-            <p className="text-text-secondary">
-              {S.emptyResults}
-            </p>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {listings.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
-            ))}
-          </div>
-        )}
-      </div>
+      <Dialog open={flowDialogOpen} onOpenChange={setFlowDialogOpen}>
+        <DialogContent className="max-w-md sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{S.buscarFlowDialogOpen}</DialogTitle>
+          </DialogHeader>
+          <ol className="list-decimal space-y-3 pl-5 text-sm text-text-secondary">
+            <li>{S.buscarFlowStep1}</li>
+            <li>{S.buscarFlowStep2}</li>
+            <li>{S.buscarFlowStep3}</li>
+            <li>{S.buscarFlowStep4}</li>
+          </ol>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
