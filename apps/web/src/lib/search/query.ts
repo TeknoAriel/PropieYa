@@ -154,16 +154,41 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
 
   const size = Math.min(rest.limit ?? 24, 50)
   const from = Math.min(rest.offset ?? 0, 500)
+  const searchAfter =
+    Array.isArray(rest.searchAfter) && rest.searchAfter.length > 0
+      ? rest.searchAfter
+      : null
 
-  return {
+  const sort = [
+    {
+      publishedAt: {
+        order: 'desc' as const,
+        unmapped_type: 'date',
+        missing: '_last',
+      },
+    },
+    {
+      updatedAt: {
+        order: 'desc' as const,
+        unmapped_type: 'date',
+        missing: '_last',
+      },
+    },
+    {
+      createdAt: {
+        order: 'desc' as const,
+        unmapped_type: 'date',
+        missing: '_last',
+      },
+    },
+    { id: { order: 'desc' as const } },
+  ]
+
+  const body: Record<string, unknown> = {
     query: { bool: { must, ...(mustNot.length > 0 ? { must_not: mustNot } : {}) } },
-    sort: [
-      { publishedAt: { order: 'desc', unmapped_type: 'date' } },
-      { updatedAt: { order: 'desc', unmapped_type: 'date' } },
-      { createdAt: { order: 'desc', unmapped_type: 'date' } },
-    ],
+    sort,
     size,
-    from,
+    track_total_hits: true,
     _source: [
       'id',
       'title',
@@ -189,6 +214,14 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
       'updatedAt',
     ],
   }
+
+  if (searchAfter) {
+    body.search_after = searchAfter
+  } else {
+    body.from = from
+  }
+
+  return body
 }
 
 export function getSearchParams(filters: SearchFilters) {

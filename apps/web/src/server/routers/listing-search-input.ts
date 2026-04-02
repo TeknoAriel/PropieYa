@@ -90,7 +90,14 @@ export const listingSearchFiltersSchema = listingSearchFiltersBaseSchema.transfo
 export const listingSearchInputSchema = listingSearchFiltersBaseSchema
   .extend({
     limit: z.number().min(1).max(50).default(24),
-    offset: z.number().min(0).max(500).default(0),
+    /** Sin cursor: paginación SQL (hasta N páginas); con Elasticsearch preferir `nextCursor`. */
+    offset: z.number().min(0).max(50_000).default(0),
+    /** Paginación profunda (Elasticsearch `search_after`); requiere `offset === 0`. */
+    cursor: z.string().max(4096).optional(),
+  })
+  .refine((d) => !d.cursor?.trim() || d.offset === 0, {
+    message: 'cursor solo se usa con offset 0',
+    path: ['cursor'],
   })
   .transform((data) => ({
     ...data,

@@ -35,6 +35,7 @@ import {
   removeListingFromSearch,
 } from '../../lib/search/sync'
 import { searchListings } from '../../lib/search/search'
+import { decodeListingSearchCursor } from '../../lib/search/search-cursor'
 import { sqlPointInPolygonLngLat } from '../../lib/search/point-in-polygon-sql'
 import { extractIntentionFromMessage } from '../../lib/llm'
 import { checkRateLimit } from '../../lib/rate-limit'
@@ -628,7 +629,22 @@ export const listingRouter = createTRPCRouter({
       const sessionUserId = ctx.session?.userId
       const filtersSnapshot = JSON.parse(JSON.stringify(input)) as Record<string, unknown>
 
-      const { limit, offset, ...explainFilters } = input
+      const { limit, offset, cursor, ...explainFilters } = input
+
+      let searchAfter: unknown[] | undefined
+      if (cursor?.trim()) {
+        const decoded = decodeListingSearchCursor(cursor.trim())
+        if (!decoded) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Cursor de búsqueda inválido o expirado.',
+          })
+        }
+        searchAfter = decoded
+      }
+
+      const esOffset = searchAfter ? 0 : offset
+
       const esResult = await searchListings({
         q: input.q,
         operationType: input.operationType,
@@ -656,24 +672,43 @@ export const listingRouter = createTRPCRouter({
         bbox: input.bbox,
         polygon: input.polygon,
         limit,
-        offset,
+        offset: esOffset,
+        searchAfter,
       })
+
+      const persistThisSearch =
+        Boolean(sessionUserId) &&
+        !cursor?.trim() &&
+        input.offset === 0
 
       // Si ES responde pero el índice está vacío o desincronizado, total=0 y antes
       // no había fallback: el buscador quedaba en silencio. SQL es fuente de verdad.
+      // Paginación por cursor (search_after) no es reproducible en SQL: no mezclar.
+      if (!(esResult.fromEs && esResult.total > 0) && searchAfter) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message:
+            'No se pudo cargar la página siguiente sin el índice de búsqueda. Volvé al listado o refrescá la página.',
+        })
+      }
+
       if (esResult.fromEs && esResult.total > 0) {
-        if (sessionUserId) {
+        if (persistThisSearch) {
           persistSearchHistoryRow(ctx.db, {
-            userId: sessionUserId,
+            userId: sessionUserId!,
             filters: filtersSnapshot,
             resultCount: esResult.total,
             startedAt,
           })
         }
-        return withMatchReasons(
-          explainFilters as ExplainMatchFilters,
-          esResult.hits
-        )
+        return {
+          items: withMatchReasons(
+            explainFilters as ExplainMatchFilters,
+            esResult.hits
+          ),
+          total: esResult.total,
+          nextCursor: esResult.nextCursor,
+        }
       }
 
       const merged = mergePublicSearchFromQuery(input)
@@ -860,9 +895,9 @@ export const listingRouter = createTRPCRouter({
         .orderBy(...ORDER_PUBLIC_RECENCY)
         .limit(limit)
         .offset(offset)
-      if (sessionUserId) {
+      if (persistThisSearch) {
         persistSearchHistoryRow(ctx.db, {
-          userId: sessionUserId,
+          userId: sessionUserId!,
           filters: filtersSnapshot,
           resultCount: sqlTotal,
           startedAt,
@@ -881,7 +916,11 @@ export const listingRouter = createTRPCRouter({
           })
         )
       }
-      return withMatchReasons(explainFilters as ExplainMatchFilters, rows)
+      return {
+        items: withMatchReasons(explainFilters as ExplainMatchFilters, rows),
+        total: sqlTotal,
+        nextCursor: null,
+      }
     }),
 
   /** Búsqueda conversacional: extrae intención del mensaje y devuelve filtros + resultados. */

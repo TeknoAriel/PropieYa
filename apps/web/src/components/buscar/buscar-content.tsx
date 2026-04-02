@@ -180,6 +180,7 @@ const BUSCAR_SELECT_CLASS =
   'w-full rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary'
 
 const FLOW_GUIDE_STORAGE_KEY = 'propieya.buscar.flowGuide.dismissed'
+const SEARCH_PAGE_LIMIT = 24
 
 const PROPERTY_OPTIONS: { value: PropertyType; label: string }[] = [
   { value: 'apartment', label: 'Departamento' },
@@ -261,6 +262,16 @@ export function BuscarContent({
   const [flowDialogOpen, setFlowDialogOpen] = useState(false)
   const [showFlowBanner, setShowFlowBanner] = useState(false)
   const [polygonDrawHint, setPolygonDrawHint] = useState<string | null>(null)
+  const [searchPage, setSearchPage] = useState<{
+    cursor?: string
+    offset: number
+  }>({ offset: 0 })
+  const [accumulatedListings, setAccumulatedListings] = useState<
+    BuscarListingCardData[]
+  >([])
+  const appendNextPageRef = useRef(false)
+  /** Misma huella que `filterFingerprint`: si no cambió, permitimos placeholder entre páginas (cursor/offset). */
+  const searchFilterFpRef = useRef<string | null>(null)
 
   const spatialBlockLiveBboxRef = useRef(false)
   const mapBboxDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -274,7 +285,7 @@ export function BuscarContent({
     )
   }
 
-  const filters = useMemo(
+  const coreSearchFilters = useMemo(
     () => ({
       q: q.trim() || undefined,
       operationType: (forcedOperation ?? operationType) || undefined,
@@ -299,7 +310,6 @@ export function BuscarContent({
         ? Number(maxSurfaceCovered)
         : undefined,
       minTotalRooms: minTotalRooms ? Number(minTotalRooms) : undefined,
-      // Compat: amenities históricos + facets (Sprint 26).
       amenities:
         selectedAmenityFacets.length > 0 ? selectedAmenityFacets : undefined,
       facets:
@@ -315,8 +325,6 @@ export function BuscarContent({
       bbox:
         mapPolygonRing.length >= 3 ? undefined : (mapBbox ?? undefined),
       polygon: mapPolygonRing.length >= 3 ? mapPolygonRing : undefined,
-      limit: 24,
-      offset: 0,
     }),
     [
       q,
@@ -348,20 +356,84 @@ export function BuscarContent({
     ]
   )
 
-  const { data: listingsRaw = [], isLoading, isError, error } =
-    trpc.listing.search.useQuery(filters)
+  const filterFingerprint = JSON.stringify(coreSearchFilters)
 
-  const listings = listingsRaw as unknown as BuscarListingCardData[]
+  useEffect(() => {
+    setSearchPage({ offset: 0 })
+    setAccumulatedListings([])
+  }, [filterFingerprint])
+
+  const filters = useMemo(
+    () => ({
+      ...coreSearchFilters,
+      limit: SEARCH_PAGE_LIMIT,
+      offset: searchPage.cursor ? 0 : searchPage.offset,
+      cursor: searchPage.cursor,
+    }),
+    [coreSearchFilters, searchPage]
+  )
+
+  const { data, isLoading, isFetching, isError, error } =
+    trpc.listing.search.useQuery(filters, {
+      placeholderData: (previousData) => {
+        if (searchFilterFpRef.current !== filterFingerprint) {
+          searchFilterFpRef.current = filterFingerprint
+          return undefined
+        }
+        return previousData
+      },
+    })
+
+  useEffect(() => {
+    if (!data) return
+    const page = data.items as BuscarListingCardData[]
+    if (appendNextPageRef.current) {
+      setAccumulatedListings((prev) => [...prev, ...page])
+      appendNextPageRef.current = false
+    } else {
+      setAccumulatedListings(page)
+    }
+  }, [data])
+
+  const listings = accumulatedListings
+
+  const loadMoreResults = useCallback(() => {
+    if (isFetching) return
+    if (!data) return
+    if (data.nextCursor) {
+      appendNextPageRef.current = true
+      setSearchPage({ offset: 0, cursor: data.nextCursor })
+      return
+    }
+    if (
+      data.items.length >= SEARCH_PAGE_LIMIT &&
+      accumulatedListings.length < data.total
+    ) {
+      appendNextPageRef.current = true
+      setSearchPage({
+        offset: accumulatedListings.length,
+        cursor: undefined,
+      })
+    }
+  }, [data, accumulatedListings.length, isFetching])
+
+  const canLoadMore =
+    !isFetching &&
+    data != null &&
+    data.total > 0 &&
+    (data.nextCursor != null ||
+      (accumulatedListings.length < data.total &&
+        data.items.length === SEARCH_PAGE_LIMIT))
 
   const mapPins = useMemo(() => pinsFromListings(listings), [listings])
 
   const demandPayload = useMemo(() => {
-    const { limit: _l, offset: _o, ...rest } = filters
+    const { limit: _l, offset: _o, cursor: _c, ...rest } = filters
     return rest
   }, [filters])
 
   const alertPayload = useMemo(() => {
-    const { limit: _l, offset: _o, ...rest } = filters
+    const { limit: _l, offset: _o, cursor: _c, ...rest } = filters
     return rest
   }, [filters])
 
@@ -731,7 +803,7 @@ export function BuscarContent({
                   : (error?.message ?? S.loadErrorRetry)}
               </p>
             </Card>
-          ) : isLoading ? (
+          ) : isLoading && !data && accumulatedListings.length === 0 ? (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
                 <Card key={i} className="overflow-hidden">
@@ -751,10 +823,31 @@ export function BuscarContent({
               </p>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {listings.map((listing) => (
-                <ListingCard key={listing.id} listing={listing} />
-              ))}
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {listings.map((listing) => (
+                  <ListingCard key={listing.id} listing={listing} />
+                ))}
+              </div>
+              {data && data.total > 0 ? (
+                <p className="text-center text-sm text-text-secondary">
+                  {S.buscarShowingCount
+                    .replace('{shown}', String(listings.length))
+                    .replace('{total}', String(data.total))}
+                </p>
+              ) : null}
+              {canLoadMore ? (
+                <div className="flex justify-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isFetching}
+                    onClick={loadMoreResults}
+                  >
+                    {isFetching ? S.buscarLoadingMore : S.buscarLoadMore}
+                  </Button>
+                </div>
+              ) : null}
             </div>
           )}
         </div>

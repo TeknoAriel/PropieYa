@@ -335,6 +335,9 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Opcional — mismo motor que la búsqueda por frase. Tocá «Más filtros» para ir más al detalle.',
   buscarPageGentleHint:
     'Explorá con calma: los resultados se actualizan solos cuando cambiás criterios.',
+  buscarLoadMore: 'Cargar más resultados',
+  buscarLoadingMore: 'Cargando…',
+  buscarShowingCount: 'Mostrando {shown} de {total}',
 
   buscarFlowDialogOpen: 'Cómo buscar en Propieya',
   buscarFlowLinkInline: '¿Cómo funciona la búsqueda?',

@@ -75,4 +75,6 @@ export interface SearchFilters {
   polygon?: { lat: number; lng: number }[]
   limit?: number
   offset?: number
+  /** Paginación ES: valores de `sort` del último hit de la página anterior. */
+  searchAfter?: unknown[]
 }

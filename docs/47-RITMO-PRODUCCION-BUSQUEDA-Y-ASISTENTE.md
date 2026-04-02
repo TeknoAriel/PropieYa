@@ -33,9 +33,11 @@ Referencias duras: `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`, `docs/43-ANEXO-MAS
 - Variable `LOG_SEARCH_MS=1`: logs JSON de fase ES / SQL en `listing.search` (ver `.env.example`).  
 - Ejecutar pruebas manuales o scripts contra `/buscar` usando el **apéndice A** (registrar latencia subjetiva y totales).
 
-**F1 — Escala de listado**  
-- Diseñar e implementar paginación profunda en ES (`search_after` + API estable).  
-- Revisar límites de `offset` en Zod y UI de “siguiente página”.
+**F1 — Escala de listado** (en código)  
+- Elasticsearch: `search_after` con sort `publishedAt` / `updatedAt` / `createdAt` / `id` + cursor base64 en `listing.search` (`nextCursor`, input `cursor`; con cursor, `offset` debe ser 0).  
+- UI `/buscar`: “Cargar más resultados” acumula páginas; sin ES activo se sigue con `offset` (hasta 50 000 en Zod).  
+- Si el índice se creó antes del sort de 4 campos, conviene **reindex** (`pnpm reindex:es` / sync) para cursors consistentes.  
+- Primera página sin cursor sigue usando `from` en ES (tope interno 500 en `query.ts`); el flujo normal del portal usa cursor tras la primera página.
 
 **F2 — Calidad de ranking**  
 - Conjunto golden etiquetado (relevante / no relevante para top-k).  
