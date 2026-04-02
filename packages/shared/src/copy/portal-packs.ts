@@ -342,7 +342,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   mapViewportUpdatesResults:
     'Los resultados se actualizan según la zona visible del mapa (pan y zoom).',
   polygonSelfIntersectHint:
-    'Ese punto cruzaría líneas ya dibujadas. Elegí otro vértice o borrá el área y volvé a trazar.',
+    'Así el área quedaría cruzada o partida (no es una sola figura cerrada). Tocá otro lugar o borrá el trazo y empezá de nuevo.',
 } as const
 
 /** Ficha de propiedad: contacto y confianza (Sprint 28.8, voseo). */

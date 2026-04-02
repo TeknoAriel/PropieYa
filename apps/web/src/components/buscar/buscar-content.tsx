@@ -49,7 +49,7 @@ import { ConversationalSearchBlock } from '@/components/portal/conversational-se
 import { InductiveSearchChips } from '@/components/portal/inductive-search-chips'
 import { getAccessToken } from '@/lib/auth-storage'
 import { sanitizeListingCoordinates } from '@/lib/map-geo'
-import { newVertexCrossesOpenPolyline } from '@/lib/map-polygon'
+import { canAppendPolygonVertex } from '@/lib/map-polygon'
 import { trpc } from '@/lib/trpc'
 
 export type BuscarContentProps = {
@@ -490,7 +490,7 @@ export function BuscarContent({
 
   const addPolygonVertexSafe = useCallback((p: BuscarMapPoint) => {
     setMapPolygonRing((prev) => {
-      if (newVertexCrossesOpenPolyline(prev, p)) {
+      if (!canAppendPolygonVertex(prev, p)) {
         setPolygonDrawHint(S.polygonSelfIntersectHint)
         window.setTimeout(() => setPolygonDrawHint(null), 5000)
         return prev
