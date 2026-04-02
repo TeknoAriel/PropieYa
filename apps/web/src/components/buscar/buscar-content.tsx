@@ -21,10 +21,14 @@ import {
   getFacetFlagDefinitions,
   OPERATION_TYPE_LABELS,
   PORTAL_SEARCH_UX_COPY as S,
+  type Currency,
+  type OperationType,
+  type PortalSearchPage,
+  type PropertyType,
 } from '@propieya/shared'
-import type { Currency, OperationType, PropertyType } from '@propieya/shared'
 
 import { BuscarRecentSearches } from '@/components/buscar/buscar-recent-searches'
+import { ConversationalSearchBlock } from '@/components/portal/conversational-search-block'
 import { InductiveSearchChips } from '@/components/portal/inductive-search-chips'
 import { getAccessToken } from '@/lib/auth-storage'
 import { sanitizeListingCoordinates } from '@/lib/map-geo'
@@ -342,16 +346,124 @@ export function BuscarContent({
 
   const opLocked = Boolean(forcedOperation)
 
+  const searchPathPage: PortalSearchPage = useMemo(
+    () =>
+      forcedOperation === 'sale'
+        ? 'venta'
+        : forcedOperation === 'rent'
+          ? 'alquiler'
+          : 'buscar',
+    [forcedOperation]
+  )
+
+  const [assistantHint, setAssistantHint] = useState<{
+    summary: string
+    total: number
+  } | null>(null)
+
+  const searchParamsKey = searchParams.toString()
+  useEffect(() => {
+    const sp = new URLSearchParams(searchParamsKey)
+    setQ(sp.get('q') ?? '')
+    if (!forcedOperation) {
+      setOperationType((sp.get('op') as OperationType) ?? '')
+    }
+    setPropertyType((sp.get('tipo') as PropertyType) ?? '')
+    setCity(sp.get('ciudad') ?? '')
+    setNeighborhood(sp.get('barrio') ?? '')
+    setMinPrice(sp.get('min') ?? '')
+    setMaxPrice(sp.get('max') ?? '')
+    setMinBedrooms(sp.get('dorm') ?? '')
+    setMinSurface(sp.get('sup') ?? '')
+    setMaxSurface('')
+    setMinBathrooms('')
+    setMinGarages('')
+    setFloorMin('')
+    setFloorMax('')
+    setEscalera('')
+    setMinSurfaceCovered('')
+    setMaxSurfaceCovered('')
+    setMinTotalRooms('')
+    setOrientation('')
+    setSelectedAmenityFacets([])
+    setMapBbox(null)
+    setApplyRadiusFilter(false)
+    setMapPolygonRing([])
+    setPolygonDrawMode(false)
+  }, [searchParamsKey, forcedOperation])
+
   return (
     <div className="container mx-auto space-y-6 px-4 py-10">
       <div className="flex flex-col gap-6">
+        <Card className="border-border-strong/40 bg-gradient-to-b from-surface-secondary to-surface-primary p-6 shadow-sm md:p-8">
+          <ConversationalSearchBlock
+            variant="buscar"
+            routerMode="replace"
+            searchPathPage={searchPathPage}
+            forcedOperation={forcedOperation}
+            onAfterNavigate={setAssistantHint}
+          />
+        </Card>
+
+        {assistantHint ? (
+          <Card className="border-brand-primary/25 bg-brand-primary/5 p-5 space-y-3">
+            <p className="text-sm font-semibold text-text-primary">
+              {S.conversationalInterpretedTitle}
+            </p>
+            <p className="text-sm text-text-secondary">{assistantHint.summary}</p>
+            <p className="text-sm text-text-primary">
+              {S.conversationalResultsPrefix}:{' '}
+              <strong>{assistantHint.total}</strong>
+            </p>
+            <p className="text-xs font-medium text-text-secondary">
+              {S.conversationalNextTitle}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowMap(true)
+                  window.requestAnimationFrame(() =>
+                    document
+                      .getElementById('buscar-mapa')
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  )
+                }}
+              >
+                {S.conversationalNextMap}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowAdvanced(true)
+                  window.requestAnimationFrame(() =>
+                    document
+                      .getElementById('buscar-esenciales')
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  )
+                }}
+              >
+                {S.conversationalNextFilters}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" asChild>
+                <a href="#buscar-resultados">{S.conversationalScrollResults}</a>
+              </Button>
+            </div>
+            <p className="text-xs text-text-secondary">{S.conversationalNextAgain}</p>
+          </Card>
+        ) : null}
+
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
             <h1 className="text-3xl font-bold text-text-primary">{pageTitle}</h1>
             <p className="mt-2 text-text-secondary">{pageSubtitle}</p>
-            <p className="mt-2 text-sm text-text-tertiary">
+            <p className="mt-2 text-sm text-text-secondary">
               {S.hintAdvancedLead}{' '}
-              <span className="font-medium text-text-secondary">{S.hintAdvancedStrong}</span>{' '}
+              <span className="font-medium text-text-primary">{S.hintAdvancedStrong}</span>{' '}
               {S.hintAdvancedTail}
             </p>
           </div>
@@ -417,7 +529,7 @@ export function BuscarContent({
           <InductiveSearchChips />
         </Card>
 
-        <Card className="p-4 space-y-4">
+        <Card id="buscar-esenciales" className="scroll-mt-24 p-4 space-y-4">
           <div>
             <h2 className="text-lg font-semibold text-text-primary">
               {S.essentialsSectionTitle}
@@ -660,7 +772,7 @@ export function BuscarContent({
         </Card>
 
         {showMap ? (
-          <Card className="p-4 space-y-3">
+          <Card id="buscar-mapa" className="scroll-mt-24 p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-medium text-text-primary">{S.mapSectionTitle}</p>
               <div className="flex flex-wrap gap-2">
@@ -733,7 +845,7 @@ export function BuscarContent({
               >
                 {S.searchAround}
               </Button>
-              <span className="text-xs text-text-tertiary">
+              <span className="text-xs text-text-secondary">
                 {S.searchAroundHint}
               </span>
             </div>
@@ -775,42 +887,44 @@ export function BuscarContent({
         ) : null}
       </div>
 
-      {isError ? (
-        <Card className="p-6">
-          <p className="text-sm text-text-primary">
-            {S.loadError}{' '}
-            {error?.message?.includes('DATABASE') ||
-            error?.message?.includes('required')
-              ? S.loadErrorDbHint
-              : (error?.message ?? S.loadErrorRetry)}
-          </p>
-        </Card>
-      ) : isLoading ? (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="overflow-hidden">
-              <Skeleton className="h-48 w-full" />
-              <div className="space-y-3 p-4">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-6 w-1/2" />
-                <Skeleton className="h-4 w-full" />
-              </div>
-            </Card>
-          ))}
-        </div>
-      ) : listings.length === 0 ? (
-        <Card className="p-6">
-          <p className="text-text-secondary">
-            {S.emptyResults}
-          </p>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {listings.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} />
-          ))}
-        </div>
-      )}
+      <div id="buscar-resultados" className="scroll-mt-24 space-y-6">
+        {isError ? (
+          <Card className="p-6">
+            <p className="text-sm text-text-primary">
+              {S.loadError}{' '}
+              {error?.message?.includes('DATABASE') ||
+              error?.message?.includes('required')
+                ? S.loadErrorDbHint
+                : (error?.message ?? S.loadErrorRetry)}
+            </p>
+          </Card>
+        ) : isLoading ? (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i} className="overflow-hidden">
+                <Skeleton className="h-48 w-full" />
+                <div className="space-y-3 p-4">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-6 w-1/2" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : listings.length === 0 ? (
+          <Card className="p-6">
+            <p className="text-text-secondary">
+              {S.emptyResults}
+            </p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {listings.map((listing) => (
+              <ListingCard key={listing.id} listing={listing} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

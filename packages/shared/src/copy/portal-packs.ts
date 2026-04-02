@@ -297,6 +297,23 @@ export const PORTAL_SEARCH_UX_COPY = {
   inductiveExploreTitle: 'Búsquedas para arrancar',
   inductiveExploreSubtitle:
     'Atajos con el mismo motor que el buscador; después refinás con mapa o filtros.',
+
+  /** Bloque conversacional (home + /buscar): intención sin formulario. */
+  conversationalBlockTitle: 'Contanos qué buscás',
+  conversationalBlockSubtitle:
+    'Escribí o dictá: armamos los criterios con el mismo motor que el mapa y los filtros. Después podés afinar o pedir otra idea.',
+  conversationalVoiceStart: 'Dictar',
+  conversationalVoiceStop: 'Detener',
+  conversationalVoiceListening: 'Escuchando…',
+  conversationalVoiceUnsupported:
+    'Este navegador no permite dictado por voz; podés escribir en el campo.',
+  conversationalInterpretedTitle: 'Lo que entendimos',
+  conversationalResultsPrefix: 'Avisos que encajan ahora',
+  conversationalNextTitle: 'Siguiente paso',
+  conversationalNextMap: 'Afinar en el mapa',
+  conversationalNextFilters: 'Abrir más filtros',
+  conversationalNextAgain: 'Pedir otra búsqueda arriba',
+  conversationalScrollResults: 'Ver resultados',
 } as const
 
 /** Ficha de propiedad: contacto y confianza (Sprint 28.8, voseo). */

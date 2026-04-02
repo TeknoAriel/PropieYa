@@ -14,7 +14,7 @@ export type PortalBuscarUrlFilters = {
   minSurface?: number
 }
 
-export function buildPortalBuscarUrl(filters: PortalBuscarUrlFilters): string {
+function portalBuscarParams(filters: PortalBuscarUrlFilters): string {
   const params = new URLSearchParams()
   if (filters.q) params.set('q', filters.q)
   if (filters.operationType) params.set('op', filters.operationType)
@@ -25,8 +25,24 @@ export function buildPortalBuscarUrl(filters: PortalBuscarUrlFilters): string {
   if (filters.maxPrice != null) params.set('max', String(filters.maxPrice))
   if (filters.minBedrooms != null) params.set('dorm', String(filters.minBedrooms))
   if (filters.minSurface != null) params.set('sup', String(filters.minSurface))
-  const qs = params.toString()
-  return qs ? `/buscar?${qs}` : '/buscar'
+  return params.toString()
+}
+
+/** Ruta de listado según contexto (`/buscar`, `/venta`, `/alquiler`). */
+export type PortalSearchPage = 'buscar' | 'venta' | 'alquiler'
+
+export function buildPortalSearchPath(
+  filters: PortalBuscarUrlFilters,
+  page: PortalSearchPage = 'buscar'
+): string {
+  const qs = portalBuscarParams(filters)
+  const base =
+    page === 'venta' ? '/venta' : page === 'alquiler' ? '/alquiler' : '/buscar'
+  return qs ? `${base}?${qs}` : base
+}
+
+export function buildPortalBuscarUrl(filters: PortalBuscarUrlFilters): string {
+  return buildPortalSearchPath(filters, 'buscar')
 }
 
 /** Sugerencias inductivas reutilizables (home, /buscar) — doc 43 §5 P2. */

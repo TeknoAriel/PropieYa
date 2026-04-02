@@ -1,50 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 
-import { Button, Input, ArrowRight, Filter } from '@propieya/ui'
-import { buildPortalBuscarUrl } from '@propieya/shared'
+import { Filter } from '@propieya/ui'
 
+import { ConversationalSearchBlock } from '@/components/portal/conversational-search-block'
 import { getPortalPack } from '@/lib/portal-copy'
-import { trpc } from '@/lib/trpc'
-
-const PLACEHOLDER_ROTATE_MS = 5500
 
 export function HeroSearch() {
   const pack = getPortalPack()
-  const router = useRouter()
-  const [query, setQuery] = useState('')
-  const [exampleIdx, setExampleIdx] = useState(0)
-
-  const examples = pack.heroExamples
-  const hasExamples = examples.length > 0
-
-  useEffect(() => {
-    if (examples.length <= 1) return
-    const id = window.setInterval(() => {
-      setExampleIdx((i) => (i + 1) % examples.length)
-    }, PLACEHOLDER_ROTATE_MS)
-    return () => window.clearInterval(id)
-  }, [examples.length])
-
-  const placeholder = hasExamples
-    ? `Ej: ${examples[exampleIdx] ?? ''}`
-    : pack.hero.placeholder
-
-  const searchConversational = trpc.listing.searchConversational.useMutation({
-    onSuccess: (data) => {
-      const url = buildPortalBuscarUrl(data.filters)
-      router.push(url)
-    },
-  })
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!query.trim()) return
-    searchConversational.mutate({ message: query.trim() })
-  }
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-surface-secondary to-surface-primary pb-0 pt-6 md:pt-8 md:pb-0">
@@ -65,45 +29,19 @@ export function HeroSearch() {
             {pack.hero.subtitle}
           </p>
 
-          <div className="mt-3 md:mt-4">
-            <form onSubmit={handleSubmit}>
-              <div className="relative">
-                <Input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={placeholder}
-                  disabled={searchConversational.isPending}
-                  className="h-14 pl-5 pr-14 text-base md:text-lg rounded-2xl border-2 border-border bg-surface-primary/90 shadow-md placeholder:text-text-secondary placeholder:text-[13px] md:placeholder:text-sm focus-visible:ring-brand-primary"
-                  aria-label={pack.hero.placeholder}
-                />
-                <Button
-                  type="submit"
-                  size="icon"
-                  disabled={searchConversational.isPending}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-xl"
-                  aria-label="Buscar"
-                >
-                  {searchConversational.isPending ? (
-                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  ) : (
-                    <ArrowRight className="h-5 w-5" />
-                  )}
-                </Button>
-              </div>
-              {searchConversational.isError ? (
-                <p className="mt-2 text-sm text-red-600">
-                  {searchConversational.error.message}
-                </p>
-              ) : null}
-            </form>
+          <div className="mt-3 md:mt-4 text-left sm:text-center">
+            <ConversationalSearchBlock
+              variant="hero"
+              routerMode="push"
+              searchPathPage="buscar"
+              className="mx-auto max-w-3xl"
+            />
           </div>
 
-          {/* En desktop el nav ya enlaza a /buscar; en móvil el menú aún no despliega enlaces. */}
           <div className="mt-2 md:hidden">
             <Link
               href="/buscar"
-              className="inline-flex items-center gap-1.5 text-xs text-text-tertiary transition-colors hover:text-text-secondary"
+              className="inline-flex items-center gap-1.5 text-xs text-text-secondary transition-colors hover:text-text-primary"
             >
               <Filter className="h-3.5 w-3.5 shrink-0" />
               {pack.hero.filterLink}
