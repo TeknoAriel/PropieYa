@@ -5,6 +5,7 @@ import { PORTAL_SITE_DESCRIPTION } from '@propieya/shared'
 
 import '@propieya/ui/styles'
 import './globals.css'
+import { CompareDock } from '@/components/compare/compare-dock'
 import { CopyPackBanner } from '@/components/layout/copy-pack-banner'
 import { ProductionStatusBanner } from '@/components/layout/production-status-banner'
 
@@ -36,6 +37,7 @@ export default function RootLayout({
           <ProductionStatusBanner />
           <CopyPackBanner />
           {children}
+          <CompareDock />
         </Providers>
       </body>
     </html>

@@ -383,6 +383,32 @@ export const PORTAL_LISTING_UX_COPY = {
   relatedSearchesTitle: 'Búsquedas relacionadas',
 } as const
 
+/** Comparador de avisos (Sprint 33 — centro de decisión v0). */
+export const PORTAL_COMPARE_COPY = {
+  pageTitle: 'Comparar avisos',
+  pageSubtitle:
+    'Hasta tres propiedades activas. Los datos son los mismos que en cada ficha pública.',
+  addToCompare: 'Comparar',
+  removeFromCompare: 'Quitar',
+  inCompareShort: 'En lista',
+  compareOpen: 'Ver comparación',
+  compareBarTitle: 'Comparación',
+  compareClear: 'Vaciar',
+  compareNeedTwo:
+    'Elegí al menos dos avisos. Podés agregarlos desde el buscador o la ficha.',
+  compareTooFewLoaded:
+    'Algunos avisos ya no están activos. Agregá otros o volvé al buscador.',
+  compareMaxReached: 'Ya tenés 3 avisos. Quitá uno para agregar otro.',
+  tableProperty: 'Propiedad',
+  tablePrice: 'Precio',
+  tableSurface: 'Superficie',
+  tableRooms: 'Dorm.',
+  tableBaths: 'Baños',
+  tableZone: 'Zona',
+  tableAction: 'Ficha',
+  viewListing: 'Ver aviso',
+} as const
+
 export const PORTAL_COPY_PACKS: Record<PortalCopyPackId, PortalCopyPack> = {
   regla_portal_v1: reglaPortalV1,
   variante_b_cercano: varianteBCercano,

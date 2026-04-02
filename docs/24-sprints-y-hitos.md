@@ -29,7 +29,8 @@
 | Sprint 30 (mapa, recientes, doc ES/reindex) | ✅ |
 | Sprint 31 (P1 confianza en ficha) | ✅ |
 | Sprint 32 (P2 descubrimiento: chips + relacionadas) | ✅ |
-| Siguiente backlog doc 43 §5 | P2 Centro de decisión (diseño + widget) o profundidad mapa/filtros |
+| Sprint 33 (P2 comparador / centro de decisión v0) | ✅ |
+| Siguiente backlog doc 43 §5 | Profundidad mapa/filtros o más widgets en `/comparar` |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Infra GitHub/Vercel nuevo repo (Sprint 25.6–25.8) | Confirmar secretos `VERCEL_*`, Actions verde y Git del proyecto web → `docs/DEPLOY-PASOS-URIs.md` Parte A |
 
@@ -577,3 +578,19 @@
 - [x] 32.5 `pnpm verify` + push `deploy/infra` + alinear `main` + `pnpm verificar:deploy`
 
 **Criterios:** enlaces generan URLs con `op`/`tipo`/`ciudad`/`barrio` coherentes con el buscador; sin nuevo endpoint.
+
+---
+
+## Sprint 33 — Comparador público (centro de decisión v0) ✅
+
+**Objetivo:** doc 43 §5 ítem 6 (primer widget): comparar 2–3 avisos activos en una tabla clara, sin nuevo motor de búsqueda; reutilizar `listingsSelectPublic` + almacenamiento de sesión.
+
+### Tareas (agente / CI)
+
+- [x] 33.1 `listing.getComparePublic` (2–3 UUID, orden, imagen principal)
+- [x] 33.2 `sessionStorage` + barra fija (`CompareDock`) + `buildPortalCompareUrl` en `@propieya/shared`
+- [x] 33.3 Ruta `/comparar` (query `ids` o lista guardada) + copy `PORTAL_COMPARE_COPY`
+- [x] 33.4 Botón en ficha y en cards de `/buscar` / venta / alquiler (`AddToCompareButton`)
+- [x] 33.5 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** el usuario arma la lista desde fichas o resultados, abre la comparación y ve precio/sup/dorm/baños/zona por fila; máximo 3 avisos.

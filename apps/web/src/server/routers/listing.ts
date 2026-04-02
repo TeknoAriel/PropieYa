@@ -455,6 +455,65 @@ export const listingRouter = createTRPCRouter({
       }
     }),
 
+  /** Comparación pública: hasta 3 avisos activos, en el orden pedido (dedupe). */
+  getComparePublic: publicProcedure
+    .input(
+      z.object({
+        ids: z.array(z.string().uuid()).min(2).max(3),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const seen = new Set<string>()
+      const orderedIds: string[] = []
+      for (const id of input.ids) {
+        if (seen.has(id)) continue
+        seen.add(id)
+        orderedIds.push(id)
+        if (orderedIds.length >= 3) break
+      }
+      if (orderedIds.length < 2) {
+        return []
+      }
+
+      const rows = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(inArray(listings.id, orderedIds), eq(listings.status, 'active'))
+        )
+
+      const byId = new Map(rows.map((r) => [r.id, r]))
+      const ordered = orderedIds
+        .map((id) => byId.get(id))
+        .filter((r): r is NonNullable<typeof r> => Boolean(r))
+
+      if (ordered.length < 2) {
+        return ordered
+      }
+
+      const ids = ordered.map((r) => r.id)
+      const allMedia = await ctx.db.query.listingMedia.findMany({
+        where: inArray(listingMedia.listingId, ids),
+        orderBy: [desc(listingMedia.isPrimary), listingMedia.order],
+      })
+
+      const firstImageByListing = new Map<string, string>()
+      for (const m of allMedia) {
+        if (m.type !== 'image') continue
+        if (!firstImageByListing.has(m.listingId)) {
+          firstImageByListing.set(m.listingId, m.url)
+        }
+      }
+
+      return ordered.map((row) => ({
+        ...row,
+        primaryImageUrl:
+          row.primaryImageUrl ??
+          firstImageByListing.get(row.id) ??
+          null,
+      }))
+    }),
+
   /** Avisos similares (misma operación y tipo, ciudad si existe, banda de precio ±30%). */
   similar: publicProcedure
     .input(

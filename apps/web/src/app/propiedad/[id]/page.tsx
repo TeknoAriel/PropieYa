@@ -7,6 +7,7 @@ import { useParams } from 'next/navigation'
 
 import { Badge, Button, Card, MessageSquare, Skeleton } from '@propieya/ui'
 
+import { AddToCompareButton } from '@/components/compare/add-to-compare-button'
 import { ContactModal } from '@/components/contact-modal'
 import { ListingTrustPanel } from '@/components/property/listing-trust-panel'
 import { ListingRelatedSearches } from '@/components/property/listing-related-searches'
@@ -367,6 +368,7 @@ export default function PropiedadPage() {
               listingId={listing.id}
               listingTitle={listing.title}
             />
+            <AddToCompareButton listingId={listing.id} />
           </Card>
 
           <Card className="p-6 space-y-4">

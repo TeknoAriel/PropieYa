@@ -44,6 +44,7 @@ import {
   type PropertyType,
 } from '@propieya/shared'
 
+import { AddToCompareButton } from '@/components/compare/add-to-compare-button'
 import { BuscarRecentSearches } from '@/components/buscar/buscar-recent-searches'
 import { ConversationalSearchBlock } from '@/components/portal/conversational-search-block'
 import { InductiveSearchChips } from '@/components/portal/inductive-search-chips'
@@ -161,6 +162,13 @@ function ListingCard({ listing }: { listing: BuscarListingCardData }) {
               </ul>
             </div>
           ) : null}
+          <div className="mt-3 flex justify-end border-t border-border/50 pt-3">
+            <AddToCompareButton
+              listingId={listing.id}
+              compact
+              stopNavigation
+            />
+          </div>
         </div>
       </Card>
     </Link>

@@ -61,3 +61,12 @@ export const PORTAL_INDUCTIVE_CHIPS: readonly {
   { label: 'Cocheras', filters: { operationType: 'sale', propertyType: 'parking' } },
   { label: 'Galpones / depósitos', filters: { operationType: 'sale', propertyType: 'warehouse' } },
 ] as const
+
+/** Comparador público (2–3 UUIDs, orden preservado). Sprint 33 / doc 43 §5. */
+export function buildPortalCompareUrl(ids: readonly string[]): string {
+  const slice = ids.filter(Boolean).slice(0, 3)
+  if (slice.length === 0) return '/comparar'
+  const qs = new URLSearchParams()
+  qs.set('ids', slice.join(','))
+  return `/comparar?${qs.toString()}`
+}
