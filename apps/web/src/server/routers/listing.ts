@@ -37,10 +37,58 @@ import {
 import { searchListings } from '../../lib/search/search'
 import { decodeListingSearchCursor } from '../../lib/search/search-cursor'
 import { sqlPointInPolygonLngLat } from '../../lib/search/point-in-polygon-sql'
-import { extractIntentionFromMessage } from '../../lib/llm'
+import {
+  extractIntentionFromMessage,
+  type ConversationPrior,
+} from '../../lib/llm'
 import { checkRateLimit } from '../../lib/rate-limit'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
 import { listingSearchInputSchema } from './listing-search-input'
+
+const conversationalPriorFiltersSchema = z.object({
+  q: z.string().max(200).optional(),
+  operationType: z.enum(['sale', 'rent', 'temporary_rent']).optional(),
+  propertyType: z.string().max(50).optional(),
+  city: z.string().max(120).optional(),
+  neighborhood: z.string().max(120).optional(),
+  minPrice: z.number().nonnegative().optional(),
+  maxPrice: z.number().nonnegative().optional(),
+  minBedrooms: z.number().int().min(0).max(50).optional(),
+  minSurface: z.number().nonnegative().optional(),
+  amenities: z.array(z.string().max(80)).max(25).optional(),
+})
+
+const searchConversationalInputSchema = z.object({
+  message: z.string().min(1).max(500),
+  previousContext: z
+    .object({
+      userMessage: z.string().max(500),
+      filters: conversationalPriorFiltersSchema,
+    })
+    .optional(),
+})
+
+function conversationPriorFromInput(
+  previous: z.infer<typeof searchConversationalInputSchema>['previousContext']
+): ConversationPrior | null {
+  if (!previous?.filters) return null
+  const f = previous.filters
+  return {
+    userMessage: previous.userMessage,
+    intention: {
+      q: f.q,
+      operationType: f.operationType,
+      propertyType: f.propertyType,
+      city: f.city,
+      neighborhood: f.neighborhood,
+      minPrice: f.minPrice,
+      maxPrice: f.maxPrice,
+      minBedrooms: f.minBedrooms,
+      minSurface: f.minSurface,
+      amenities: f.amenities,
+    },
+  }
+}
 
 /** Evita que el usuario inyecte comodines ILIKE (%, _). */
 function sanitizeIlikeFragment(raw: string): string {
@@ -925,7 +973,7 @@ export const listingRouter = createTRPCRouter({
 
   /** Búsqueda conversacional: extrae intención del mensaje y devuelve filtros + resultados. */
   searchConversational: publicProcedure
-    .input(z.object({ message: z.string().min(1).max(500) }))
+    .input(searchConversationalInputSchema)
     .mutation(async ({ input, ctx }) => {
       if (!checkRateLimit(ctx.ip)) {
         throw new TRPCError({
@@ -934,7 +982,11 @@ export const listingRouter = createTRPCRouter({
         })
       }
 
-      const intention = await extractIntentionFromMessage(input.message)
+      const prior = conversationPriorFromInput(input.previousContext)
+      const intention = await extractIntentionFromMessage(
+        input.message,
+        prior ?? undefined
+      )
       const explainFilters: ExplainMatchFilters = {
         q: intention.q,
         operationType: intention.operationType,

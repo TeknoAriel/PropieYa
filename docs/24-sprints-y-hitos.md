@@ -610,7 +610,7 @@
 - [x] 34.1 Publicar `docs/47` + enlaces en `AGENTS.md`, `.cursor/rules/automacion-propietario.mdc` y tabla de estado en este archivo
 - [x] 34.2 Variable `LOG_SEARCH_MS=1`: logs estructurados en `listing.search` (fase post-ES y cierre SQL); documentar en `.env.example`
 - [x] 34.3 Paginación profunda Elasticsearch (`search_after` + `nextCursor` / input `cursor`); UI `/buscar` “Cargar más”; `offset` SQL hasta 50k; ver `docs/47` F1
-- [ ] 34.4 Asistente: continuidad de búsqueda (estado + sugerencias) alineado al motor unificado — spec en doc 47 §F3
+- [x] 34.4 Asistente: `previousContext` en `searchConversational`, LLM + fallback merge, `sessionStorage` + chips en `/buscar` — `docs/47` §F3
 - [ ] 34.5 Ranking: primer ajuste medible (boosts / golden set) según resultado de apéndice A en staging/prod
 - [x] 34.6 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy` (tras cada bloque de tareas listo para prod)
 

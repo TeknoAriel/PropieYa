@@ -43,9 +43,10 @@ Referencias duras: `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`, `docs/43-ANEXO-MAS
 - Conjunto golden etiquetado (relevante / no relevante para top-k).  
 - Ajustes de query ES y, si aplica, reindex con mapping revisado.
 
-**F3 — Asistente con continuidad**  
-- Estado mínimo (últimos filtros + resumen).  
-- Segunda pasada LLM o reglas: “¿Restringir precio?”, “¿Otra zona?” sin romper el motor unificado.
+**F3 — Asistente con continuidad** (en código, v0)  
+- `searchConversational` acepta `previousContext: { userMessage, filters }` y el LLM (o merge heurístico sin API) **fusiona** el nuevo mensaje con filtros previos.  
+- `sessionStorage` (`propieya.conversational.v1`, TTL 45 min) + banner y chips en `/buscar` dentro de `ConversationalSearchBlock`; “Empezar de cero” limpia contexto.  
+- La home reutiliza el mismo storage al enviar (sin banner, para no ocupar el hero).
 
 **Paralelo (producto)**  
 - `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` cuando el inventario lo permita.

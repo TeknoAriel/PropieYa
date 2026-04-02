@@ -16,6 +16,53 @@ import { getPortalPack } from '@/lib/portal-copy'
 import { trpc } from '@/lib/trpc'
 
 const PLACEHOLDER_ROTATE_MS = 5500
+const CONV_STORAGE_KEY = 'propieya.conversational.v1'
+const CONV_TTL_MS = 45 * 60 * 1000
+
+type StoredConv = {
+  userMessage: string
+  filters: ExplainMatchFilters
+  t: number
+}
+
+function readConvStorage(): StoredConv | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(CONV_STORAGE_KEY)
+    if (!raw) return null
+    const p = JSON.parse(raw) as StoredConv
+    if (!p?.t || !p.filters || typeof p.userMessage !== 'string') return null
+    if (Date.now() - p.t > CONV_TTL_MS) {
+      sessionStorage.removeItem(CONV_STORAGE_KEY)
+      return null
+    }
+    return p
+  } catch {
+    return null
+  }
+}
+
+function writeConvStorage(payload: {
+  userMessage: string
+  filters: ExplainMatchFilters
+}): void {
+  try {
+    sessionStorage.setItem(
+      CONV_STORAGE_KEY,
+      JSON.stringify({ ...payload, t: Date.now() })
+    )
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+function clearConvStorage(): void {
+  try {
+    sessionStorage.removeItem(CONV_STORAGE_KEY)
+  } catch {
+    /* ignore */
+  }
+}
 
 type ConversationalSearchBlockProps = {
   variant: 'hero' | 'buscar'
@@ -70,6 +117,11 @@ export function ConversationalSearchBlock({
   const [voiceSupported, setVoiceSupported] = useState(false)
   const [listening, setListening] = useState(false)
   const recognitionRef = useRef<{ stop: () => void } | null>(null)
+  const lastSubmittedRef = useRef('')
+  const [sessionPrior, setSessionPrior] = useState<{
+    userMessage: string
+    filters: ExplainMatchFilters
+  } | null>(null)
 
   const examples = pack.heroExamples
   const hasExamples = examples.length > 0
@@ -77,6 +129,24 @@ export function ConversationalSearchBlock({
   useEffect(() => {
     setVoiceSupported(getSpeechRecognitionCtor() != null)
   }, [])
+
+  useEffect(() => {
+    const s = readConvStorage()
+    if (!s) {
+      setSessionPrior(null)
+      return
+    }
+    if (
+      forcedOperation &&
+      s.filters.operationType &&
+      s.filters.operationType !== forcedOperation
+    ) {
+      clearConvStorage()
+      setSessionPrior(null)
+      return
+    }
+    setSessionPrior({ userMessage: s.userMessage, filters: s.filters })
+  }, [forcedOperation])
 
   useEffect(() => {
     if (examples.length <= 1) return
@@ -117,6 +187,16 @@ export function ConversationalSearchBlock({
         minSurface: data.filters.minSurface,
         amenities: data.filters.amenities,
       }
+      const submitted = lastSubmittedRef.current.trim()
+      writeConvStorage({
+        userMessage: submitted || summarizeSearchFilters(explain).slice(0, 200),
+        filters: explain,
+      })
+      setSessionPrior({
+        userMessage: submitted || summarizeSearchFilters(explain).slice(0, 200),
+        filters: explain,
+      })
+      setQuery('')
       onAfterNavigate?.({
         summary: summarizeSearchFilters(explain),
         total: data.total,
@@ -182,9 +262,52 @@ export function ConversationalSearchBlock({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!query.trim()) return
-    searchConversational.mutate({ message: query.trim() })
+    const text = query.trim()
+    if (!text) return
+    lastSubmittedRef.current = text
+    searchConversational.mutate({
+      message: text,
+      previousContext: sessionPrior
+        ? {
+            userMessage: sessionPrior.userMessage,
+            filters: {
+              q: sessionPrior.filters.q,
+              operationType:
+                sessionPrior.filters.operationType === 'sale' ||
+                sessionPrior.filters.operationType === 'rent' ||
+                sessionPrior.filters.operationType === 'temporary_rent'
+                  ? sessionPrior.filters.operationType
+                  : undefined,
+              propertyType: sessionPrior.filters.propertyType,
+              city: sessionPrior.filters.city,
+              neighborhood: sessionPrior.filters.neighborhood,
+              minPrice: sessionPrior.filters.minPrice,
+              maxPrice: sessionPrior.filters.maxPrice,
+              minBedrooms: sessionPrior.filters.minBedrooms,
+              minSurface: sessionPrior.filters.minSurface,
+              amenities: sessionPrior.filters.amenities,
+            },
+          }
+        : undefined,
+    })
   }
+
+  const clearConversationContext = () => {
+    clearConvStorage()
+    setSessionPrior(null)
+  }
+
+  const followUpChips = [
+    S.conversationalChipCheaper,
+    S.conversationalChipOtherArea,
+    S.conversationalChipParking,
+    S.conversationalChipMoreBedrooms,
+  ] as const
+
+  const contextSummary =
+    sessionPrior != null
+      ? summarizeSearchFilters(sessionPrior.filters)
+      : ''
 
   const isHero = variant === 'hero'
   const inputClass = isHero
@@ -221,6 +344,53 @@ export function ConversationalSearchBlock({
           >
             {subtitleBuscar}
           </p>
+        </div>
+      ) : null}
+
+      {variant === 'buscar' && sessionPrior ? (
+        <div
+          className={
+            compact
+              ? 'mb-2 rounded-lg border border-brand-primary/15 bg-brand-primary/5 px-2.5 py-2'
+              : 'mb-3 rounded-lg border border-brand-primary/15 bg-brand-primary/5 px-3 py-2.5'
+          }
+        >
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-text-primary">
+                {S.conversationalContextBanner}
+              </p>
+              <p className="mt-1 break-words text-xs text-text-secondary">
+                {S.conversationalContextSummaryPrefix}{' '}
+                {contextSummary.length > 140
+                  ? `${contextSummary.slice(0, 140)}…`
+                  : contextSummary}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 shrink-0 text-xs"
+              onClick={clearConversationContext}
+            >
+              {S.conversationalClearContext}
+            </Button>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {followUpChips.map((label) => (
+              <Button
+                key={label}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 rounded-full px-2.5 text-xs"
+                onClick={() => setQuery(label)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
         </div>
       ) : null}
 

@@ -26,22 +26,24 @@ function getOpenAIClient(): OpenAI | null {
   return new OpenAI({ apiKey: key })
 }
 
+export type ConversationPrior = {
+  userMessage: string
+  intention: ExtractedIntention
+}
+
 /**
  * Extrae filtros estructurados del mensaje usando LLM (si disponible) o regex.
+ * Con `previous`, interpretá el mensaje como refinamiento sobre filtros ya acordados.
  */
 export async function extractIntentionFromMessage(
-  message: string
+  message: string,
+  previous?: ConversationPrior | null
 ): Promise<ExtractedIntention> {
   const client = getOpenAIClient()
   if (client) {
     try {
       const model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini'
-      const response = await client.chat.completions.create({
-        model,
-        messages: [
-          {
-            role: 'system',
-            content: `Sos el extractor de intención de Propieya: plataforma inmobiliaria conversacional-first (Argentina, español rioplatense). La apuesta de producto es cambiar el paradigma de búsqueda (intención humana → mismo motor que filtros y mapa), no "un chat decorativo".
+      const systemBase = `Sos el extractor de intención de Propieya: plataforma inmobiliaria conversacional-first (Argentina, español rioplatense). La apuesta de producto es cambiar el paradigma de búsqueda (intención humana → mismo motor que filtros y mapa), no "un chat decorativo".
 
 Tu salida NO es conversación con el usuario: solo JSON con filtros para el motor unificado.
 
@@ -52,9 +54,29 @@ Reglas:
 - Interpretá frases largas, matices y lenguaje coloquial o disruptivo si el usuario lo usa ("comprar", "alquilar", "depto", "casa quinta", "pileta", "quincho", "a refaccionar", "inversión fuerte").
 - Capturá la intención aunque el usuario no use jerga de corredor; traducila a los campos anteriores.
 
-Ejemplo: {"operationType":"rent","propertyType":"apartment","city":"Buenos Aires","neighborhood":"Palermo","minPrice":null,"maxPrice":200000,"minBedrooms":2,"minSurface":null,"amenities":["balcony"],"q":"luminoso"}`,
+Ejemplo: {"operationType":"rent","propertyType":"apartment","city":"Buenos Aires","neighborhood":"Palermo","minPrice":null,"maxPrice":200000,"minBedrooms":2,"minSurface":null,"amenities":["balcony"],"q":"luminoso"}`
+
+      const systemFollowUp = `
+
+Modo seguimiento: el usuario ya había buscado y ahora envía un mensaje corto para afinar (ej. "más barato", "en Belgrano", "con pileta", "sacá el tope de precio").
+- Partí de los filtros previos que te damos en el mensaje de usuario y devolvé el JSON COMPLETO resultante (no un diff).
+- Si el nuevo mensaje contradice un campo anterior, ganá el mensaje nuevo.
+- "Más barato" / "más económico": bajá maxPrice ~15–20% o agregá tope si no había.
+- "Otro barrio" sin nombre nuevo: dejá neighborhood en null y conservá ciudad si había.
+- Frases como "igual pero con cochera": sumá amenity parking si aplica.`
+
+      const userContent = previous
+        ? `[Búsqueda anterior]\nUsuario había dicho: ${previous.userMessage}\nFiltros inferidos (JSON): ${JSON.stringify(previous.intention)}\n\n[Nuevo mensaje — refiná o corregí]\n${message}`
+        : message
+
+      const response = await client.chat.completions.create({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: systemBase + (previous ? systemFollowUp : ''),
           },
-          { role: 'user', content: message },
+          { role: 'user', content: userContent },
         ],
         temperature: 0.1,
       })
@@ -68,7 +90,67 @@ Ejemplo: {"operationType":"rent","propertyType":"apartment","city":"Buenos Aires
     }
   }
 
+  if (previous) {
+    return mergeFollowUpFallback(message, previous.intention)
+  }
+
   return fallbackExtract(message)
+}
+
+/** Sin LLM: combina heurísticas locales con el estado previo. */
+function mergeFollowUpFallback(
+  message: string,
+  base: ExtractedIntention
+): ExtractedIntention {
+  const lower = message.toLowerCase()
+  const out: ExtractedIntention = { ...base }
+  const ex = extractFiltersFromQuery(message)
+
+  if (/más barat|más económ|menos caro|baj(a|á)\s+(el\s+)?precio/i.test(lower)) {
+    if (out.maxPrice != null && out.maxPrice > 15_000) {
+      out.maxPrice = Math.round(out.maxPrice * 0.84)
+    }
+  }
+  if (/más caro|sub(i|í)\s+(el\s+)?(tope|precio)|presupuesto\s+más\s+alto/i.test(lower)) {
+    if (out.maxPrice != null) {
+      out.maxPrice = Math.round(out.maxPrice * 1.12)
+    }
+  }
+  if (/sac(a|á)\s+(el\s+)?(tope|máximo)|sin\s+tope\s+de\s+precio|sin\s+límite\s+de\s+precio/i.test(lower)) {
+    delete out.maxPrice
+    delete out.minPrice
+  }
+  if (/otro\s+barrio|otra\s+zona|cambiar\s+(de\s+)?(barrio|zona)/i.test(lower)) {
+    delete out.neighborhood
+  }
+
+  const fm = fallbackExtract(message)
+  if (fm.neighborhood) out.neighborhood = fm.neighborhood
+  if (fm.city) out.city = fm.city
+
+  if (ex.operationType) out.operationType = ex.operationType
+  if (ex.propertyType) out.propertyType = ex.propertyType
+  if (ex.minPrice !== undefined) out.minPrice = ex.minPrice
+  if (ex.maxPrice !== undefined) out.maxPrice = ex.maxPrice
+  if (ex.minBedrooms !== undefined) out.minBedrooms = ex.minBedrooms
+  if (ex.minSurface !== undefined) out.minSurface = ex.minSurface
+  if (ex.amenities?.length) {
+    const add = ex.amenities.map((a) => String(a))
+    out.amenities = [...new Set([...(out.amenities ?? []), ...add])]
+  }
+
+  const trimmed = message.trim()
+  if (
+    trimmed.length >= 2 &&
+    trimmed.length < 140 &&
+    !/^más barat|^más económ|^menos caro|^otro barrio|^otra zona|^sac(a|á)\s+el|^sin\s+tope/i.test(
+      trimmed
+    )
+  ) {
+    out.q = [base.q, trimmed].filter(Boolean).join(' ').trim().slice(0, 200)
+  }
+
+  return out
 }
 
 function normalizeIntention(raw: Record<string, unknown>): ExtractedIntention {

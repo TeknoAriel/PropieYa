@@ -317,6 +317,15 @@ export const PORTAL_SEARCH_UX_COPY = {
   conversationalNextFilters: 'Abrir más filtros',
   conversationalNextAgain: 'Pedir otra búsqueda arriba',
   conversationalScrollResults: 'Ver resultados',
+  /** Continuidad de búsqueda (multi-turno, mismo motor). */
+  conversationalContextBanner:
+    'Seguimos desde tu última búsqueda: podés afinar con una frase corta o tocá una idea abajo.',
+  conversationalContextSummaryPrefix: 'Criterios activos:',
+  conversationalClearContext: 'Empezar de cero',
+  conversationalChipCheaper: 'Más barato',
+  conversationalChipOtherArea: 'Otro barrio o zona',
+  conversationalChipParking: 'Con cochera',
+  conversationalChipMoreBedrooms: 'Más dormitorios',
 
   /** /buscar — alineado al “Cómo funciona” de la home (versión compacta). */
   buscarFlowTitle: 'Cómo buscás en Propieya',
