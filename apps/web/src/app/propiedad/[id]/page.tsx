@@ -8,6 +8,7 @@ import { useParams } from 'next/navigation'
 import { Badge, Button, Card, MessageSquare, Skeleton } from '@propieya/ui'
 
 import { ContactModal } from '@/components/contact-modal'
+import { ListingTrustPanel } from '@/components/property/listing-trust-panel'
 import { PropertyLocationMap } from '@/components/property/property-location-map'
 import {
   formatPrice,
@@ -238,6 +239,12 @@ export default function PropiedadPage() {
     propertyType: PropertyType
     priceAmount: number
     priceCurrency: Currency
+    source: string
+    publishedAt: Date | string | null
+    expiresAt: Date | string | null
+    qualityScore: number | null
+    mediaCount: number
+    primaryImageUrl: string | null
     address?: { neighborhood?: string; city?: string } | null
     surfaceTotal: number
     bedrooms: number | null
@@ -349,6 +356,8 @@ export default function PropiedadPage() {
         </div>
 
         <div className="space-y-4">
+          <ListingTrustPanel listing={listing} />
+
           <Card className="p-6 space-y-4">
             <h2 className="text-lg font-semibold">{L.sidebarTitle}</h2>
             <p className="text-sm text-text-secondary">{L.sidebarLead}</p>

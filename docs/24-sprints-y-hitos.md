@@ -26,7 +26,8 @@
 | Historial de búsqueda (DB + API) | `listing.search` persiste en `search_history` si hay sesión; `searchHistory.listMine` |
 | Norte de producto (portal) | `docs/41-PROPUESTA-VALOR-PORTAL.md` — descubrimiento, decisión, confianza, inventario |
 | Directiva evolutiva + matriz backlog | `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`, `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md` |
-| Sprint 30 (mapa, recientes, doc ES/reindex) | ✅ — siguiente bloque P1 en doc 43 §5 (confianza visible, sugerencias, etc.) |
+| Sprint 30 (mapa, recientes, doc ES/reindex) | ✅ |
+| Sprint 31 (P1 confianza en ficha) | ✅ — siguiente: doc 43 §5 P2 sugerencias / relacionadas |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Infra GitHub/Vercel nuevo repo (Sprint 25.6–25.8) | Confirmar secretos `VERCEL_*`, Actions verde y Git del proyecto web → `docs/DEPLOY-PASOS-URIs.md` Parte A |
 
@@ -438,7 +439,7 @@
 
 ---
 
-*Actualizado: 2026-03-31 (Sprint 30 checklist cerrado en código/docs; 25.6–25.8 pendientes de confirmación en dashboard)*
+*Actualizado: 2026-04-02 (Sprint 31 confianza en ficha; 25.6–25.8 según dashboard)*
 
 ---
 
@@ -543,3 +544,18 @@
 - [x] 30.5 `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`
 
 **Criterios:** cada entrega pasa el test anti-Frankenstein (`docs/42` §1); no se suman herramientas de decisión dispersas fuera del plan del “Centro de decisión” (`docs/43` §2 matriz).
+
+---
+
+## Sprint 31 — P1 confianza visible en ficha (`/propiedad/[id]`) ✅
+
+**Objetivo:** doc 43 §5 ítem 4 (iteración corta): vigencia, completitud y origen visibles sin nuevo motor ni datos sensibles.
+
+### Tareas (agente / CI)
+
+- [x] 31.1 `packages/shared`: `listing-portal-trust.ts` — `buildListingFreshnessUi`, `computeListingCompletenessScore`, `resolveListingCompletenessForPortal` (usa `quality_score` si existe)
+- [x] 31.2 Copy en `PORTAL_LISTING_UX_COPY` (título tarjeta, completitud, origen import vs manual, badge “Por vencer”)
+- [x] 31.3 `ListingTrustPanel` en ficha pública + tipos de `listing.getById`
+- [x] 31.4 `pnpm verify` + push `deploy/infra` + alinear `main`
+
+**Criterios:** usuario ve publicación/vigencia, barra de completitud y origen (feed vs portal); coincide con directiva confianza (doc 41/42).

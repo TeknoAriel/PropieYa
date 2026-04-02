@@ -317,6 +317,16 @@ export const PORTAL_LISTING_UX_COPY = {
   modalSubmit: 'Enviar',
   modalSubmitPending: 'Enviando…',
   modalSentOk: 'Mensaje enviado',
+
+  /** P1 confianza — ficha (vigencia, completitud, origen) */
+  trustCardTitle: 'Transparencia del aviso',
+  completenessLabel: 'Completitud del aviso',
+  completenessHint:
+    'Indica qué tan completos están texto, fotos y datos. Si falta algo, podés preguntarle al publicador.',
+  sourceImport:
+    'Origen: sincronizado desde el feed de socios (mismo inventario que usa la inmobiliaria).',
+  sourceManual: 'Origen: publicación gestionada en Propieya.',
+  expiringSoonBadge: 'Por vencer',
 } as const
 
 export const PORTAL_COPY_PACKS: Record<PortalCopyPackId, PortalCopyPack> = {
