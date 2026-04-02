@@ -314,6 +314,24 @@ export const PORTAL_SEARCH_UX_COPY = {
   conversationalNextFilters: 'Abrir más filtros',
   conversationalNextAgain: 'Pedir otra búsqueda arriba',
   conversationalScrollResults: 'Ver resultados',
+
+  /** /buscar — alineado al “Cómo funciona” de la home (versión compacta). */
+  buscarFlowTitle: 'Cómo buscás en Propieya',
+  buscarFlowStep1: 'Contanos en una frase qué imaginás.',
+  buscarFlowStep2: 'Lo pasamos al mismo motor de búsqueda.',
+  buscarFlowStep3: 'Si querés, mapa o filtros — sin perder contexto.',
+  buscarFlowStep4: 'En cada aviso te decimos por qué encaja.',
+
+  /** Filtros clásicos: ocultos por defecto para no abrumar. */
+  filtersOptionalExpand: 'Mostrar filtros para afinar',
+  filtersOptionalCollapse: 'Ocultar filtros',
+  filtersCollapsedHint:
+    'No hace falta completar todo: podés buscar arriba con una frase o tocá un atajo. Abrí los filtros solo cuando quieras afinar operación, zona o números.',
+  essentialsFriendlyTitle: 'Afinar con criterios',
+  essentialsFriendlySubtitle:
+    'Opcional — mismo motor que la búsqueda por frase. Tocá «Más filtros» para ir más al detalle.',
+  buscarPageGentleHint:
+    'Explorá con calma: los resultados se actualizan solos cuando cambiás criterios.',
 } as const
 
 /** Ficha de propiedad: contacto y confianza (Sprint 28.8, voseo). */

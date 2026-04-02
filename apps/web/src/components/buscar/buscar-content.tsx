@@ -4,7 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 
 import { Badge, Button, Card, Input, Skeleton } from '@propieya/ui'
 import type { BuscarMapBBox, BuscarMapPoint } from '@/components/buscar/buscar-search-map'
@@ -228,6 +228,8 @@ export function BuscarContent({
   const [mapPolygonRing, setMapPolygonRing] = useState<BuscarMapPoint[]>([])
   const [polygonDrawMode, setPolygonDrawMode] = useState(false)
   const [showMap, setShowMap] = useState(false)
+  /** Filtros clásicos colapsados por defecto para no abrumar; se abren si la URL trae criterios. */
+  const [classicFiltersOpen, setClassicFiltersOpen] = useState(false)
 
   const facetFlagDefinitions = useMemo(() => getFacetFlagDefinitions(), [])
   const facetChips = useMemo(() => facetFlagDefinitions.slice(0, 12), [facetFlagDefinitions])
@@ -362,6 +364,29 @@ export function BuscarContent({
   } | null>(null)
 
   const searchParamsKey = searchParams.toString()
+
+  const hasClassicUrlParams = useMemo(() => {
+    const sp = new URLSearchParams(searchParamsKey)
+    const keys = [
+      'op',
+      'tipo',
+      'ciudad',
+      'barrio',
+      'min',
+      'max',
+      'dorm',
+      'sup',
+    ] as const
+    return keys.some((k) => {
+      const v = sp.get(k)
+      return v != null && v.trim() !== ''
+    })
+  }, [searchParamsKey])
+
+  useLayoutEffect(() => {
+    if (hasClassicUrlParams) setClassicFiltersOpen(true)
+  }, [hasClassicUrlParams])
+
   useEffect(() => {
     const sp = new URLSearchParams(searchParamsKey)
     setQ(sp.get('q') ?? '')
@@ -392,6 +417,17 @@ export function BuscarContent({
     setPolygonDrawMode(false)
   }, [searchParamsKey, forcedOperation])
 
+  const scrollToElementId = (id: string) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+      })
+    })
+  }
+
   return (
     <div className="container mx-auto space-y-6 px-4 py-10">
       <div className="flex flex-col gap-6">
@@ -404,6 +440,33 @@ export function BuscarContent({
             onAfterNavigate={setAssistantHint}
           />
         </Card>
+
+        <div
+          className="rounded-2xl border border-border/50 bg-surface-secondary/25 px-4 py-5 md:px-6"
+          aria-label={S.buscarFlowTitle}
+        >
+          <p className="text-center text-xs font-semibold uppercase tracking-wide text-text-secondary">
+            {S.buscarFlowTitle}
+          </p>
+          <ol className="mt-4 grid gap-3 text-sm text-text-secondary sm:grid-cols-2 lg:grid-cols-4">
+            <li className="flex gap-2">
+              <span className="shrink-0 font-semibold text-brand-primary">1.</span>
+              <span>{S.buscarFlowStep1}</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="shrink-0 font-semibold text-brand-primary">2.</span>
+              <span>{S.buscarFlowStep2}</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="shrink-0 font-semibold text-brand-primary">3.</span>
+              <span>{S.buscarFlowStep3}</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="shrink-0 font-semibold text-brand-primary">4.</span>
+              <span>{S.buscarFlowStep4}</span>
+            </li>
+          </ol>
+        </div>
 
         {assistantHint ? (
           <Card className="border-brand-primary/25 bg-brand-primary/5 p-5 space-y-3">
@@ -425,11 +488,7 @@ export function BuscarContent({
                 size="sm"
                 onClick={() => {
                   setShowMap(true)
-                  window.requestAnimationFrame(() =>
-                    document
-                      .getElementById('buscar-mapa')
-                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  )
+                  scrollToElementId('buscar-mapa')
                 }}
               >
                 {S.conversationalNextMap}
@@ -439,6 +498,7 @@ export function BuscarContent({
                 variant="outline"
                 size="sm"
                 onClick={() => {
+                  setClassicFiltersOpen(true)
                   setShowAdvanced(true)
                   window.requestAnimationFrame(() =>
                     document
@@ -458,14 +518,14 @@ export function BuscarContent({
         ) : null}
 
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-text-primary">{pageTitle}</h1>
-            <p className="mt-2 text-text-secondary">{pageSubtitle}</p>
-            <p className="mt-2 text-sm text-text-secondary">
-              {S.hintAdvancedLead}{' '}
-              <span className="font-medium text-text-primary">{S.hintAdvancedStrong}</span>{' '}
-              {S.hintAdvancedTail}
+          <div className="max-w-2xl">
+            <h1 className="text-2xl font-bold tracking-tight text-text-primary md:text-3xl">
+              {pageTitle}
+            </h1>
+            <p className="mt-2 text-sm text-text-secondary md:text-base">
+              {pageSubtitle}
             </p>
+            <p className="mt-2 text-sm text-text-secondary">{S.buscarPageGentleHint}</p>
           </div>
           <div className="flex flex-col items-stretch gap-2 sm:items-end">
             {me ? (
@@ -525,17 +585,61 @@ export function BuscarContent({
 
         {me ? <BuscarRecentSearches /> : null}
 
-        <Card className="p-4">
-          <InductiveSearchChips />
-        </Card>
+        <InductiveSearchChips
+          className="rounded-2xl border border-border/40 bg-surface-secondary/20 px-4 py-5 md:px-6"
+          headingClassName="text-base font-semibold text-text-primary"
+        />
 
-        <Card id="buscar-esenciales" className="scroll-mt-24 p-4 space-y-4">
+        <div className="flex flex-wrap items-center justify-center gap-2 border-y border-border/40 py-4 md:justify-start">
+          <Button
+            type="button"
+            variant={classicFiltersOpen ? 'outline' : 'default'}
+            size="sm"
+            onClick={() => setClassicFiltersOpen((v) => !v)}
+          >
+            {classicFiltersOpen
+              ? S.filtersOptionalCollapse
+              : S.filtersOptionalExpand}
+          </Button>
+          {!showMap ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setShowMap(true)
+                scrollToElementId('buscar-mapa')
+              }}
+            >
+              {S.showMap}
+            </Button>
+          ) : null}
+        </div>
+
+        <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
+          {!classicFiltersOpen ? (
+            <div className="rounded-2xl border border-dashed border-border/70 bg-surface-secondary/15 px-4 py-6 text-center md:px-6">
+              <p className="mx-auto max-w-lg text-sm text-text-secondary">
+                {S.filtersCollapsedHint}
+              </p>
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                className="mt-4"
+                onClick={() => setClassicFiltersOpen(true)}
+              >
+                {S.filtersOptionalExpand}
+              </Button>
+            </div>
+          ) : (
+            <Card className="space-y-4 p-4 md:p-6">
           <div>
             <h2 className="text-lg font-semibold text-text-primary">
-              {S.essentialsSectionTitle}
+              {S.essentialsFriendlyTitle}
             </h2>
             <p className="mt-1 text-sm text-text-secondary">
-              {S.essentialsSectionSubtitle}
+              {S.essentialsFriendlySubtitle}
             </p>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -638,17 +742,15 @@ export function BuscarContent({
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            {!showMap ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mr-auto"
-                onClick={() => setShowMap(true)}
-              >
-                {S.showMap}
-              </Button>
-            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mr-auto text-text-secondary hover:text-text-primary"
+              onClick={() => setClassicFiltersOpen(false)}
+            >
+              {S.filtersOptionalCollapse}
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -769,7 +871,9 @@ export function BuscarContent({
               </div>
             </div>
           ) : null}
-        </Card>
+            </Card>
+          )}
+        </div>
 
         {showMap ? (
           <Card id="buscar-mapa" className="scroll-mt-24 p-4 space-y-3">

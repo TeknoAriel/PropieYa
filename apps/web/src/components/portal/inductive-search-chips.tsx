@@ -12,17 +12,20 @@ import {
 type InductiveSearchChipsProps = {
   className?: string
   showHeading?: boolean
+  /** Sobrescribe clases del título (p. ej. jerarquía más suave en /buscar). */
+  headingClassName?: string
 }
 
 export function InductiveSearchChips({
   className = '',
   showHeading = true,
+  headingClassName = 'text-lg font-semibold text-text-primary',
 }: InductiveSearchChipsProps) {
   return (
     <div className={className}>
       {showHeading ? (
         <div className="mb-3 text-center md:text-left">
-          <h2 className="text-lg font-semibold text-text-primary">
+          <h2 className={headingClassName}>
             {S.inductiveExploreTitle}
           </h2>
           <p className="mt-1 text-sm text-text-secondary">
