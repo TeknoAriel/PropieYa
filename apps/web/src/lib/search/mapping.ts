@@ -3,7 +3,7 @@
  *
  * Facets frecuentes (Sprint 26.5): `amenities` (flags = catálogo de búsqueda), geo `location`,
  * rangos numéricos. `feedAmenityRaw` conserva tokens crudos del feed (sin filtrar búsqueda por defecto).
- * `dedupCanonicalId` solo en duplicados: la query pública excluye con `must_not exists`.
+ * `dedupCanonicalId` (opcional): si existe en el índice, puede usarse tras migrar DB + reindex.
  */
 
 /** Tipo compatible con propiedades de mapping de ES (evita import interno del cliente). */

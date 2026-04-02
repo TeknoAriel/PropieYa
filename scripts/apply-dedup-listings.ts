@@ -1,6 +1,7 @@
 #!/usr/bin/env npx tsx
 /**
- * Marca avisos duplicados dentro de la misma organización (huella `computeListingDedupFingerprint`).
+ * Marca avisos duplicados (columna `dedup_canonical_id` en PostgreSQL).
+ * Requiere que la columna exista: `docs/sql/add-dedup-canonical-id.sql` (una vez) o `pnpm db:push`.
  * El “canonical” es el más reciente por `publishedAt` (empate: `qualityScore`).
  * Tras ejecutar: `pnpm sync-search:local` o CRON sync-search para actualizar ES.
  *
@@ -17,13 +18,13 @@ if (envFile) {
   config()
 }
 
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 import { db, listings } from '@propieya/database'
 import { computeListingDedupFingerprint } from '@propieya/shared'
 
 async function main() {
-  await db.update(listings).set({ dedupCanonicalId: null })
+  await db.execute(sql`UPDATE listings SET dedup_canonical_id = NULL`)
 
   const rows = await db.query.listings.findMany({
     where: eq(listings.status, 'active'),
@@ -56,10 +57,9 @@ async function main() {
     const canonical = sorted[0]!
     for (let i = 1; i < sorted.length; i++) {
       const dup = sorted[i]!
-      await db
-        .update(listings)
-        .set({ dedupCanonicalId: canonical.id })
-        .where(eq(listings.id, dup.id))
+      await db.execute(
+        sql`UPDATE listings SET dedup_canonical_id = ${canonical.id} WHERE id = ${dup.id}`
+      )
       marked += 1
     }
   }

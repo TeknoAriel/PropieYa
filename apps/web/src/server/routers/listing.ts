@@ -1,20 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { z } from 'zod'
-import {
-  eq,
-  and,
-  desc,
-  ilike,
-  or,
-  gte,
-  lte,
-  sql,
-  count,
-  ne,
-  inArray,
-  isNull,
-} from 'drizzle-orm'
+import { eq, and, desc, ilike, or, gte, lte, sql, count, ne, inArray } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
 import type { Database } from '@propieya/database'
@@ -468,7 +455,6 @@ export const listingRouter = createTRPCRouter({
 
       const conditions = [
         eq(listings.status, 'active'),
-        isNull(listings.dedupCanonicalId),
         ne(listings.id, input.id),
         eq(listings.operationType, base.operationType),
         eq(listings.propertyType, base.propertyType),
@@ -537,10 +523,7 @@ export const listingRouter = createTRPCRouter({
     )
     .query(async ({ input, ctx }) => {
       const result = await ctx.db.query.listings.findMany({
-        where: and(
-          eq(listings.status, 'active'),
-          isNull(listings.dedupCanonicalId)
-        ),
+        where: eq(listings.status, 'active'),
         orderBy: ORDER_PUBLIC_RECENCY,
         limit: input.limit,
       })
@@ -617,10 +600,7 @@ export const listingRouter = createTRPCRouter({
         polygon: input.polygon,
       }
 
-      const conditions = [
-        eq(listings.status, 'active'),
-        isNull(listings.dedupCanonicalId),
-      ]
+      const conditions = [eq(listings.status, 'active')]
       if (residualTextQuery.trim()) {
         const frag = sanitizeIlikeFragment(residualTextQuery)
         if (frag.length > 0) {
@@ -847,10 +827,7 @@ export const listingRouter = createTRPCRouter({
         }
       }
 
-      const conditions = [
-        eq(listings.status, 'active'),
-        isNull(listings.dedupCanonicalId),
-      ]
+      const conditions = [eq(listings.status, 'active')]
       if (filters.q?.trim()) {
         const frag = sanitizeIlikeFragment(filters.q)
         if (frag.length > 0) {

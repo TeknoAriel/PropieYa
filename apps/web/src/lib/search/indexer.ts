@@ -41,9 +41,6 @@ export function listingToEsDoc(row: ListingRow): Record<string, unknown> {
     ...(row.feedAmenityRaw && row.feedAmenityRaw.length > 0
       ? { feedAmenityRaw: row.feedAmenityRaw }
       : {}),
-    ...(row.dedupCanonicalId
-      ? { dedupCanonicalId: row.dedupCanonicalId }
-      : {}),
   }
   if (
     row.locationLat != null &&

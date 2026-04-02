@@ -55,7 +55,6 @@ export async function syncListingToSearch(
     createdAt: row.createdAt,
     amenities: features.amenities ?? [],
     feedAmenityRaw: features.feedAmenityRaw ?? [],
-    dedupCanonicalId: row.dedupCanonicalId ?? null,
   }
   await indexListing(doc)
 }

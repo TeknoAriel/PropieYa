@@ -33,7 +33,6 @@ export interface ListingRow {
   createdAt: Date
   amenities?: string[]
   feedAmenityRaw?: string[]
-  dedupCanonicalId?: string | null
 }
 
 export interface SearchFilters {

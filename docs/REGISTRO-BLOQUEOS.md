@@ -16,6 +16,7 @@ El agente anota aquí fallos que **no puede resolver** sin acción externa (GitH
 | 2026-03-29 | **Web sin cambios visibles** (`/api/version` queda en `b4067f2`): el código nuevo está en Git pero no en Vercel | **Causa habitual:** run del workflow **Promote** falla en deploy; el portal queda en el último deploy **exitoso**. **Repo (iteraciones):** `pull` + `deploy --prod` desde **raíz del monorepo** (incluye `packages/*`; deploy solo desde `apps/web` rompía el build remoto); CLI `vercel@41`. Producción también se actualiza si **Vercel está enlazado a `main`** y se mergea. Si sigue en rojo: [Actions → Promote](https://github.com/kiteprop/ia-propieya/actions/workflows/promote-deploy-infra.yml) → log del paso Deploy; [secretos](https://github.com/kiteprop/ia-propieya/settings/secrets/actions). |
 
 | 2026-03-30 | **Migración repo** a `kiteprop/ia-propieya` | Tras el primer push: en **Vercel** → proyecto web → Settings → Git → conectar el nuevo repo; en **GitHub** del nuevo repo → Settings → Secrets → volver a cargar `VERCEL_*` si hace falta; Actions en https://github.com/kiteprop/ia-propieya/actions |
+| 2026-03-31 | **Portal sin propiedades / tRPC 500:** `column "dedup_canonical_id" does not exist` | **Causa:** schema con columna nueva sin migrar en Neon. **Arreglo en código:** quitada la columna del ORM y filtros hasta alinear DB. **Opcional (dedup real):** ejecutar una vez `docs/sql/add-dedup-canonical-id.sql` en prod y volver a añadir columna + filtros en el repo. |
 
 Formato al añadir fila:
 

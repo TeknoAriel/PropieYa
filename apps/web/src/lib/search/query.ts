@@ -17,10 +17,7 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
   const merged = mergePublicSearchFromQuery(filters)
   const { residualTextQuery, ...rest } = merged
   const must: Record<string, unknown>[] = [{ term: { status: 'active' } }]
-  const mustNot: Record<string, unknown>[] = [
-    /** Excluir avisos marcados como duplicados (campo solo indexado en esos docs). */
-    { exists: { field: 'dedupCanonicalId' } },
-  ]
+  const mustNot: Record<string, unknown>[] = []
 
   /** Cada amenity como `term` (AND), alineado al SQL con varios `@>`. */
   if ((rest.amenities?.length ?? 0) > 0) {

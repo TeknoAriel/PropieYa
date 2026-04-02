@@ -90,7 +90,6 @@ async function main() {
       createdAt: r.createdAt,
       amenities: features.amenities ?? [],
       feedAmenityRaw: features.feedAmenityRaw ?? [],
-      dedupCanonicalId: r.dedupCanonicalId ?? null,
     }
   })
 
