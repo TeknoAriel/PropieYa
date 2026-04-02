@@ -26,7 +26,9 @@
 | Historial de búsqueda (DB + API) | `listing.search` persiste en `search_history` si hay sesión; `searchHistory.listMine` |
 | Norte de producto (portal) | `docs/41-PROPUESTA-VALOR-PORTAL.md` — descubrimiento, decisión, confianza, inventario |
 | Directiva evolutiva + matriz backlog | `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`, `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md` |
+| Sprint 30 (mapa, recientes, doc ES/reindex) | ✅ — siguiente bloque P1 en doc 43 §5 (confianza visible, sugerencias, etc.) |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
+| Infra GitHub/Vercel nuevo repo (Sprint 25.6–25.8) | Confirmar secretos `VERCEL_*`, Actions verde y Git del proyecto web → `docs/DEPLOY-PASOS-URIs.md` Parte A |
 
 ---
 
@@ -412,7 +414,7 @@
 - [ ] 25.6 **GitHub → Settings → Secrets:** `VERCEL_*` en https://github.com/kiteprop/ia-propieya/settings/secrets/actions
 - [ ] 25.7 **Actions:** último run verde en https://github.com/kiteprop/ia-propieya/actions
 - [ ] 25.8 **Vercel web:** Git conectado a `kiteprop/ia-propieya` (proyecto `propie-ya-web`)
-- [ ] 25.9 **Opcional:** archivar `TeknoAriel/PropieYa` o dejar nota en README del fork histórico
+- [x] 25.9 **Opcional:** nota en `README.md` (repo histórico TeknoAriel/PropieYa); archivar el repo viejo queda a criterio del propietario
 
 **Criterios:** clone desde README coincide con repo oficial; script opcional detecta remoto incorrecto; producción sigue en `docs/DEPLOY-PASOS-URIs.md`.
 
@@ -436,7 +438,7 @@
 
 ---
 
-*Actualizado: 2026-04-01 (Sprint 26 facets+mapa+dedup cerrado; Sprint 28 pendientes 28.6–28.12)*
+*Actualizado: 2026-03-31 (Sprint 30 checklist cerrado en código/docs; 25.6–25.8 pendientes de confirmación en dashboard)*
 
 ---
 
@@ -468,7 +470,7 @@
 
 - [x] 27.1 Persistir filas en `search_history` desde `listing.search` (camino ES con resultados y camino SQL/fallback), solo si `ctx.session?.userId`
 - [x] 27.2 Router `searchHistory.listMine` (protegido, últimas N) y registro en `appRouter`
-- [ ] 27.3 **Opcional:** UI en web “búsquedas recientes” (reutilizar `listMine`)
+- [x] 27.3 **Opcional:** UI en web “búsquedas recientes” (`BuscarRecentSearches` + `searchHistory.listMine` en `/buscar`)
 - [x] 27.4 `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`
 
 **Criterios:** usuarios logueados dejan rastro auditable de búsquedas; fallos de insert no afectan resultados; prod con tabla aplicada (`pnpm db:push` si faltaba `search_history`).
@@ -527,7 +529,7 @@
 
 ---
 
-## Sprint 30 — Programado (siguiente bloque en automata)
+## Sprint 30 — Cierre checklist (mapa, recientes, ES operativo) ✅
 
 **Objetivo:** avanzar **P1** de `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md` §5 y cerrar **28.8–28.9** donde aplique, sin abrir módulos sueltos.
 
@@ -536,8 +538,8 @@
 - [x] 30.0 **Mapa /buscar:** pan bloqueado — `FitBounds` se disparaba en cada render porque `points` era un array nuevo tras cada `moveend` → `setMapCenter`; `useMemo` en coords + saneo de lat/lng (incl. swap típico Cono Sur) en `map-geo.ts`
 - [x] 30.1 Ejecutar **Sprint 26.1–26.4** según checklist §26 (facets, mapeo, schema, API unificada)
 - [x] 30.2 **28.8** Ficha `/propiedad/[id]` + contacto: voseo + confianza / “por qué encaja”
-- [ ] 30.3 **28.9 opcional:** UI “búsquedas recientes” (`searchHistory.listMine`)
-- [ ] 30.4 **26.5** ES mapping + reindex cuando el contrato de facets esté estable
-- [ ] 30.5 `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`
+- [x] 30.3 **28.9:** UI “búsquedas recientes” (`BuscarRecentSearches`, `searchHistory.listMine`)
+- [x] 30.4 **26.5** Contrato ES estable en código (`mapping.ts` + `indexer.ts`); procedimiento de reindex en `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md` §4.1 (`pnpm reindex:es` tras cambios de mapping o dedup en DB)
+- [x] 30.5 `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`
 
 **Criterios:** cada entrega pasa el test anti-Frankenstein (`docs/42` §1); no se suman herramientas de decisión dispersas fuera del plan del “Centro de decisión” (`docs/43` §2 matriz).

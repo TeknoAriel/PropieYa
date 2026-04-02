@@ -5,6 +5,7 @@
 | Repositorio oficial | https://github.com/kiteprop/ia-propieya |
 |---------------------|----------------------------------------|
 | Clonar (SSH) | `git clone git@github.com:kiteprop/ia-propieya.git` |
+| Repo histórico (solo referencia; no es la fuente de deploy) | https://github.com/TeknoAriel/PropieYa |
 
 ---
 

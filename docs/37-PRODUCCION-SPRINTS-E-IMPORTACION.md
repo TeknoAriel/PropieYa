@@ -94,6 +94,12 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 | `pnpm reindex:es` (= `sync-search:local`) | Reindex manual | Mismo; ver `docs/DEPLOY-PASOS-URIs.md` |
 | `pnpm dedup:apply` | Marca duplicados (`dedup_canonical_id`) | DB; conviene `reindex:es` después |
 
+### 4.1 Elasticsearch: contrato estable (facets / Sprint 26.5)
+
+- **Mapping en código:** `apps/web/src/lib/search/mapping.ts` (`amenities`, `feedAmenityRaw`, geo `location`, campos de ficha; `dedupCanonicalId` en mapping para cuando la columna exista en DB y se vuelva a indexar).
+- **Documentos:** `listingToEsDoc` en `apps/web/src/lib/search/indexer.ts` debe alinearse con ese mapping.
+- **Cuándo reindexar:** tras **cambiar el mapping**, tras **`pnpm dedup:apply`** en producción, o si el índice se creó antes de Sprint 26 y faltan campos. Comando: **`pnpm reindex:es`** (equivale a `sync-search:local` con `ELASTICSEARCH_URL` válida). Luego validar `/buscar` y cron `sync-search` en `docs/34-ELASTICSEARCH-BONSAI-CONFIG.md`.
+
 **Geo:** avisos sin `location_lat` / `location_lng` no generan pin en el mapa de `/buscar`.
 
 **Vigencia:** `expires_at` y flujo de renovación afectan estado en panel (`/propiedades`).
