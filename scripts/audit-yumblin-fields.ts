@@ -18,7 +18,7 @@ if (envFile) {
 }
 
 const DEFAULT_FEED_URL =
-  'https://static.kiteprop.com/kp/difusions/23705a4a85ab8f1d301c73aae5359a81a8b5c1ca/yumblin.json'
+  'https://static.kiteprop.com/kp/difusions/f89cbd8ca785fc34317df63d29ab8ea9d68a7b1c/properstar.json'
 
 function normKey(k: string): string {
   return k.toLowerCase().replace(/_/g, '')

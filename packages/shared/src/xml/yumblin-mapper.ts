@@ -275,6 +275,9 @@ export function mapYumblinItem(
   const floorStr =
     floorVal != null ? String(floorVal) : null
 
+  const countryRaw = getValue(item, 'country', 'pais') as string | null
+  const stateVal = (state != null && String(state).trim() !== '' ? String(state).trim() : null) ?? 'Santa Fe'
+
   const address: Record<string, unknown> = {
     street: (typeof addrVal === 'object' && addrVal && (addrVal as { street?: string }).street) ?? street ?? '',
     number: getValue(item, 'numero', 'number') ?? null,
@@ -282,8 +285,8 @@ export function mapYumblinItem(
     unit: getValue(item, 'unidad', 'unit', 'depto') ?? null,
     neighborhood: neighborhood ?? '',
     city: city ?? '',
-    state: state ?? 'Santa Fe',
-    country: 'Argentina',
+    state: stateVal,
+    country: countryRaw && String(countryRaw).trim() !== '' ? String(countryRaw).trim() : 'Argentina',
     postalCode: getValue(item, 'postcode', 'codigo_postal', 'postalCode') ?? null,
   }
 
@@ -382,4 +385,36 @@ export function extractListingsFromFeed(data: unknown): JsonItem[] {
     return Array.isArray(arr) ? arr : []
   }
   return []
+}
+
+/**
+ * ID estable en portal (misma prioridad que `mapYumblinItem`) sin mapear todo el ítem.
+ * Properstar / Kiteprop: `public_code` (ej. KP499781) antes que `id` numérico.
+ */
+export function peekFeedExternalId(item: JsonItem): string | null {
+  const v = getValue(item, 'public_code', 'id', 'codigo', 'external_id', 'id_aviso')
+  if (v === undefined || v === null) return null
+  const s = String(v).trim()
+  return s.length > 0 ? s : null
+}
+
+/**
+ * Fecha de modificación en el feed (Properstar: `last_update` ISO).
+ * Si falta o no parsea, devuelve null (no se aplica atajo incremental).
+ */
+export function parseFeedItemSourceUpdatedAt(item: JsonItem): Date | null {
+  const raw = getValue(
+    item,
+    'last_update',
+    'lastUpdate',
+    'updated_at',
+    'updatedAt',
+    'modified_at',
+    'modifiedAt'
+  )
+  if (raw === undefined || raw === null) return null
+  const s = String(raw).trim()
+  if (!s) return null
+  const d = new Date(s)
+  return Number.isNaN(d.getTime()) ? null : d
 }

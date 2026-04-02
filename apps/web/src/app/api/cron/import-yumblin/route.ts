@@ -1,7 +1,9 @@
 /**
- * Cron: sincroniza propiedades desde feed JSON Yumblin (Kiteprop).
+ * Cron: sincroniza propiedades desde feed JSON Kiteprop (Properstar / Yumblin).
  * - HTTP condicional (ETag / 304) y hash del body para evitar trabajo si no hubo cambios.
- * - Altas, actualizaciones (hash por ítem) y bajas (withdrawn si ya no está en el feed).
+ * - Por ítem: `import_source_updated_at` vs `last_update` del feed para saltar map+DB si no cambió.
+ * - Altas, actualizaciones (hash por ítem) y bajas (withdrawn si ya no está en el feed; scope `IMPORT_WITHDRAW_SCOPE`).
+ * - Tras bajas: elimina documentos en Elasticsearch (`removeListingFromSearch`).
  *
  * Vercel Cron: vercel.json "crons" — en producción cada hora; el intervalo mínimo entre
  * ejecuciones reales se controla con IMPORT_SYNC_INTERVAL_HOURS (p. ej. 240 ≈ 10 días en prueba).
@@ -16,7 +18,7 @@ import { and, eq } from 'drizzle-orm'
 import { db, listings, runYumblinImportSyncAllSources } from '@propieya/database'
 import { LISTING_VALIDITY } from '@propieya/shared'
 
-import { syncListingToSearch } from '@/lib/search/sync'
+import { removeListingFromSearch, syncListingToSearch } from '@/lib/search/sync'
 
 export const runtime = 'nodejs'
 /** Sync masivo: Vercel Pro permite hasta 300s; ajustar según plan. */
@@ -40,6 +42,7 @@ export async function GET(req: NextRequest) {
         acc.updated += r.counts.updated
         acc.unchanged += r.counts.unchanged
         acc.skippedInvalid += r.counts.skippedInvalid
+        acc.skippedUnchangedBySourceTime += r.counts.skippedUnchangedBySourceTime
         acc.withdrawn += r.counts.withdrawn
         return acc
       },
@@ -48,9 +51,21 @@ export async function GET(req: NextRequest) {
         updated: 0,
         unchanged: 0,
         skippedInvalid: 0,
+        skippedUnchangedBySourceTime: 0,
         withdrawn: 0,
       }
     )
+
+    const withdrawnIds = results.flatMap((r) => r.withdrawnListingIds)
+    if (withdrawnIds.length > 0) {
+      await Promise.allSettled(
+        withdrawnIds.map((id) =>
+          removeListingFromSearch(id).catch((e) => {
+            console.error('removeListingFromSearch failed for', id, e)
+          })
+        )
+      )
+    }
 
     // Publica los borradores generados por la importación (source=import).
     // Así, el cron deja de ser "solo sincronización" y pasa a "sincronización + actualización visible".

@@ -3,6 +3,8 @@ import {
   extractListingsFromFeed,
   fetchYumblinFeedConditional,
   mapYumblinItem,
+  parseFeedItemSourceUpdatedAt,
+  peekFeedExternalId,
   sha256HexFromString,
 } from '@propieya/shared'
 import { and, eq, inArray, isNull, isNotNull, ne, notInArray, or } from 'drizzle-orm'
@@ -17,7 +19,7 @@ import {
 } from './schema'
 
 const DEFAULT_FEED_URL =
-  'https://static.kiteprop.com/kp/difusions/23705a4a85ab8f1d301c73aae5359a81a8b5c1ca/yumblin.json'
+  'https://static.kiteprop.com/kp/difusions/f89cbd8ca785fc34317df63d29ab8ea9d68a7b1c/properstar.json'
 
 export interface YumblinImportSyncOptions {
   feedUrl?: string
@@ -36,6 +38,12 @@ export interface YumblinImportSyncOptions {
    * se sabe que hay un único feed activo.
    */
   assumeUnassignedBelongsToThisSource?: boolean
+  /**
+   * Si true: los avisos `source=import` de la org cuyo `external_id` no está en el feed pasan a
+   * `withdrawn`, aunque apunten a otro `import_feed_sources` (cambio de URL de feed).
+   * Solo usar con **un** feed activo por org. Env: `IMPORT_WITHDRAW_SCOPE` (`org` | `source`).
+   */
+  withdrawOrgWide?: boolean
 }
 
 export interface YumblinImportSyncResult {
@@ -52,8 +60,27 @@ export interface YumblinImportSyncResult {
     updated: number
     unchanged: number
     skippedInvalid: number
+    skippedUnchangedBySourceTime: number
     withdrawn: number
   }
+  /** IDs dados de baja en este sync (para quitar de Elasticsearch). */
+  withdrawnListingIds: string[]
+}
+
+function resolveWithdrawOrgWideExplicit(options: YumblinImportSyncOptions): boolean {
+  if (options.withdrawOrgWide !== undefined) return options.withdrawOrgWide
+  const s = (process.env.IMPORT_WITHDRAW_SCOPE ?? 'org').toLowerCase().trim()
+  return s !== 'source' && s !== 'feed'
+}
+
+function sourceTimesMatch(
+  dbVal: Date | string | null | undefined,
+  feedVal: Date | null
+): boolean {
+  if (!feedVal) return false
+  if (dbVal == null) return false
+  const a = dbVal instanceof Date ? dbVal.getTime() : new Date(dbVal).getTime()
+  return Number.isFinite(a) && a === feedVal.getTime()
 }
 
 function getIntervalMs(): number {
@@ -158,11 +185,15 @@ export async function runYumblinImportSync(
           updated: 0,
           unchanged: 0,
           skippedInvalid: 0,
+          skippedUnchangedBySourceTime: 0,
           withdrawn: 0,
         },
+        withdrawnListingIds: [],
       }
     }
   }
+
+  const withdrawOrgWide = resolveWithdrawOrgWideExplicit(options)
 
   let raw: unknown
   let etag: string | undefined
@@ -195,8 +226,10 @@ export async function runYumblinImportSync(
           updated: 0,
           unchanged: 0,
           skippedInvalid: 0,
+          skippedUnchangedBySourceTime: 0,
           withdrawn: 0,
         },
+        withdrawnListingIds: [],
       }
     }
   } else {
@@ -226,8 +259,10 @@ export async function runYumblinImportSync(
           updated: 0,
           unchanged: 0,
           skippedInvalid: 0,
+          skippedUnchangedBySourceTime: 0,
           withdrawn: 0,
         },
+        withdrawnListingIds: [],
       }
     }
 
@@ -258,8 +293,10 @@ export async function runYumblinImportSync(
           updated: 0,
           unchanged: 0,
           skippedInvalid: 0,
+          skippedUnchangedBySourceTime: 0,
           withdrawn: 0,
         },
+        withdrawnListingIds: [],
       }
     }
 
@@ -284,13 +321,14 @@ export async function runYumblinImportSync(
     updated: 0,
     unchanged: 0,
     skippedInvalid: 0,
+    skippedUnchangedBySourceTime: 0,
     withdrawn: 0,
   }
 
   const feedExternalIds = new Set<string>()
   for (const item of allItems) {
-    const mapped = mapYumblinItem(item as Record<string, unknown>, input)
-    if (mapped?.externalId) feedExternalIds.add(mapped.externalId)
+    const ext = peekFeedExternalId(item as Record<string, unknown>)
+    if (ext) feedExternalIds.add(ext)
   }
   const extIdsForQuery = [...feedExternalIds]
 
@@ -319,6 +357,16 @@ export async function runYumblinImportSync(
   }
 
   for (const item of allItems) {
+    const feedUpdated = parseFeedItemSourceUpdatedAt(item as Record<string, unknown>)
+    const extEarly = peekFeedExternalId(item as Record<string, unknown>)
+    if (extEarly) {
+      const rowEarly = byExternal.get(extEarly)
+      if (rowEarly && sourceTimesMatch(rowEarly.importSourceUpdatedAt, feedUpdated)) {
+        counts.skippedUnchangedBySourceTime++
+        continue
+      }
+    }
+
     const mapped = mapYumblinItem(item as Record<string, unknown>, input)
     if (!mapped) {
       counts.skippedInvalid++
@@ -336,6 +384,7 @@ export async function runYumblinImportSync(
           externalId: mapped.externalId,
           importFeedSourceId: source.id,
           importContentHash: hash,
+          importSourceUpdatedAt: feedUpdated ?? null,
           propertyType: mapped.propertyType,
           operationType: mapped.operationType,
           source: 'import',
@@ -378,6 +427,7 @@ export async function runYumblinImportSync(
           externalId: mapped.externalId,
           importFeedSourceId: source.id,
           importContentHash: hash,
+          importSourceUpdatedAt: feedUpdated ?? null,
           propertyType: mapped.propertyType,
           operationType: mapped.operationType,
           source: 'import',
@@ -414,6 +464,17 @@ export async function runYumblinImportSync(
     }
 
     if (existing.importContentHash === hash) {
+      if (feedUpdated && !sourceTimesMatch(existing.importSourceUpdatedAt, feedUpdated)) {
+        await db
+          .update(listings)
+          .set({ importSourceUpdatedAt: feedUpdated, updatedAt: now })
+          .where(eq(listings.id, existing.id))
+        byExternal.set(mapped.externalId, {
+          ...existing,
+          importSourceUpdatedAt: feedUpdated,
+          updatedAt: now,
+        })
+      }
       counts.unchanged++
       continue
     }
@@ -424,6 +485,7 @@ export async function runYumblinImportSync(
         publisherId: mapped.publisherId,
         importFeedSourceId: source.id,
         importContentHash: hash,
+        importSourceUpdatedAt: feedUpdated ?? null,
         propertyType: mapped.propertyType,
         operationType: mapped.operationType,
         address: mapped.address,
@@ -452,13 +514,26 @@ export async function runYumblinImportSync(
     byExternal.set(mapped.externalId, {
       ...existing,
       importContentHash: hash,
+      importSourceUpdatedAt: feedUpdated ?? existing.importSourceUpdatedAt,
       updatedAt: now,
     })
     counts.updated++
   }
 
+  let withdrawnListingIds: string[] = []
+
   if (!isPartialImport && fullFeedLength > 0 && feedExternalIds.size > 0) {
     const idList = [...feedExternalIds]
+    const sourceScope =
+      withdrawOrgWide
+        ? null
+        : includeUnassigned
+          ? or(
+              eq(listings.importFeedSourceId, source.id),
+              isNull(listings.importFeedSourceId)
+            )
+          : eq(listings.importFeedSourceId, source.id)
+
     const toWithdraw = await db
       .select({ id: listings.id })
       .from(listings)
@@ -468,26 +543,17 @@ export async function runYumblinImportSync(
           eq(listings.source, 'import'),
           isNotNull(listings.externalId),
           notInArray(listings.externalId, idList),
-          includeUnassigned
-            ? or(
-                eq(listings.importFeedSourceId, source.id),
-                isNull(listings.importFeedSourceId)
-              )
-            : eq(listings.importFeedSourceId, source.id),
-          ne(listings.status, 'withdrawn')
+          ne(listings.status, 'withdrawn'),
+          ...(sourceScope ? [sourceScope] : [])
         )
       )
 
     if (toWithdraw.length > 0) {
+      withdrawnListingIds = toWithdraw.map((r) => r.id)
       await db
         .update(listings)
         .set({ status: 'withdrawn', updatedAt: now })
-        .where(
-          inArray(
-            listings.id,
-            toWithdraw.map((r) => r.id)
-          )
-        )
+        .where(inArray(listings.id, withdrawnListingIds))
       counts.withdrawn = toWithdraw.length
     }
   }
@@ -509,6 +575,7 @@ export async function runYumblinImportSync(
     publisherId,
     skipped: false,
     counts,
+    withdrawnListingIds,
   }
 }
 
@@ -582,6 +649,8 @@ export async function runYumblinImportSyncAllSources(
       publisherId,
       enforceInterval: options.enforceInterval ?? true,
       assumeUnassignedBelongsToThisSource: finalFeedUrls.length === 1,
+      withdrawOrgWide:
+        finalFeedUrls.length === 1 && resolveWithdrawOrgWideExplicit({}),
     })
     results.push(r)
   }
