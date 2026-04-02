@@ -30,7 +30,7 @@
 | Sprint 31 (P1 confianza en ficha) | ✅ |
 | Sprint 32 (P2 descubrimiento: chips + relacionadas) | ✅ |
 | Sprint 33 (P2 comparador / centro de decisión v0) | ✅ |
-| Sprint 34 (producción: búsqueda medible + hoja de ruta escala/asistente) | En curso — `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` |
+| Sprint 34 (producción: búsqueda medible + hoja de ruta escala/asistente) | ✅ — `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` |
 | Siguiente backlog doc 43 §5 | Profundidad mapa/filtros o más widgets en `/comparar` |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
@@ -444,7 +444,7 @@
 
 ---
 
-*Actualizado: 2026-03-31 (Sprint 34 abierto: doc 47 ritmo producción + logs búsqueda; Sprint 33 comparador público; 25.6–25.8 según dashboard)*
+*Actualizado: 2026-03-31 (Sprint 34 cerrado: F1–F3 doc 47 + ranking `_score`/boosts; Sprint 33 comparador; 25.6–25.8 según dashboard)*
 
 ---
 
@@ -611,7 +611,7 @@
 - [x] 34.2 Variable `LOG_SEARCH_MS=1`: logs estructurados en `listing.search` (fase post-ES y cierre SQL); documentar en `.env.example`
 - [x] 34.3 Paginación profunda Elasticsearch (`search_after` + `nextCursor` / input `cursor`); UI `/buscar` “Cargar más”; `offset` SQL hasta 50k; ver `docs/47` F1
 - [x] 34.4 Asistente: `previousContext` en `searchConversational`, LLM + fallback merge, `sessionStorage` + chips en `/buscar` — `docs/47` §F3
-- [ ] 34.5 Ranking: primer ajuste medible (boosts / golden set) según resultado de apéndice A en staging/prod
+- [x] 34.5 Ranking: primer ajuste medible — ES `multi_match` con boosts (título/barrio/ciudad) y orden `_score` + fechas cuando hay texto residual en `q`; cursor 4 vs 5 claves validado en `listing.search`; golden set en apéndice A de `docs/47`
 - [x] 34.6 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy` (tras cada bloque de tareas listo para prod)
 
 **Criterios:** cualquier agente puede leer doc 47 y saber prioridades; con `LOG_SEARCH_MS` en Preview/Pro se pueden correlacionar tiempos con logs de Vercel sin cambiar respuestas al cliente.

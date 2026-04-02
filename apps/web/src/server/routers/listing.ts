@@ -35,6 +35,8 @@ import {
   removeListingFromSearch,
 } from '../../lib/search/sync'
 import { searchListings } from '../../lib/search/search'
+import { getListingSearchSortKeyCount } from '../../lib/search/query'
+import type { SearchFilters } from '../../lib/search/types'
 import { decodeListingSearchCursor } from '../../lib/search/search-cursor'
 import { sqlPointInPolygonLngLat } from '../../lib/search/point-in-polygon-sql'
 import {
@@ -686,6 +688,16 @@ export const listingRouter = createTRPCRouter({
           throw new TRPCError({
             code: 'BAD_REQUEST',
             message: 'Cursor de búsqueda inválido o expirado.',
+          })
+        }
+        const expectedKeys = getListingSearchSortKeyCount(
+          explainFilters as SearchFilters
+        )
+        if (decoded.length !== expectedKeys) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message:
+              'La paginación no coincide con esta búsqueda. Volvé a la primera página o refrescá.',
           })
         }
         searchAfter = decoded

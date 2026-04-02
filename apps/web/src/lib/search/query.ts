@@ -43,7 +43,12 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
     must.push({
       multi_match: {
         query: textQ,
-        fields: ['title^2', 'description', 'address.city', 'address.neighborhood'],
+        fields: [
+          'title^3',
+          'description',
+          'address.city^1.2',
+          'address.neighborhood^1.5',
+        ],
         type: 'best_fields',
         fuzziness: 'AUTO',
       },
@@ -159,7 +164,8 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
       ? rest.searchAfter
       : null
 
-  const sort = [
+  /** Con texto residual, primero `_score` (relevancia) y luego recencia estable. */
+  const dateSort: Record<string, unknown>[] = [
     {
       publishedAt: {
         order: 'desc' as const,
@@ -183,6 +189,10 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
     },
     { id: { order: 'desc' as const } },
   ]
+  const sort: Record<string, unknown>[] =
+    textQ.length > 0
+      ? [{ _score: { order: 'desc' as const } }, ...dateSort]
+      : dateSort
 
   const body: Record<string, unknown> = {
     query: { bool: { must, ...(mustNot.length > 0 ? { must_not: mustNot } : {}) } },
@@ -222,6 +232,12 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
   }
 
   return body
+}
+
+/** Longitud del array `sort` / `search_after` en ES (4 sin full-text, 5 con `_score`). */
+export function getListingSearchSortKeyCount(filters: SearchFilters): 4 | 5 {
+  const merged = mergePublicSearchFromQuery(filters)
+  return sanitize(merged.residualTextQuery).length > 0 ? 5 : 4
 }
 
 export function getSearchParams(filters: SearchFilters) {

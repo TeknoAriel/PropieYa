@@ -34,14 +34,15 @@ Referencias duras: `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`, `docs/43-ANEXO-MAS
 - Ejecutar pruebas manuales o scripts contra `/buscar` usando el **apéndice A** (registrar latencia subjetiva y totales).
 
 **F1 — Escala de listado** (en código)  
-- Elasticsearch: `search_after` con sort `publishedAt` / `updatedAt` / `createdAt` / `id` + cursor base64 en `listing.search` (`nextCursor`, input `cursor`; con cursor, `offset` debe ser 0).  
+- Elasticsearch: `search_after` con sort por recencia (`publishedAt` / `updatedAt` / `createdAt` / `id`) **o**, si hay texto residual en `q`, primero `_score` (5 valores en cursor) + cursor base64 en `listing.search` (`nextCursor`, input `cursor`; con cursor, `offset` debe ser 0).  
 - UI `/buscar`: “Cargar más resultados” acumula páginas; sin ES activo se sigue con `offset` (hasta 50 000 en Zod).  
 - Si el índice se creó antes del sort de 4 campos, conviene **reindex** (`pnpm reindex:es` / sync) para cursors consistentes.  
 - Primera página sin cursor sigue usando `from` en ES (tope interno 500 en `query.ts`); el flujo normal del portal usa cursor tras la primera página.
 
 **F2 — Calidad de ranking**  
 - Conjunto golden etiquetado (relevante / no relevante para top-k).  
-- Ajustes de query ES y, si aplica, reindex con mapping revisado.
+- Ajustes de query ES y, si aplica, reindex con mapping revisado.  
+- **Hecho (v0):** con texto residual, sort primario `_score` y boosts en `multi_match` (`title^3`, barrio/ciudad); sin texto, solo recencia (cursor de 4 claves).
 
 **F3 — Asistente con continuidad** (en código, v0)  
 - `searchConversational` acepta `previousContext: { userMessage, filters }` y el LLM (o merge heurístico sin API) **fusiona** el nuevo mensaje con filtros previos.  
