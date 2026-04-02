@@ -522,43 +522,50 @@ export function BuscarContent({
   return (
     <div className="container mx-auto space-y-6 px-4 py-10">
       <div className="flex flex-col gap-6">
-        <Card className="border-border-strong/40 bg-gradient-to-b from-surface-secondary to-surface-primary p-6 shadow-sm md:p-8">
+        <Card className="border-border-strong/40 bg-gradient-to-b from-surface-secondary to-surface-primary p-4 shadow-sm md:p-5">
+          {showFlowBanner ? (
+            <div
+              className="mb-3 flex flex-col gap-2 rounded-lg border border-brand-primary/15 bg-brand-primary/5 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+              role="region"
+              aria-label={S.buscarFlowTitle}
+            >
+              <p className="line-clamp-2 text-xs text-text-secondary sm:line-clamp-1 sm:pr-2">
+                {S.buscarFlowBannerTeaser}
+              </p>
+              <div className="flex shrink-0 flex-wrap gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setFlowDialogOpen(true)}
+                >
+                  {S.buscarFlowBannerSeeSteps}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs px-2"
+                  onClick={dismissFlowBanner}
+                >
+                  {S.buscarFlowBannerDismiss}
+                </Button>
+              </div>
+            </div>
+          ) : null}
           <ConversationalSearchBlock
             variant="buscar"
             routerMode="replace"
             searchPathPage={searchPathPage}
             forcedOperation={forcedOperation}
             onAfterNavigate={setAssistantHint}
+            compact
           />
-        </Card>
-
-        {showFlowBanner ? (
-          <div
-            className="flex flex-col gap-3 rounded-xl border border-brand-primary/20 bg-brand-primary/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-            role="region"
-            aria-label={S.buscarFlowTitle}
-          >
-            <p className="text-sm text-text-secondary">{S.buscarFlowBannerTeaser}</p>
-            <div className="flex flex-shrink-0 flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setFlowDialogOpen(true)}
-              >
-                {S.buscarFlowBannerSeeSteps}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={dismissFlowBanner}
-              >
-                {S.buscarFlowBannerDismiss}
-              </Button>
-            </div>
+          <div className="mt-3 border-t border-border/40 pt-3">
+            <InductiveSearchChips variant="embedded" showSubtitle={false} />
           </div>
-        ) : null}
+        </Card>
 
         {assistantHint ? (
           <Card className="border-brand-primary/25 bg-brand-primary/5 p-5 space-y-3">
@@ -751,11 +758,6 @@ export function BuscarContent({
             </div>
           )}
         </div>
-
-        <InductiveSearchChips
-          className="rounded-2xl border border-border/40 bg-surface-secondary/20 px-4 py-5 md:px-6"
-          headingClassName="text-base font-semibold text-text-primary"
-        />
 
         <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
           {!classicFiltersOpen ? (

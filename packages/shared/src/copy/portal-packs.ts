@@ -302,6 +302,9 @@ export const PORTAL_SEARCH_UX_COPY = {
   conversationalBlockTitle: 'Contanos qué buscás',
   conversationalBlockSubtitle:
     'Escribí o dictá: armamos los criterios con el mismo motor que el mapa y los filtros. Después podés afinar o pedir otra idea.',
+  /** Versión más corta (bloque compacto en /buscar). */
+  conversationalBlockSubtitleCompact:
+    'Escribí o dictá: mismo motor que mapa y filtros; después afinás cuando quieras.',
   conversationalVoiceStart: 'Dictar',
   conversationalVoiceStop: 'Detener',
   conversationalVoiceListening: 'Escuchando…',

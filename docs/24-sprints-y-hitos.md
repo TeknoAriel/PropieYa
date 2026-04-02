@@ -32,6 +32,7 @@
 | Sprint 33 (P2 comparador / centro de decisión v0) | ✅ |
 | Siguiente backlog doc 43 §5 | Profundidad mapa/filtros o más widgets en `/comparar` |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
+| Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
 | Infra GitHub/Vercel nuevo repo (Sprint 25.6–25.8) | Confirmar secretos `VERCEL_*`, Actions verde y Git del proyecto web → `docs/DEPLOY-PASOS-URIs.md` Parte A |
 
 ---
@@ -442,7 +443,7 @@
 
 ---
 
-*Actualizado: 2026-03-31 (Sprint 32 descubrimiento inductivo; 25.6–25.8 según dashboard)*
+*Actualizado: 2026-03-31 (Sprint 33 comparador público; 25.6–25.8 según dashboard)*
 
 ---
 

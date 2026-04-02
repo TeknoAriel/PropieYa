@@ -32,6 +32,8 @@ type ConversationalSearchBlockProps = {
     filters: ExplainMatchFilters
   }) => void
   className?: string
+  /** Menos padding tipográfico y campo más bajo (p. ej. /buscar en un solo card). */
+  compact?: boolean
 }
 
 function getSpeechRecognitionCtor(): (new () => {
@@ -59,6 +61,7 @@ export function ConversationalSearchBlock({
   routerMode,
   onAfterNavigate,
   className = '',
+  compact = false,
 }: ConversationalSearchBlockProps) {
   const router = useRouter()
   const pack = getPortalPack()
@@ -185,18 +188,38 @@ export function ConversationalSearchBlock({
 
   const isHero = variant === 'hero'
   const inputClass = isHero
-    ? 'h-14 pl-5 pr-[5.5rem] text-base md:text-lg rounded-2xl border-2 border-border bg-surface-primary/90 shadow-md placeholder:text-text-secondary placeholder:text-[13px] md:placeholder:text-sm focus-visible:ring-brand-primary'
-    : 'h-14 pl-5 pr-[5.5rem] text-base rounded-2xl border-2 border-border-default bg-surface-elevated shadow-sm placeholder:text-text-secondary focus-visible:ring-border-focus'
+    ? compact
+      ? 'h-12 pl-4 pr-[5rem] text-sm md:text-base rounded-xl border-2 border-border bg-surface-primary/90 shadow-sm placeholder:text-text-secondary placeholder:text-[13px] focus-visible:ring-brand-primary'
+      : 'h-14 pl-5 pr-[5.5rem] text-base md:text-lg rounded-2xl border-2 border-border bg-surface-primary/90 shadow-md placeholder:text-text-secondary placeholder:text-[13px] md:placeholder:text-sm focus-visible:ring-brand-primary'
+    : compact
+      ? 'h-12 pl-4 pr-[5rem] text-sm md:text-base rounded-xl border-2 border-border-default bg-surface-elevated shadow-sm placeholder:text-text-secondary focus-visible:ring-border-focus'
+      : 'h-14 pl-5 pr-[5.5rem] text-base rounded-2xl border-2 border-border-default bg-surface-elevated shadow-sm placeholder:text-text-secondary focus-visible:ring-border-focus'
+
+  const subtitleBuscar = compact
+    ? S.conversationalBlockSubtitleCompact
+    : S.conversationalBlockSubtitle
 
   return (
     <div className={className}>
       {variant === 'buscar' ? (
-        <div className="mb-4">
-          <h2 className="text-xl font-bold text-text-primary md:text-2xl">
+        <div className={compact ? 'mb-2' : 'mb-4'}>
+          <h2
+            className={
+              compact
+                ? 'text-lg font-bold text-text-primary md:text-xl'
+                : 'text-xl font-bold text-text-primary md:text-2xl'
+            }
+          >
             {S.conversationalBlockTitle}
           </h2>
-          <p className="mt-2 text-sm text-text-secondary md:text-base leading-relaxed">
-            {S.conversationalBlockSubtitle}
+          <p
+            className={
+              compact
+                ? 'mt-1 text-xs text-text-secondary md:text-sm leading-snug'
+                : 'mt-2 text-sm text-text-secondary md:text-base leading-relaxed'
+            }
+          >
+            {subtitleBuscar}
           </p>
         </div>
       ) : null}
@@ -214,11 +237,15 @@ export function ConversationalSearchBlock({
           />
           <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
             {voiceSupported ? (
-              <Button
-                type="button"
-                size="icon"
-                variant={listening ? 'default' : 'outline'}
-                className="h-10 w-10 shrink-0 rounded-xl"
+            <Button
+              type="button"
+              size="icon"
+              variant={listening ? 'default' : 'outline'}
+              className={
+                compact
+                  ? 'h-9 w-9 shrink-0 rounded-lg'
+                  : 'h-10 w-10 shrink-0 rounded-xl'
+              }
                 disabled={searchConversational.isPending}
                 onClick={() => (listening ? stopListening() : startListening())}
                 aria-label={
@@ -235,7 +262,11 @@ export function ConversationalSearchBlock({
               type="submit"
               size="icon"
               disabled={searchConversational.isPending}
-              className="h-10 w-10 shrink-0 rounded-xl"
+              className={
+                compact
+                  ? 'h-9 w-9 shrink-0 rounded-lg'
+                  : 'h-10 w-10 shrink-0 rounded-xl'
+              }
               aria-label="Buscar"
             >
               {searchConversational.isPending ? (
@@ -247,16 +278,22 @@ export function ConversationalSearchBlock({
           </div>
         </div>
         {listening ? (
-          <p className="mt-2 text-xs font-medium text-brand-primary">
+          <p
+            className={
+              compact
+                ? 'mt-1 text-xs font-medium text-brand-primary'
+                : 'mt-2 text-xs font-medium text-brand-primary'
+            }
+          >
             {S.conversationalVoiceListening}
           </p>
         ) : !voiceSupported && variant === 'buscar' ? (
-          <p className="mt-2 text-xs text-text-secondary">
+          <p className={compact ? 'mt-1 text-xs text-text-secondary' : 'mt-2 text-xs text-text-secondary'}>
             {S.conversationalVoiceUnsupported}
           </p>
         ) : null}
         {searchConversational.isError ? (
-          <p className="mt-2 text-sm text-semantic-error">
+          <p className={compact ? 'mt-1 text-sm text-semantic-error' : 'mt-2 text-sm text-semantic-error'}>
             {searchConversational.error.message}
           </p>
         ) : null}
