@@ -154,21 +154,33 @@ function ListingCard({ listing }: { listing: BuscarListingCardData }) {
 
           {listing.matchReasons && listing.matchReasons.length > 0 ? (
             <div className="mt-3 rounded-md border border-border/60 bg-surface-secondary/80 px-3 py-2 text-xs text-text-secondary">
-              <p className="mb-1 font-medium text-text-primary">{S.matchWhyTitle}</p>
+              <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                <p className="min-w-0 flex-1 font-medium text-text-primary">
+                  {S.matchWhyTitle}
+                </p>
+                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <AddToCompareButton
+                    listingId={listing.id}
+                    compact
+                    stopNavigation
+                  />
+                </div>
+              </div>
               <ul className="list-inside list-disc space-y-0.5">
                 {listing.matchReasons.slice(0, 5).map((r, i) => (
                   <li key={`${listing.id}-reason-${i}`}>{r}</li>
                 ))}
               </ul>
             </div>
-          ) : null}
-          <div className="mt-3 flex justify-end border-t border-border/50 pt-3">
-            <AddToCompareButton
-              listingId={listing.id}
-              compact
-              stopNavigation
-            />
-          </div>
+          ) : (
+            <div className="mt-3 flex justify-end">
+              <AddToCompareButton
+                listingId={listing.id}
+                compact
+                stopNavigation
+              />
+            </div>
+          )}
         </div>
       </Card>
     </Link>
