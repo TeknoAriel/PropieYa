@@ -623,6 +623,8 @@ export const listingRouter = createTRPCRouter({
     .input(listingSearchInputSchema)
     .query(async ({ input, ctx }) => {
       const startedAt = Date.now()
+      const perfStart = Date.now()
+      const logSearchMs = process.env.LOG_SEARCH_MS === '1'
       const sessionUserId = ctx.session?.userId
       const filtersSnapshot = JSON.parse(JSON.stringify(input)) as Record<string, unknown>
 
@@ -865,6 +867,19 @@ export const listingRouter = createTRPCRouter({
           resultCount: sqlTotal,
           startedAt,
         })
+      }
+      if (logSearchMs) {
+        console.info(
+          '[listing.search]',
+          JSON.stringify({
+            phase: 'sql_done',
+            ms: Date.now() - perfStart,
+            total: sqlTotal,
+            rowCount: rows.length,
+            limit,
+            offset,
+          })
+        )
       }
       return withMatchReasons(explainFilters as ExplainMatchFilters, rows)
     }),

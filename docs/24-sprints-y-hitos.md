@@ -30,6 +30,7 @@
 | Sprint 31 (P1 confianza en ficha) | ✅ |
 | Sprint 32 (P2 descubrimiento: chips + relacionadas) | ✅ |
 | Sprint 33 (P2 comparador / centro de decisión v0) | ✅ |
+| Sprint 34 (producción: búsqueda medible + hoja de ruta escala/asistente) | En curso — `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` |
 | Siguiente backlog doc 43 §5 | Profundidad mapa/filtros o más widgets en `/comparar` |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
@@ -443,7 +444,7 @@
 
 ---
 
-*Actualizado: 2026-03-31 (Sprint 33 comparador público; 25.6–25.8 según dashboard)*
+*Actualizado: 2026-03-31 (Sprint 34 abierto: doc 47 ritmo producción + logs búsqueda; Sprint 33 comparador público; 25.6–25.8 según dashboard)*
 
 ---
 
@@ -595,3 +596,22 @@
 - [x] 33.5 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
 
 **Criterios:** el usuario arma la lista desde fichas o resultados, abre la comparación y ve precio/sup/dorm/baños/zona por fila; máximo 3 avisos.
+
+---
+
+## Sprint 34 — Producción: medición de búsqueda y rumbo escala/asistente
+
+**Objetivo:** anclar el **ritmo de producción** (no hobby): documento único de mandato + **observabilidad** de `listing.search` para medir ES vs SQL en Vercel; dejar tareas explícitas para paginación profunda y asistente multi-turno sin mezclar con otros sprints.
+
+**Fuente de verdad:** `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` (pilares F0–F3, golden queries apéndice A).
+
+### Tareas (agente / CI)
+
+- [x] 34.1 Publicar `docs/47` + enlaces en `AGENTS.md`, `.cursor/rules/automacion-propietario.mdc` y tabla de estado en este archivo
+- [x] 34.2 Variable `LOG_SEARCH_MS=1`: logs estructurados en `listing.search` (fase post-ES y cierre SQL); documentar en `.env.example`
+- [ ] 34.3 Paginación profunda Elasticsearch (`search_after` o política documentada de `offset`); alinear Zod + UI `/buscar`
+- [ ] 34.4 Asistente: continuidad de búsqueda (estado + sugerencias) alineado al motor unificado — spec en doc 47 §F3
+- [ ] 34.5 Ranking: primer ajuste medible (boosts / golden set) según resultado de apéndice A en staging/prod
+- [x] 34.6 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy` (tras cada bloque de tareas listo para prod)
+
+**Criterios:** cualquier agente puede leer doc 47 y saber prioridades; con `LOG_SEARCH_MS` en Preview/Pro se pueden correlacionar tiempos con logs de Vercel sin cambiar respuestas al cliente.

@@ -71,6 +71,9 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 | `YUMBLIN_JSON_URL` | Feed (default en código apunta al JSON Kiteprop público) |
 | `IMPORT_SYNC_INTERVAL_HOURS` | Evita sync demasiado frecuente |
 | `IMPORT_ORGANIZATION_ID` / `IMPORT_PUBLISHER_ID` | Forzar org/usuario publicador |
+| `LOG_SEARCH_MS` | `1` = logs JSON de rendimiento de `listing.search` en servidor (Vercel); ver `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` |
+
+**Búsqueda a escala y ritmo de producto:** `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` (golden queries, ES/SQL, roadmap asistente).
 
 ### Manual (operador / agente con CLI)
 
