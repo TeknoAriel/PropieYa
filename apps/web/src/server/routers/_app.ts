@@ -7,6 +7,7 @@ import { listingRouter } from './listing'
 import { organizationRouter } from './organization'
 import { searchAlertRouter } from './searchAlert'
 import { searchHistoryRouter } from './searchHistory'
+import { statsRouter } from './stats'
 
 export const appRouter = createTRPCRouter({
   auth: authRouter,
@@ -17,6 +18,7 @@ export const appRouter = createTRPCRouter({
   organization: organizationRouter,
   searchAlert: searchAlertRouter,
   searchHistory: searchHistoryRouter,
+  stats: statsRouter,
 })
 
 export type AppRouter = typeof appRouter

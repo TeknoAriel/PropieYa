@@ -13,6 +13,8 @@ import {
 } from '@propieya/ui'
 import Link from 'next/link'
 
+import { portalStatsTerminalLabel } from '@propieya/shared'
+
 import { trpc } from '@/lib/trpc'
 
 function relativeTime(iso: Date | string) {
@@ -29,6 +31,11 @@ export default function DashboardPage() {
     trpc.listing.dashboardStats.useQuery()
   const { data: leadsData, isLoading: leadsLoading } =
     trpc.lead.listByPublisher.useQuery({ limit: 5 })
+  const {
+    data: portalActivity,
+    isLoading: activityLoading,
+    isError: activityError,
+  } = trpc.stats.portalActivityByTerminal.useQuery({ days: 7 })
 
   const by = stats?.byStatus ?? {}
   const cards = [
@@ -123,6 +130,60 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
+
+      <Card className="p-4">
+        <h2 className="font-semibold text-text-primary mb-1">
+          Actividad del portal (últimos 7 días)
+        </h2>
+        <p className="text-xs text-text-tertiary mb-4">
+          Eventos registrados por tipo. Las vistas acumuladas en fichas suman el
+          contador de cada aviso (todas las cargas históricas).
+        </p>
+        {activityError ? (
+          <p className="text-sm text-text-secondary">
+            No se pudieron cargar los eventos. Si el despliegue es reciente,
+            aplicá la tabla{' '}
+            <code className="text-xs bg-surface-secondary px-1 rounded">
+              portal_stats_events
+            </code>{' '}
+            en la base (<code className="text-xs">pnpm db:push</code> o SQL en
+            docs).
+          </p>
+        ) : activityLoading ? (
+          <div className="h-24 rounded-lg bg-surface-secondary animate-pulse" />
+        ) : (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-baseline gap-2 text-sm">
+              <span className="text-text-secondary">Vistas en fichas (suma)</span>
+              <span className="text-xl font-bold text-text-primary tabular-nums">
+                {portalActivity?.totalListingViews ?? 0}
+              </span>
+            </div>
+            {portalActivity && portalActivity.terminals.length === 0 ? (
+              <p className="text-sm text-text-secondary">
+                Todavía no hay eventos en esta ventana. Cuando usuarios visiten
+                fichas públicas de tus avisos, verás filas acá.
+              </p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {portalActivity?.terminals.map((row) => (
+                  <li
+                    key={row.terminalId}
+                    className="flex justify-between gap-4 py-2 border-b border-border last:border-0"
+                  >
+                    <span className="text-text-primary">
+                      {portalStatsTerminalLabel(row.terminalId)}
+                    </span>
+                    <span className="font-medium text-text-primary tabular-nums shrink-0">
+                      {row.count}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-4">

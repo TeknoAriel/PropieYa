@@ -32,3 +32,25 @@ export const PORTAL_STATS_TERMINALS = {
 
 export type PortalStatsTerminalId =
   (typeof PORTAL_STATS_TERMINALS)[keyof typeof PORTAL_STATS_TERMINALS]
+
+/** Etiquetas cortas para panel B2B / informes. */
+export const PORTAL_STATS_TERMINAL_LABELS: Record<PortalStatsTerminalId, string> = {
+  [PORTAL_STATS_TERMINALS.LISTING_SEARCH_EXECUTED]: 'Búsqueda en listado',
+  [PORTAL_STATS_TERMINALS.LISTING_FICHA_VIEW]: 'Vista de ficha pública',
+  [PORTAL_STATS_TERMINALS.LEAD_SUBMITTED]: 'Lead enviado',
+  [PORTAL_STATS_TERMINALS.LISTING_COMPARE_ADD]: 'Aviso al comparador',
+  [PORTAL_STATS_TERMINALS.LISTING_COMPARE_VIEW]: 'Página comparar',
+  [PORTAL_STATS_TERMINALS.ASSISTANT_MESSAGE_SENT]: 'Mensaje al asistente',
+  [PORTAL_STATS_TERMINALS.ASSISTANT_SEARCH_TRIGGERED]: 'Búsqueda vía asistente',
+  [PORTAL_STATS_TERMINALS.DEMAND_PROFILE_UPDATED]: 'Perfil de demanda',
+  [PORTAL_STATS_TERMINALS.SEARCH_ALERT_CREATED]: 'Alerta creada',
+  [PORTAL_STATS_TERMINALS.AUTH_LOGIN_SUCCESS]: 'Inicio de sesión',
+  [PORTAL_STATS_TERMINALS.INGEST_RUN_COMPLETED]: 'Ingesta de catálogo',
+}
+
+export function portalStatsTerminalLabel(terminalId: string): string {
+  return (
+    PORTAL_STATS_TERMINAL_LABELS[terminalId as PortalStatsTerminalId] ??
+    terminalId
+  )
+}
