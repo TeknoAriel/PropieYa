@@ -31,6 +31,7 @@
 | Sprint 32 (P2 descubrimiento: chips + relacionadas) | ✅ |
 | Sprint 33 (P2 comparador / centro de decisión v0) | ✅ |
 | Sprint 34 (producción: búsqueda medible + hoja de ruta escala/asistente) | ✅ — `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` |
+| Panel estadísticas (arquitectura + terminales) | `docs/49-ARQUITECTURA-PANEL-ESTADISTICAS-Y-TELEMETRIA.md`, `PORTAL_STATS_TERMINALS` en `@propieya/shared` |
 | Siguiente backlog doc 43 §5 | Profundidad mapa/filtros o más widgets en `/comparar` |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
@@ -444,7 +445,7 @@
 
 ---
 
-*Actualizado: 2026-03-31 (Sprint 34 cerrado: F1–F3 doc 47 + ranking `_score`/boosts; Sprint 33 comparador; 25.6–25.8 según dashboard)*
+*Actualizado: 2026-03-31 (doc 49 panel estadísticas + terminales; Sprint 34 cerrado doc 47; Sprint 33 comparador; 25.6–25.8 según dashboard)*
 
 ---
 

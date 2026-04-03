@@ -606,7 +606,7 @@ pnpm dev
 | Email provider | Resend vs SendGrid | Pre-MVP |
 | Maps provider | Mapbox vs Google Maps | Pre-MVP |
 | Error tracking | Sentry vs alternativa | Pre-MVP |
-| Analytics | PostHog vs custom | Post-MVP |
+| Analytics | PostHog vs custom vs **capa propia** (`portal_stats_events` + rollups) | Ver **`docs/49-ARQUITECTURA-PANEL-ESTADISTICAS-Y-TELEMETRIA.md`** y `PORTAL_STATS_TERMINALS` en `@propieya/shared` |
 | CI/CD | GitHub Actions vs otras | Pre-MVP |
 
 ---
