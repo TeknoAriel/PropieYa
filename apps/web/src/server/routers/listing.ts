@@ -44,6 +44,7 @@ import {
   extractIntentionFromMessage,
   type ConversationPrior,
 } from '../../lib/llm'
+import { recordPortalStatsEvent } from '../../lib/analytics/record-portal-stats-event'
 import { checkRateLimit } from '../../lib/rate-limit'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
 import { listingSearchInputSchema } from './listing-search-input'
@@ -532,12 +533,21 @@ export const listingRouter = createTRPCRouter({
         return { ok: false as const }
       }
 
+      recordPortalStatsEvent(ctx.db, {
+        terminalId: PORTAL_STATS_TERMINALS.LISTING_FICHA_VIEW,
+        listingId: row.id,
+        organizationId: row.organizationId,
+        userId: ctx.session?.userId ?? null,
+        payload: {},
+      })
+
       if (process.env.LOG_PORTAL_STATS === '1') {
         console.log(
           JSON.stringify({
             terminal: PORTAL_STATS_TERMINALS.LISTING_FICHA_VIEW,
             listingId: row.id,
             organizationId: row.organizationId,
+            userId: ctx.session?.userId ?? null,
             ts: new Date().toISOString(),
           })
         )

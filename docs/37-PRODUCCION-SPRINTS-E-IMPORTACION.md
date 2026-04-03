@@ -79,6 +79,8 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 
 **Búsqueda a escala y ritmo de producto:** `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` (golden queries, ES/SQL, roadmap asistente).
 
+**Telemetría portal (eventos):** tabla `portal_stats_events` — `pnpm db:push` o `docs/sql/add-portal-stats-events.sql`; detalle en `docs/49-ARQUITECTURA-PANEL-ESTADISTICAS-Y-TELEMETRIA.md`.
+
 ### Manual (operador / agente con CLI)
 
 - `pnpm import:yumblin` — ver `scripts/import-yumblin-json.ts`

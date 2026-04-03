@@ -25,7 +25,7 @@
 
 | Fuente | Qué mide | Límite hoy |
 |--------|-----------|------------|
-| `listings` (`view_count`, `contact_count`, …) | Agregados por aviso | `view_count` se incrementa vía **`listing.recordPublicView`** al cargar ficha pública (`/propiedad/[id]`); log opcional `LOG_PORTAL_STATS=1` |
+| `listings` (`view_count`, `contact_count`, …) | Agregados por aviso | `view_count` + fila en **`portal_stats_events`** vía **`listing.recordPublicView`**; log opcional `LOG_PORTAL_STATS=1` |
 | `leads` | Contactos por listing/org | Ya es “hecho” de negocio; panel puede agregar |
 | `search_history` | Búsquedas con sesión + filtros + `result_count` + `processing_time_ms` | Solo usuarios logueados en el camino actual |
 | `listing.dashboardStats` (panel) | Conteos por estado de avisos del publicador | Agregado directo SQL |
@@ -44,15 +44,15 @@
                               └── opcional: stream externo (Segment, PostHog) con mismo ID de evento
 ```
 
-### 3.1 Capa de hechos (fase siguiente recomendada)
+### 3.1 Capa de hechos
 
-Tabla tipo **`portal_stats_events`** (nombre tentativo), columnas mínimas sugeridas:
+Tabla **`portal_stats_events`** (implementada), columnas:
 
 - `id`, `created_at`
 - `terminal_id` (varchar, valor de `PORTAL_STATS_TERMINALS`)
 - `organization_id` (nullable si evento global o anónimo)
 - `listing_id` (nullable)
-- `user_id` (nullable; anon session con `session_id` uuid si hace falta)
+- `user_id` (nullable; si el cliente envía JWT Bearer en tRPC)
 - `payload` (jsonb pequeño: `{ "source": "es", "hasMap": true }` — sin PII)
 
 Índices: `(terminal_id, created_at)`, `(organization_id, created_at)`, `(listing_id, created_at)`.
@@ -94,7 +94,7 @@ Cada terminal es un **punto único** en código donde se registrará el hecho (a
 |------|---------|----------|
 | **F0 (hecho)** | Doc 49 + `PORTAL_STATS_TERMINALS` en shared | Bajo |
 | **F1** | **Hecho:** `listing.recordPublicView` (mutación pública) + incremento `view_count` al cargar ficha; log JSON si `LOG_PORTAL_STATS=1` con `PORTAL_STATS_TERMINALS.LISTING_FICHA_VIEW` | Medio |
-| **F2** | Tabla `portal_stats_events` + helper `recordPortalStatsEvent` en `apps/web` | Medio |
+| **F2** | **Hecho:** tabla Drizzle `portal_stats_events` (`packages/database/src/schema/portal-stats.ts`); helper `recordPortalStatsEvent` (`apps/web/src/lib/analytics/record-portal-stats-event.ts`); cableado en `listing.recordPublicView`. Aplicar esquema: **`pnpm db:push`** o `docs/sql/add-portal-stats-events.sql` en Neon. | Medio |
 | **F3** | Cron rollups + nuevas rutas tRPC `stats.*` + pantallas panel | Alto |
 | **F4** | Export externo, embudos multi-touch, experimentos A/B | Según negocio |
 
@@ -109,4 +109,6 @@ Cada terminal es un **punto único** en código donde se registrará el hecho (a
 
 ---
 
-*Documento vivo; al crear la tabla de eventos, añadir migración Drizzle y ejemplo de consulta agregada.*
+*Documento vivo; ejemplo de consulta agregada en F3.*
+
+**Migración:** tras pull, `pnpm db:push` contra la `DATABASE_URL` del entorno. Si el insert falla (tabla inexistente), los logs muestran `[recordPortalStatsEvent]` sin romper la ficha.
