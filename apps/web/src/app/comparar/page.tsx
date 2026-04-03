@@ -3,9 +3,10 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 import {
+  buildPortalCompareUrl,
   PORTAL_COMPARE_COPY as C,
   formatPrice,
   formatSurface,
@@ -16,7 +17,11 @@ import { Button, Card, Skeleton } from '@propieya/ui'
 
 import { Footer } from '@/components/layout/footer'
 import { Header } from '@/components/layout/header'
-import { readCompareIds, writeCompareIds } from '@/lib/compare-listings-storage'
+import {
+  readCompareIds,
+  removeCompareId,
+  writeCompareIds,
+} from '@/lib/compare-listings-storage'
 import { trpc } from '@/lib/trpc'
 
 const UUID_RE =
@@ -31,7 +36,24 @@ function parseIdsParam(raw: string | null): string[] {
     .slice(0, 3)
 }
 
+function pricePerSquareMeter(
+  priceAmount: number | null,
+  surfaceTotal: number | null
+): number | null {
+  if (
+    priceAmount == null ||
+    surfaceTotal == null ||
+    !Number.isFinite(priceAmount) ||
+    !Number.isFinite(surfaceTotal) ||
+    surfaceTotal <= 0
+  ) {
+    return null
+  }
+  return priceAmount / surfaceTotal
+}
+
 function CompararContent() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [ids, setIds] = useState<string[]>([])
 
@@ -52,6 +74,17 @@ function CompararContent() {
   )
 
   const rows = useMemo(() => data, [data])
+
+  const dropFromCompare = (id: string) => {
+    removeCompareId(id)
+    const next = ids.filter((x) => x !== id)
+    setIds(next)
+    if (next.length >= 2) {
+      router.replace(buildPortalCompareUrl(next))
+    } else {
+      router.replace('/comparar')
+    }
+  }
 
   return (
     <div className="container mx-auto space-y-6 px-4 py-10">
@@ -88,14 +121,17 @@ function CompararContent() {
         </Card>
       ) : (
         <Card className="overflow-x-auto p-0">
-          <table className="w-full min-w-[720px] border-collapse text-sm">
+          <table className="w-full min-w-[900px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-border bg-surface-secondary/40 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary">
                 <th className="px-4 py-3">{C.tableProperty}</th>
                 <th className="px-4 py-3">{C.tablePrice}</th>
+                <th className="px-4 py-3">{C.tablePricePerM2}</th>
                 <th className="px-4 py-3">{C.tableSurface}</th>
                 <th className="px-4 py-3">{C.tableRooms}</th>
                 <th className="px-4 py-3">{C.tableBaths}</th>
+                <th className="px-4 py-3">{C.tableGarages}</th>
+                <th className="px-4 py-3">{C.tableExpenses}</th>
                 <th className="px-4 py-3">{C.tableZone}</th>
                 <th className="px-4 py-3">{C.tableAction}</th>
               </tr>
@@ -109,6 +145,15 @@ function CompararContent() {
                 const img =
                   row.primaryImageUrl ||
                   'https://placehold.co/120x80/e0ddd8/666660?text=+'
+                const ppm2 = pricePerSquareMeter(
+                  row.priceAmount,
+                  row.surfaceTotal
+                )
+                const expCur = (row.expensesCurrency as Currency | null) ?? 'ARS'
+                const expensesLabel =
+                  row.expenses != null
+                    ? formatPrice(row.expenses, expCur, { compact: true })
+                    : '—'
                 return (
                   <tr key={row.id} className="border-b border-border/80 align-top">
                     <td className="px-4 py-4">
@@ -137,6 +182,13 @@ function CompararContent() {
                     <td className="px-4 py-4 font-semibold text-brand-primary whitespace-nowrap">
                       {formatPrice(row.priceAmount, row.priceCurrency as Currency)}
                     </td>
+                    <td className="px-4 py-4 text-text-secondary whitespace-nowrap text-xs">
+                      {ppm2 != null
+                        ? formatPrice(ppm2, row.priceCurrency as Currency, {
+                            compact: true,
+                          })
+                        : '—'}
+                    </td>
                     <td className="px-4 py-4 text-text-secondary whitespace-nowrap">
                       {formatSurface(row.surfaceTotal)}
                     </td>
@@ -147,12 +199,31 @@ function CompararContent() {
                       {row.bathrooms ?? '—'}
                     </td>
                     <td className="px-4 py-4 text-text-secondary">
+                      {row.garages ?? '—'}
+                    </td>
+                    <td className="px-4 py-4 text-text-secondary whitespace-nowrap text-xs">
+                      {expensesLabel}
+                    </td>
+                    <td className="px-4 py-4 text-text-secondary">
                       {neighborhood}, {city}
                     </td>
                     <td className="px-4 py-4">
-                      <Button type="button" variant="outline" size="sm" asChild>
-                        <Link href={`/propiedad/${row.id}`}>{C.viewListing}</Link>
-                      </Button>
+                      <div className="flex flex-col gap-2">
+                        <Button type="button" variant="outline" size="sm" asChild>
+                          <Link href={`/propiedad/${row.id}`}>
+                            {C.viewListing}
+                          </Link>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-text-secondary"
+                          onClick={() => dropFromCompare(row.id)}
+                        >
+                          {C.removeFromCompare}
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 )

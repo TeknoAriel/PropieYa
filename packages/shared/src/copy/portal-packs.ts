@@ -416,6 +416,9 @@ export const PORTAL_COMPARE_COPY = {
   tableRooms: 'Dorm.',
   tableBaths: 'Baños',
   tableZone: 'Zona',
+  tablePricePerM2: 'Precio / m²',
+  tableGarages: 'Cocheras',
+  tableExpenses: 'Expensas',
   tableAction: 'Ficha',
   viewListing: 'Ver aviso',
 } as const

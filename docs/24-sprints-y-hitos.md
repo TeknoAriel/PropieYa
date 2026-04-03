@@ -32,7 +32,8 @@
 | Sprint 33 (P2 comparador / centro de decisión v0) | ✅ |
 | Sprint 34 (producción: búsqueda medible + hoja de ruta escala/asistente) | ✅ — `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` |
 | Panel estadísticas (arquitectura + terminales) | `docs/49-ARQUITECTURA-PANEL-ESTADISTICAS-Y-TELEMETRIA.md`, `PORTAL_STATS_TERMINALS` en `@propieya/shared` |
-| Siguiente backlog doc 43 §5 | Profundidad mapa/filtros o más widgets en `/comparar` |
+| Sprint 35 (comparar v1.1) | ✅ — tabla: precio/m², cocheras, expensas; quitar fila + URL |
+| Siguiente backlog doc 43 §5 | Lista sincronizada con mapa en `/buscar`, o filtros capa 4 contextual |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
 | Infra GitHub/Vercel nuevo repo (Sprint 25.6–25.8) | Confirmar secretos `VERCEL_*`, Actions verde y Git del proyecto web → `docs/DEPLOY-PASOS-URIs.md` Parte A |
