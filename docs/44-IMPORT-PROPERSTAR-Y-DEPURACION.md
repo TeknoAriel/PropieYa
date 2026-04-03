@@ -1,5 +1,7 @@
 # Import Properstar (Kiteprop) y depuración de base
 
+**Política de cadencia, webhook y modelo de negocio (tipo de aviso):** `docs/48-INGEST-PROPERSTAR-POLITICA-CRON-PUSH-Y-NEGOCIO.md`.
+
 **Feed canónico (default en código):**  
 `https://static.kiteprop.com/kp/difusions/f89cbd8ca785fc34317df63d29ab8ea9d68a7b1c/properstar.json`
 

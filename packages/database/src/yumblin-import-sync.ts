@@ -94,8 +94,14 @@ function getIntervalMs(): number {
     return days * 24 * 60 * 60 * 1000
   }
 
-  const hours = parseInt(process.env.IMPORT_SYNC_INTERVAL_HOURS ?? '1', 10)
-  return Math.max(1, Number.isFinite(hours) ? hours : 1) * 3600 * 1000
+  const raw = (process.env.IMPORT_SYNC_INTERVAL_HOURS ?? '1').trim()
+  const hours = parseFloat(raw)
+  /** `0` o negativo: cada invocación del cron/webhook puede correr (sin umbral temporal). */
+  if (!Number.isFinite(hours) || hours <= 0) {
+    return 0
+  }
+  const clamped = Math.max(1 / 60, hours)
+  return clamped * 3600 * 1000
 }
 
 async function getOrCreateFeedSource(organizationId: string, feedUrl: string) {
@@ -173,8 +179,9 @@ export async function runYumblinImportSync(
   const now = new Date()
 
   if (enforceInterval && source.lastSuccessfulSyncAt) {
+    const intervalMs = getIntervalMs()
     const elapsed = now.getTime() - source.lastSuccessfulSyncAt.getTime()
-    if (elapsed < getIntervalMs()) {
+    if (intervalMs > 0 && elapsed < intervalMs) {
       return {
         feedUrl,
         organizationId,
@@ -464,18 +471,25 @@ export async function runYumblinImportSync(
     }
 
     if (existing.importContentHash === hash) {
-      if (feedUpdated && !sourceTimesMatch(existing.importSourceUpdatedAt, feedUpdated)) {
+      const sourceTimeChanged =
+        feedUpdated != null &&
+        !sourceTimesMatch(existing.importSourceUpdatedAt, feedUpdated)
+      if (sourceTimeChanged) {
         await db
           .update(listings)
           .set({ importSourceUpdatedAt: feedUpdated, updatedAt: now })
           .where(eq(listings.id, existing.id))
+        await replaceListingMedia(existing.id, mapped.imageUrls)
         byExternal.set(mapped.externalId, {
           ...existing,
           importSourceUpdatedAt: feedUpdated,
+          importContentHash: hash,
           updatedAt: now,
         })
+        counts.updated++
+      } else {
+        counts.unchanged++
       }
-      counts.unchanged++
       continue
     }
 

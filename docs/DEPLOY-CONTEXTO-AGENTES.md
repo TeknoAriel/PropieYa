@@ -1,6 +1,6 @@
 # Contexto y reglas duras — Deploy (para agentes y humanos)
 
-**Última actualización:** 2026-03-28. Este archivo es la **hoja de contexto** cuando haya dudas sobre Vercel, dominios o CI. No duplicar reglas contradictorias en otros docs: enlazar aquí.
+**Última actualización:** 2026-03-31. Este archivo es la **hoja de contexto** cuando haya dudas sobre Vercel, dominios o CI. No duplicar reglas contradictorias en otros docs: enlazar aquí.
 
 ---
 
@@ -61,6 +61,8 @@
 
 - **`apps/web/vercel.json`:** configuración para builds cuando el **Root Directory** del proyecto es `apps/web` (install/build relativos al monorepo, crons).
 - **`vercel.json` (raíz):** usado por flujos que ejecutan Vercel CLI desde la **raíz del repositorio**; no debe contradecir el build del paquete `@propieya/web`. Cualquier cambio debe revisarse impacto en `.github/workflows/promote-deploy-infra.yml`.
+
+**Excepción documentada (propietario, 2026-03-31):** en ambos archivos, el cron `GET /api/cron/import-yumblin` pasó a **`*/30 * * * *`** (ingesta Properstar/Kiteprop cada 30 min en Production). Contexto y variables: `docs/48-INGEST-PROPERSTAR-POLITICA-CRON-PUSH-Y-NEGOCIO.md`.
 
 ---
 

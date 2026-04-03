@@ -16,6 +16,8 @@
 
 **Ritmo producción (búsqueda a escala, asistente, medición, mandato anti-retraso):** `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` — el agente prioriza entregas medibles y máximo ritmo autónomo dentro de `pnpm verify` y deploy documentado.
 
+**Ingesta Properstar/Kiteprop (cron, webhook, bajas, tipo de aviso):** `docs/48-INGEST-PROPERSTAR-POLITICA-CRON-PUSH-Y-NEGOCIO.md` — resumen operativo en `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md` §3.
+
 **Directiva de producto (anti-Frankenstein, capas, prioridades):** `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`. **Matriz y backlog:** `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md`. **Norte corto portal:** `docs/41-PROPUESTA-VALOR-PORTAL.md`.
 
 **GitHub bypass (una vez):** `docs/12-bypass-github-actions.md`.

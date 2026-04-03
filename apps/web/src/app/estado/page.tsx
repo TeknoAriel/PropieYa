@@ -134,6 +134,19 @@ export default async function EstadoPage() {
                 </span>
               </dd>
             </div>
+            <div className="sm:col-span-2">
+              <dt className="font-medium text-text-primary">
+                Webhook ingesta puntual (Kiteprop)
+              </dt>
+              <dd className="mt-1">
+                <code className="text-xs bg-surface-secondary px-1 rounded">
+                  POST {inventory.ingestWebhookPath}
+                </code>
+                <span className="block mt-2 text-text-secondary">
+                  {inventory.ingestWebhookNote}
+                </span>
+              </dd>
+            </div>
           </dl>
         ) : null}
       </Card>

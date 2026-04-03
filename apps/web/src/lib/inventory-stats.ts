@@ -13,6 +13,8 @@ export type PublicInventoryStats = {
   feedUrlHint: string
   cronIngestPath: string
   cronResponseNote: string
+  ingestWebhookPath: string
+  ingestWebhookNote: string
 }
 
 /**
@@ -64,5 +66,8 @@ export async function getPublicInventoryStats(): Promise<PublicInventoryStats> {
     cronIngestPath: '/api/cron/import-yumblin',
     cronResponseNote:
       'Cada ejecución del cron devuelve JSON con totals (imported, updated, unchanged, withdrawn, etc.). Requiere header Authorization: Bearer <CRON_SECRET> si CRON_SECRET está definido en Vercel.',
+    ingestWebhookPath: '/api/webhooks/kiteprop-ingest',
+    ingestWebhookNote:
+      'POST con Bearer KITEPROP_INGEST_WEBHOOK_SECRET (o CRON_SECRET si no hay webhook secret). Ignora IMPORT_SYNC_INTERVAL_HOURS. Ver docs/48.',
   }
 }

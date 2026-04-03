@@ -51,13 +51,16 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 
 ## 3. Importación de propiedades (Yumblin / Kiteprop)
 
+**Política operativa completa (cron 30 min prod, prueba 48 h, webhook push, bajas, código tipo de aviso):** `docs/48-INGEST-PROPERSTAR-POLITICA-CRON-PUSH-Y-NEGOCIO.md`.
+
 ### Automático (cron)
 
 - **Ruta:** `GET /api/cron/import-yumblin`
-- **Definición:** `apps/web/vercel.json` (y `vercel.json` en raíz si aplica) — schedule **0 6 \* \* \*** (UTC).
+- **Definición:** `apps/web/vercel.json` y `vercel.json` (raíz) — schedule **`*/30 * * * *`** (UTC, cada 30 min) para producción; entre corridas reales usar **`IMPORT_SYNC_INTERVAL_HOURS=0`** en Vercel Production (ver doc 48).
 - **Auth:** header `Authorization: Bearer <CRON_SECRET>` si `CRON_SECRET` está definido (recomendado en producción).
-- **Lógica:** `packages/database/src/yumblin-import-sync.ts`, `runYumblinImportSyncAllSources`.
-- **Feed default:** JSON Properstar en static.kiteprop.com (ver `docs/44-IMPORT-PROPERSTAR-Y-DEPURACION.md`). Variable **`YUMBLIN_JSON_URL`** lo sobreescribe. **`IMPORT_WITHDRAW_SCOPE`**: `org` (recomendado, un solo feed) vs `source` (legado). Columna **`import_source_updated_at`**: evita reprocesar ítems si `last_update` del feed no cambió (`pnpm db:push` o `docs/sql/add-import-source-updated-at.sql` en Neon).
+- **Lógica:** `packages/database/src/yumblin-import-sync.ts`, `runYumblinImportSyncAllSources`; pipeline HTTP en `apps/web/src/lib/cron/run-yumblin-import-pipeline.ts`.
+- **Ingesta puntual (push Kiteprop):** `POST /api/webhooks/kiteprop-ingest` — mismo pipeline, sin intervalo; secret `KITEPROP_INGEST_WEBHOOK_SECRET` o `CRON_SECRET` (doc 48).
+- **Feed default:** JSON Properstar en static.kiteprop.com (ver `docs/44-IMPORT-PROPERSTAR-Y-DEPURACION.md`). Variable **`YUMBLIN_JSON_URL`** lo sobreescribe. **`IMPORT_WITHDRAW_SCOPE`**: `org` (recomendado, un solo feed) vs `source` (legado). Columna **`import_source_updated_at`**: evita reprocesar ítems si `last_update` del feed no cambió; si cambia la marca temporal se **refrescan imágenes** aunque el hash de contenido coincida (`pnpm db:push` o `docs/sql/add-import-source-updated-at.sql` en Neon).
 - **Si el buscador o tRPC muestran** `column "import_source_updated_at" does not exist` **en Neon:** el esquema Drizzle ya incluye la columna pero la base aún no. Ejecutar **una vez** el SQL en `docs/sql/add-import-source-updated-at.sql` (o `pnpm db:push` contra esa `DATABASE_URL`). El código del portal usa `listingsSelectPublic` en lecturas para tolerar DB atrasada, pero **INSERT/UPDATE del import** siguen necesitando la columna para el sync incremental óptimo.
 - **Totales ingest vs manual (solo agregados):** `GET /api/inventory-stats` y la sección “Inventario e ingestión” en `/estado`. Los contadores por **ejecución** del cron siguen en el JSON de respuesta de `GET /api/cron/import-yumblin` (con `CRON_SECRET` si aplica).
 - **Org/publisher:** si no hay `IMPORT_ORGANIZATION_ID` / `IMPORT_PUBLISHER_ID`, el código usa la **primera organización** y un **miembro** de esa org (requiere DB ya sembrada).
@@ -69,7 +72,8 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 | `DATABASE_URL` | Obligatorio para import y listados |
 | `CRON_SECRET` | Protege crons |
 | `YUMBLIN_JSON_URL` | Feed (default en código apunta al JSON Kiteprop público) |
-| `IMPORT_SYNC_INTERVAL_HOURS` | Evita sync demasiado frecuente |
+| `IMPORT_SYNC_INTERVAL_HOURS` | Mínimo entre ejecuciones reales del cron (`0` = sin mínimo; admite decimales, p. ej. `48` en prueba). Ver doc 48 |
+| `KITEPROP_INGEST_WEBHOOK_SECRET` | Opcional; auth del POST `/api/webhooks/kiteprop-ingest` |
 | `IMPORT_ORGANIZATION_ID` / `IMPORT_PUBLISHER_ID` | Forzar org/usuario publicador |
 | `LOG_SEARCH_MS` | `1` = logs JSON de rendimiento de `listing.search` en servidor (Vercel); ver `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` |
 
@@ -119,4 +123,4 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 
 ---
 
-*Actualizado: 2026-04-01 (Sprint 28.12 — tabla jobs/sync)*
+*Actualizado: 2026-03-31 (doc 48 política ingest + webhook + cron 30 min)*

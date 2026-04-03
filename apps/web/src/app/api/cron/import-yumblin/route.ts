@@ -2,23 +2,21 @@
  * Cron: sincroniza propiedades desde feed JSON Kiteprop (Properstar / Yumblin).
  * - HTTP condicional (ETag / 304) y hash del body para evitar trabajo si no hubo cambios.
  * - Por ítem: `import_source_updated_at` vs `last_update` del feed para saltar map+DB si no cambió.
+ * - Si cambia solo la marca temporal de origen, se refrescan igualmente las imágenes (política doc 48).
  * - Altas, actualizaciones (hash por ítem) y bajas (withdrawn si ya no está en el feed; scope `IMPORT_WITHDRAW_SCOPE`).
  * - Tras bajas: elimina documentos en Elasticsearch (`removeListingFromSearch`).
  *
- * Vercel Cron: vercel.json "crons" — en producción cada hora; el intervalo mínimo entre
- * ejecuciones reales se controla con IMPORT_SYNC_INTERVAL_HOURS (p. ej. 240 ≈ 10 días en prueba).
+ * Cadencia Vercel: `apps/web/vercel.json` (producción). Entre ejecuciones: `IMPORT_SYNC_INTERVAL_HOURS`
+ * (`0` = sin mínimo; admite decimales, p. ej. `0.5` = 30 min).
  *
- * Requiere: CRON_SECRET (header Authorization: Bearer <secret>)
+ * Ingesta puntual sin intervalo: POST `/api/webhooks/kiteprop-ingest` (Bearer secret).
+ *
+ * Requiere: CRON_SECRET (header Authorization: Bearer <secret>) si está definido.
  */
 
 import { NextResponse, type NextRequest } from 'next/server'
 
-import { and, eq } from 'drizzle-orm'
-
-import { db, listings, runYumblinImportSyncAllSources } from '@propieya/database'
-import { LISTING_VALIDITY } from '@propieya/shared'
-
-import { removeListingFromSearch, syncListingToSearch } from '@/lib/search/sync'
+import { runYumblinImportPipeline } from '@/lib/cron/run-yumblin-import-pipeline'
 
 export const runtime = 'nodejs'
 /** Sync masivo: Vercel Pro permite hasta 300s; ajustar según plan. */
@@ -35,78 +33,8 @@ export async function GET(req: NextRequest) {
     process.env.IMPORT_SYNC_ENFORCE_INTERVAL !== 'false'
 
   try {
-    const { results } = await runYumblinImportSyncAllSources({ enforceInterval })
-    const totals = results.reduce(
-      (acc, r) => {
-        acc.imported += r.counts.imported
-        acc.updated += r.counts.updated
-        acc.unchanged += r.counts.unchanged
-        acc.skippedInvalid += r.counts.skippedInvalid
-        acc.skippedUnchangedBySourceTime += r.counts.skippedUnchangedBySourceTime
-        acc.withdrawn += r.counts.withdrawn
-        return acc
-      },
-      {
-        imported: 0,
-        updated: 0,
-        unchanged: 0,
-        skippedInvalid: 0,
-        skippedUnchangedBySourceTime: 0,
-        withdrawn: 0,
-      }
-    )
-
-    const withdrawnIds = results.flatMap((r) => r.withdrawnListingIds)
-    if (withdrawnIds.length > 0) {
-      await Promise.allSettled(
-        withdrawnIds.map((id) =>
-          removeListingFromSearch(id).catch((e) => {
-            console.error('removeListingFromSearch failed for', id, e)
-          })
-        )
-      )
-    }
-
-    // Publica los borradores generados por la importación (source=import).
-    // Así, el cron deja de ser "solo sincronización" y pasa a "sincronización + actualización visible".
-    const drafts = await db
-      .select({ id: listings.id })
-      .from(listings)
-      .where(and(eq(listings.status, 'draft'), eq(listings.source, 'import')))
-
-    const now = new Date()
-    const expiresAt = new Date(
-      now.getTime() + LISTING_VALIDITY.MANUAL_VALIDITY_DAYS * 24 * 60 * 60 * 1000
-    )
-
-    let publishedIds: string[] = []
-    if (drafts.length > 0) {
-      const updated = await db
-        .update(listings)
-        .set({
-          status: 'active',
-          publishedAt: now,
-          lastValidatedAt: now,
-          expiresAt,
-          updatedAt: now,
-        })
-        .where(and(eq(listings.status, 'draft'), eq(listings.source, 'import')))
-        .returning({ id: listings.id })
-      publishedIds = updated.map((r) => r.id)
-      await Promise.allSettled(
-        publishedIds.map((id) =>
-          syncListingToSearch(db, id).catch((e) => {
-            console.error('syncListingToSearch failed for', id, e)
-          })
-        )
-      )
-    }
-
-    return NextResponse.json({
-      totals,
-      resultsCount: results.length,
-      publishedCount: publishedIds.length,
-    })
+    const result = await runYumblinImportPipeline({ enforceInterval })
+    return NextResponse.json(result)
   } catch (err) {
     console.error('Cron import-yumblin:', err)
     return NextResponse.json(
