@@ -21,6 +21,7 @@ import {
   FACETS_CATALOG,
   SEARCH_FILTER_AMENITIES,
   withMatchReasons,
+  PORTAL_STATS_TERMINALS,
   type ExplainMatchFilters,
 } from '@propieya/shared'
 
@@ -504,6 +505,45 @@ export const listingRouter = createTRPCRouter({
         ...listing,
         media,
       }
+    }),
+
+  /**
+   * Vista pública de ficha (F1 doc 49): incrementa `view_count` en DB y log estructurado opcional.
+   * Llamar una vez por carga de página desde el cliente (evita duplicar con ref por Strict Mode).
+   */
+  recordPublicView: publicProcedure
+    .input(z.object({ listingId: z.string().uuid() }))
+    .mutation(async ({ input, ctx }) => {
+      const [row] = await ctx.db
+        .update(listings)
+        .set({
+          viewCount: sql`${listings.viewCount} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(eq(listings.id, input.listingId), eq(listings.status, 'active'))
+        )
+        .returning({
+          id: listings.id,
+          organizationId: listings.organizationId,
+        })
+
+      if (!row) {
+        return { ok: false as const }
+      }
+
+      if (process.env.LOG_PORTAL_STATS === '1') {
+        console.log(
+          JSON.stringify({
+            terminal: PORTAL_STATS_TERMINALS.LISTING_FICHA_VIEW,
+            listingId: row.id,
+            organizationId: row.organizationId,
+            ts: new Date().toISOString(),
+          })
+        )
+      }
+
+      return { ok: true as const }
     }),
 
   /** Comparación pública: hasta 3 avisos activos, en el orden pedido (dedupe). */

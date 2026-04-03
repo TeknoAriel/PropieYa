@@ -25,7 +25,7 @@
 
 | Fuente | Qué mide | Límite hoy |
 |--------|-----------|------------|
-| `listings` (`view_count`, `contact_count`, …) | Agregados por aviso | `view_count` existe en schema; **falta** terminal servidor que lo incremente al ver ficha pública |
+| `listings` (`view_count`, `contact_count`, …) | Agregados por aviso | `view_count` se incrementa vía **`listing.recordPublicView`** al cargar ficha pública (`/propiedad/[id]`); log opcional `LOG_PORTAL_STATS=1` |
 | `leads` | Contactos por listing/org | Ya es “hecho” de negocio; panel puede agregar |
 | `search_history` | Búsquedas con sesión + filtros + `result_count` + `processing_time_ms` | Solo usuarios logueados en el camino actual |
 | `listing.dashboardStats` (panel) | Conteos por estado de avisos del publicador | Agregado directo SQL |
@@ -78,7 +78,7 @@ Cada terminal es un **punto único** en código donde se registrará el hecho (a
 | Área | Terminal (ejemplo) | Dónde cablear |
 |------|---------------------|---------------|
 | Búsqueda | `listing.search.executed` | Tras `listing.search` exitoso (ya hay `search_history` si sesión; alinear nombre / duplicar como evento si hace falta anon) |
-| Ficha | `listing.ficha.view` | Server Component / route handler de `/propiedad/[id]` o tRPC `listing.getPublic` |
+| Ficha | `listing.ficha.view` | **Implementado:** tRPC `listing.recordPublicView` tras `getById` OK en `/propiedad/[id]` |
 | Lead | `lead.submitted` | Creación de lead desde ficha |
 | Comparador | `listing.compare.add` / `listing.compare.view` | Storage + página `/comparar` |
 | Asistente | `assistant.message.sent` / `assistant.search.triggered` | Router conversacional |
@@ -93,7 +93,7 @@ Cada terminal es un **punto único** en código donde se registrará el hecho (a
 | Fase | Entrega | Esfuerzo |
 |------|---------|----------|
 | **F0 (hecho)** | Doc 49 + `PORTAL_STATS_TERMINALS` en shared | Bajo |
-| **F1** | Incremento `view_count` + 1 evento DB o log estructurado con `terminal_id` | Medio |
+| **F1** | **Hecho:** `listing.recordPublicView` (mutación pública) + incremento `view_count` al cargar ficha; log JSON si `LOG_PORTAL_STATS=1` con `PORTAL_STATS_TERMINALS.LISTING_FICHA_VIEW` | Medio |
 | **F2** | Tabla `portal_stats_events` + helper `recordPortalStatsEvent` en `apps/web` | Medio |
 | **F3** | Cron rollups + nuevas rutas tRPC `stats.*` + pantallas panel | Alto |
 | **F4** | Export externo, embudos multi-touch, experimentos A/B | Según negocio |

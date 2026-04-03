@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -198,11 +198,28 @@ function CommercialSubSummary({
 export default function PropiedadPage() {
   const params = useParams<{ id: string }>()
   const id = params?.id
+  const viewRecordedRef = useRef(false)
 
   const { data, isLoading } = trpc.listing.getById.useQuery(
     { id: typeof id === 'string' ? id : ('' as string) },
     { enabled: typeof id === 'string' && id.length > 0 }
   )
+
+  const { mutate: recordPublicViewMutate } =
+    trpc.listing.recordPublicView.useMutation()
+
+  useEffect(() => {
+    viewRecordedRef.current = false
+  }, [id])
+
+  useEffect(() => {
+    if (typeof id !== 'string' || !id || !data?.id || viewRecordedRef.current) {
+      return
+    }
+    viewRecordedRef.current = true
+    recordPublicViewMutate({ listingId: id })
+  }, [id, data?.id, recordPublicViewMutate])
+
 
   if (isLoading) {
     return (
