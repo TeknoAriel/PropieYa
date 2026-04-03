@@ -804,66 +804,6 @@ export function BuscarContent({
           ) : null}
         </div>
 
-        <div id="buscar-resultados" className="scroll-mt-24 space-y-6">
-          {isError ? (
-            <Card className="p-6">
-              <p className="text-sm text-text-primary">
-                {S.loadError}{' '}
-                {error?.message?.includes('DATABASE') ||
-                error?.message?.includes('required')
-                  ? S.loadErrorDbHint
-                  : (error?.message ?? S.loadErrorRetry)}
-              </p>
-            </Card>
-          ) : isLoading && !data && accumulatedListings.length === 0 ? (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {[...Array(6)].map((_, i) => (
-                <Card key={i} className="overflow-hidden">
-                  <Skeleton className="h-48 w-full" />
-                  <div className="space-y-3 p-4">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-6 w-1/2" />
-                    <Skeleton className="h-4 w-full" />
-                  </div>
-                </Card>
-              ))}
-            </div>
-          ) : listings.length === 0 ? (
-            <Card className="p-6">
-              <p className="text-text-secondary">
-                {S.emptyResults}
-              </p>
-            </Card>
-          ) : (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {listings.map((listing) => (
-                  <ListingCard key={listing.id} listing={listing} />
-                ))}
-              </div>
-              {data && data.total > 0 ? (
-                <p className="text-center text-sm text-text-secondary">
-                  {S.buscarShowingCount
-                    .replace('{shown}', String(listings.length))
-                    .replace('{total}', String(data.total))}
-                </p>
-              ) : null}
-              {canLoadMore ? (
-                <div className="flex justify-center">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isFetching}
-                    onClick={loadMoreResults}
-                  >
-                    {isFetching ? S.buscarLoadingMore : S.buscarLoadMore}
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-          )}
-        </div>
-
         <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
           {!classicFiltersOpen ? (
             <div className="rounded-2xl border border-dashed border-border/70 bg-surface-secondary/15 px-4 py-6 text-center md:px-6">
@@ -1246,6 +1186,66 @@ export function BuscarContent({
             ) : null}
           </Card>
         ) : null}
+
+        <div id="buscar-resultados" className="scroll-mt-24 space-y-6">
+          {isError ? (
+            <Card className="p-6">
+              <p className="text-sm text-text-primary">
+                {S.loadError}{' '}
+                {error?.message?.includes('DATABASE') ||
+                error?.message?.includes('required')
+                  ? S.loadErrorDbHint
+                  : (error?.message ?? S.loadErrorRetry)}
+              </p>
+            </Card>
+          ) : isLoading && !data && accumulatedListings.length === 0 ? (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="overflow-hidden">
+                  <Skeleton className="h-48 w-full" />
+                  <div className="space-y-3 p-4">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-6 w-1/2" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : listings.length === 0 ? (
+            <Card className="p-6">
+              <p className="text-text-secondary">
+                {S.emptyResults}
+              </p>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {listings.map((listing) => (
+                  <ListingCard key={listing.id} listing={listing} />
+                ))}
+              </div>
+              {data && data.total > 0 ? (
+                <p className="text-center text-sm text-text-secondary">
+                  {S.buscarShowingCount
+                    .replace('{shown}', String(listings.length))
+                    .replace('{total}', String(data.total))}
+                </p>
+              ) : null}
+              {canLoadMore ? (
+                <div className="flex justify-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isFetching}
+                    onClick={loadMoreResults}
+                  >
+                    {isFetching ? S.buscarLoadingMore : S.buscarLoadMore}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
       </div>
 
       <Dialog open={flowDialogOpen} onOpenChange={setFlowDialogOpen}>
