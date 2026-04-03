@@ -272,11 +272,7 @@ export const PORTAL_SEARCH_UX_COPY = {
 
   mapSectionTitle: 'Mapa',
   clearBboxFilter: 'Quitar filtro de zona',
-  clearRadius: 'Quitar radio',
   hideMap: 'Ocultar mapa',
-  searchAround: 'Buscar alrededor',
-  searchAroundHint:
-    'Centro del mapa al moverlo; tocá «Buscar alrededor» para filtrar por radio.',
   amenitiesSectionTitle: 'Más opciones (amenities)',
 
   /** Sprint 26.6 — búsqueda progresiva */

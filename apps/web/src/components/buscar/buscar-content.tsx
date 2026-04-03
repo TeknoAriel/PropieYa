@@ -260,12 +260,6 @@ export function BuscarContent({
   const [selectedAmenityFacets, setSelectedAmenityFacets] = useState<string[]>([])
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [mapBbox, setMapBbox] = useState<BuscarMapBBox | null>(null)
-  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(
-    null
-  )
-  /** Solo aplica filtro por radio tras «Buscar alrededor» (no en cada movimiento del mapa). */
-  const [applyRadiusFilter, setApplyRadiusFilter] = useState(false)
-  const [geoRadiusMeters, setGeoRadiusMeters] = useState('3000')
   const [mapPolygonRing, setMapPolygonRing] = useState<BuscarMapPoint[]>([])
   const [polygonDrawMode, setPolygonDrawMode] = useState(false)
   const [showMap, setShowMap] = useState(false)
@@ -328,12 +322,6 @@ export function BuscarContent({
         selectedAmenityFacets.length > 0
           ? { flags: selectedAmenityFacets }
           : undefined,
-      geoPoint:
-        applyRadiusFilter && mapCenter ? mapCenter : undefined,
-      geoRadius:
-        applyRadiusFilter && mapCenter && geoRadiusMeters
-          ? Number(geoRadiusMeters)
-          : undefined,
       bbox:
         mapPolygonRing.length >= 3 ? undefined : (mapBbox ?? undefined),
       polygon: mapPolygonRing.length >= 3 ? mapPolygonRing : undefined,
@@ -361,9 +349,6 @@ export function BuscarContent({
       minTotalRooms,
       selectedAmenityFacets,
       mapBbox,
-      mapCenter,
-      applyRadiusFilter,
-      geoRadiusMeters,
       mapPolygonRing,
     ]
   )
@@ -531,7 +516,6 @@ export function BuscarContent({
     setOrientation('')
     setSelectedAmenityFacets([])
     setMapBbox(null)
-    setApplyRadiusFilter(false)
     setMapPolygonRing([])
     setPolygonDrawMode(false)
   }, [searchParamsKey, forcedOperation])
@@ -1064,28 +1048,21 @@ export function BuscarContent({
         </div>
 
         {showMap ? (
-          <Card id="buscar-mapa" className="scroll-mt-24 p-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium text-text-primary">{S.mapSectionTitle}</p>
-              <div className="flex flex-wrap gap-2">
+          <Card id="buscar-mapa" className="scroll-mt-24 p-3 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+              <p className="text-xs font-semibold text-text-primary">
+                {S.mapSectionTitle}
+              </p>
+              <div className="flex flex-wrap justify-end gap-1.5">
                 {mapBbox ? (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="h-8 text-xs"
                     onClick={() => setMapBbox(null)}
                   >
                     {S.clearBboxFilter}
-                  </Button>
-                ) : null}
-                {applyRadiusFilter ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setApplyRadiusFilter(false)}
-                  >
-                    {S.clearRadius}
                   </Button>
                 ) : null}
                 {mapPolygonRing.length > 0 ? (
@@ -1093,6 +1070,7 @@ export function BuscarContent({
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="h-8 text-xs"
                     onClick={() => {
                       setMapPolygonRing([])
                       setPolygonDrawMode(false)
@@ -1105,10 +1083,10 @@ export function BuscarContent({
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="h-8 text-xs"
                   onClick={() => {
                     setShowMap(false)
                     setMapBbox(null)
-                    setApplyRadiusFilter(false)
                     setMapPolygonRing([])
                     setPolygonDrawMode(false)
                   }}
@@ -1117,32 +1095,8 @@ export function BuscarContent({
                 </Button>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Input
-                type="number"
-                min={200}
-                max={50000}
-                step={100}
-                value={geoRadiusMeters}
-                onChange={(e) => setGeoRadiusMeters(e.target.value)}
-                className="w-[180px]"
-                placeholder="Radio (m)"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={!mapCenter || !geoRadiusMeters}
-                onClick={() => setApplyRadiusFilter(true)}
-              >
-                {S.searchAround}
-              </Button>
-              <span className="text-xs text-text-secondary">
-                {S.searchAroundHint}
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-text-primary">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2">
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-text-primary">
                 <input
                   type="checkbox"
                   className="rounded border-border"
@@ -1169,7 +1123,6 @@ export function BuscarContent({
             <BuscarSearchMap
               pins={mapPins}
               onApplyZona={setMapBbox}
-              onCenterChange={setMapCenter}
               onViewportBboxChange={handleViewportBbox}
               polygonRing={mapPolygonRing}
               polygonDrawMode={polygonDrawMode}
