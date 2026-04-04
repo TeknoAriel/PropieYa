@@ -11,6 +11,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from 'react'
 
 import {
@@ -194,6 +195,28 @@ function ListingCard({ listing }: { listing: BuscarListingCardData }) {
 /** Selects nativos alineados al tema (evita `bg-background` indefinido y fondo blanco en dark). */
 const BUSCAR_SELECT_CLASS =
   'w-full rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary'
+
+function BuscarLabeledField({
+  id,
+  label,
+  children,
+}: {
+  id: string
+  label: string
+  children: ReactNode
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <label
+        htmlFor={id}
+        className="text-xs font-medium text-text-primary"
+      >
+        {label}
+      </label>
+      {children}
+    </div>
+  )
+}
 
 const FLOW_GUIDE_STORAGE_KEY = 'propieya.buscar.flowGuide.dismissed'
 const SEARCH_PAGE_LIMIT = 24
@@ -987,84 +1010,114 @@ export function BuscarContent({
             </p>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Input
-              placeholder={S.keywordPlaceholder}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
+            <BuscarLabeledField id="buscar-q" label={S.buscarFieldKeywords}>
+              <Input
+                id="buscar-q"
+                placeholder={S.keywordPlaceholder}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </BuscarLabeledField>
             {opLocked ? (
-              <div className="flex items-center rounded-md border border-border bg-surface-secondary px-3 py-2 text-sm">
-                <span className="text-text-secondary">
-                  Operación:{' '}
+              <BuscarLabeledField id="buscar-op-locked" label={S.buscarFieldOperation}>
+                <div
+                  id="buscar-op-locked"
+                  className="flex min-h-[42px] items-center rounded-md border border-border bg-surface-secondary px-3 py-2 text-sm"
+                  role="status"
+                >
                   <span className="font-medium text-text-primary">
                     {forcedOperation === 'sale' ? 'Venta' : 'Alquiler'}
                   </span>
-                </span>
-              </div>
+                </div>
+              </BuscarLabeledField>
             ) : (
+              <BuscarLabeledField id="buscar-operation" label={S.buscarFieldOperation}>
+                <select
+                  id="buscar-operation"
+                  className={BUSCAR_SELECT_CLASS}
+                  value={operationType}
+                  onChange={(e) =>
+                    setOperationType(e.target.value as OperationType | '')
+                  }
+                >
+                  <option value="">{S.allOperations}</option>
+                  <option value="sale">Venta</option>
+                  <option value="rent">Alquiler</option>
+                  <option value="temporary_rent">Alquiler temporal</option>
+                </select>
+              </BuscarLabeledField>
+            )}
+            <BuscarLabeledField id="buscar-tipo" label={S.buscarFieldPropertyType}>
               <select
+                id="buscar-tipo"
                 className={BUSCAR_SELECT_CLASS}
-                value={operationType}
+                value={propertyType}
                 onChange={(e) =>
-                  setOperationType(e.target.value as OperationType | '')
+                  setPropertyType(e.target.value as PropertyType | '')
                 }
               >
-                <option value="">{S.allOperations}</option>
-                <option value="sale">Venta</option>
-                <option value="rent">Alquiler</option>
-                <option value="temporary_rent">Alquiler temporal</option>
+                <option value="">Todos los tipos</option>
+                {PROPERTY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
-            )}
-            <select
-              className={BUSCAR_SELECT_CLASS}
-              value={propertyType}
-              onChange={(e) =>
-                setPropertyType(e.target.value as PropertyType | '')
-              }
-            >
-              <option value="">Todos los tipos</option>
-              {PROPERTY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <Input
-              placeholder="Ciudad"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-            />
-            <Input
-              placeholder="Barrio"
-              value={neighborhood}
-              onChange={(e) => setNeighborhood(e.target.value)}
-            />
-            <Input
-              type="number"
-              placeholder="Precio mín."
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
-            />
-            <Input
-              type="number"
-              placeholder="Precio máx."
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
-            />
-            <Input
-              type="number"
-              placeholder="Dorm. mín."
-              value={minBedrooms}
-              onChange={(e) => setMinBedrooms(e.target.value)}
-              min={0}
-            />
-            <Input
-              type="number"
-              placeholder="Superficie mín. (m²)"
-              value={minSurface}
-              onChange={(e) => setMinSurface(e.target.value)}
-              min={0}
-            />
+            </BuscarLabeledField>
+            <BuscarLabeledField id="buscar-ciudad" label={S.buscarFieldCity}>
+              <Input
+                id="buscar-ciudad"
+                placeholder="Ej. Córdoba, Rosario…"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+              />
+            </BuscarLabeledField>
+            <BuscarLabeledField id="buscar-barrio" label={S.buscarFieldNeighborhood}>
+              <Input
+                id="buscar-barrio"
+                placeholder="Ej. Palermo, Centro…"
+                value={neighborhood}
+                onChange={(e) => setNeighborhood(e.target.value)}
+              />
+            </BuscarLabeledField>
+            <BuscarLabeledField id="buscar-precio-min" label={S.buscarFieldMinPrice}>
+              <Input
+                id="buscar-precio-min"
+                type="number"
+                placeholder="Ej. 50000"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+              />
+            </BuscarLabeledField>
+            <BuscarLabeledField id="buscar-precio-max" label={S.buscarFieldMaxPrice}>
+              <Input
+                id="buscar-precio-max"
+                type="number"
+                placeholder="Ej. 200000"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+              />
+            </BuscarLabeledField>
+            <BuscarLabeledField id="buscar-dorm" label={S.buscarFieldMinBedrooms}>
+              <Input
+                id="buscar-dorm"
+                type="number"
+                placeholder="Ej. 2"
+                value={minBedrooms}
+                onChange={(e) => setMinBedrooms(e.target.value)}
+                min={0}
+              />
+            </BuscarLabeledField>
+            <BuscarLabeledField id="buscar-sup-min" label={S.buscarFieldMinSurface}>
+              <Input
+                id="buscar-sup-min"
+                type="number"
+                placeholder="Ej. 40"
+                value={minSurface}
+                onChange={(e) => setMinSurface(e.target.value)}
+                min={0}
+              />
+            </BuscarLabeledField>
           </div>
           <div>
             <p className="text-sm font-medium text-text-primary">{S.facetChipsTitle}</p>
@@ -1110,87 +1163,123 @@ export function BuscarContent({
                 {S.advancedSectionLocation}
               </p>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Input
-                  type="number"
-                  placeholder="Baños mín."
-                  value={minBathrooms}
-                  onChange={(e) => setMinBathrooms(e.target.value)}
-                  min={0}
-                />
-                <Input
-                  type="number"
-                  placeholder="Cocheras mín."
-                  value={minGarages}
-                  onChange={(e) => setMinGarages(e.target.value)}
-                  min={0}
-                />
-                <Input
-                  type="number"
-                  placeholder="Superficie máx. (m²)"
-                  value={maxSurface}
-                  onChange={(e) => setMaxSurface(e.target.value)}
-                  min={0}
-                />
-                <Input
-                  type="number"
-                  placeholder="Piso desde"
-                  value={floorMin}
-                  onChange={(e) => setFloorMin(e.target.value)}
-                  min={0}
-                />
-                <Input
-                  type="number"
-                  placeholder="Piso hasta"
-                  value={floorMax}
-                  onChange={(e) => setFloorMax(e.target.value)}
-                  min={0}
-                />
-                <Input
-                  placeholder="Escalera (ej. A, B)"
-                  value={escalera}
-                  onChange={(e) => setEscalera(e.target.value)}
-                  maxLength={10}
-                />
-                <select
-                  className={BUSCAR_SELECT_CLASS}
-                  value={orientation}
-                  onChange={(e) =>
-                    setOrientation(
-                      e.target.value as typeof orientation
-                    )
-                  }
+                <BuscarLabeledField id="buscar-banos" label={S.buscarFieldMinBathrooms}>
+                  <Input
+                    id="buscar-banos"
+                    type="number"
+                    placeholder="Ej. 1"
+                    value={minBathrooms}
+                    onChange={(e) => setMinBathrooms(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+                <BuscarLabeledField id="buscar-cocheras" label={S.buscarFieldMinGarages}>
+                  <Input
+                    id="buscar-cocheras"
+                    type="number"
+                    placeholder="Ej. 1"
+                    value={minGarages}
+                    onChange={(e) => setMinGarages(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+                <BuscarLabeledField id="buscar-sup-max" label={S.buscarFieldMaxSurface}>
+                  <Input
+                    id="buscar-sup-max"
+                    type="number"
+                    placeholder="Ej. 120"
+                    value={maxSurface}
+                    onChange={(e) => setMaxSurface(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+                <BuscarLabeledField id="buscar-piso-min" label={S.buscarFieldFloorMin}>
+                  <Input
+                    id="buscar-piso-min"
+                    type="number"
+                    placeholder="Ej. 1"
+                    value={floorMin}
+                    onChange={(e) => setFloorMin(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+                <BuscarLabeledField id="buscar-piso-max" label={S.buscarFieldFloorMax}>
+                  <Input
+                    id="buscar-piso-max"
+                    type="number"
+                    placeholder="Ej. 12"
+                    value={floorMax}
+                    onChange={(e) => setFloorMax(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+                <BuscarLabeledField id="buscar-escalera" label={S.buscarFieldEscalera}>
+                  <Input
+                    id="buscar-escalera"
+                    placeholder="Ej. A, B"
+                    value={escalera}
+                    onChange={(e) => setEscalera(e.target.value)}
+                    maxLength={10}
+                  />
+                </BuscarLabeledField>
+                <BuscarLabeledField id="buscar-orientacion" label={S.buscarFieldOrientation}>
+                  <select
+                    id="buscar-orientacion"
+                    className={BUSCAR_SELECT_CLASS}
+                    value={orientation}
+                    onChange={(e) =>
+                      setOrientation(
+                        e.target.value as typeof orientation
+                      )
+                    }
+                  >
+                    <option value="">Cualquiera</option>
+                    <option value="N">Norte</option>
+                    <option value="S">Sur</option>
+                    <option value="E">Este</option>
+                    <option value="W">Oeste</option>
+                    <option value="NE">Noreste</option>
+                    <option value="NW">Noroeste</option>
+                    <option value="SE">Sureste</option>
+                    <option value="SW">Suroeste</option>
+                  </select>
+                </BuscarLabeledField>
+                <BuscarLabeledField
+                  id="buscar-cub-min"
+                  label={S.buscarFieldMinSurfaceCovered}
                 >
-                  <option value="">Orientación (cualquiera)</option>
-                  <option value="N">Norte</option>
-                  <option value="S">Sur</option>
-                  <option value="E">Este</option>
-                  <option value="W">Oeste</option>
-                  <option value="NE">Noreste</option>
-                  <option value="NW">Noroeste</option>
-                  <option value="SE">Sureste</option>
-                  <option value="SW">Suroeste</option>
-                </select>
-                <Input
-                  type="number"
-                  placeholder="Sup. cubierta mín. (m²)"
-                  value={minSurfaceCovered}
-                  onChange={(e) => setMinSurfaceCovered(e.target.value)}
-                  min={0}
-                />
-                <Input
-                  type="number"
-                  placeholder="Sup. cubierta máx. (m²)"
-                  value={maxSurfaceCovered}
-                  onChange={(e) => setMaxSurfaceCovered(e.target.value)}
-                  min={0}
-                />
-                <Input
-                  type="number"
-                  placeholder="Ambientes mín."
-                  value={minTotalRooms}
-                  onChange={(e) => setMinTotalRooms(e.target.value)}
-                  min={0}
-                />
+                  <Input
+                    id="buscar-cub-min"
+                    type="number"
+                    placeholder="Ej. 30"
+                    value={minSurfaceCovered}
+                    onChange={(e) => setMinSurfaceCovered(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+                <BuscarLabeledField
+                  id="buscar-cub-max"
+                  label={S.buscarFieldMaxSurfaceCovered}
+                >
+                  <Input
+                    id="buscar-cub-max"
+                    type="number"
+                    placeholder="Ej. 90"
+                    value={maxSurfaceCovered}
+                    onChange={(e) => setMaxSurfaceCovered(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+                <BuscarLabeledField id="buscar-ambientes" label={S.buscarFieldMinTotalRooms}>
+                  <Input
+                    id="buscar-ambientes"
+                    type="number"
+                    placeholder="Ej. 3"
+                    value={minTotalRooms}
+                    onChange={(e) => setMinTotalRooms(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
               </div>
               <div>
                 <p className="text-sm font-medium text-text-primary mb-2">

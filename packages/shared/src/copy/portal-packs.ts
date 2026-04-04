@@ -240,6 +240,27 @@ export const PORTAL_SEARCH_UX_COPY = {
 
   keywordPlaceholder: 'Palabras clave (título, descripción)',
 
+  /** Etiquetas fijas encima de cada control (el placeholder solo ayuda vacío). */
+  buscarFieldKeywords: 'Palabras clave',
+  buscarFieldOperation: 'Operación',
+  buscarFieldPropertyType: 'Tipo de propiedad',
+  buscarFieldCity: 'Ciudad',
+  buscarFieldNeighborhood: 'Barrio',
+  buscarFieldMinPrice: 'Precio mínimo',
+  buscarFieldMaxPrice: 'Precio máximo',
+  buscarFieldMinBedrooms: 'Dormitorios mínimos',
+  buscarFieldMinSurface: 'Superficie mínima (m²)',
+  buscarFieldMinBathrooms: 'Baños mínimos',
+  buscarFieldMinGarages: 'Cocheras mínimas',
+  buscarFieldMaxSurface: 'Superficie máxima (m²)',
+  buscarFieldFloorMin: 'Piso desde',
+  buscarFieldFloorMax: 'Piso hasta',
+  buscarFieldEscalera: 'Escalera o entrada',
+  buscarFieldOrientation: 'Orientación',
+  buscarFieldMinSurfaceCovered: 'Superficie cubierta mín. (m²)',
+  buscarFieldMaxSurfaceCovered: 'Superficie cubierta máx. (m²)',
+  buscarFieldMinTotalRooms: 'Ambientes mínimos',
+
   showMap: 'Ver mapa',
   moreFilters: 'Más filtros',
   hideAdvanced: 'Ocultar filtros avanzados',
