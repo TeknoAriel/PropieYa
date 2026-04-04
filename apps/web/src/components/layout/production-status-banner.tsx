@@ -26,13 +26,24 @@ export function ProductionStatusBanner() {
           return
         }
         const dbErr = data.checks?.database?.error ?? ''
+        const isLocal =
+          typeof window !== 'undefined' &&
+          (window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1')
         if (dbErr.includes('DATABASE_URL')) {
           setMsg(
-            'Falta la variable DATABASE_URL en el proyecto Vercel (web). Sin base de datos no hay propiedades en listados ni búsqueda. El código del producto está desplegado; falta copiar las variables de entorno de producción (Neon u origen que uses).'
+            isLocal
+              ? 'Falta DATABASE_URL para el servidor Next.js. En local, creá apps/web/.env o .env.local con la misma cadena que en la raíz del repo (ver .env.example) o la URL de Neon. Reiniciá el dev server.'
+              : 'Falta la variable DATABASE_URL en el proyecto Vercel (web). Sin base de datos no hay propiedades en listados ni búsqueda. El código del producto está desplegado; falta copiar las variables de entorno de producción (Neon u origen que uses).'
           )
         } else if (data.checks?.database?.status === 'error') {
+          const hint = dbErr.trim()
+            ? ` Detalle: ${dbErr.trim().slice(0, 280)}${dbErr.length > 280 ? '…' : ''}`
+            : ''
           setMsg(
-            'No hay conexión a la base de datos. Revisá DATABASE_URL y que la instancia Neon acepte conexiones desde Vercel.'
+            isLocal
+              ? `No hay conexión a PostgreSQL.${hint} Si usás Docker del repo: en la raíz ejecutá «docker compose up -d postgres» (puerto 5433). Si usás Neon, pegá la connection string en apps/web/.env como DATABASE_URL=… y reiniciá el dev server.`
+              : `No hay conexión a la base de datos.${hint} Revisá DATABASE_URL en Vercel y que Neon (o tu proveedor) acepte conexiones desde el entorno de deploy.`
           )
         } else {
           setMsg(
