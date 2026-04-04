@@ -281,9 +281,6 @@ export function BuscarContent({
   /** Misma huella que `filterFingerprint`: si no cambió, permitimos placeholder entre páginas (cursor/offset). */
   const searchFilterFpRef = useRef<string | null>(null)
 
-  const spatialBlockLiveBboxRef = useRef(false)
-  const mapBboxDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   const facetFlagDefinitions = useMemo(() => getFacetFlagDefinitions(), [])
   const facetChips = useMemo(() => facetFlagDefinitions.slice(0, 12), [facetFlagDefinitions])
 
@@ -535,18 +532,6 @@ export function BuscarContent({
     }
   }, [])
 
-  useEffect(() => {
-    spatialBlockLiveBboxRef.current =
-      polygonDrawMode || mapPolygonRing.length >= 3
-  }, [polygonDrawMode, mapPolygonRing.length])
-
-  useEffect(() => {
-    return () => {
-      const t = mapBboxDebounceRef.current
-      if (t) clearTimeout(t)
-    }
-  }, [])
-
   const dismissFlowBanner = useCallback(() => {
     try {
       localStorage.setItem(FLOW_GUIDE_STORAGE_KEY, '1')
@@ -564,16 +549,6 @@ export function BuscarContent({
     if (flowGuideDontShowAgain) dismissFlowBanner()
     setFlowDialogOpen(false)
   }, [flowGuideDontShowAgain, dismissFlowBanner])
-
-  const handleViewportBbox = useCallback((bbox: BuscarMapBBox) => {
-    if (spatialBlockLiveBboxRef.current) return
-    const prev = mapBboxDebounceRef.current
-    if (prev) clearTimeout(prev)
-    mapBboxDebounceRef.current = setTimeout(() => {
-      mapBboxDebounceRef.current = null
-      setMapBbox(bbox)
-    }, 380)
-  }, [])
 
   const addPolygonVertexSafe = useCallback((p: BuscarMapPoint) => {
     setMapPolygonRing((prev) => {
@@ -1120,7 +1095,6 @@ export function BuscarContent({
             <BuscarSearchMap
               pins={mapPins}
               onApplyZona={setMapBbox}
-              onViewportBboxChange={handleViewportBbox}
               polygonRing={mapPolygonRing}
               polygonDrawMode={polygonDrawMode}
               onPolygonVertex={addPolygonVertexSafe}

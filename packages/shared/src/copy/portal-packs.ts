@@ -351,7 +351,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarFlowBannerSeeSteps: 'Ver pasos',
   buscarFlowBannerDismiss: 'No volver a mostrar',
   mapViewportUpdatesResults:
-    'Los resultados se actualizan según la zona visible del mapa (pan y zoom).',
+    'El mapa no recorta la búsqueda al moverlo: tocá «Buscar en esta zona» solo si querés filtrar por el rectángulo visible.',
   polygonSelfIntersectHint:
     'Así el área quedaría cruzada o partida (no es una sola figura cerrada). Tocá otro lugar o borrá el trazo y empezá de nuevo.',
 } as const
