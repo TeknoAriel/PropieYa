@@ -1,11 +1,11 @@
 /**
  * Query builder para búsqueda de listings.
- * Extrae filtros del texto (q) vía extractFiltersFromQuery para búsqueda por asistente.
+ * Extrae filtros del texto (q) vía mergePublicSearchFromQuery; full-text solo sobre texto residual.
  */
 
 import type { SearchFilters } from './types'
 import { getListingsIndex } from './client'
-import { extractFiltersFromQuery } from '@propieya/shared'
+import { mergePublicSearchFromQuery } from '@propieya/shared'
 
 const INDEX = getListingsIndex()
 
@@ -13,114 +13,112 @@ function sanitize(q: string): string {
   return q.trim().slice(0, 200).replace(/[<>*?":|\\[\]{}()&]/g, ' ')
 }
 
-/** Combina filtros explícitos con los extraídos del texto de búsqueda. */
-function mergeFilters(filters: SearchFilters): SearchFilters {
-  if (!filters.q?.trim()) return filters
-  const extracted = extractFiltersFromQuery(filters.q)
-  return {
-    ...filters,
-    operationType: filters.operationType ?? extracted.operationType,
-    propertyType: filters.propertyType ?? extracted.propertyType,
-    amenities: [...new Set([...(filters.amenities ?? []), ...(extracted.amenities ?? [])])],
-    minSurface: extracted.minSurface ?? filters.minSurface,
-    maxSurface: extracted.maxSurface ?? filters.maxSurface,
-    minBedrooms: extracted.minBedrooms ?? filters.minBedrooms,
-    minBathrooms: extracted.minBathrooms ?? filters.minBathrooms,
-    minGarages: extracted.minGarages ?? filters.minGarages,
-    floorMin: extracted.floorMin ?? filters.floorMin,
-    floorMax: extracted.floorMax ?? filters.floorMax,
-    escalera: extracted.escalera ?? filters.escalera,
-    minPrice: extracted.minPrice ?? filters.minPrice,
-    maxPrice: extracted.maxPrice ?? filters.maxPrice,
-  }
-}
-
 export function buildSearchBody(filters: SearchFilters): Record<string, unknown> {
-  const merged = mergeFilters(filters)
+  const merged = mergePublicSearchFromQuery(filters)
+  const { residualTextQuery, ...rest } = merged
   const must: Record<string, unknown>[] = [{ term: { status: 'active' } }]
+  const mustNot: Record<string, unknown>[] = []
 
-  if ((merged.amenities?.length ?? 0) > 0) {
-    must.push({ terms: { amenities: merged.amenities } })
-  }
-
-  if (merged.q?.trim()) {
-    const q = sanitize(merged.q)
-    if (q.length > 0) {
-      must.push({
-        multi_match: {
-          query: q,
-          fields: ['title^2', 'description', 'address.city', 'address.neighborhood'],
-          type: 'best_fields',
-          fuzziness: 'AUTO',
-        },
-      })
+  /** Cada amenity como `term` (AND), alineado al SQL con varios `@>`. */
+  if ((rest.amenities?.length ?? 0) > 0) {
+    for (const a of rest.amenities!) {
+      must.push({ term: { amenities: a } })
     }
   }
 
-  if (merged.operationType) {
-    must.push({ term: { operationType: merged.operationType } })
+  /** Facets flags/excludes (Sprint 26). Inicialmente se materializan como amenities. */
+  if ((rest.facets?.flags?.length ?? 0) > 0) {
+    for (const f of rest.facets!.flags!) {
+      must.push({ term: { amenities: f } })
+    }
   }
-  if (merged.propertyType) {
-    must.push({ term: { propertyType: merged.propertyType } })
+  if ((rest.facets?.excludeFlags?.length ?? 0) > 0) {
+    for (const f of rest.facets!.excludeFlags!) {
+      mustNot.push({ term: { amenities: f } })
+    }
   }
-  if (merged.minPrice !== undefined) {
-    must.push({ range: { priceAmount: { gte: merged.minPrice } } })
-  }
-  if (merged.maxPrice !== undefined) {
-    must.push({ range: { priceAmount: { lte: merged.maxPrice } } })
-  }
-  if (merged.minSurface !== undefined) {
-    must.push({ range: { surfaceTotal: { gte: merged.minSurface } } })
-  }
-  if (merged.maxSurface !== undefined) {
-    must.push({ range: { surfaceTotal: { lte: merged.maxSurface } } })
-  }
-  if (merged.minBedrooms !== undefined) {
-    must.push({ range: { bedrooms: { gte: merged.minBedrooms } } })
-  }
-  if (merged.minBathrooms !== undefined) {
-    must.push({ range: { bathrooms: { gte: merged.minBathrooms } } })
-  }
-  if (merged.minGarages !== undefined) {
-    must.push({ range: { garages: { gte: merged.minGarages } } })
-  }
-  if (merged.floorMin !== undefined) {
-    must.push({ range: { floor: { gte: merged.floorMin } } })
-  }
-  if (merged.floorMax !== undefined) {
-    must.push({ range: { floor: { lte: merged.floorMax } } })
-  }
-  if (merged.escalera?.trim()) {
-    must.push({ term: { escalera: merged.escalera.trim().toUpperCase() } })
-  }
-  if (merged.orientation?.trim()) {
-    must.push({ term: { orientation: merged.orientation.trim() } })
-  }
-  if (merged.minSurfaceCovered !== undefined) {
+
+  const textQ = sanitize(residualTextQuery)
+  if (textQ.length > 0) {
     must.push({
-      range: { surfaceCovered: { gte: merged.minSurfaceCovered } },
+      multi_match: {
+        query: textQ,
+        fields: [
+          'title^3',
+          'description',
+          'address.city^1.2',
+          'address.neighborhood^1.5',
+        ],
+        type: 'best_fields',
+        fuzziness: 'AUTO',
+      },
     })
   }
-  if (merged.maxSurfaceCovered !== undefined) {
+
+  if (rest.operationType) {
+    must.push({ term: { operationType: rest.operationType } })
+  }
+  if (rest.propertyType) {
+    must.push({ term: { propertyType: rest.propertyType } })
+  }
+  if (rest.minPrice !== undefined) {
+    must.push({ range: { priceAmount: { gte: rest.minPrice } } })
+  }
+  if (rest.maxPrice !== undefined) {
+    must.push({ range: { priceAmount: { lte: rest.maxPrice } } })
+  }
+  if (rest.minSurface !== undefined) {
+    must.push({ range: { surfaceTotal: { gte: rest.minSurface } } })
+  }
+  if (rest.maxSurface !== undefined) {
+    must.push({ range: { surfaceTotal: { lte: rest.maxSurface } } })
+  }
+  if (rest.minBedrooms !== undefined) {
+    must.push({ range: { bedrooms: { gte: rest.minBedrooms } } })
+  }
+  if (rest.minBathrooms !== undefined) {
+    must.push({ range: { bathrooms: { gte: rest.minBathrooms } } })
+  }
+  if (rest.minGarages !== undefined) {
+    must.push({ range: { garages: { gte: rest.minGarages } } })
+  }
+  if (rest.floorMin !== undefined) {
+    must.push({ range: { floor: { gte: rest.floorMin } } })
+  }
+  if (rest.floorMax !== undefined) {
+    must.push({ range: { floor: { lte: rest.floorMax } } })
+  }
+  if (rest.escalera?.trim()) {
+    must.push({ term: { escalera: rest.escalera.trim().toUpperCase() } })
+  }
+  if (rest.orientation?.trim()) {
+    must.push({ term: { orientation: rest.orientation.trim() } })
+  }
+  if (rest.minSurfaceCovered !== undefined) {
     must.push({
-      range: { surfaceCovered: { lte: merged.maxSurfaceCovered } },
+      range: { surfaceCovered: { gte: rest.minSurfaceCovered } },
     })
   }
-  if (merged.minTotalRooms !== undefined) {
+  if (rest.maxSurfaceCovered !== undefined) {
     must.push({
-      range: { totalRooms: { gte: merged.minTotalRooms } },
+      range: { surfaceCovered: { lte: rest.maxSurfaceCovered } },
     })
   }
-  if (merged.city?.trim()) {
-    const c = sanitize(merged.city)
+  if (rest.minTotalRooms !== undefined) {
+    must.push({
+      range: { totalRooms: { gte: rest.minTotalRooms } },
+    })
+  }
+  if (rest.city?.trim()) {
+    const c = sanitize(rest.city)
     if (c.length > 0) {
       must.push({
         match: { 'address.city': { query: c, operator: 'or' } },
       })
     }
   }
-  if (merged.neighborhood?.trim()) {
-    const n = sanitize(merged.neighborhood)
+  if (rest.neighborhood?.trim()) {
+    const n = sanitize(rest.neighborhood)
     if (n.length > 0) {
       must.push({
         match: { 'address.neighborhood': { query: n, operator: 'or' } },
@@ -128,8 +126,8 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
     }
   }
 
-  if (merged.bbox) {
-    const { south, north, west, east } = merged.bbox
+  if (rest.bbox) {
+    const { south, north, west, east } = rest.bbox
     must.push({
       geo_bounding_box: {
         location: {
@@ -140,18 +138,67 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
     })
   }
 
-  const size = Math.min(merged.limit ?? 24, 50)
-  const from = Math.min(merged.offset ?? 0, 500)
+  if (rest.polygon && rest.polygon.length >= 3) {
+    must.push({
+      geo_polygon: {
+        location: {
+          points: rest.polygon.map((p) => ({ lat: p.lat, lon: p.lng })),
+        },
+      },
+    })
+  }
 
-  return {
-    query: { bool: { must } },
-    sort: [
-      { publishedAt: { order: 'desc', unmapped_type: 'date' } },
-      { updatedAt: { order: 'desc', unmapped_type: 'date' } },
-      { createdAt: { order: 'desc', unmapped_type: 'date' } },
-    ],
+  if (rest.geoPoint && rest.geoRadius) {
+    must.push({
+      geo_distance: {
+        distance: `${Math.round(rest.geoRadius)}m`,
+        location: { lat: rest.geoPoint.lat, lon: rest.geoPoint.lng },
+      },
+    })
+  }
+
+  const size = Math.min(rest.limit ?? 24, 50)
+  const from = Math.min(rest.offset ?? 0, 500)
+  const searchAfter =
+    Array.isArray(rest.searchAfter) && rest.searchAfter.length > 0
+      ? rest.searchAfter
+      : null
+
+  /** Con texto residual, primero `_score` (relevancia) y luego recencia estable. */
+  const dateSort: Record<string, unknown>[] = [
+    {
+      publishedAt: {
+        order: 'desc' as const,
+        unmapped_type: 'date',
+        missing: '_last',
+      },
+    },
+    {
+      updatedAt: {
+        order: 'desc' as const,
+        unmapped_type: 'date',
+        missing: '_last',
+      },
+    },
+    {
+      createdAt: {
+        order: 'desc' as const,
+        unmapped_type: 'date',
+        missing: '_last',
+      },
+    },
+    { id: { order: 'desc' as const } },
+  ]
+  const sort: Record<string, unknown>[] =
+    textQ.length > 0
+      ? [{ _score: { order: 'desc' as const } }, ...dateSort]
+      : dateSort
+
+  const body: Record<string, unknown> = {
+    query: { bool: { must, ...(mustNot.length > 0 ? { must_not: mustNot } : {}) } },
+    sort,
     size,
-    from,
+    track_total_hits: true,
     _source: [
       'id',
       'title',
@@ -177,6 +224,20 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
       'updatedAt',
     ],
   }
+
+  if (searchAfter) {
+    body.search_after = searchAfter
+  } else {
+    body.from = from
+  }
+
+  return body
+}
+
+/** Longitud del array `sort` / `search_after` en ES (4 sin full-text, 5 con `_score`). */
+export function getListingSearchSortKeyCount(filters: SearchFilters): 4 | 5 {
+  const merged = mergePublicSearchFromQuery(filters)
+  return sanitize(merged.residualTextQuery).length > 0 ? 5 : 4
 }
 
 export function getSearchParams(filters: SearchFilters) {

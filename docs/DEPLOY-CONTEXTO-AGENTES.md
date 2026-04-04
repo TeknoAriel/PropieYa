@@ -1,6 +1,6 @@
 # Contexto y reglas duras — Deploy (para agentes y humanos)
 
-**Última actualización:** 2026-03-28. Este archivo es la **hoja de contexto** cuando haya dudas sobre Vercel, dominios o CI. No duplicar reglas contradictorias en otros docs: enlazar aquí.
+**Última actualización:** 2026-03-31 (repo operativo Tekno + copia kiteprop). Este archivo es la **hoja de contexto** cuando haya dudas sobre Vercel, dominios o CI. No duplicar reglas contradictorias en otros docs: enlazar aquí.
 
 ---
 
@@ -11,10 +11,12 @@
 | **URL pública del portal** | `https://propieyaweb.vercel.app` (ver `docs/CANONICAL-URLS.md`) |
 | **Proyecto Vercel activo (web)** | `propie-ya-web` (team `teknoariels-projects`) |
 | **Dominio Vercel del proyecto** | `propie-ya-web.vercel.app` (alias interno; el canónico de producto es `propieyaweb.vercel.app`) |
-| **Repositorio** | `TeknoAriel/PropieYa` |
+| **Repositorio operativo** | `TeknoAriel/PropieYa` (`origin`) — Actions + enlazar Vercel Git aquí |
+| **Copia org (auditoría)** | `kiteprop/ia-propieya` (remoto `kiteprop`; push bajo pedido) |
 | **Root Directory en Vercel** | `apps/web` |
 | **Rama de integración deploy** | Push a `deploy/infra` → workflow → **Vercel CLI** (portal). **`main` debe fusionarse con `deploy/infra`** para mantener el repo y el deploy del panel (Git) alineados; el workflow **no** mergea solo. |
 | **Secretos GitHub** | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` deben apuntar al proyecto **`propie-ya-web`** (el workflow Promote **falla** si el ID no resuelve a ese nombre vía API Vercel). |
+| **`/api/version` en deploy CLI** | Tras `vercel deploy --prod` (con `BUILD_COMMIT_SHA`), el workflow intenta **`vercel promote`** y **`alias set` en modo best-effort** (no tumba el job). El job **sí exige** smoke 2xx en `/` y `/api/health` en el canónico; si `/api/version` no coincide con el push, solo **warning** (modo recuperación sin depender de owner org ni dominio perfecto). |
 | **Fuente única de constantes** | `scripts/production-canonical.env.sh` — URL canónica, nombre del proyecto web, rama de deploy. Scripts: `pnpm verificar:ruta-produccion`. |
 | **Variables Vercel (web, Production)** | Mínimo: `DATABASE_URL`, `JWT_SECRET`, `TRUSTED_PANEL_ORIGINS`. [Environment Variables →](https://vercel.com/teknoariels-projects/propie-ya-web/settings/environment-variables) |
 
@@ -33,7 +35,7 @@
 
 2. **No crear** un segundo “proyecto web” en Vercel sin actualizar `docs/CANONICAL-URLS.md`, este archivo y `docs/33-VERCEL-CONFIG-PROYECTO-WEB.md`.
 
-3. **Un solo flujo de producción:** un solo repositorio (`TeknoAriel/PropieYa`); cambios al portal en `deploy/infra`, `pnpm verify`, push, workflow Promote + Vercel CLI al proyecto **`propie-ya-web`**. Después, **fusionar `deploy/infra` → `main`** (PR o merge) para alinear clones y el panel. Verificación: `pnpm verificar:deploy` y/o `pnpm verificar:ruta-produccion`. Lista de sprints: `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md`.
+3. **Un solo flujo de producción:** monorepo en **`TeknoAriel/PropieYa`**; cambios al portal en `deploy/infra`, `pnpm verify`, `git push origin deploy/infra`, workflow Promote + Vercel CLI al proyecto **`propie-ya-web`**. **Copia** en `kiteprop/ia-propieya` solo para auditoría cuando lo indique el propietario. Después, **fusionar `deploy/infra` → `main`** (PR en Tekno si hay reglas de rama). Verificación: `pnpm verificar:deploy` y/o `pnpm verificar:ruta-produccion`. Lista de sprints: `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md`.
 
 4. **Antes de cualquier push** que dispare CI/deploy: `pnpm verify` (lint + typecheck + build).
 
@@ -61,6 +63,8 @@
 
 - **`apps/web/vercel.json`:** configuración para builds cuando el **Root Directory** del proyecto es `apps/web` (install/build relativos al monorepo, crons).
 - **`vercel.json` (raíz):** usado por flujos que ejecutan Vercel CLI desde la **raíz del repositorio**; no debe contradecir el build del paquete `@propieya/web`. Cualquier cambio debe revisarse impacto en `.github/workflows/promote-deploy-infra.yml`.
+
+**Excepción documentada (propietario, 2026-03-31):** en ambos archivos, el cron `GET /api/cron/import-yumblin` pasó a **`*/30 * * * *`** (ingesta Properstar/Kiteprop cada 30 min en Production). Contexto y variables: `docs/48-INGEST-PROPERSTAR-POLITICA-CRON-PUSH-Y-NEGOCIO.md`.
 
 ---
 

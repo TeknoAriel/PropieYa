@@ -2,9 +2,13 @@
  * Mapeo de campos XML/JSON (Zonaprop, Kiteprop, Yumblin) → Amenity.
  * Usado para import y para búsqueda por texto/asistente.
  *
+ * Los valores normalizados deben alinearse con `FACETS_CATALOG` / `SEARCH_FILTER_AMENITIES`
+ * (`search-facets.ts`). Tokens sin mapeo quedan en `feedRawTokens` (trazabilidad del feed).
+ *
  * Referencia XML: https://static.kiteprop.com/kp/difusions/.../zonaprop.xml
  */
 
+import { filterAmenitiesToFacetCatalog } from './search-facets'
 import type { Amenity } from './types/listing'
 
 /** Mapeo: clave en feed (lowercase) → amenity interno */
@@ -45,6 +49,9 @@ export const FEED_TO_AMENITY: Record<string, Amenity> = {
   'apto crédito': 'credit_approved',
   apto_credito_financiacion: 'credit_approved',
   financiacion: 'credit_approved',
+  juegos_infantiles: 'playground',
+  playground: 'playground',
+  juegos: 'playground',
   // Inglés
   balcony: 'balcony',
   terrace: 'terrace',
@@ -64,18 +71,34 @@ export const FEED_TO_AMENITY: Record<string, Amenity> = {
   credit_approved: 'credit_approved',
 }
 
-/**
- * Extrae amenities de un item de feed (JSON/Yumblin).
- * Busca en: item.amenities[], item.caracteristicas[], item.features[],
- * y campos booleanos directos (balcon, garage, etc.).
- */
-export function extractAmenitiesFromFeedItem(
-  item: Record<string, unknown>
-): Amenity[] {
-  const seen = new Set<Amenity>()
-  const add = (a: Amenity) => seen.add(a)
+const MAX_FEED_RAW_TOKENS = 150
+const MAX_RAW_TOKEN_LEN = 120
 
-  // Array de strings
+function mapFeedStringToAmenity(raw: string): Amenity | undefined {
+  const trimmed = raw.trim()
+  if (!trimmed) return undefined
+  const key = trimmed.toLowerCase().replace(/\s+/g, '_')
+  return FEED_TO_AMENITY[key] ?? FEED_TO_AMENITY[trimmed.toLowerCase()]
+}
+
+export type ExtractAmenitiesFromFeedResult = {
+  amenities: Amenity[]
+  /** Cadenas del feed (arrays) que no mapearon a `Amenity`; conserva auditoría / futuros mapeos. */
+  feedRawTokens: string[]
+}
+
+/**
+ * Igual que `extractAmenitiesFromFeedItem` más tokens crudos no mapeados (arrays de strings).
+ */
+export function extractAmenitiesFromFeedItemDetailed(
+  item: Record<string, unknown>
+): ExtractAmenitiesFromFeedResult {
+  const seen = new Set<Amenity>()
+  const rawUnmapped = new Set<string>()
+  const add = (a: Amenity) => {
+    seen.add(a)
+  }
+
   const arrSources = [
     item.amenities,
     item.caracteristicas,
@@ -85,13 +108,16 @@ export function extractAmenitiesFromFeedItem(
   for (const arr of arrSources) {
     if (!Array.isArray(arr)) continue
     for (const v of arr) {
-      const key = String(v).toLowerCase().trim().replace(/\s+/g, '_')
-      const amenity = FEED_TO_AMENITY[key] ?? FEED_TO_AMENITY[String(v).toLowerCase()]
+      const s = String(v)
+      const amenity = mapFeedStringToAmenity(s)
       if (amenity) add(amenity)
+      else {
+        const t = s.trim().slice(0, MAX_RAW_TOKEN_LEN)
+        if (t) rawUnmapped.add(t)
+      }
     }
   }
 
-  // Campos booleanos directos
   const boolMap: Array<[string | string[], Amenity]> = [
     [['balcon', 'balcony'], 'balcony'],
     [['terraza', 'terrace'], 'terrace'],
@@ -116,10 +142,34 @@ export function extractAmenitiesFromFeedItem(
   }
 
   const garagesVal = item.garages ?? item.cocheras ?? item.garage_count
-  const garagesNum = typeof garagesVal === 'number' ? garagesVal : parseInt(String(garagesVal ?? 0), 10)
+  const garagesNum =
+    typeof garagesVal === 'number' ? garagesVal : parseInt(String(garagesVal ?? 0), 10)
   if (Number.isFinite(garagesNum) && garagesNum > 0) add('parking')
 
-  return [...seen]
+  const feedRawTokens = [...rawUnmapped].slice(0, MAX_FEED_RAW_TOKENS)
+  return {
+    amenities: [...seen],
+    feedRawTokens,
+  }
+}
+
+/**
+ * Extrae amenities de un item de feed (JSON/Yumblin).
+ * Busca en: item.amenities[], item.caracteristicas[], item.features[],
+ * y campos booleanos directos (balcon, garage, etc.).
+ */
+export function extractAmenitiesFromFeedItem(
+  item: Record<string, unknown>
+): Amenity[] {
+  return extractAmenitiesFromFeedItemDetailed(item).amenities
+}
+
+/**
+ * Amenities del listing acotadas al catálogo de facets (búsqueda / UI).
+ * No reemplaza el array completo en DB: sirve para índices o vistas alineadas al catálogo.
+ */
+export function amenitiesForFacetCatalog(amenities: readonly Amenity[]): Amenity[] {
+  return filterAmenitiesToFacetCatalog(amenities)
 }
 
 /**
@@ -136,7 +186,7 @@ export const SEARCH_TERM_TO_AMENITY: Array<{ terms: string[]; amenity: Amenity }
   { terms: ['apto credito', 'apto crédito', 'financiacion', 'financiación'], amenity: 'credit_approved' },
   { terms: ['pileta', 'piscina', 'natacion', 'natación'], amenity: 'pool' },
   { terms: ['parrilla', 'asador', 'quincho', 'bbq', 'barbacoa'], amenity: 'bbq' },
-  { terms: ['jardin', 'jardín'], amenity: 'garden' },
+  { terms: ['jardin', 'jardín', 'parque', 'parques'], amenity: 'garden' },
   { terms: ['ascensor'], amenity: 'elevator' },
   { terms: ['portero', 'conserje'], amenity: 'doorman' },
 ]

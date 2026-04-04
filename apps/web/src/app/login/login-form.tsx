@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
-import { formatTrpcUserMessage } from '@propieya/shared'
+import { formatTrpcUserMessage, PORTAL_VOICE_CTA } from '@propieya/shared'
 import { Button, Card, Input } from '@propieya/ui'
 
 import { setAccessToken } from '@/lib/auth-storage'
@@ -35,7 +35,7 @@ export function LoginForm() {
       router.push(safeNext(nextParam))
     },
     onError: (err) => {
-      setError(formatTrpcUserMessage(err) || 'No se pudo iniciar sesión')
+      setError(formatTrpcUserMessage(err) || 'No pudimos iniciar sesión.')
     },
   })
 
@@ -48,7 +48,9 @@ export function LoginForm() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface-secondary p-4">
       <Card className="w-full max-w-md p-8">
-        <h1 className="text-2xl font-bold text-text-primary mb-2">Iniciar sesión</h1>
+        <h1 className="text-2xl font-bold text-text-primary mb-2">
+          {PORTAL_VOICE_CTA.login}
+        </h1>
         <p className="text-sm text-text-secondary mb-6">
           Accedé a tu cuenta de Propieya.
         </p>
@@ -75,7 +77,9 @@ export function LoginForm() {
             required
           />
           <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
-            {loginMutation.isPending ? 'Ingresando...' : 'Ingresar'}
+            {loginMutation.isPending
+              ? PORTAL_VOICE_CTA.loginSubmitPending
+              : PORTAL_VOICE_CTA.loginSubmit}
           </Button>
         </form>
 

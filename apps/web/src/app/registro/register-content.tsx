@@ -9,6 +9,7 @@ import {
   ACCOUNT_INTENT_LABELS,
   ACCOUNT_INTENT_VALUES,
   formatTrpcUserMessage,
+  PORTAL_VOICE_CTA,
   type AccountIntent,
 } from '@propieya/shared'
 
@@ -193,7 +194,7 @@ export function RegisterContent() {
         <p className="mt-6 text-sm text-text-secondary">
           ¿Ya tenés cuenta?{' '}
           <Link href="/login" className="text-brand-primary hover:underline">
-            Iniciar sesión
+            {PORTAL_VOICE_CTA.login}
           </Link>
         </p>
         <p className="mt-3 text-xs text-text-tertiary">
@@ -202,7 +203,7 @@ export function RegisterContent() {
             href="/publicar"
             className="text-brand-primary hover:underline"
           >
-            flujo Publicar
+            flujo para publicar
           </Link>{' '}
           para abrir el panel.
         </p>

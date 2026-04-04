@@ -6,7 +6,7 @@ Documento breve; el detalle operativo está en **`docs/DEPLOY-PASOS-URIs.md`**.
 
 | Qué | Valor esperado |
 |-----|----------------|
-| Repositorio | `TeknoAriel/PropieYa` |
+| Repositorio | `kiteprop/ia-propieya` |
 | **Nombre del proyecto Vercel (web)** | **`propie-ya-web`** (team `teknoariels-projects`) |
 | Root Directory | `apps/web` |
 | Dominio del portal | `propieyaweb.vercel.app` (asignado al **mismo** proyecto web) |
@@ -25,4 +25,4 @@ Secretos en GitHub (repo):
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
 
-Ruta: `https://github.com/TeknoAriel/PropieYa/settings/secrets/actions`
+Ruta: `https://github.com/kiteprop/ia-propieya/settings/secrets/actions`

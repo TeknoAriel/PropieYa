@@ -2,6 +2,7 @@
 
 import { Suspense } from 'react'
 
+import { PORTAL_SEARCH_UX_COPY } from '@propieya/shared'
 import { Card, Skeleton } from '@propieya/ui'
 
 import { BuscarContent } from '@/components/buscar/buscar-content'
@@ -32,8 +33,8 @@ export default function BuscarPage() {
           }
         >
           <BuscarContent
-            pageTitle="Buscar propiedades"
-            pageSubtitle="Filtrá por operación, tipo, ciudad y precio."
+            pageTitle={PORTAL_SEARCH_UX_COPY.buscarTitle}
+            pageSubtitle={PORTAL_SEARCH_UX_COPY.buscarSubtitle}
           />
         </Suspense>
       </main>

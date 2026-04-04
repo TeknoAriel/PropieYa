@@ -1,5 +1,6 @@
 export * from './schema'
 export * from './client'
+export * from './listing-select-public'
 export {
   runYumblinImportSync,
   runYumblinImportSyncAllSources,

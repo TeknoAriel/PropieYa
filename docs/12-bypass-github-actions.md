@@ -10,7 +10,7 @@ Ver guía completa: **docs/26-config-repo-deploy.md**
 
 **Solución (sin PAT ni bypass):** En la regla de main, **quitar** la regla "Require status checks to pass before merging".
 
-1. **https://github.com/TeknoAriel/PropieYa/settings/rules**
+1. **https://github.com/kiteprop/ia-propieya/settings/rules**
 2. Abrir la regla de `main`
 3. En **Rules** → buscar **"Require status checks to pass"** → **eliminar**
 4. Guardar

@@ -14,22 +14,29 @@
 
 ---
 
-## Estado actual (antes de Sprint 1)
+## Estado actual (resumen marzo 2026)
 
 | Área | Estado |
 |------|--------|
 | Apps web + panel | ✅ |
-| Auth (JWT, login, register, refresh) | ✅ |
-| CRUD propiedades + upload S3 | ✅ |
-| Ficha edición panel (galería, publicar) | ✅ |
-| Cron import Yumblin | ✅ |
-| Búsqueda SQL (portal) | ✅ |
-| next/image panel galería | ✅ |
-| next/image portal | ❌ (4 warnings lint) |
-| Sistema vigencia | ❌ |
-| Elasticsearch | ❌ (búsqueda en SQL) |
-| Leads | ❌ |
-| Conversacional | ❌ |
+| Auth, CRUD, vigencia, leads, ES + fallback SQL | ✅ |
+| Import Yumblin/Kiteprop + mapeo `property_type` EN/ES | ✅ |
+| Búsqueda, mapa, clusters, demanda, alertas, org invitaciones | ✅ |
+| Asistente (IA + reglas) y semántica en `q` | ✅ |
+| Historial de búsqueda (DB + API) | `listing.search` persiste en `search_history` si hay sesión; `searchHistory.listMine` |
+| Norte de producto (portal) | `docs/41-PROPUESTA-VALOR-PORTAL.md` — descubrimiento, decisión, confianza, inventario |
+| Directiva evolutiva + matriz backlog | `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`, `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md` |
+| Sprint 30 (mapa, recientes, doc ES/reindex) | ✅ |
+| Sprint 31 (P1 confianza en ficha) | ✅ |
+| Sprint 32 (P2 descubrimiento: chips + relacionadas) | ✅ |
+| Sprint 33 (P2 comparador / centro de decisión v0) | ✅ |
+| Sprint 34 (producción: búsqueda medible + hoja de ruta escala/asistente) | ✅ — `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` |
+| Panel estadísticas (arquitectura + terminales) | `docs/49-ARQUITECTURA-PANEL-ESTADISTICAS-Y-TELEMETRIA.md`, `PORTAL_STATS_TERMINALS` en `@propieya/shared` |
+| Sprint 35 (comparar v1.1) | ✅ — tabla: precio/m², cocheras, expensas; quitar fila + URL |
+| Siguiente backlog doc 43 §5 | Lista sincronizada con mapa en `/buscar`, o filtros capa 4 contextual |
+| Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
+| Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
+| Infra GitHub/Vercel nuevo repo (Sprint 25.6–25.8) | Confirmar secretos `VERCEL_*`, Actions verde y Git del proyecto web → `docs/DEPLOY-PASOS-URIs.md` Parte A |
 
 ---
 
@@ -340,7 +347,94 @@
 
 ---
 
+## Sprint 21 — Mapa en búsqueda: clusters (zoom bajo) ✅
+
+**Objetivo:** capa AA de `docs/38`: agrupar pins en `/buscar` cuando hay muchos marcadores y el zoom es amplio; al acercar, spiderfy / pins individuales.
+
+- [x] 21.1 Dependencia `leaflet.markercluster` + tipos en `apps/web`
+- [x] 21.2 `BuscarSearchMap`: `L.markerClusterGroup` imperativo (compatible con `react-leaflet` 4), estilos default del plugin, `disableClusteringAtZoom: 16`
+- [x] 21.3 Popups con enlace a ficha; título escapado para HTML
+- [x] 21.4 Verificar `pnpm verify`, commit + push
+
+**Criterios:** con varios avisos geolocalizados, el mapa muestra clusters que se desglosan al hacer zoom o clic; sin paquete `react-leaflet-cluster` (peer incompatible con RL4).
+
+---
+
+## Sprint 22 — Búsqueda por frase: extraer filtros y no romper full-text ✅
+
+**Objetivo:** una sola caja `q` debe interpretar frases largas (operación, tipo, dormitorios, tamaño, amenities) sin exigir que título/descripción contengan el texto entero; SQL fallback alineado a ES.
+
+**Problema real:** `mergeFilters` + `multi_match` sobre el `q` completo ANDaba filtros estructurados con “toda la frase” en título → **0 resultados** salvo coincidencia literal. El fallback SQL **no** aplicaba `extractFiltersFromQuery`.
+
+- [x] 22.1 `extractFiltersFromQueryDetailed` + `stripConsumedPartsFromQuery` + `mergePublicSearchFromQuery` en `@propieya/shared`
+- [x] 22.2 ES: `multi_match` solo sobre **texto residual**; amenities como varios `term` (AND, como SQL)
+- [x] 22.3 SQL `listing.search`: mismo merge + ILIKE solo sobre residual
+- [x] 22.4 Heurística **grande / amplio / espacioso** → `minSurface` 100 m²; **parque** → jardín (amenity)
+- [x] 22.5 `matchOperationSpanInOriginalQuery` + `PROPERTY_PHRASES_SORTED` para spans de operación/tipo
+- [x] 22.6 Verificar `pnpm verify`, doc + commit + push
+
+**Criterios:** consulta tipo *“casa para comprar 2 dormitorios grande con jardin pileta quincho y garage”* aplica filtros estructurados y deja el full-text vacío o mínimo (p. ej. barrio suelto), sin exigir la frase completa en el aviso.
+
+---
+
+## Sprint 23 — Asistente visible: innovación en home + tono fundacional ✅
+
+**Objetivo:** que el portal muestre de inmediato el diferencial conversacional-first (`docs/00`): propuesta de búsqueda distinta, copy y términos alineados al pack **`conversacion_primero`** (default), asistente “con color” sin depender solo de la API key.
+
+- [x] 23.1 Hero: badge `assistantBadge`, microcopy `assistantPitch`, chip **IA conectada / modo reglas** (`/api/assistant-config`)
+- [x] 23.2 Contenedor del input (borde marca, sombra, blur) cuando hay strip de asistente; accesibilidad básica (`aria-label`)
+- [x] 23.3 Prompt sistema `llm.ts`: paradigma Propieya, intención humana → JSON, frases largas y matices
+- [x] 23.4 `docs/41-ASISTENTE-PORTAL.md` actualizado; pack default ya `conversacion_primero` en `portal-packs` + `.env.example`
+- [x] 23.5 Verificar `pnpm verify`, `docs/24`, commit + push
+
+**Criterios:** un visitante entiende que no es “otro buscador de casillas”; ve si la extracción puede usar IA o reglas; el tono refleja directrices del proyecto.
+
+---
+
+## Sprint 24 — Importación tipada + semántica rural (doc 38 AB) ✅
+
+**Objetivo:** cerrar la brecha “todo cae en apartment” cuando el feed envía códigos en inglés; documentar operación; ampliar sinónimos rurales en búsqueda por texto; herramientas de depuración feed↔DB.
+
+- [x] 24.1 `mapFeedPropertyType`: códigos Kiteprop (`houses`, `apartments`, `residential_lands`, …) + alias `lots` / `agricultural_land`
+- [x] 24.2 `mapYumblinItem`: `getValue` insensible a mayúsculas/guiones; prioridad `typeproperty` anidado; alias precio/superficie/operación
+- [x] 24.3 `search-semantics`: frases rurales (finca, estancia, loteo, fracción rural, uso agrícola, zona rural, …)
+- [x] 24.4 Scripts `pnpm audit:yumblin-fields`, `pnpm diff:import-types`; doc `docs/37` sección feed + hash
+- [x] 24.5 Verificar `pnpm verify`, actualizar este doc, commit + push
+
+**Criterios:** un import tras deploy recalcula tipos alineados al feed; el operador puede auditar con scripts; búsqueda por texto reconoce más variantes rurales (doc 38 AB).
+
+---
+
+## Sprint 25 — Repo oficial kiteprop + higiene post-migración
+
+**Objetivo:** que el monorepo quede **coherente** con `kiteprop/ia-propieya` (documentación raíz, `package.json`, verificación local del remoto) y dejar trazado qué sigue **solo manual** (Vercel, secretos, archivado del repo viejo).
+
+### Tareas (agente / CI)
+
+- [x] 25.1 `README.md`: URL oficial de clonado + enlace a deploy canónico
+- [x] 25.2 `package.json`: campo `repository` apuntando a `kiteprop/ia-propieya`
+- [x] 25.3 Script `scripts/verify-repo-remote.sh` + `pnpm verify:repo-remote` (comprueba `origin`)
+- [x] 25.4 `pnpm verify` y push a `origin/deploy/infra`
+- [x] 25.5 Actualizar pie de este doc (fecha / sprint)
+
+### Tareas (solo humano / dashboard)
+
+- [ ] 25.6 **GitHub → Settings → Secrets:** `VERCEL_*` en https://github.com/kiteprop/ia-propieya/settings/secrets/actions
+- [ ] 25.7 **Actions:** último run verde en https://github.com/kiteprop/ia-propieya/actions
+- [ ] 25.8 **Vercel web:** Git conectado a `kiteprop/ia-propieya` (proyecto `propie-ya-web`)
+- [x] 25.9 **Opcional:** nota en `README.md` (repo histórico TeknoAriel/PropieYa); archivar el repo viejo queda a criterio del propietario
+
+**Criterios:** clone desde README coincide con repo oficial; script opcional detecta remoto incorrecto; producción sigue en `docs/DEPLOY-PASOS-URIs.md`.
+
+---
+
 ## Próximos sprints (backlog)
+
+**Norte estratégico del portal (decisiones de copy y prioridad):** `docs/41-PROPUESTA-VALOR-PORTAL.md`.
+
+**Directiva operativa (anti-Frankenstein, capas A–D, monetización por fases, modo agente):** `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`.
+
+**Anexo masterplan — matriz, clasificación y backlog priorizado:** `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md`.
 
 **Criterios ampliados (MLS, facets, mapa, semántica, UX progresiva):** `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md` — repaso de producto/arquitectura; priorizar ítems en nuevos sprints según esa hoja.
 
@@ -352,4 +446,174 @@
 
 ---
 
-*Actualizado: 2026-03-29 (Sprint 20 ampliado: DB + manifest + ts)*
+*Actualizado: 2026-03-31 (doc 49 panel estadísticas + terminales; Sprint 34 cerrado doc 47; Sprint 33 comparador; 25.6–25.8 según dashboard)*
+
+---
+
+## Sprint 26 — Facets escalables + mapa (polígono/radio) + dedup MLS-ready
+
+**Objetivo:** pasar de “filtros hardcodeados” a un sistema **facetado escalable** (catálogo + tipado + UI progresiva), sumar búsqueda por **polígono/radio** en mapa, y dejar una base **dedup** explícita (MLS-ready) sin romper producción.
+
+### Tareas (agente / CI)
+
+- [x] 26.1 **Catálogo de facets (backend):** modelo en `packages/shared` (`FACETS_CATALOG`, `getFacetFlagDefinitions`) + `listing.getSearchFacetsCatalog`; saneo con `sanitizeListingSearchFacets`
+- [x] 26.2 **Mapeo de feeds → facets:** `FEED_TO_AMENITY` + `extractAmenitiesFromFeedItemDetailed` (`feedRawTokens` / `features.feedAmenityRaw`); `OPENNAVENT_ROLE_TO_AMENITY` en OpenNavent; `filterAmenitiesToFacetCatalog` en `search-facets`
+- [x] 26.3 **Schema tipado de búsqueda:** `facetFiltersSchema` + `facets` en `searchFiltersSchema` y `SearchFilters` (`types/search.ts`)
+- [x] 26.4 **API search unificada:** facets en `listing.search` (SQL/ES); entrada normalizada en Zod (`listingSearchFiltersSchema` / alertas) con `sanitizeListingSearchFacets`
+- [x] 26.5 **Elasticsearch mapping + index:** `amenities` + `feedAmenityRaw` + `dedupCanonicalId` en mapping; indexación en `listingToEsDoc`; `pnpm reindex:es` (= `sync-search:local`) para reindex seguro; índices existentes: actualizar mapping + reindex
+- [x] 26.6 **UI progresiva (web /buscar):** bloque «Esenciales» + chips rápidos (12 flags del catálogo) + «Más filtros» con checklist completo (`PORTAL_SEARCH_UX_COPY`)
+- [x] 26.7 **Mapa: polígono/radio:** `geo_polygon` / `geo_distance` / `geo_bounding_box` en ES + SQL (`listing.search`); UI mapa en `/buscar`
+- [x] 26.8 **Dedup MLS-ready (base):** `listings.dedup_canonical_id` + `computeListingDedupFingerprint` + script `pnpm dedup:apply`; búsqueda pública excluye duplicados (SQL + ES). **Migración:** `pnpm db:push` (columna nueva).
+- [x] 26.9 **Verificación:** `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** filtros extensibles sin tocar UI por cada amenity nuevo; `/buscar` sigue simple por defecto; polígono/radio reduce inventario por geografía real; dedup no rompe publicaciones ni leads.
+
+---
+
+## Sprint 27 — Historial de búsqueda (usuarios logueados) ✅
+
+**Objetivo:** registrar cada `listing.search` con sesión en `search_history` (filtros + conteo + tiempo) sin bloquear la respuesta; exponer lectura propia vía tRPC para futura UI o panel.
+
+### Tareas (agente / CI)
+
+- [x] 27.1 Persistir filas en `search_history` desde `listing.search` (camino ES con resultados y camino SQL/fallback), solo si `ctx.session?.userId`
+- [x] 27.2 Router `searchHistory.listMine` (protegido, últimas N) y registro en `appRouter`
+- [x] 27.3 **Opcional:** UI en web “búsquedas recientes” (`BuscarRecentSearches` + `searchHistory.listMine` en `/buscar`)
+- [x] 27.4 `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** usuarios logueados dejan rastro auditable de búsquedas; fallos de insert no afectan resultados; prod con tabla aplicada (`pnpm db:push` si faltaba `search_history`).
+
+**Nota:** alertas guardadas siguen en `searchAlert` + `search_alerts`; este sprint es historial pasivo por request.
+
+---
+
+## Sprint 28 — Producto “más que avisos” + sitio completo + copy unificado (largo) ✅
+
+**Objetivo:** anclar el portal en la propuesta de valor de `docs/41-PROPUESTA-VALOR-PORTAL.md` (descubrimiento, decisión, confianza, inventario), cerrar **enlaces rotos del footer**, alinear **copy de búsqueda** con esa voz, y dejar un **backlog ejecutable** para siguientes iteraciones en automata.
+
+### A — Documentación y criterio
+
+- [x] 28.1 Publicar `docs/41-PROPUESTA-VALOR-PORTAL.md` (norte de decisión + tabla de implicancias)
+- [x] 28.2 Referenciar doc 41 en este archivo y en tabla “Estado actual”
+
+### B — Páginas y navegación (web)
+
+- [x] 28.3 Rutas: `/nosotros`, `/contacto`, `/planes`, `/terminos`, `/privacidad`, `/cookies`, `/emprendimientos` (contenido alineado a doc 41; legales en versión preliminar)
+- [x] 28.4 Footer: enlace **Panel de gestión** a `NEXT_PUBLIC_PANEL_URL` (ya no `/panel` inexistente)
+- [x] 28.5 Header o menú móvil: enlaces útiles (Buscar, Nosotros, Contacto) si falta cobertura en pantallas chicas
+- [x] 28.6 Formulario de contacto en `/contacto`: armado de `mailto:` + copiar texto (`ContactoForm`, `NEXT_PUBLIC_CONTACT_EMAIL`)
+
+### C — Copy y UX de búsqueda
+
+- [x] 28.7 `PORTAL_SEARCH_UX_COPY` en `packages/shared` + uso en `buscar-content`, mapa y páginas `/buscar`, `/venta`, `/alquiler`
+- [x] 28.8 Revisar fichas `/propiedad/[id]` y modales de contacto: tono voseo + nota de confianza (`PORTAL_LISTING_UX_COPY`)
+- [x] 28.9 UI “búsquedas recientes” en `/buscar` (`searchHistory.listMine`, `BuscarRecentSearches`)
+
+### D — Inventario y datos (producto “sólido”)
+
+- [x] 28.10 Sprint 26.5 cerrado (facets + ES + reindex)
+- [x] 28.11 Sprint 26.8 cerrado (dedup MLS base)
+- [x] 28.12 Jobs/sync y calidad de datos: tabla en `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md` §4
+
+### E — Cierre de sprint (agente)
+
+- [x] 28.13 `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** ningún link del footer principal lleva a 404; búsqueda y títulos reflejan “mismo motor” y decisión informada; doc 41 es la referencia explícita para futuras features.
+
+---
+
+## Sprint 29 — Directiva operativa + anexo masterplan (documentación) ✅
+
+**Objetivo:** incorporar el bloque de conocimiento y directiva como **fuente oficial complementaria**, y producir el **anexo al masterplan** con matriz, clasificación, recomendaciones y backlog limpio.
+
+### Tareas (agente / CI)
+
+- [x] 29.1 Publicar `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md` (principio anti-Frankenstein, núcleo, capas A–D, MLS, búsqueda/filtros/mapa/semántica, monetización por fases, modo agente)
+- [x] 29.2 Publicar `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md` (matriz, clasificación, recomendaciones, backlog priorizado alineado a Sprint 26)
+- [x] 29.3 Referencias cruzadas: `docs/00-fundacion-producto.md`, `docs/41-PROPUESTA-VALOR-PORTAL.md`, `AGENTS.md`, tabla “Estado actual” y “Próximos sprints” en este archivo
+
+**Criterios:** nuevas épicas se enmarcan en doc 42 §1 y en la matriz doc 43; ejecución técnica sigue Sprint 26/28 sin mezclar add-ons IA al core.
+
+---
+
+## Sprint 30 — Cierre checklist (mapa, recientes, ES operativo) ✅
+
+**Objetivo:** avanzar **P1** de `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md` §5 y cerrar **28.8–28.9** donde aplique, sin abrir módulos sueltos.
+
+### Tareas propuestas (agente / CI)
+
+- [x] 30.0 **Mapa /buscar:** pan bloqueado — `FitBounds` se disparaba en cada render porque `points` era un array nuevo tras cada `moveend` → `setMapCenter`; `useMemo` en coords + saneo de lat/lng (incl. swap típico Cono Sur) en `map-geo.ts`
+- [x] 30.1 Ejecutar **Sprint 26.1–26.4** según checklist §26 (facets, mapeo, schema, API unificada)
+- [x] 30.2 **28.8** Ficha `/propiedad/[id]` + contacto: voseo + confianza / “por qué encaja”
+- [x] 30.3 **28.9:** UI “búsquedas recientes” (`BuscarRecentSearches`, `searchHistory.listMine`)
+- [x] 30.4 **26.5** Contrato ES estable en código (`mapping.ts` + `indexer.ts`); procedimiento de reindex en `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md` §4.1 (`pnpm reindex:es` tras cambios de mapping o dedup en DB)
+- [x] 30.5 `pnpm verify` + commit + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** cada entrega pasa el test anti-Frankenstein (`docs/42` §1); no se suman herramientas de decisión dispersas fuera del plan del “Centro de decisión” (`docs/43` §2 matriz).
+
+---
+
+## Sprint 31 — P1 confianza visible en ficha (`/propiedad/[id]`) ✅
+
+**Objetivo:** doc 43 §5 ítem 4 (iteración corta): vigencia, completitud y origen visibles sin nuevo motor ni datos sensibles.
+
+### Tareas (agente / CI)
+
+- [x] 31.1 `packages/shared`: `listing-portal-trust.ts` — `buildListingFreshnessUi`, `computeListingCompletenessScore`, `resolveListingCompletenessForPortal` (usa `quality_score` si existe)
+- [x] 31.2 Copy en `PORTAL_LISTING_UX_COPY` (título tarjeta, completitud, origen import vs manual, badge “Por vencer”)
+- [x] 31.3 `ListingTrustPanel` en ficha pública + tipos de `listing.getById`
+- [x] 31.4 `pnpm verify` + push `deploy/infra` + alinear `main`
+
+**Criterios:** usuario ve publicación/vigencia, barra de completitud y origen (feed vs portal); coincide con directiva confianza (doc 41/42).
+
+---
+
+## Sprint 32 — P2 descubrimiento (`docs/43` §5) ✅
+
+**Objetivo:** sugerencias inductivas en home y `/buscar`, más enlaces de búsqueda relacionada en ficha, reutilizando el mismo contrato de query que `BuscarContent`.
+
+### Tareas (agente / CI)
+
+- [x] 32.1 `packages/shared`: `buildPortalBuscarUrl` + `PORTAL_INDUCTIVE_CHIPS`; copy `PORTAL_SEARCH_UX_COPY` / `PORTAL_LISTING_UX_COPY`
+- [x] 32.2 Home: `InductiveSearchChips` entre hero y destacados
+- [x] 32.3 `/buscar`: misma franja en card bajo historial (si hay sesión) / encima de esenciales
+- [x] 32.4 Ficha: `ListingRelatedSearches` (tipo+op, ciudad, barrio) + `hero-search` usa URL compartida
+- [x] 32.5 `pnpm verify` + push `deploy/infra` + alinear `main` + `pnpm verificar:deploy`
+
+**Criterios:** enlaces generan URLs con `op`/`tipo`/`ciudad`/`barrio` coherentes con el buscador; sin nuevo endpoint.
+
+---
+
+## Sprint 33 — Comparador público (centro de decisión v0) ✅
+
+**Objetivo:** doc 43 §5 ítem 6 (primer widget): comparar 2–3 avisos activos en una tabla clara, sin nuevo motor de búsqueda; reutilizar `listingsSelectPublic` + almacenamiento de sesión.
+
+### Tareas (agente / CI)
+
+- [x] 33.1 `listing.getComparePublic` (2–3 UUID, orden, imagen principal)
+- [x] 33.2 `sessionStorage` + barra fija (`CompareDock`) + `buildPortalCompareUrl` en `@propieya/shared`
+- [x] 33.3 Ruta `/comparar` (query `ids` o lista guardada) + copy `PORTAL_COMPARE_COPY`
+- [x] 33.4 Botón en ficha y en cards de `/buscar` / venta / alquiler (`AddToCompareButton`)
+- [x] 33.5 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** el usuario arma la lista desde fichas o resultados, abre la comparación y ve precio/sup/dorm/baños/zona por fila; máximo 3 avisos.
+
+---
+
+## Sprint 34 — Producción: medición de búsqueda y rumbo escala/asistente
+
+**Objetivo:** anclar el **ritmo de producción** (no hobby): documento único de mandato + **observabilidad** de `listing.search` para medir ES vs SQL en Vercel; dejar tareas explícitas para paginación profunda y asistente multi-turno sin mezclar con otros sprints.
+
+**Fuente de verdad:** `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` (pilares F0–F3, golden queries apéndice A).
+
+### Tareas (agente / CI)
+
+- [x] 34.1 Publicar `docs/47` + enlaces en `AGENTS.md`, `.cursor/rules/automacion-propietario.mdc` y tabla de estado en este archivo
+- [x] 34.2 Variable `LOG_SEARCH_MS=1`: logs estructurados en `listing.search` (fase post-ES y cierre SQL); documentar en `.env.example`
+- [x] 34.3 Paginación profunda Elasticsearch (`search_after` + `nextCursor` / input `cursor`); UI `/buscar` “Cargar más”; `offset` SQL hasta 50k; ver `docs/47` F1
+- [x] 34.4 Asistente: `previousContext` en `searchConversational`, LLM + fallback merge, `sessionStorage` + chips en `/buscar` — `docs/47` §F3
+- [x] 34.5 Ranking: primer ajuste medible — ES `multi_match` con boosts (título/barrio/ciudad) y orden `_score` + fechas cuando hay texto residual en `q`; cursor 4 vs 5 claves validado en `listing.search`; golden set en apéndice A de `docs/47`
+- [x] 34.6 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy` (tras cada bloque de tareas listo para prod)
+
+**Criterios:** cualquier agente puede leer doc 47 y saber prioridades; con `LOG_SEARCH_MS` en Preview/Pro se pueden correlacionar tiempos con logs de Vercel sin cambiar respuestas al cliente.

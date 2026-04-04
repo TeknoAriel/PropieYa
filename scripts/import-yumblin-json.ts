@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Importa propiedades desde el feed JSON Yumblin (Kiteprop).
+ * Importa propiedades desde el feed JSON Kiteprop (Properstar / Yumblin).
  *
  * Uso:
  *   pnpm import:yumblin
@@ -52,6 +52,7 @@ async function main() {
     enforceInterval: false,
     forceFullFetch,
     assumeUnassignedBelongsToThisSource: true,
+    withdrawOrgWide: true,
   })
 
   if (result.skipped) {
@@ -61,8 +62,11 @@ async function main() {
 
   const c = result.counts
   console.log(
-    `Importadas: ${c.imported}, actualizadas: ${c.updated}, sin cambios: ${c.unchanged}, omitidas (inválidas): ${c.skippedInvalid}, bajas: ${c.withdrawn}`
+    `Importadas: ${c.imported}, actualizadas: ${c.updated}, sin cambios (hash): ${c.unchanged}, sin cambios (last_update feed): ${c.skippedUnchangedBySourceTime}, omitidas (inválidas): ${c.skippedInvalid}, bajas: ${c.withdrawn}`
   )
+  if (result.withdrawnListingIds.length > 0) {
+    console.log(`IDs dados de baja: ${result.withdrawnListingIds.length} (reindex ES: pnpm reindex:es si aplica)`)
+  }
 }
 
 main().catch((err) => {

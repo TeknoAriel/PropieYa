@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
+import { PORTAL_VOICE_CTA } from '@propieya/shared'
 import { Button, Card, Skeleton } from '@propieya/ui'
 
 import { getAccessToken } from '@/lib/auth-storage'
@@ -36,7 +37,7 @@ export default function PerfilDemandaPage() {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button asChild>
-              <Link href="/login">Iniciar sesión</Link>
+              <Link href="/login">{PORTAL_VOICE_CTA.login}</Link>
             </Button>
             <Button asChild variant="outline">
               <Link href="/registro">Crear cuenta</Link>
@@ -61,11 +62,11 @@ export default function PerfilDemandaPage() {
       <div className="container mx-auto px-4 py-12 max-w-lg">
         <Card className="p-8">
           <p className="text-text-secondary">
-            No se pudo cargar el perfil. Si tu sesión expiró, volvé a iniciar
+            No pudimos cargar el perfil. Si tu sesión expiró, volvé a iniciar
             sesión.
           </p>
           <Button asChild className="mt-4">
-            <Link href="/login">Iniciar sesión</Link>
+            <Link href="/login">{PORTAL_VOICE_CTA.login}</Link>
           </Button>
         </Card>
       </div>

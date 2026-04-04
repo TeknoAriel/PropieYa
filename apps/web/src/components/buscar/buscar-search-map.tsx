@@ -1,18 +1,23 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import L from 'leaflet'
 import {
-  CircleMarker,
   MapContainer,
-  Popup,
   TileLayer,
+  Polygon,
+  Polyline,
   useMap,
+  useMapEvents,
 } from 'react-leaflet'
 
+import { PORTAL_SEARCH_UX_COPY } from '@propieya/shared'
 import { Button } from '@propieya/ui'
 
 import 'leaflet/dist/leaflet.css'
+import 'leaflet.markercluster/dist/MarkerCluster.css'
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
+import 'leaflet.markercluster'
 
 export type BuscarMapBBox = {
   south: number
@@ -28,12 +33,42 @@ export type BuscarMapPin = {
   lng: number
 }
 
+export type BuscarMapPoint = { lat: number; lng: number }
+
 const BA_DEFAULT: [number, number] = [-34.6037, -58.3816]
 
-function FitBounds({ points }: { points: [number, number][] }) {
+function CurrentCenterReporter({
+  onCenter,
+}: {
+  onCenter: (center: { lat: number; lng: number }) => void
+}) {
   const map = useMap()
   useEffect(() => {
+    const report = () => {
+      const c = map.getCenter()
+      onCenter({ lat: c.lat, lng: c.lng })
+    }
+    report()
+    map.on('moveend', report)
+    return () => {
+      map.off('moveend', report)
+    }
+  }, [map, onCenter])
+  return null
+}
+
+/**
+ * Centra el mapa en los pins solo cuando aparecen por primera vez (o tras quedar
+ * sin pins y volver a haber datos). Evita que cada refetch de resultados “robe”
+ * el pan/zoom del usuario cuando el bbox vive actualizado por moveend.
+ */
+function FitBoundsOnce({ points }: { points: [number, number][] }) {
+  const map = useMap()
+  const didFit = useRef(false)
+  useEffect(() => {
     if (points.length === 0) return
+    if (didFit.current) return
+    didFit.current = true
     if (points.length === 1) {
       const only = points[0]
       if (only) map.setView(only, 14)
@@ -45,6 +80,113 @@ function FitBounds({ points }: { points: [number, number][] }) {
     }
   }, [map, points])
   return null
+}
+
+function ViewportBboxReporter({
+  onBbox,
+}: {
+  onBbox: (bbox: BuscarMapBBox) => void
+}) {
+  const map = useMap()
+  useEffect(() => {
+    const report = () => {
+      const b = map.getBounds()
+      onBbox({
+        south: b.getSouth(),
+        north: b.getNorth(),
+        west: b.getWest(),
+        east: b.getEast(),
+      })
+    }
+    report()
+    map.on('moveend', report)
+    return () => {
+      map.off('moveend', report)
+    }
+  }, [map, onBbox])
+  return null
+}
+
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/"/g, '&quot;')
+}
+
+/** Agrupa marcadores en zoom bajo (doc 38 AA — clusters). */
+function ClusteredPins({ pins }: { pins: BuscarMapPin[] }) {
+  const map = useMap()
+
+  useEffect(() => {
+    const mcg = L.markerClusterGroup({
+      chunkedLoading: true,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      maxClusterRadius: 56,
+      disableClusteringAtZoom: 16,
+    })
+
+    for (const p of pins) {
+      const cm = L.circleMarker([p.lat, p.lng], {
+        radius: 8,
+        color: '#2563eb',
+        fillColor: '#3b82f6',
+        fillOpacity: 0.85,
+        weight: 2,
+      })
+      const safeTitle = escapeHtml(p.title)
+      cm.bindPopup(
+        `<a href="/propiedad/${escapeHtml(p.id)}" class="text-sm font-medium text-blue-600 hover:underline">${safeTitle}</a>`,
+      )
+      mcg.addLayer(cm)
+    }
+
+    map.addLayer(mcg)
+    return () => {
+      mcg.clearLayers()
+      map.removeLayer(mcg)
+    }
+  }, [map, pins])
+
+  return null
+}
+
+function PolygonDrawClicks({
+  enabled,
+  onVertex,
+}: {
+  enabled: boolean
+  onVertex: (lat: number, lng: number) => void
+}) {
+  useMapEvents({
+    click(e) {
+      if (!enabled) return
+      onVertex(e.latlng.lat, e.latlng.lng)
+    },
+  })
+  return null
+}
+
+function PolygonDraftOverlay({ ring }: { ring: BuscarMapPoint[] }) {
+  if (ring.length < 2) return null
+  const positions = ring.map((p) => [p.lat, p.lng] as [number, number])
+  if (ring.length >= 3) {
+    return (
+      <Polygon
+        positions={positions}
+        pathOptions={{
+          color: '#2563eb',
+          fillColor: '#3b82f6',
+          fillOpacity: 0.12,
+          weight: 2,
+        }}
+      />
+    )
+  }
+  return (
+    <Polyline positions={positions} pathOptions={{ color: '#2563eb', weight: 2 }} />
+  )
 }
 
 function ZonaControls({
@@ -71,7 +213,7 @@ function ZonaControls({
             })
           }}
         >
-          Buscar en esta zona
+          {PORTAL_SEARCH_UX_COPY.searchThisArea}
         </Button>
       </div>
     </div>
@@ -81,14 +223,34 @@ function ZonaControls({
 type BuscarSearchMapProps = {
   pins: BuscarMapPin[]
   onApplyZona: (bbox: BuscarMapBBox) => void
+  onCenterChange?: (center: { lat: number; lng: number }) => void
+  /** Cada pan/zoom: viewport actual (el padre suele debouncear para filtrar resultados). */
+  onViewportBboxChange?: (bbox: BuscarMapBBox) => void
+  /** Vértices del polígono (búsqueda por área dibujada). */
+  polygonRing?: BuscarMapPoint[]
+  /** Si true, cada clic en el mapa agrega un vértice. */
+  polygonDrawMode?: boolean
+  onPolygonVertex?: (p: BuscarMapPoint) => void
 }
 
-export function BuscarSearchMap({ pins, onApplyZona }: BuscarSearchMapProps) {
+export function BuscarSearchMap({
+  pins,
+  onApplyZona,
+  onCenterChange,
+  onViewportBboxChange,
+  polygonRing = [],
+  polygonDrawMode = false,
+  onPolygonVertex,
+}: BuscarSearchMapProps) {
+  const points = useMemo(
+    () => pins.map((p) => [p.lat, p.lng] as [number, number]),
+    [pins]
+  )
+
   const first = pins[0]
   const center: [number, number] = first
     ? [first.lat, first.lng]
     : BA_DEFAULT
-  const points: [number, number][] = pins.map((p) => [p.lat, p.lng])
 
   return (
     <div className="relative overflow-hidden rounded-lg border border-border">
@@ -97,35 +259,32 @@ export function BuscarSearchMap({ pins, onApplyZona }: BuscarSearchMapProps) {
         zoom={pins.length > 0 ? 13 : 11}
         className="h-[min(420px,55vh)] w-full min-h-[280px] z-0"
         scrollWheelZoom
+        dragging
+        touchZoom
+        doubleClickZoom
+        boxZoom
+        keyboard
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <FitBounds points={points} />
+        <FitBoundsOnce points={points} />
+        {onViewportBboxChange ? (
+          <ViewportBboxReporter onBbox={onViewportBboxChange} />
+        ) : null}
+        {onCenterChange ? <CurrentCenterReporter onCenter={onCenterChange} /> : null}
+        {onPolygonVertex ? (
+          <>
+            <PolygonDrawClicks
+              enabled={polygonDrawMode}
+              onVertex={(lat, lng) => onPolygonVertex({ lat, lng })}
+            />
+            <PolygonDraftOverlay ring={polygonRing} />
+          </>
+        ) : null}
         <ZonaControls onApplyZona={onApplyZona} />
-        {pins.map((p) => (
-          <CircleMarker
-            key={p.id}
-            center={[p.lat, p.lng]}
-            radius={8}
-            pathOptions={{
-              color: '#2563eb',
-              fillColor: '#3b82f6',
-              fillOpacity: 0.85,
-              weight: 2,
-            }}
-          >
-            <Popup>
-              <a
-                href={`/propiedad/${p.id}`}
-                className="text-sm font-medium text-brand-primary hover:underline"
-              >
-                {p.title}
-              </a>
-            </Popup>
-          </CircleMarker>
-        ))}
+        <ClusteredPins pins={pins} />
       </MapContainer>
     </div>
   )

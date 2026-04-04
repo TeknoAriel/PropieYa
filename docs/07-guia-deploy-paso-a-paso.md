@@ -47,7 +47,7 @@ DATABASE_URL="postgresql://user:password@ep-xxx-pooler.us-east-2.aws.neon.tech/n
 
 ```bash
 git remote -v
-# Debe mostrar: origin  https://github.com/TeknoAriel/PropieYa.git
+# Debe mostrar: origin  https://github.com/kiteprop/ia-propieya.git
 ```
 
 ### 2.2 Commit y push
@@ -67,7 +67,7 @@ git push origin master
 
 ### 2.3 Verificar en GitHub
 
-- **URL:** https://github.com/TeknoAriel/PropieYa  
+- **URL:** https://github.com/kiteprop/ia-propieya  
 - Comprobá que el último commit esté subido.
 
 ---
@@ -82,7 +82,7 @@ git push origin master
 ### 3.2 Importar repositorio
 
 1. Clic en **Add New…** → **Project**.
-2. En **Import Git Repository**, buscá `PropieYa` o `TeknoAriel/PropieYa`.
+2. En **Import Git Repository**, buscá `PropieYa` o `kiteprop/ia-propieya`.
 3. Clic en **Import** junto al repo.
 
 ### 3.3 Configurar el proyecto Web
@@ -128,7 +128,7 @@ pnpm install --frozen-lockfile
 ### 4.1 Nuevo proyecto
 
 1. **URL:** https://vercel.com/new  
-2. Clic en **Import** junto a `TeknoAriel/PropieYa` (mismo repo).
+2. Clic en **Import** junto a `kiteprop/ia-propieya` (mismo repo).
 
 ### 4.2 Configurar el proyecto Panel
 
@@ -208,7 +208,7 @@ Si el build falla por el monorepo:
 |----------|-----|
 | **Neon Console** | https://console.neon.tech |
 | **Vercel Dashboard** | https://vercel.com/dashboard |
-| **Repositorio GitHub** | https://github.com/TeknoAriel/PropieYa |
+| **Repositorio GitHub** | https://github.com/kiteprop/ia-propieya |
 | **Vercel - Nuevo proyecto** | https://vercel.com/new |
 | **Vercel - Docs Monorepos** | https://vercel.com/docs/monorepos |
 

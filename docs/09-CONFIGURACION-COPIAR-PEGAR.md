@@ -51,7 +51,7 @@ DATABASE_URL="postgresql://neondb_owner:xxxxx@ep-cool-name-12345-pooler.us-east-
 
 ## 3. GITHUB (mergear código)
 
-**URL:** https://github.com/TeknoAriel/PropieYa/compare/main...deploy/infra
+**URL:** https://github.com/kiteprop/ia-propieya/compare/main...deploy/infra
 
 | Dónde | Qué hacer |
 |-------|-----------|
@@ -137,7 +137,7 @@ m2gmICmfIKaI/HH2y0Kb9Vfcy8SUcASharYczShIcqs=
 | Qué | URL |
 |-----|-----|
 | Neon | https://console.neon.tech |
-| Crear PR / mergear | https://github.com/TeknoAriel/PropieYa/compare/main...deploy/infra |
+| Crear PR / mergear | https://github.com/kiteprop/ia-propieya/compare/main...deploy/infra |
 | Nuevo proyecto Vercel | https://vercel.com/new |
 | Dashboard Vercel | https://vercel.com/dashboard |
-| Repo GitHub | https://github.com/TeknoAriel/PropieYa |
+| Repo GitHub | https://github.com/kiteprop/ia-propieya |

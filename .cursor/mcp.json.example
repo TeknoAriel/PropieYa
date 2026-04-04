@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "kiteprop": {
+      "command": "npx",
+      "args": ["-y", "github:kiteprop/crm-mcp"],
+      "env": {
+        "KITEPROP_API_URL": "https://www.kiteprop.com",
+        "KITEPROP_API_TOKEN": "REEMPLAZA_CON_TU_API_KEY_kp_"
+      }
+    }
+  }
+}

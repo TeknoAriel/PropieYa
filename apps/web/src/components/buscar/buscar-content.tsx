@@ -4,10 +4,28 @@ import Image from 'next/image'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 
-import { Badge, Button, Card, Input, Skeleton } from '@propieya/ui'
-import type { BuscarMapBBox } from '@/components/buscar/buscar-search-map'
+import {
+  Badge,
+  Button,
+  Card,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Skeleton,
+} from '@propieya/ui'
+import type { BuscarMapBBox, BuscarMapPoint } from '@/components/buscar/buscar-search-map'
 
 const BuscarSearchMap = dynamic(
   () => import('./buscar-search-map').then((mod) => mod.BuscarSearchMap),
@@ -17,14 +35,23 @@ const BuscarSearchMap = dynamic(
   }
 )
 import {
-  AMENITY_LABELS,
   formatPrice,
+  getFacetFlagDefinitions,
   OPERATION_TYPE_LABELS,
-  SEARCH_FILTER_AMENITIES,
+  PORTAL_SEARCH_UX_COPY as S,
+  type Currency,
+  type OperationType,
+  type PortalSearchPage,
+  type PropertyType,
 } from '@propieya/shared'
-import type { Currency, OperationType, PropertyType } from '@propieya/shared'
 
+import { AddToCompareButton } from '@/components/compare/add-to-compare-button'
+import { BuscarRecentSearches } from '@/components/buscar/buscar-recent-searches'
+import { ConversationalSearchBlock } from '@/components/portal/conversational-search-block'
+import { InductiveSearchChips } from '@/components/portal/inductive-search-chips'
 import { getAccessToken } from '@/lib/auth-storage'
+import { sanitizeListingCoordinates } from '@/lib/map-geo'
+import { canAppendPolygonVertex } from '@/lib/map-polygon'
 import { trpc } from '@/lib/trpc'
 
 export type BuscarContentProps = {
@@ -66,7 +93,10 @@ function pinsFromListings(list: BuscarListingCardData[]) {
       lng = Number(l.locationLng)
     }
     if (lat != null && lng != null && !Number.isNaN(lat) && !Number.isNaN(lng)) {
-      out.push({ id: l.id, title: l.title, lat, lng })
+      const ok = sanitizeListingCoordinates(lat, lng)
+      if (ok) {
+        out.push({ id: l.id, title: l.title, lat: ok.lat, lng: ok.lng })
+      }
     }
   }
   return out
@@ -110,7 +140,7 @@ function ListingCard({ listing }: { listing: BuscarListingCardData }) {
             {neighborhood}, {city}
           </p>
 
-          <div className="mt-3 flex items-center gap-4 text-sm text-text-tertiary">
+          <div className="mt-3 flex items-center gap-4 text-sm text-text-secondary">
             <span>{listing.surfaceTotal} m²</span>
             {listing.bedrooms !== null && listing.bedrooms > 0 ? (
               <span>{listing.bedrooms} dorm.</span>
@@ -125,19 +155,45 @@ function ListingCard({ listing }: { listing: BuscarListingCardData }) {
 
           {listing.matchReasons && listing.matchReasons.length > 0 ? (
             <div className="mt-3 rounded-md border border-border/60 bg-surface-secondary/80 px-3 py-2 text-xs text-text-secondary">
-              <p className="mb-1 font-medium text-text-primary">Por qué coincide</p>
+              <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                <p className="min-w-0 flex-1 font-medium text-text-primary">
+                  {S.matchWhyTitle}
+                </p>
+                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <AddToCompareButton
+                    listingId={listing.id}
+                    compact
+                    stopNavigation
+                  />
+                </div>
+              </div>
               <ul className="list-inside list-disc space-y-0.5">
                 {listing.matchReasons.slice(0, 5).map((r, i) => (
                   <li key={`${listing.id}-reason-${i}`}>{r}</li>
                 ))}
               </ul>
             </div>
-          ) : null}
+          ) : (
+            <div className="mt-3 flex justify-end">
+              <AddToCompareButton
+                listingId={listing.id}
+                compact
+                stopNavigation
+              />
+            </div>
+          )}
         </div>
       </Card>
     </Link>
   )
 }
+
+/** Selects nativos alineados al tema (evita `bg-background` indefinido y fondo blanco en dark). */
+const BUSCAR_SELECT_CLASS =
+  'w-full rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary'
+
+const FLOW_GUIDE_STORAGE_KEY = 'propieya.buscar.flowGuide.dismissed'
+const SEARCH_PAGE_LIMIT = 24
 
 const PROPERTY_OPTIONS: { value: PropertyType; label: string }[] = [
   { value: 'apartment', label: 'Departamento' },
@@ -202,18 +258,42 @@ export function BuscarContent({
   const [orientation, setOrientation] = useState<
     '' | 'N' | 'S' | 'E' | 'W' | 'NE' | 'NW' | 'SE' | 'SW'
   >('')
-  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([])
+  const [selectedAmenityFacets, setSelectedAmenityFacets] = useState<string[]>([])
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [mapBbox, setMapBbox] = useState<BuscarMapBBox | null>(null)
+  const [mapPolygonRing, setMapPolygonRing] = useState<BuscarMapPoint[]>([])
+  const [polygonDrawMode, setPolygonDrawMode] = useState(false)
   const [showMap, setShowMap] = useState(false)
+  /** Filtros clásicos colapsados por defecto para no abrumar; se abren si la URL trae criterios. */
+  const [classicFiltersOpen, setClassicFiltersOpen] = useState(false)
+  const [flowDialogOpen, setFlowDialogOpen] = useState(false)
+  const [flowGuideDontShowAgain, setFlowGuideDontShowAgain] = useState(false)
+  const [showFlowBanner, setShowFlowBanner] = useState(false)
+  const [polygonDrawHint, setPolygonDrawHint] = useState<string | null>(null)
+  const [searchPage, setSearchPage] = useState<{
+    cursor?: string
+    offset: number
+  }>({ offset: 0 })
+  const [accumulatedListings, setAccumulatedListings] = useState<
+    BuscarListingCardData[]
+  >([])
+  const appendNextPageRef = useRef(false)
+  /** Misma huella que `filterFingerprint`: si no cambió, permitimos placeholder entre páginas (cursor/offset). */
+  const searchFilterFpRef = useRef<string | null>(null)
 
-  const toggleAmenity = (key: string) => {
-    setSelectedAmenities((prev) =>
+  const spatialBlockLiveBboxRef = useRef(false)
+  const mapBboxDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const facetFlagDefinitions = useMemo(() => getFacetFlagDefinitions(), [])
+  const facetChips = useMemo(() => facetFlagDefinitions.slice(0, 12), [facetFlagDefinitions])
+
+  const toggleAmenityFacet = (key: string) => {
+    setSelectedAmenityFacets((prev) =>
       prev.includes(key) ? prev.filter((x) => x !== key) : [...prev, key]
     )
   }
 
-  const filters = useMemo(
+  const coreSearchFilters = useMemo(
     () => ({
       q: q.trim() || undefined,
       operationType: (forcedOperation ?? operationType) || undefined,
@@ -238,10 +318,15 @@ export function BuscarContent({
         ? Number(maxSurfaceCovered)
         : undefined,
       minTotalRooms: minTotalRooms ? Number(minTotalRooms) : undefined,
-      amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined,
-      bbox: mapBbox ?? undefined,
-      limit: 24,
-      offset: 0,
+      amenities:
+        selectedAmenityFacets.length > 0 ? selectedAmenityFacets : undefined,
+      facets:
+        selectedAmenityFacets.length > 0
+          ? { flags: selectedAmenityFacets }
+          : undefined,
+      bbox:
+        mapPolygonRing.length >= 3 ? undefined : (mapBbox ?? undefined),
+      polygon: mapPolygonRing.length >= 3 ? mapPolygonRing : undefined,
     }),
     [
       q,
@@ -264,25 +349,90 @@ export function BuscarContent({
       minSurfaceCovered,
       maxSurfaceCovered,
       minTotalRooms,
-      selectedAmenities,
+      selectedAmenityFacets,
       mapBbox,
+      mapPolygonRing,
     ]
   )
 
-  const { data: listingsRaw = [], isLoading, isError, error } =
-    trpc.listing.search.useQuery(filters)
+  const filterFingerprint = JSON.stringify(coreSearchFilters)
 
-  const listings = listingsRaw as unknown as BuscarListingCardData[]
+  useEffect(() => {
+    setSearchPage({ offset: 0 })
+    setAccumulatedListings([])
+  }, [filterFingerprint])
+
+  const filters = useMemo(
+    () => ({
+      ...coreSearchFilters,
+      limit: SEARCH_PAGE_LIMIT,
+      offset: searchPage.cursor ? 0 : searchPage.offset,
+      cursor: searchPage.cursor,
+    }),
+    [coreSearchFilters, searchPage]
+  )
+
+  const { data, isLoading, isFetching, isError, error } =
+    trpc.listing.search.useQuery(filters, {
+      placeholderData: (previousData) => {
+        if (searchFilterFpRef.current !== filterFingerprint) {
+          searchFilterFpRef.current = filterFingerprint
+          return undefined
+        }
+        return previousData
+      },
+    })
+
+  useEffect(() => {
+    if (!data) return
+    const page = data.items as BuscarListingCardData[]
+    if (appendNextPageRef.current) {
+      setAccumulatedListings((prev) => [...prev, ...page])
+      appendNextPageRef.current = false
+    } else {
+      setAccumulatedListings(page)
+    }
+  }, [data])
+
+  const listings = accumulatedListings
+
+  const loadMoreResults = useCallback(() => {
+    if (isFetching) return
+    if (!data) return
+    if (data.nextCursor) {
+      appendNextPageRef.current = true
+      setSearchPage({ offset: 0, cursor: data.nextCursor })
+      return
+    }
+    if (
+      data.items.length >= SEARCH_PAGE_LIMIT &&
+      accumulatedListings.length < data.total
+    ) {
+      appendNextPageRef.current = true
+      setSearchPage({
+        offset: accumulatedListings.length,
+        cursor: undefined,
+      })
+    }
+  }, [data, accumulatedListings.length, isFetching])
+
+  const canLoadMore =
+    !isFetching &&
+    data != null &&
+    data.total > 0 &&
+    (data.nextCursor != null ||
+      (accumulatedListings.length < data.total &&
+        data.items.length === SEARCH_PAGE_LIMIT))
 
   const mapPins = useMemo(() => pinsFromListings(listings), [listings])
 
   const demandPayload = useMemo(() => {
-    const { limit: _l, offset: _o, ...rest } = filters
+    const { limit: _l, offset: _o, cursor: _c, ...rest } = filters
     return rest
   }, [filters])
 
   const alertPayload = useMemo(() => {
-    const { limit: _l, offset: _o, ...rest } = filters
+    const { limit: _l, offset: _o, cursor: _c, ...rest } = filters
     return rest
   }, [filters])
 
@@ -304,17 +454,266 @@ export function BuscarContent({
 
   const opLocked = Boolean(forcedOperation)
 
+  const searchPathPage: PortalSearchPage = useMemo(
+    () =>
+      forcedOperation === 'sale'
+        ? 'venta'
+        : forcedOperation === 'rent'
+          ? 'alquiler'
+          : 'buscar',
+    [forcedOperation]
+  )
+
+  const [assistantHint, setAssistantHint] = useState<{
+    summary: string
+    total: number
+  } | null>(null)
+
+  const searchParamsKey = searchParams.toString()
+
+  const hasClassicUrlParams = useMemo(() => {
+    const sp = new URLSearchParams(searchParamsKey)
+    const keys = [
+      'op',
+      'tipo',
+      'ciudad',
+      'barrio',
+      'min',
+      'max',
+      'dorm',
+      'sup',
+    ] as const
+    return keys.some((k) => {
+      const v = sp.get(k)
+      return v != null && v.trim() !== ''
+    })
+  }, [searchParamsKey])
+
+  useLayoutEffect(() => {
+    if (hasClassicUrlParams) setClassicFiltersOpen(true)
+  }, [hasClassicUrlParams])
+
+  useEffect(() => {
+    const sp = new URLSearchParams(searchParamsKey)
+    setQ(sp.get('q') ?? '')
+    if (!forcedOperation) {
+      setOperationType((sp.get('op') as OperationType) ?? '')
+    }
+    setPropertyType((sp.get('tipo') as PropertyType) ?? '')
+    setCity(sp.get('ciudad') ?? '')
+    setNeighborhood(sp.get('barrio') ?? '')
+    setMinPrice(sp.get('min') ?? '')
+    setMaxPrice(sp.get('max') ?? '')
+    setMinBedrooms(sp.get('dorm') ?? '')
+    setMinSurface(sp.get('sup') ?? '')
+    setMaxSurface('')
+    setMinBathrooms('')
+    setMinGarages('')
+    setFloorMin('')
+    setFloorMax('')
+    setEscalera('')
+    setMinSurfaceCovered('')
+    setMaxSurfaceCovered('')
+    setMinTotalRooms('')
+    setOrientation('')
+    setSelectedAmenityFacets([])
+    setMapBbox(null)
+    setMapPolygonRing([])
+    setPolygonDrawMode(false)
+  }, [searchParamsKey, forcedOperation])
+
+  useEffect(() => {
+    try {
+      if (
+        typeof window !== 'undefined' &&
+        localStorage.getItem(FLOW_GUIDE_STORAGE_KEY) !== '1'
+      ) {
+        setShowFlowBanner(true)
+      }
+    } catch {
+      setShowFlowBanner(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    spatialBlockLiveBboxRef.current =
+      polygonDrawMode || mapPolygonRing.length >= 3
+  }, [polygonDrawMode, mapPolygonRing.length])
+
+  useEffect(() => {
+    return () => {
+      const t = mapBboxDebounceRef.current
+      if (t) clearTimeout(t)
+    }
+  }, [])
+
+  const dismissFlowBanner = useCallback(() => {
+    try {
+      localStorage.setItem(FLOW_GUIDE_STORAGE_KEY, '1')
+    } catch {
+      /* ignore */
+    }
+    setShowFlowBanner(false)
+  }, [])
+
+  useEffect(() => {
+    if (flowDialogOpen) setFlowGuideDontShowAgain(false)
+  }, [flowDialogOpen])
+
+  const confirmFlowGuideDialog = useCallback(() => {
+    if (flowGuideDontShowAgain) dismissFlowBanner()
+    setFlowDialogOpen(false)
+  }, [flowGuideDontShowAgain, dismissFlowBanner])
+
+  const handleViewportBbox = useCallback((bbox: BuscarMapBBox) => {
+    if (spatialBlockLiveBboxRef.current) return
+    const prev = mapBboxDebounceRef.current
+    if (prev) clearTimeout(prev)
+    mapBboxDebounceRef.current = setTimeout(() => {
+      mapBboxDebounceRef.current = null
+      setMapBbox(bbox)
+    }, 380)
+  }, [])
+
+  const addPolygonVertexSafe = useCallback((p: BuscarMapPoint) => {
+    setMapPolygonRing((prev) => {
+      if (!canAppendPolygonVertex(prev, p)) {
+        setPolygonDrawHint(S.polygonSelfIntersectHint)
+        window.setTimeout(() => setPolygonDrawHint(null), 5000)
+        return prev
+      }
+      setPolygonDrawHint(null)
+      return [...prev, p]
+    })
+  }, [])
+
+  const scrollToElementId = (id: string) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+      })
+    })
+  }
+
   return (
     <div className="container mx-auto space-y-6 px-4 py-10">
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-text-primary">{pageTitle}</h1>
-            <p className="mt-2 text-text-secondary">{pageSubtitle}</p>
-            <p className="mt-2 text-sm text-text-tertiary">
-              Novedad: tocá <span className="font-medium text-text-secondary">Más filtros</span>{' '}
-              debajo del formulario para barrio, amenities, superficie y piso.
+        <Card className="border-border-strong/40 bg-gradient-to-b from-surface-secondary to-surface-primary p-4 shadow-sm md:p-5">
+          {showFlowBanner ? (
+            <div
+              className="mb-3 flex flex-col gap-2 rounded-lg border border-brand-primary/15 bg-brand-primary/5 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+              role="region"
+              aria-label={S.buscarFlowTitle}
+            >
+              <p className="line-clamp-2 text-xs text-text-secondary sm:line-clamp-1 sm:pr-2">
+                {S.buscarFlowBannerTeaser}
+              </p>
+              <div className="flex shrink-0 flex-wrap gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setFlowDialogOpen(true)}
+                >
+                  {S.buscarFlowBannerSeeSteps}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs px-2"
+                  onClick={dismissFlowBanner}
+                >
+                  {S.buscarFlowBannerDismiss}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          <ConversationalSearchBlock
+            variant="buscar"
+            routerMode="replace"
+            searchPathPage={searchPathPage}
+            forcedOperation={forcedOperation}
+            onAfterNavigate={setAssistantHint}
+            compact
+          />
+          <div className="mt-3 border-t border-border/40 pt-3">
+            <InductiveSearchChips variant="embedded" showSubtitle={false} />
+          </div>
+        </Card>
+
+        {assistantHint ? (
+          <Card className="border-brand-primary/25 bg-brand-primary/5 p-5 space-y-3">
+            <p className="text-sm font-semibold text-text-primary">
+              {S.conversationalInterpretedTitle}
             </p>
+            <p className="text-sm text-text-secondary">{assistantHint.summary}</p>
+            <p className="text-sm text-text-primary">
+              {S.conversationalResultsPrefix}:{' '}
+              <strong>{assistantHint.total}</strong>
+            </p>
+            <p className="text-xs font-medium text-text-secondary">
+              {S.conversationalNextTitle}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowMap(true)
+                  scrollToElementId('buscar-mapa')
+                }}
+              >
+                {S.conversationalNextMap}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setClassicFiltersOpen(true)
+                  setShowAdvanced(true)
+                  window.requestAnimationFrame(() =>
+                    document
+                      .getElementById('buscar-esenciales')
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  )
+                }}
+              >
+                {S.conversationalNextFilters}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" asChild>
+                <a href="#buscar-resultados">{S.conversationalScrollResults}</a>
+              </Button>
+            </div>
+            <p className="text-xs text-text-secondary">{S.conversationalNextAgain}</p>
+          </Card>
+        ) : null}
+
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+          <div className="max-w-2xl">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-4">
+              <h1 className="text-2xl font-bold tracking-tight text-text-primary md:text-3xl">
+                {pageTitle}
+              </h1>
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto justify-start p-0 text-sm font-medium"
+                onClick={() => setFlowDialogOpen(true)}
+              >
+                {S.buscarFlowLinkInline}
+              </Button>
+            </div>
+            <p className="mt-2 text-sm text-text-secondary md:text-base">
+              {pageSubtitle}
+            </p>
+            <p className="mt-2 text-sm text-text-secondary">{S.buscarPageGentleHint}</p>
           </div>
           <div className="flex flex-col items-stretch gap-2 sm:items-end">
             {me ? (
@@ -326,8 +725,8 @@ export function BuscarContent({
                   onClick={() => saveProfile.mutate(demandPayload)}
                 >
                   {saveProfile.isPending
-                    ? 'Guardando…'
-                    : 'Guardar filtros en mi perfil'}
+                    ? S.saveProfilePending
+                    : S.saveProfile}
                 </Button>
                 <Button
                   type="button"
@@ -336,8 +735,8 @@ export function BuscarContent({
                   onClick={() => createAlert.mutate(alertPayload)}
                 >
                   {createAlert.isPending
-                    ? 'Creando…'
-                    : 'Crear alerta con estos filtros'}
+                    ? S.createAlertPending
+                    : S.createAlert}
                 </Button>
                 <div className="flex flex-wrap gap-2">
                   <Button asChild variant="outline" size="sm">
@@ -352,30 +751,68 @@ export function BuscarContent({
             <div className="flex flex-wrap gap-2">
               {opLocked ? (
                 <Button asChild variant="outline" size="sm">
-                  <Link href="/buscar">Todas las operaciones</Link>
+                  <Link href="/buscar">{S.allOperations}</Link>
                 </Button>
               ) : null}
               <Button asChild variant="outline" size="sm">
-                <Link href="/">Inicio</Link>
+                <Link href="/">{S.homeLink}</Link>
               </Button>
             </div>
           </div>
         </div>
         {profileSaved ? (
           <p className="text-sm text-semantic-success">
-            Perfil actualizado con estos filtros.
+            {S.profileSaved}
           </p>
         ) : null}
         {alertSaved ? (
           <p className="text-sm text-semantic-success">
-            Alerta creada. Podés verla en Mis alertas.
+            {S.alertSaved}
           </p>
         ) : null}
 
-        <Card className="p-4">
+        {me ? <BuscarRecentSearches /> : null}
+
+        <div className="flex flex-wrap items-center justify-center gap-2 border-y border-border/40 py-4 md:justify-start">
+          <Button
+            type="button"
+            variant={classicFiltersOpen ? 'outline' : 'default'}
+            size="sm"
+            onClick={() => setClassicFiltersOpen((v) => !v)}
+          >
+            {classicFiltersOpen
+              ? S.filtersOptionalCollapse
+              : S.filtersOptionalExpand}
+          </Button>
+          {!showMap ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setShowMap(true)
+                scrollToElementId('buscar-mapa')
+              }}
+            >
+              {S.showMap}
+            </Button>
+          ) : null}
+        </div>
+
+        <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
+          {classicFiltersOpen ? (
+            <Card className="space-y-4 p-4 md:p-6">
+          <div>
+            <h2 className="text-lg font-semibold text-text-primary">
+              {S.essentialsFriendlyTitle}
+            </h2>
+            <p className="mt-1 text-sm text-text-secondary">
+              {S.essentialsFriendlySubtitle}
+            </p>
+          </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Input
-              placeholder="Palabras clave (título, descripción)"
+              placeholder={S.keywordPlaceholder}
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
@@ -390,20 +827,20 @@ export function BuscarContent({
               </div>
             ) : (
               <select
-                className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+                className={BUSCAR_SELECT_CLASS}
                 value={operationType}
                 onChange={(e) =>
                   setOperationType(e.target.value as OperationType | '')
                 }
               >
-                <option value="">Todas las operaciones</option>
+                <option value="">{S.allOperations}</option>
                 <option value="sale">Venta</option>
                 <option value="rent">Alquiler</option>
                 <option value="temporary_rent">Alquiler temporal</option>
               </select>
             )}
             <select
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+              className={BUSCAR_SELECT_CLASS}
               value={propertyType}
               onChange={(e) =>
                 setPropertyType(e.target.value as PropertyType | '')
@@ -422,6 +859,11 @@ export function BuscarContent({
               onChange={(e) => setCity(e.target.value)}
             />
             <Input
+              placeholder="Barrio"
+              value={neighborhood}
+              onChange={(e) => setNeighborhood(e.target.value)}
+            />
+            <Input
               type="number"
               placeholder="Precio mín."
               value={minPrice}
@@ -433,46 +875,65 @@ export function BuscarContent({
               value={maxPrice}
               onChange={(e) => setMaxPrice(e.target.value)}
             />
+            <Input
+              type="number"
+              placeholder="Dorm. mín."
+              value={minBedrooms}
+              onChange={(e) => setMinBedrooms(e.target.value)}
+              min={0}
+            />
+            <Input
+              type="number"
+              placeholder="Superficie mín. (m²)"
+              value={minSurface}
+              onChange={(e) => setMinSurface(e.target.value)}
+              min={0}
+            />
           </div>
-          <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-            {!showMap ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mr-auto"
-                onClick={() => setShowMap(true)}
-              >
-                Ver mapa
-              </Button>
-            ) : null}
+          <div>
+            <p className="text-sm font-medium text-text-primary">{S.facetChipsTitle}</p>
+            <p className="text-xs text-text-secondary mt-0.5">{S.facetChipsHint}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {facetChips.map((facet) => (
+                <Button
+                  key={facet.id}
+                  type="button"
+                  size="sm"
+                  variant={
+                    selectedAmenityFacets.includes(facet.id) ? 'default' : 'outline'
+                  }
+                  onClick={() => toggleAmenityFacet(facet.id)}
+                >
+                  {facet.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mr-auto text-text-secondary hover:text-text-primary"
+              onClick={() => setClassicFiltersOpen(false)}
+            >
+              {S.filtersOptionalCollapse}
+            </Button>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setShowAdvanced((v) => !v)}
             >
-              {showAdvanced ? 'Ocultar filtros avanzados' : 'Más filtros'}
+              {showAdvanced ? S.hideAdvanced : S.moreFilters}
             </Button>
           </div>
           {showAdvanced ? (
             <div className="mt-4 space-y-4 border-t border-border pt-4">
               <p className="text-sm font-medium text-text-primary">
-                Ubicación y superficie
+                {S.advancedSectionLocation}
               </p>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Input
-                  placeholder="Barrio"
-                  value={neighborhood}
-                  onChange={(e) => setNeighborhood(e.target.value)}
-                />
-                <Input
-                  type="number"
-                  placeholder="Dorm. mín."
-                  value={minBedrooms}
-                  onChange={(e) => setMinBedrooms(e.target.value)}
-                  min={0}
-                />
                 <Input
                   type="number"
                   placeholder="Baños mín."
@@ -485,13 +946,6 @@ export function BuscarContent({
                   placeholder="Cocheras mín."
                   value={minGarages}
                   onChange={(e) => setMinGarages(e.target.value)}
-                  min={0}
-                />
-                <Input
-                  type="number"
-                  placeholder="Superficie mín. (m²)"
-                  value={minSurface}
-                  onChange={(e) => setMinSurface(e.target.value)}
                   min={0}
                 />
                 <Input
@@ -522,7 +976,7 @@ export function BuscarContent({
                   maxLength={10}
                 />
                 <select
-                  className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  className={BUSCAR_SELECT_CLASS}
                   value={orientation}
                   onChange={(e) =>
                     setOrientation(
@@ -564,108 +1018,220 @@ export function BuscarContent({
               </div>
               <div>
                 <p className="text-sm font-medium text-text-primary mb-2">
-                  Amenities
+                  {S.amenitiesSectionTitle}
                 </p>
                 <div className="flex flex-wrap gap-x-4 gap-y-2">
-                  {SEARCH_FILTER_AMENITIES.map((key) => (
+                  {facetFlagDefinitions.map((facet) => (
                     <label
-                      key={key}
-                      className="flex cursor-pointer items-center gap-2 text-sm text-text-secondary"
+                      key={facet.id}
+                      className="flex cursor-pointer items-center gap-2 text-sm text-text-primary"
                     >
                       <input
                         type="checkbox"
                         className="rounded border-border"
-                        checked={selectedAmenities.includes(key)}
-                        onChange={() => toggleAmenity(key)}
+                        checked={selectedAmenityFacets.includes(facet.id)}
+                        onChange={() => toggleAmenityFacet(facet.id)}
                       />
-                      {AMENITY_LABELS[key]}
+                      {facet.label}
                     </label>
                   ))}
                 </div>
               </div>
             </div>
           ) : null}
-        </Card>
+          </Card>
+          ) : null}
+        </div>
 
         {showMap ? (
-          <Card className="p-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium text-text-primary">Mapa</p>
-              <div className="flex flex-wrap gap-2">
+          <Card id="buscar-mapa" className="scroll-mt-24 p-3 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+              <p className="text-xs font-semibold text-text-primary">
+                {S.mapSectionTitle}
+              </p>
+              <div className="flex flex-wrap justify-end gap-1.5">
                 {mapBbox ? (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="h-8 text-xs"
                     onClick={() => setMapBbox(null)}
                   >
-                    Quitar filtro de zona
+                    {S.clearBboxFilter}
+                  </Button>
+                ) : null}
+                {mapPolygonRing.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      setMapPolygonRing([])
+                      setPolygonDrawMode(false)
+                    }}
+                  >
+                    {S.polygonRemove}
                   </Button>
                 ) : null}
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="h-8 text-xs"
                   onClick={() => {
                     setShowMap(false)
                     setMapBbox(null)
+                    setMapPolygonRing([])
+                    setPolygonDrawMode(false)
                   }}
                 >
-                  Ocultar mapa
+                  {S.hideMap}
                 </Button>
               </div>
             </div>
-            <BuscarSearchMap pins={mapPins} onApplyZona={setMapBbox} />
-            <p className="text-xs text-text-tertiary">
-              Solo se marcan avisos con ubicación. Mové el mapa y tocá «Buscar en esta zona» para
-              filtrar por el rectángulo visible.
-            </p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2">
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-text-primary">
+                <input
+                  type="checkbox"
+                  className="rounded border-border"
+                  checked={polygonDrawMode}
+                  onChange={(e) => setPolygonDrawMode(e.target.checked)}
+                />
+                {S.polygonDrawLabel}
+              </label>
+              <span className="text-xs text-text-tertiary">
+                {mapPolygonRing.length}{' '}
+                {mapPolygonRing.length === 1
+                  ? S.polygonVertexSingular
+                  : S.polygonVertexPlural}
+                {mapPolygonRing.length >= 3
+                  ? ` ${S.polygonFilterActive}`
+                  : ` ${S.polygonMinVertices}`}
+              </span>
+            </div>
+            {polygonDrawHint ? (
+              <p className="text-sm text-semantic-warning" role="status">
+                {polygonDrawHint}
+              </p>
+            ) : null}
+            <BuscarSearchMap
+              pins={mapPins}
+              onApplyZona={setMapBbox}
+              onViewportBboxChange={handleViewportBbox}
+              polygonRing={mapPolygonRing}
+              polygonDrawMode={polygonDrawMode}
+              onPolygonVertex={addPolygonVertexSafe}
+            />
+            <div className="space-y-1 text-xs text-text-tertiary">
+              <p>{S.mapViewportUpdatesResults}</p>
+              <p>{S.mapHelp}</p>
+            </div>
             {mapPins.length === 0 && !isLoading ? (
               <p className="text-sm text-text-secondary">
-                No hay resultados con pin en este momento (falta geolocalización en los avisos o
-                los filtros no devolvieron coincidencias con coordenadas).
+                {S.mapNoPins}
               </p>
             ) : null}
           </Card>
         ) : null}
+
+        <div id="buscar-resultados" className="scroll-mt-24 space-y-6">
+          {isError ? (
+            <Card className="p-6">
+              <p className="text-sm text-text-primary">
+                {S.loadError}{' '}
+                {error?.message?.includes('DATABASE') ||
+                error?.message?.includes('required')
+                  ? S.loadErrorDbHint
+                  : (error?.message ?? S.loadErrorRetry)}
+              </p>
+            </Card>
+          ) : isLoading && !data && accumulatedListings.length === 0 ? (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="overflow-hidden">
+                  <Skeleton className="h-48 w-full" />
+                  <div className="space-y-3 p-4">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-6 w-1/2" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : listings.length === 0 ? (
+            <Card className="p-6">
+              <p className="text-text-secondary">
+                {S.emptyResults}
+              </p>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {listings.map((listing) => (
+                  <ListingCard key={listing.id} listing={listing} />
+                ))}
+              </div>
+              {data && data.total > 0 ? (
+                <p className="text-center text-sm text-text-secondary">
+                  {S.buscarShowingCount
+                    .replace('{shown}', String(listings.length))
+                    .replace('{total}', String(data.total))}
+                </p>
+              ) : null}
+              {canLoadMore ? (
+                <div className="flex justify-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isFetching}
+                    onClick={loadMoreResults}
+                  >
+                    {isFetching ? S.buscarLoadingMore : S.buscarLoadMore}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
       </div>
 
-      {isError ? (
-        <Card className="p-6">
-          <p className="text-sm text-text-primary">
-            No pudimos cargar resultados.{' '}
-            {error?.message?.includes('DATABASE') ||
-            error?.message?.includes('required')
-              ? 'Revisá que DATABASE_URL esté definida en Vercel (proyecto web, Production).'
-              : (error?.message ?? 'Intentá de nuevo más tarde.')}
-          </p>
-        </Card>
-      ) : isLoading ? (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="overflow-hidden">
-              <Skeleton className="h-48 w-full" />
-              <div className="space-y-3 p-4">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-6 w-1/2" />
-                <Skeleton className="h-4 w-full" />
-              </div>
-            </Card>
-          ))}
-        </div>
-      ) : listings.length === 0 ? (
-        <Card className="p-6">
-          <p className="text-text-secondary">
-            No hay resultados. Probá con otros filtros o ampliá la búsqueda.
-          </p>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {listings.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} />
-          ))}
-        </div>
-      )}
+      <Dialog open={flowDialogOpen} onOpenChange={setFlowDialogOpen}>
+        <DialogContent className="max-w-md gap-4 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{S.buscarFlowDialogOpen}</DialogTitle>
+          </DialogHeader>
+          <ol className="list-decimal space-y-3 pl-5 text-sm text-text-secondary">
+            <li>{S.buscarFlowStep1}</li>
+            <li>{S.buscarFlowStep2}</li>
+            <li>{S.buscarFlowStep3}</li>
+            <li>{S.buscarFlowStep4}</li>
+          </ol>
+          <DialogFooter className="flex flex-col gap-3 sm:flex-col sm:justify-stretch sm:space-x-0">
+            <label
+              htmlFor="propieya-flow-guide-dismiss"
+              className="flex cursor-pointer items-start gap-2 text-left text-sm text-text-secondary"
+            >
+              <input
+                id="propieya-flow-guide-dismiss"
+                type="checkbox"
+                className="mt-0.5 shrink-0 rounded border-border"
+                checked={flowGuideDontShowAgain}
+                onChange={(e) => setFlowGuideDontShowAgain(e.target.checked)}
+              />
+              <span>{S.buscarFlowDialogDontShowAgain}</span>
+            </label>
+            <Button
+              type="button"
+              className="w-full"
+              onClick={confirmFlowGuideDialog}
+            >
+              {S.buscarFlowDialogConfirm}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

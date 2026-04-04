@@ -1,0 +1,72 @@
+/**
+ * URLs del buscador público (`/buscar`) alineadas a `BuscarContent` (query: op, tipo, ciudad, barrio, …).
+ */
+
+export type PortalBuscarUrlFilters = {
+  q?: string
+  operationType?: string
+  propertyType?: string
+  city?: string
+  neighborhood?: string
+  minPrice?: number
+  maxPrice?: number
+  minBedrooms?: number
+  minSurface?: number
+}
+
+function portalBuscarParams(filters: PortalBuscarUrlFilters): string {
+  const params = new URLSearchParams()
+  if (filters.q) params.set('q', filters.q)
+  if (filters.operationType) params.set('op', filters.operationType)
+  if (filters.propertyType) params.set('tipo', filters.propertyType)
+  if (filters.city) params.set('ciudad', filters.city)
+  if (filters.neighborhood) params.set('barrio', filters.neighborhood)
+  if (filters.minPrice != null) params.set('min', String(filters.minPrice))
+  if (filters.maxPrice != null) params.set('max', String(filters.maxPrice))
+  if (filters.minBedrooms != null) params.set('dorm', String(filters.minBedrooms))
+  if (filters.minSurface != null) params.set('sup', String(filters.minSurface))
+  return params.toString()
+}
+
+/** Ruta de listado según contexto (`/buscar`, `/venta`, `/alquiler`). */
+export type PortalSearchPage = 'buscar' | 'venta' | 'alquiler'
+
+export function buildPortalSearchPath(
+  filters: PortalBuscarUrlFilters,
+  page: PortalSearchPage = 'buscar'
+): string {
+  const qs = portalBuscarParams(filters)
+  const base =
+    page === 'venta' ? '/venta' : page === 'alquiler' ? '/alquiler' : '/buscar'
+  return qs ? `${base}?${qs}` : base
+}
+
+export function buildPortalBuscarUrl(filters: PortalBuscarUrlFilters): string {
+  return buildPortalSearchPath(filters, 'buscar')
+}
+
+/** Sugerencias inductivas reutilizables (home, /buscar) — doc 43 §5 P2. */
+export const PORTAL_INDUCTIVE_CHIPS: readonly {
+  label: string
+  filters: PortalBuscarUrlFilters
+}[] = [
+  { label: 'Departamentos en venta', filters: { operationType: 'sale', propertyType: 'apartment' } },
+  { label: 'Casas en venta', filters: { operationType: 'sale', propertyType: 'house' } },
+  { label: 'Departamentos en alquiler', filters: { operationType: 'rent', propertyType: 'apartment' } },
+  { label: 'Casas en alquiler', filters: { operationType: 'rent', propertyType: 'house' } },
+  { label: 'PH en venta', filters: { operationType: 'sale', propertyType: 'ph' } },
+  { label: 'Terrenos en venta', filters: { operationType: 'sale', propertyType: 'land' } },
+  { label: 'Locales en venta', filters: { operationType: 'sale', propertyType: 'commercial' } },
+  { label: 'Oficinas en alquiler', filters: { operationType: 'rent', propertyType: 'office' } },
+  { label: 'Cocheras', filters: { operationType: 'sale', propertyType: 'parking' } },
+  { label: 'Galpones / depósitos', filters: { operationType: 'sale', propertyType: 'warehouse' } },
+] as const
+
+/** Comparador público (2–3 UUIDs, orden preservado). Sprint 33 / doc 43 §5. */
+export function buildPortalCompareUrl(ids: readonly string[]): string {
+  const slice = ids.filter(Boolean).slice(0, 3)
+  if (slice.length === 0) return '/comparar'
+  const qs = new URLSearchParams()
+  qs.set('ids', slice.join(','))
+  return `/comparar?${qs.toString()}`
+}

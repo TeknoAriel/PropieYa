@@ -111,28 +111,6 @@ export const AMENITY_ICONS: Record<Amenity, string> = {
 }
 
 /**
- * Amenities admitidas en `listing.search` (SQL y criterios alineados con ES).
- */
-export const SEARCH_FILTER_AMENITIES = [
-  'balcony',
-  'terrace',
-  'parking',
-  'air_conditioning',
-  'heating',
-  'fireplace',
-  'front_facing',
-  'credit_approved',
-  'pool',
-  'gym',
-  'garden',
-  'bbq',
-  'elevator',
-  'doorman',
-  'storage',
-  'furnished',
-] as const satisfies readonly Amenity[]
-
-/**
  * Configuración de vigencia
  */
 export const LISTING_VALIDITY = {

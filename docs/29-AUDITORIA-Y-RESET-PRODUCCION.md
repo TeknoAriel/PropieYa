@@ -70,7 +70,7 @@ git log -1 --format="%h %s" origin/main
 ### Opción A: Deploy limpio (sin tocar DB)
 
 1. **Sincronizar main con deploy/infra** (incluir Sprint 6):
-   - Merge manual: https://github.com/TeknoAriel/PropieYa/compare/main...deploy/infra
+   - Merge manual: https://github.com/kiteprop/ia-propieya/compare/main...deploy/infra
    - O ejecutar Promote: Actions → "Promote deploy/infra → main" → Run workflow
 
 2. **Forzar redeploy en Vercel:**

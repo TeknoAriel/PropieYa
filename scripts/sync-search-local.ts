@@ -53,6 +53,7 @@ async function main() {
   const docs = rows.map((r) => {
     const features = (r.features ?? {}) as {
       amenities?: string[]
+      feedAmenityRaw?: string[]
       floor?: number | null
       totalFloors?: number | null
       escalera?: string | null
@@ -88,6 +89,7 @@ async function main() {
       updatedAt: r.updatedAt,
       createdAt: r.createdAt,
       amenities: features.amenities ?? [],
+      feedAmenityRaw: features.feedAmenityRaw ?? [],
     }
   })
 

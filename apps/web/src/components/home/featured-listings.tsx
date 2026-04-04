@@ -31,16 +31,14 @@ export function FeaturedListings() {
   const listings = listingsRaw as unknown as FeaturedListingCardData[]
 
   return (
-    <section className="py-16 md:py-24">
+    <section className="bg-surface-primary pt-3 pb-12 md:pt-4 md:pb-20">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between gap-4 mb-5 md:mb-6">
           <div>
             <h2 className="text-2xl font-bold text-text-primary md:text-3xl">
-              Propiedades destacadas
+              {pack.featured.title}
             </h2>
-            <p className="mt-2 text-text-secondary">
-              Las últimas publicaciones de nuestra plataforma
-            </p>
+            <p className="mt-2 text-text-secondary">{pack.featured.subtitle}</p>
           </div>
           <Button variant="outline" asChild className="hidden md:flex">
             <Link href="/buscar">
@@ -52,7 +50,7 @@ export function FeaturedListings() {
 
         {isError ? (
           <p className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-text-primary">
-            No pudimos cargar las publicaciones.{' '}
+            No pudimos cargar los avisos.{' '}
             {error?.message?.includes('DATABASE') || error?.message?.includes('required')
               ? 'Revisá que DATABASE_URL esté definida en Vercel (producción).'
               : (error?.message ?? 'Intentá de nuevo más tarde.')}

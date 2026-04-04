@@ -2,6 +2,10 @@
   "name": "propieya",
   "version": "0.1.0",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TeknoAriel/PropieYa.git"
+  },
   "packageManager": "pnpm@9.1.0",
   "scripts": {
     "dev": "turbo dev",
@@ -23,10 +27,16 @@
     "seed:org": "pnpm exec tsx scripts/seed-org-for-import.ts",
     "publish:imported": "pnpm exec tsx scripts/publish-imported-drafts.ts",
     "sync-search:local": "pnpm exec tsx scripts/sync-search-local.ts",
+    "dedup:apply": "pnpm exec tsx scripts/apply-dedup-listings.ts",
+    "reindex:es": "pnpm sync-search:local",
+    "audit:listing-types": "pnpm exec tsx scripts/audit-listing-property-types.ts",
+    "audit:yumblin-fields": "pnpm exec tsx scripts/audit-yumblin-fields.ts",
+    "diff:import-types": "pnpm exec tsx scripts/diff-import-property-types.ts",
     "verificar:prod": "bash scripts/verificar-produccion.sh",
     "diagnostico:prod": "bash scripts/diagnostico-produccion.sh",
     "verificar:deploy": "bash scripts/verificar-deploy-esperar.sh --wait 3",
     "verificar:ruta-produccion": "bash scripts/verificar-ruta-produccion.sh",
+    "verify:repo-remote": "bash scripts/verify-repo-remote.sh",
     "prepare": "husky"
   },
   "devDependencies": {

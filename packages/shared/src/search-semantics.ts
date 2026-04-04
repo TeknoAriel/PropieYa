@@ -5,38 +5,46 @@
 
 import type { OperationType, PropertyType } from './types/listing'
 
+/** Orden: más específico primero (misma prioridad que la lógica histórica). */
+const OPERATION_RULES: ReadonlyArray<{ re: RegExp; op: OperationType }> = [
+  { re: /\balquiler\s+temporario\b/i, op: 'temporary_rent' },
+  { re: /\balquiler\s+vacacional\b/i, op: 'temporary_rent' },
+  { re: /\btemporari[oa]s?\b/i, op: 'temporary_rent' },
+  { re: /\bairbnb\b/i, op: 'temporary_rent' },
+  { re: /\balquiler\b/i, op: 'rent' },
+  { re: /\balquilar\b/i, op: 'rent' },
+  { re: /\barriendo\b/i, op: 'rent' },
+  { re: /\barrendar\b/i, op: 'rent' },
+  { re: /\brento\b/i, op: 'rent' },
+  { re: /\balquilo\b/i, op: 'rent' },
+  { re: /\bbusco\s+comprar\b/i, op: 'sale' },
+  { re: /\bventa\b/i, op: 'sale' },
+  { re: /\bvendo\b/i, op: 'sale' },
+  { re: /\bvenden\b/i, op: 'sale' },
+  { re: /\bcomprar\b/i, op: 'sale' },
+  { re: /\bcompro\b/i, op: 'sale' },
+]
+
 /**
  * Detecta operación por texto (español regional). Orden: reglas más específicas primero.
  */
 export function matchOperationTypeFromText(normalizedLower: string): OperationType | undefined {
   const s = normalizedLower
-  if (
-    /\balquiler\s+temporario\b/.test(s) ||
-    /\balquiler\s+vacacional\b/.test(s) ||
-    /\btemporari[oa]s?\b/.test(s) ||
-    /\bairbnb\b/.test(s)
-  ) {
-    return 'temporary_rent'
+  for (const { re, op } of OPERATION_RULES) {
+    if (re.test(s)) return op
   }
-  if (
-    /\balquiler\b/.test(s) ||
-    /\balquilar\b/.test(s) ||
-    /\barriendo\b/.test(s) ||
-    /\barrendar\b/.test(s) ||
-    /\brento\b/.test(s) ||
-    /\balquilo\b/.test(s)
-  ) {
-    return 'rent'
-  }
-  if (
-    /\bventa\b/.test(s) ||
-    /\bvendo\b/.test(s) ||
-    /\bvenden\b/.test(s) ||
-    /\bcomprar\b/.test(s) ||
-    /\bcompro\b/.test(s) ||
-    /\bbusco\s+comprar\b/.test(s)
-  ) {
-    return 'sale'
+  return undefined
+}
+
+/**
+ * Primera operación detectada con el fragmento exacto en el texto original (para quitar de `multi_match`).
+ */
+export function matchOperationSpanInOriginalQuery(originalQ: string):
+  | { op: OperationType; span: string }
+  | undefined {
+  for (const { re, op } of OPERATION_RULES) {
+    const m = originalQ.match(re)
+    if (m?.[0]) return { op, span: m[0] }
   }
   return undefined
 }
@@ -53,10 +61,20 @@ const PROPERTY_PHRASES: Array<{ phrase: string; type: PropertyType }> = [
   { phrase: 'dúplex', type: 'house' },
   { phrase: 'triplex', type: 'house' },
   { phrase: 'tríplex', type: 'house' },
+  { phrase: 'finca rústica', type: 'land' },
+  { phrase: 'finca rustica', type: 'land' },
+  { phrase: 'fracción rural', type: 'land' },
+  { phrase: 'fraccion rural', type: 'land' },
+  { phrase: 'monte nativo', type: 'land' },
+  { phrase: 'uso agrícola', type: 'land' },
+  { phrase: 'zona rural', type: 'land' },
   { phrase: 'terreno', type: 'land' },
   { phrase: 'lote', type: 'land' },
+  { phrase: 'loteo', type: 'land' },
   { phrase: 'parcela', type: 'land' },
   { phrase: 'chacra', type: 'land' },
+  { phrase: 'estancia', type: 'land' },
+  { phrase: 'finca', type: 'land' },
   { phrase: 'campo', type: 'land' },
   { phrase: 'oficina', type: 'office' },
   { phrase: 'galpón', type: 'warehouse' },
@@ -70,7 +88,8 @@ const PROPERTY_PHRASES: Array<{ phrase: string; type: PropertyType }> = [
   { phrase: 'local', type: 'commercial' },
 ]
 
-const PROPERTY_SORTED = [...PROPERTY_PHRASES].sort(
+/** Exportado para extracción con spans (Sprint 22). */
+export const PROPERTY_PHRASES_SORTED = [...PROPERTY_PHRASES].sort(
   (a, b) => b.phrase.length - a.phrase.length
 )
 
@@ -79,7 +98,7 @@ const PROPERTY_SORTED = [...PROPERTY_PHRASES].sort(
  */
 export function matchPropertyTypeFromText(normalizedLower: string): PropertyType | undefined {
   const s = normalizedLower
-  for (const { phrase, type } of PROPERTY_SORTED) {
+  for (const { phrase, type } of PROPERTY_PHRASES_SORTED) {
     if (s.includes(phrase)) return type
   }
   if (/\bdepto\b/.test(s) || /\bdeptos\b/.test(s)) return 'apartment'

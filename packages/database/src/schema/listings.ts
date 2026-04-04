@@ -32,6 +32,11 @@ export const listings = pgTable(
     externalId: varchar('external_id', { length: 255 }), // ID en sistema externo
     /** Hash del payload importado; evita UPDATE si el ítem del feed no cambió. */
     importContentHash: varchar('import_content_hash', { length: 64 }),
+    /**
+     * Última `last_update` (u homólogo) del feed para ese `external_id`.
+     * Permite saltar map+hash+UPDATE cuando el ítem no cambió desde el último sync.
+     */
+    importSourceUpdatedAt: timestamp('import_source_updated_at', { withTimezone: true }),
     importFeedSourceId: uuid('import_feed_source_id')
       .references(() => importFeedSources.id, { onDelete: 'cascade' }),
 

@@ -12,6 +12,7 @@ import {
   Input,
   Label,
 } from '@propieya/ui'
+import { PORTAL_LISTING_UX_COPY as L } from '@propieya/shared'
 
 import { trpc } from '@/lib/trpc'
 
@@ -55,49 +56,49 @@ export function ContactModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Contactar por esta propiedad</DialogTitle>
+          <DialogTitle>{success ? L.modalSuccessTitle : L.modalTitle}</DialogTitle>
           <DialogDescription>
             {success
-              ? 'Gracias, te contactaremos a la brevedad.'
-              : `Dejá tu mensaje y te responderán a la brevedad. Aviso: ${listingTitle}`}
+              ? L.modalSuccessBody
+              : `${L.modalDescriptionIdle} ${listingTitle}`}
           </DialogDescription>
         </DialogHeader>
         {success ? (
-          <p className="py-4 text-center text-text-secondary">✓ Mensaje enviado correctamente</p>
+          <p className="py-4 text-center text-text-secondary">✓ {L.modalSentOk}</p>
         ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="contact-name">Nombre</Label>
+            <Label htmlFor="contact-name">{L.modalNameLabel}</Label>
             <Input
               id="contact-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Tu nombre"
+              placeholder={L.modalNamePlaceholder}
               required
               maxLength={255}
               className="mt-1"
             />
           </div>
           <div>
-            <Label htmlFor="contact-email">Email</Label>
+            <Label htmlFor="contact-email">{L.modalEmailLabel}</Label>
             <Input
               id="contact-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@email.com"
+              placeholder={L.modalEmailPlaceholder}
               required
               maxLength={255}
               className="mt-1"
             />
           </div>
           <div>
-            <Label htmlFor="contact-message">Mensaje</Label>
+            <Label htmlFor="contact-message">{L.modalMessageLabel}</Label>
             <textarea
               id="contact-message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Escribí tu consulta..."
+              placeholder={L.modalMessagePlaceholder}
               required
               minLength={10}
               maxLength={2000}
@@ -110,10 +111,10 @@ export function ContactModal({
           )}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
+              {L.modalCancel}
             </Button>
             <Button type="submit" disabled={createLead.isPending}>
-              {createLead.isPending ? 'Enviando...' : 'Enviar'}
+              {createLead.isPending ? L.modalSubmitPending : L.modalSubmit}
             </Button>
           </div>
         </form>

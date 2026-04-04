@@ -5,7 +5,7 @@
   "crons": [
     {
       "path": "/api/cron/import-yumblin",
-      "schedule": "0 6 * * *"
+      "schedule": "0 6 1,16 * *"
     },
     {
       "path": "/api/cron/check-validity",

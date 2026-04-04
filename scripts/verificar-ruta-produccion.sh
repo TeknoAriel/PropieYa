@@ -14,7 +14,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "${ROOT}/scripts/production-canonical.env.sh"
 
 echo "=== Verificación ruta de producción (portal) ==="
-echo "Repositorio: monorepo único TeknoAriel/PropieYa"
+echo "Repositorio operativo: TeknoAriel/PropieYa (copia org: kiteprop/ia-propieya)"
 echo "Rama de deploy: ${PROPIEYA_DEPLOY_BRANCH}"
 echo "URL canónica: ${PROPIEYA_CANONICAL_PORTAL_URL}"
 echo "Proyecto Vercel web esperado: ${PROPIEYA_VERCEL_WEB_PROJECT_NAME}"

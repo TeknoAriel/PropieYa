@@ -4,18 +4,24 @@ import { z } from 'zod'
 import { eq, and, desc, ilike, or, gte, lte, sql, count, ne, inArray } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
+import type { Database } from '@propieya/database'
 import {
   listings,
   listingMedia,
+  listingsSelectPublic,
   organizations,
   organizationMemberships,
+  searchHistory,
 } from '@propieya/database'
 import {
   createListingSchema,
   updateListingSchema,
   LISTING_VALIDITY,
+  mergePublicSearchFromQuery,
+  FACETS_CATALOG,
   SEARCH_FILTER_AMENITIES,
   withMatchReasons,
+  PORTAL_STATS_TERMINALS,
   type ExplainMatchFilters,
 } from '@propieya/shared'
 
@@ -30,14 +36,94 @@ import {
   removeListingFromSearch,
 } from '../../lib/search/sync'
 import { searchListings } from '../../lib/search/search'
-import { extractIntentionFromMessage } from '../../lib/llm'
+import { getListingSearchSortKeyCount } from '../../lib/search/query'
+import type { SearchFilters } from '../../lib/search/types'
+import { decodeListingSearchCursor } from '../../lib/search/search-cursor'
+import { sqlPointInPolygonLngLat } from '../../lib/search/point-in-polygon-sql'
+import {
+  extractIntentionFromMessage,
+  type ConversationPrior,
+} from '../../lib/llm'
+import { recordPortalStatsEvent } from '../../lib/analytics/record-portal-stats-event'
 import { checkRateLimit } from '../../lib/rate-limit'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
 import { listingSearchInputSchema } from './listing-search-input'
 
+const conversationalPriorFiltersSchema = z.object({
+  q: z.string().max(200).optional(),
+  operationType: z.enum(['sale', 'rent', 'temporary_rent']).optional(),
+  propertyType: z.string().max(50).optional(),
+  city: z.string().max(120).optional(),
+  neighborhood: z.string().max(120).optional(),
+  minPrice: z.number().nonnegative().optional(),
+  maxPrice: z.number().nonnegative().optional(),
+  minBedrooms: z.number().int().min(0).max(50).optional(),
+  minSurface: z.number().nonnegative().optional(),
+  amenities: z.array(z.string().max(80)).max(25).optional(),
+})
+
+const searchConversationalInputSchema = z.object({
+  message: z.string().min(1).max(500),
+  previousContext: z
+    .object({
+      userMessage: z.string().max(500),
+      filters: conversationalPriorFiltersSchema,
+    })
+    .optional(),
+})
+
+function conversationPriorFromInput(
+  previous: z.infer<typeof searchConversationalInputSchema>['previousContext']
+): ConversationPrior | null {
+  if (!previous?.filters) return null
+  const f = previous.filters
+  return {
+    userMessage: previous.userMessage,
+    intention: {
+      q: f.q,
+      operationType: f.operationType,
+      propertyType: f.propertyType,
+      city: f.city,
+      neighborhood: f.neighborhood,
+      minPrice: f.minPrice,
+      maxPrice: f.maxPrice,
+      minBedrooms: f.minBedrooms,
+      minSurface: f.minSurface,
+      amenities: f.amenities,
+    },
+  }
+}
+
 /** Evita que el usuario inyecte comodines ILIKE (%, _). */
 function sanitizeIlikeFragment(raw: string): string {
   return raw.trim().slice(0, 120).replace(/[%_\\]/g, ' ').replace(/\s+/g, ' ')
+}
+
+/** Historial de búsqueda (usuarios logueados). No bloquea la respuesta si falla el insert. */
+function persistSearchHistoryRow(
+  db: Database,
+  opts: {
+    userId: string
+    filters: Record<string, unknown>
+    resultCount: number
+    startedAt: number
+  }
+): void {
+  void (async () => {
+    try {
+      await db.insert(searchHistory).values({
+        userId: opts.userId,
+        sessionId: randomUUID(),
+        conversationId: null,
+        filters: opts.filters,
+        sort: null,
+        resultCount: opts.resultCount,
+        processingTimeMs: Date.now() - opts.startedAt,
+      })
+    } catch {
+      // no bloquear búsqueda
+    }
+  })()
 }
 
 /** Listados: más reciente arriba. Público: por publicación + desempate. Panel (mis avisos): por última modificación. */
@@ -126,12 +212,16 @@ export const listingRouter = createTRPCRouter({
   publish: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
-      const existing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, input.id),
-          eq(listings.publisherId, ctx.session.userId)
-        ),
-      })
+      const [existing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, input.id),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
 
       if (!existing) {
         throw new Error('Propiedad no encontrada')
@@ -164,12 +254,16 @@ export const listingRouter = createTRPCRouter({
   renew: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
-      const existing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, input.id),
-          eq(listings.publisherId, ctx.session.userId)
-        ),
-      })
+      const [existing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, input.id),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
 
       if (!existing) {
         throw new Error('Propiedad no encontrada')
@@ -210,12 +304,16 @@ export const listingRouter = createTRPCRouter({
   getMineById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ input, ctx }) => {
-      const listing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, input.id),
-          eq(listings.publisherId, ctx.session.userId)
-        ),
-      })
+      const [listing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, input.id),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
 
       if (!listing) {
         return null
@@ -247,11 +345,12 @@ export const listingRouter = createTRPCRouter({
         conditions.push(ilike(listings.title, `%${input.search}%`))
       }
 
-      return ctx.db.query.listings.findMany({
-        where: and(...conditions),
-        orderBy: ORDER_PANEL_RECENCY,
-        limit: input.limit,
-      })
+      return ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(and(...conditions))
+        .orderBy(...ORDER_PANEL_RECENCY)
+        .limit(input.limit)
     }),
 
   /** Conteos por estado para el dashboard del panel (avisos del publicador). */
@@ -299,12 +398,16 @@ export const listingRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const existing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, input.id),
-          eq(listings.publisherId, ctx.session.userId)
-        ),
-      })
+      const [existing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, input.id),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
 
       if (!existing) {
         throw new Error('Propiedad no encontrada')
@@ -382,12 +485,13 @@ export const listingRouter = createTRPCRouter({
   getById: publicProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ input, ctx }) => {
-      const listing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, input.id),
-          eq(listings.status, 'active')
-        ),
-      })
+      const [listing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(eq(listings.id, input.id), eq(listings.status, 'active'))
+        )
+        .limit(1)
 
       if (!listing) {
         return null
@@ -404,6 +508,113 @@ export const listingRouter = createTRPCRouter({
       }
     }),
 
+  /**
+   * Vista pública de ficha (F1 doc 49): incrementa `view_count` en DB y log estructurado opcional.
+   * Llamar una vez por carga de página desde el cliente (evita duplicar con ref por Strict Mode).
+   */
+  recordPublicView: publicProcedure
+    .input(z.object({ listingId: z.string().uuid() }))
+    .mutation(async ({ input, ctx }) => {
+      const [row] = await ctx.db
+        .update(listings)
+        .set({
+          viewCount: sql`${listings.viewCount} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(eq(listings.id, input.listingId), eq(listings.status, 'active'))
+        )
+        .returning({
+          id: listings.id,
+          organizationId: listings.organizationId,
+        })
+
+      if (!row) {
+        return { ok: false as const }
+      }
+
+      recordPortalStatsEvent(ctx.db, {
+        terminalId: PORTAL_STATS_TERMINALS.LISTING_FICHA_VIEW,
+        listingId: row.id,
+        organizationId: row.organizationId,
+        userId: ctx.session?.userId ?? null,
+        payload: {},
+      })
+
+      if (process.env.LOG_PORTAL_STATS === '1') {
+        console.log(
+          JSON.stringify({
+            terminal: PORTAL_STATS_TERMINALS.LISTING_FICHA_VIEW,
+            listingId: row.id,
+            organizationId: row.organizationId,
+            userId: ctx.session?.userId ?? null,
+            ts: new Date().toISOString(),
+          })
+        )
+      }
+
+      return { ok: true as const }
+    }),
+
+  /** Comparación pública: hasta 3 avisos activos, en el orden pedido (dedupe). */
+  getComparePublic: publicProcedure
+    .input(
+      z.object({
+        ids: z.array(z.string().uuid()).min(2).max(3),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const seen = new Set<string>()
+      const orderedIds: string[] = []
+      for (const id of input.ids) {
+        if (seen.has(id)) continue
+        seen.add(id)
+        orderedIds.push(id)
+        if (orderedIds.length >= 3) break
+      }
+      if (orderedIds.length < 2) {
+        return []
+      }
+
+      const rows = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(inArray(listings.id, orderedIds), eq(listings.status, 'active'))
+        )
+
+      const byId = new Map(rows.map((r) => [r.id, r]))
+      const ordered = orderedIds
+        .map((id) => byId.get(id))
+        .filter((r): r is NonNullable<typeof r> => Boolean(r))
+
+      if (ordered.length < 2) {
+        return ordered
+      }
+
+      const ids = ordered.map((r) => r.id)
+      const allMedia = await ctx.db.query.listingMedia.findMany({
+        where: inArray(listingMedia.listingId, ids),
+        orderBy: [desc(listingMedia.isPrimary), listingMedia.order],
+      })
+
+      const firstImageByListing = new Map<string, string>()
+      for (const m of allMedia) {
+        if (m.type !== 'image') continue
+        if (!firstImageByListing.has(m.listingId)) {
+          firstImageByListing.set(m.listingId, m.url)
+        }
+      }
+
+      return ordered.map((row) => ({
+        ...row,
+        primaryImageUrl:
+          row.primaryImageUrl ??
+          firstImageByListing.get(row.id) ??
+          null,
+      }))
+    }),
+
   /** Avisos similares (misma operación y tipo, ciudad si existe, banda de precio ±30%). */
   similar: publicProcedure
     .input(
@@ -413,9 +624,13 @@ export const listingRouter = createTRPCRouter({
       })
     )
     .query(async ({ input, ctx }) => {
-      const base = await ctx.db.query.listings.findFirst({
-        where: and(eq(listings.id, input.id), eq(listings.status, 'active')),
-      })
+      const [base] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(eq(listings.id, input.id), eq(listings.status, 'active'))
+        )
+        .limit(1)
 
       if (!base) {
         return []
@@ -445,11 +660,12 @@ export const listingRouter = createTRPCRouter({
         conditions.push(lte(listings.priceAmount, high))
       }
 
-      const rows = await ctx.db.query.listings.findMany({
-        where: and(...conditions),
-        orderBy: ORDER_PUBLIC_RECENCY,
-        limit: input.limit,
-      })
+      const rows = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(and(...conditions))
+        .orderBy(...ORDER_PUBLIC_RECENCY)
+        .limit(input.limit)
 
       if (rows.length === 0) {
         return []
@@ -490,20 +706,55 @@ export const listingRouter = createTRPCRouter({
       })
     )
     .query(async ({ input, ctx }) => {
-      const result = await ctx.db.query.listings.findMany({
-        where: eq(listings.status, 'active'),
-        orderBy: ORDER_PUBLIC_RECENCY,
-        limit: input.limit,
-      })
-
-      return result
+      return ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(eq(listings.status, 'active'))
+        .orderBy(...ORDER_PUBLIC_RECENCY)
+        .limit(input.limit)
     }),
+
+  /** Catálogo de facets (flags/enums/ranges) para UI y clientes; alineado a `sanitizeListingSearchFacets`. */
+  getSearchFacetsCatalog: publicProcedure.query(() => ({
+    facets: FACETS_CATALOG,
+  })),
 
   /** Búsqueda pública (solo avisos activos). Usa ES si está configurado, fallback a SQL. */
   search: publicProcedure
     .input(listingSearchInputSchema)
     .query(async ({ input, ctx }) => {
-      const { limit, offset, ...explainFilters } = input
+      const startedAt = Date.now()
+      const perfStart = Date.now()
+      const logSearchMs = process.env.LOG_SEARCH_MS === '1'
+      const sessionUserId = ctx.session?.userId
+      const filtersSnapshot = JSON.parse(JSON.stringify(input)) as Record<string, unknown>
+
+      const { limit, offset, cursor, ...explainFilters } = input
+
+      let searchAfter: unknown[] | undefined
+      if (cursor?.trim()) {
+        const decoded = decodeListingSearchCursor(cursor.trim())
+        if (!decoded) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Cursor de búsqueda inválido o expirado.',
+          })
+        }
+        const expectedKeys = getListingSearchSortKeyCount(
+          explainFilters as SearchFilters
+        )
+        if (decoded.length !== expectedKeys) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message:
+              'La paginación no coincide con esta búsqueda. Volvé a la primera página o refrescá.',
+          })
+        }
+        searchAfter = decoded
+      }
+
+      const esOffset = searchAfter ? 0 : offset
+
       const esResult = await searchListings({
         q: input.q,
         operationType: input.operationType,
@@ -525,21 +776,62 @@ export const listingRouter = createTRPCRouter({
         city: input.city,
         neighborhood: input.neighborhood,
         amenities: input.amenities,
+        geoPoint: input.geoPoint,
+        geoRadius: input.geoRadius,
+        facets: input.facets,
         bbox: input.bbox,
+        polygon: input.polygon,
         limit,
-        offset,
+        offset: esOffset,
+        searchAfter,
       })
 
-      if (esResult.fromEs) {
-        return withMatchReasons(
-          explainFilters as ExplainMatchFilters,
-          esResult.hits
-        )
+      const persistThisSearch =
+        Boolean(sessionUserId) &&
+        !cursor?.trim() &&
+        input.offset === 0
+
+      // Si ES responde pero el índice está vacío o desincronizado, total=0 y antes
+      // no había fallback: el buscador quedaba en silencio. SQL es fuente de verdad.
+      // Paginación por cursor (search_after) no es reproducible en SQL: no mezclar.
+      if (!(esResult.fromEs && esResult.total > 0) && searchAfter) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message:
+            'No se pudo cargar la página siguiente sin el índice de búsqueda. Volvé al listado o refrescá la página.',
+        })
+      }
+
+      if (esResult.fromEs && esResult.total > 0) {
+        if (persistThisSearch) {
+          persistSearchHistoryRow(ctx.db, {
+            userId: sessionUserId!,
+            filters: filtersSnapshot,
+            resultCount: esResult.total,
+            startedAt,
+          })
+        }
+        return {
+          items: withMatchReasons(
+            explainFilters as ExplainMatchFilters,
+            esResult.hits
+          ),
+          total: esResult.total,
+          nextCursor: esResult.nextCursor,
+        }
+      }
+
+      const merged = mergePublicSearchFromQuery(input)
+      const { residualTextQuery, ...sqlInputBase } = merged
+      const sqlInput = {
+        ...sqlInputBase,
+        facets: input.facets,
+        polygon: input.polygon,
       }
 
       const conditions = [eq(listings.status, 'active')]
-      if (input.q?.trim()) {
-        const frag = sanitizeIlikeFragment(input.q)
+      if (residualTextQuery.trim()) {
+        const frag = sanitizeIlikeFragment(residualTextQuery)
         if (frag.length > 0) {
           const pat = `%${frag}%`
           conditions.push(
@@ -550,87 +842,87 @@ export const listingRouter = createTRPCRouter({
           )
         }
       }
-      if (input.operationType) {
-        conditions.push(eq(listings.operationType, input.operationType))
+      if (sqlInput.operationType) {
+        conditions.push(eq(listings.operationType, sqlInput.operationType))
       }
-      if (input.propertyType) {
-        conditions.push(eq(listings.propertyType, input.propertyType))
+      if (sqlInput.propertyType) {
+        conditions.push(eq(listings.propertyType, sqlInput.propertyType))
       }
-      if (input.minPrice !== undefined) {
-        conditions.push(gte(listings.priceAmount, input.minPrice))
+      if (sqlInput.minPrice !== undefined) {
+        conditions.push(gte(listings.priceAmount, sqlInput.minPrice))
       }
-      if (input.maxPrice !== undefined) {
-        conditions.push(lte(listings.priceAmount, input.maxPrice))
+      if (sqlInput.maxPrice !== undefined) {
+        conditions.push(lte(listings.priceAmount, sqlInput.maxPrice))
       }
-      if (input.minBedrooms !== undefined) {
-        conditions.push(gte(listings.bedrooms, input.minBedrooms))
+      if (sqlInput.minBedrooms !== undefined) {
+        conditions.push(gte(listings.bedrooms, sqlInput.minBedrooms))
       }
-      if (input.minBathrooms !== undefined) {
-        conditions.push(gte(listings.bathrooms, input.minBathrooms))
+      if (sqlInput.minBathrooms !== undefined) {
+        conditions.push(gte(listings.bathrooms, sqlInput.minBathrooms))
       }
-      if (input.minGarages !== undefined) {
-        conditions.push(gte(listings.garages, input.minGarages))
+      if (sqlInput.minGarages !== undefined) {
+        conditions.push(gte(listings.garages, sqlInput.minGarages))
       }
-      if (input.minSurface !== undefined) {
-        conditions.push(gte(listings.surfaceTotal, input.minSurface))
+      if (sqlInput.minSurface !== undefined) {
+        conditions.push(gte(listings.surfaceTotal, sqlInput.minSurface))
       }
-      if (input.maxSurface !== undefined) {
-        conditions.push(lte(listings.surfaceTotal, input.maxSurface))
+      if (sqlInput.maxSurface !== undefined) {
+        conditions.push(lte(listings.surfaceTotal, sqlInput.maxSurface))
       }
-      if (input.floorMin !== undefined) {
+      if (sqlInput.floorMin !== undefined) {
         conditions.push(
-          sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) >= ${input.floorMin}`
+          sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) >= ${sqlInput.floorMin}`
         )
       }
-      if (input.floorMax !== undefined) {
+      if (sqlInput.floorMax !== undefined) {
         conditions.push(
-          sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) <= ${input.floorMax}`
+          sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) <= ${sqlInput.floorMax}`
         )
       }
-      if (input.escalera?.trim()) {
+      if (sqlInput.escalera?.trim()) {
         conditions.push(
-          sql`(${listings.features}->>'escalera') = ${input.escalera.trim().toUpperCase()}`
+          sql`(${listings.features}->>'escalera') = ${sqlInput.escalera.trim().toUpperCase()}`
         )
       }
-      if (input.orientation) {
+      if (sqlInput.orientation) {
         conditions.push(
-          sql`(${listings.features}->>'orientation') = ${input.orientation}`
+          sql`(${listings.features}->>'orientation') = ${sqlInput.orientation}`
         )
       }
-      if (input.minSurfaceCovered !== undefined) {
+      if (sqlInput.minSurfaceCovered !== undefined) {
         conditions.push(
-          sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} >= ${input.minSurfaceCovered}`
+          sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} >= ${sqlInput.minSurfaceCovered}`
         )
       }
-      if (input.maxSurfaceCovered !== undefined) {
+      if (sqlInput.maxSurfaceCovered !== undefined) {
         conditions.push(
-          sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} <= ${input.maxSurfaceCovered}`
+          sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} <= ${sqlInput.maxSurfaceCovered}`
         )
       }
-      if (input.minTotalRooms !== undefined) {
+      if (sqlInput.minTotalRooms !== undefined) {
         conditions.push(
-          sql`${listings.totalRooms} IS NOT NULL AND ${listings.totalRooms} >= ${input.minTotalRooms}`
+          sql`${listings.totalRooms} IS NOT NULL AND ${listings.totalRooms} >= ${sqlInput.minTotalRooms}`
         )
       }
-      if (input.city?.trim()) {
-        const c = sanitizeIlikeFragment(input.city)
+      if (sqlInput.city?.trim()) {
+        const c = sanitizeIlikeFragment(sqlInput.city)
         if (c.length > 0) {
           conditions.push(
             sql`COALESCE(${listings.address}->>'city', '') ILIKE ${`%${c}%`}`
           )
         }
       }
-      if (input.neighborhood?.trim()) {
-        const n = sanitizeIlikeFragment(input.neighborhood)
+      if (sqlInput.neighborhood?.trim()) {
+        const n = sanitizeIlikeFragment(sqlInput.neighborhood)
         if (n.length > 0) {
           conditions.push(
             sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${`%${n}%`}`
           )
         }
       }
-      if (input.amenities && input.amenities.length > 0) {
+      if (sqlInput.amenities && sqlInput.amenities.length > 0) {
         const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
-        for (const a of input.amenities) {
+        for (const a of sqlInput.amenities) {
           if (allowed.includes(a)) {
             conditions.push(
               sql`(${listings.features}->'amenities') @> to_jsonb(ARRAY[${a}]::text[])`
@@ -639,8 +931,30 @@ export const listingRouter = createTRPCRouter({
         }
       }
 
-      if (input.bbox) {
-        const { south, north, west, east } = input.bbox
+      // Facets flags/excludes (Sprint 26). Inicialmente se interpretan como amenities.
+      if (sqlInput.facets?.flags && sqlInput.facets.flags.length > 0) {
+        const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
+        for (const f of sqlInput.facets.flags) {
+          if (allowed.includes(f)) {
+            conditions.push(
+              sql`(${listings.features}->'amenities') @> to_jsonb(ARRAY[${f}]::text[])`
+            )
+          }
+        }
+      }
+      if (sqlInput.facets?.excludeFlags && sqlInput.facets.excludeFlags.length > 0) {
+        const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
+        for (const f of sqlInput.facets.excludeFlags) {
+          if (allowed.includes(f)) {
+            conditions.push(
+              sql`NOT ((${listings.features}->'amenities') @> to_jsonb(ARRAY[${f}]::text[]) )`
+            )
+          }
+        }
+      }
+
+      if (sqlInput.bbox) {
+        const { south, north, west, east } = sqlInput.bbox
         conditions.push(sql`${listings.locationLat} IS NOT NULL`)
         conditions.push(sql`${listings.locationLng} IS NOT NULL`)
         conditions.push(gte(listings.locationLat, south))
@@ -649,18 +963,79 @@ export const listingRouter = createTRPCRouter({
         conditions.push(lte(listings.locationLng, east))
       }
 
-      const rows = await ctx.db.query.listings.findMany({
-        where: and(...conditions),
-        orderBy: ORDER_PUBLIC_RECENCY,
-        limit,
-        offset,
-      })
-      return withMatchReasons(explainFilters as ExplainMatchFilters, rows)
+      // Búsqueda por radio (Sprint 26): aproximación por bounding box.
+      if (sqlInput.geoPoint && sqlInput.geoRadius) {
+        const { lat, lng } = sqlInput.geoPoint
+        const rMeters = sqlInput.geoRadius
+        const rKm = rMeters / 1000
+        const latDelta = rKm / 111
+        const lngDelta = rKm / (111 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)))
+
+        conditions.push(sql`${listings.locationLat} IS NOT NULL`)
+        conditions.push(sql`${listings.locationLng} IS NOT NULL`)
+        conditions.push(gte(listings.locationLat, lat - latDelta))
+        conditions.push(lte(listings.locationLat, lat + latDelta))
+        conditions.push(gte(listings.locationLng, lng - lngDelta))
+        conditions.push(lte(listings.locationLng, lng + lngDelta))
+      }
+
+      if (sqlInput.polygon && sqlInput.polygon.length >= 3) {
+        conditions.push(sql`${listings.locationLat} IS NOT NULL`)
+        conditions.push(sql`${listings.locationLng} IS NOT NULL`)
+        conditions.push(
+          sqlPointInPolygonLngLat(
+            listings.locationLng,
+            listings.locationLat,
+            sqlInput.polygon
+          )
+        )
+      }
+
+      const whereClause = and(...conditions)
+      const [totalRow] = await ctx.db
+        .select({ c: count() })
+        .from(listings)
+        .where(whereClause)
+      const sqlTotal = Number(totalRow?.c ?? 0)
+
+      const rows = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(whereClause)
+        .orderBy(...ORDER_PUBLIC_RECENCY)
+        .limit(limit)
+        .offset(offset)
+      if (persistThisSearch) {
+        persistSearchHistoryRow(ctx.db, {
+          userId: sessionUserId!,
+          filters: filtersSnapshot,
+          resultCount: sqlTotal,
+          startedAt,
+        })
+      }
+      if (logSearchMs) {
+        console.info(
+          '[listing.search]',
+          JSON.stringify({
+            phase: 'sql_done',
+            ms: Date.now() - perfStart,
+            total: sqlTotal,
+            rowCount: rows.length,
+            limit,
+            offset,
+          })
+        )
+      }
+      return {
+        items: withMatchReasons(explainFilters as ExplainMatchFilters, rows),
+        total: sqlTotal,
+        nextCursor: null,
+      }
     }),
 
   /** Búsqueda conversacional: extrae intención del mensaje y devuelve filtros + resultados. */
   searchConversational: publicProcedure
-    .input(z.object({ message: z.string().min(1).max(500) }))
+    .input(searchConversationalInputSchema)
     .mutation(async ({ input, ctx }) => {
       if (!checkRateLimit(ctx.ip)) {
         throw new TRPCError({
@@ -669,7 +1044,11 @@ export const listingRouter = createTRPCRouter({
         })
       }
 
-      const intention = await extractIntentionFromMessage(input.message)
+      const prior = conversationPriorFromInput(input.previousContext)
+      const intention = await extractIntentionFromMessage(
+        input.message,
+        prior ?? undefined
+      )
       const explainFilters: ExplainMatchFilters = {
         q: intention.q,
         operationType: intention.operationType,
@@ -687,10 +1066,11 @@ export const listingRouter = createTRPCRouter({
         limit: 24,
         offset: 0,
       }
+      // Nota: facets aún no se extraen desde texto; solo via UI (Sprint 26).
 
       const esResult = await searchListings(filters)
 
-      if (esResult.fromEs) {
+      if (esResult.fromEs && esResult.total > 0) {
         return {
           filters,
           hits: withMatchReasons(explainFilters, esResult.hits),
@@ -763,12 +1143,13 @@ export const listingRouter = createTRPCRouter({
 
       const total = countResult?.count ?? 0
 
-      const hits = await ctx.db.query.listings.findMany({
-        where: and(...conditions),
-        orderBy: ORDER_PUBLIC_RECENCY,
-        limit: filters.limit ?? 24,
-        offset: filters.offset ?? 0,
-      })
+      const hits = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(and(...conditions))
+        .orderBy(...ORDER_PUBLIC_RECENCY)
+        .limit(filters.limit ?? 24)
+        .offset(filters.offset ?? 0)
 
       return {
         filters,
@@ -792,12 +1173,16 @@ export const listingRouter = createTRPCRouter({
         )
       }
 
-      const existing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, input.listingId),
-          eq(listings.publisherId, ctx.session.userId)
-        ),
-      })
+      const [existing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, input.listingId),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
 
       if (!existing) {
         throw new Error('Propiedad no encontrada')
@@ -825,12 +1210,16 @@ export const listingRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const existing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, input.listingId),
-          eq(listings.publisherId, ctx.session.userId)
-        ),
-      })
+      const [existing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, input.listingId),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
 
       if (!existing) {
         throw new Error('Propiedad no encontrada')
@@ -887,12 +1276,16 @@ export const listingRouter = createTRPCRouter({
       })
       if (!media) throw new Error('Imagen no encontrada')
 
-      const listing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, media.listingId),
-          eq(listings.publisherId, ctx.session.userId)
-        ),
-      })
+      const [listing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, media.listingId),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
       if (!listing) throw new Error('Propiedad no encontrada')
 
       await ctx.db.delete(listingMedia).where(eq(listingMedia.id, input.mediaId))
@@ -931,12 +1324,16 @@ export const listingRouter = createTRPCRouter({
       })
       if (!media) throw new Error('Imagen no encontrada')
 
-      const listing = await ctx.db.query.listings.findFirst({
-        where: and(
-          eq(listings.id, media.listingId),
-          eq(listings.publisherId, ctx.session.userId)
-        ),
-      })
+      const [listing] = await ctx.db
+        .select(listingsSelectPublic)
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, media.listingId),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
       if (!listing) throw new Error('Propiedad no encontrada')
 
       await ctx.db

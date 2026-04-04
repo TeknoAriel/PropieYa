@@ -94,3 +94,15 @@ export function buildFiltersSummary(f: ListingSearchFiltersInput): string {
   if (!s) s = 'Búsqueda guardada'
   return s
 }
+
+/** Resumen para filas de `search_history` (JSON con posibles `limit`/`offset`). */
+export function summarizeSearchHistoryFilters(filters: unknown): string {
+  if (!filters || typeof filters !== 'object') return 'Búsqueda'
+  const o = filters as Record<string, unknown>
+  const { limit: _l, offset: _o, ...rest } = o
+  let s = buildFiltersSummary(rest as ListingSearchFiltersInput)
+  if (Array.isArray(rest.polygon) && rest.polygon.length >= 3 && !s.includes('Polígono')) {
+    s = s === 'Búsqueda guardada' ? 'Polígono en mapa' : `${s} · Polígono`
+  }
+  return s
+}

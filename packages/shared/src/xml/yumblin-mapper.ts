@@ -5,11 +5,21 @@
  * Uso: ver scripts/import-yumblin-json.ts
  */
 
-import { extractAmenitiesFromFeedItem } from '../amenity-mapping'
-import type { Amenity, OperationType, PropertyType } from '../types/listing'
+import { extractAmenitiesFromFeedItemDetailed } from '../amenity-mapping'
+import { mapFeedPropertyType } from '../map-feed-property-type'
+import type { Amenity, OperationType } from '../types/listing'
 
 type JsonItem = Record<string, unknown>
 
+/** Igualdad de alias: typeproperty ≈ typeProperty ≈ type_property (feed Kiteprop/Yumblin). */
+function normalizeAliasKey(key: string): string {
+  return key.toLowerCase().replace(/_/g, '')
+}
+
+/**
+ * Lee campos del ítem JSON: primero clave exacta y rutas `a.b`, luego coincidencia
+ * insensible a mayúsculas y guiones bajos solo en el primer nivel.
+ */
 function getValue(item: JsonItem, ...keys: string[]): string | number | null | undefined {
   for (const key of keys) {
     const v = item[key]
@@ -28,8 +38,75 @@ function getValue(item: JsonItem, ...keys: string[]): string | number | null | u
       return typeof cur === 'number' ? cur : String(cur).trim()
     }
   }
+
+  const normToActual = new Map<string, string>()
+  for (const objKey of Object.keys(item)) {
+    const n = normalizeAliasKey(objKey)
+    if (!normToActual.has(n)) normToActual.set(n, objKey)
+  }
+  for (const key of keys) {
+    if (key.includes('.')) continue
+    const actual = normToActual.get(normalizeAliasKey(key))
+    if (actual === undefined) continue
+    const v = item[actual]
+    if (v !== undefined && v !== null && v !== '') {
+      if (typeof v === 'number') return v
+      return String(v).trim() || null
+    }
+  }
   return undefined
 }
+
+/**
+ * Busca la primera clave cuyo alias coincide (p. ej. typeproperty en objeto anidado).
+ * Profundidad acotada para no recorrer árboles enormes.
+ */
+function findDeepValueByKeyAliases(
+  obj: unknown,
+  aliases: readonly string[],
+  maxDepth: number,
+  seen: WeakSet<object> = new WeakSet()
+): string | number | null | undefined {
+  if (maxDepth < 0 || obj === null || obj === undefined) return undefined
+  if (typeof obj !== 'object') return undefined
+  if (seen.has(obj as object)) return undefined
+  seen.add(obj as object)
+
+  const want = new Set(aliases.map((a) => normalizeAliasKey(a)))
+
+  if (Array.isArray(obj)) {
+    for (const el of obj) {
+      const r = findDeepValueByKeyAliases(el, aliases, maxDepth - 1, seen)
+      if (r !== undefined) return r
+    }
+    return undefined
+  }
+
+  const o = obj as Record<string, unknown>
+  for (const [k, v] of Object.entries(o)) {
+    if (want.has(normalizeAliasKey(k)) && v !== undefined && v !== null && v !== '') {
+      if (typeof v === 'number') return v
+      if (typeof v === 'string') {
+        const t = v.trim()
+        if (t) return t
+      }
+    }
+  }
+  for (const v of Object.values(o)) {
+    if (v && typeof v === 'object') {
+      const r = findDeepValueByKeyAliases(v, aliases, maxDepth - 1, seen)
+      if (r !== undefined) return r
+    }
+  }
+  return undefined
+}
+
+/** Claves “fuertes” de tipo: prioridad sobre `property_type` plano si vienen anidadas. */
+const TYPE_PROPERTY_STRONG_KEYS = [
+  'typeproperty',
+  'type_property',
+  'propertyType',
+] as const
 
 const OP_MAP: Record<string, OperationType> = {
   venta: 'sale',
@@ -38,24 +115,6 @@ const OP_MAP: Record<string, OperationType> = {
   rent: 'rent',
   temporal: 'temporary_rent',
   temporary_rent: 'temporary_rent',
-}
-
-const TYPE_MAP: Record<string, PropertyType> = {
-  departamento: 'apartment',
-  apartment: 'apartment',
-  casa: 'house',
-  house: 'house',
-  ph: 'ph',
-  terreno: 'land',
-  land: 'land',
-  oficina: 'office',
-  office: 'office',
-  local: 'commercial',
-  commercial: 'commercial',
-  galpon: 'warehouse',
-  warehouse: 'warehouse',
-  cochera: 'parking',
-  parking: 'parking',
 }
 
 export interface YumblinListingInput {
@@ -113,7 +172,16 @@ export function mapYumblinItem(
   const forSale = item.for_sale === true || item.for_sale === '1'
   const forRent = item.for_rent === true || item.for_rent === '1'
   const forTemp = item.for_temp_rental === true || item.for_temp_rental === '1'
-  let price: number | string | null = getValue(item, 'precio', 'price', 'valor') as number | string | null
+  let price: number | string | null = getValue(
+    item,
+    'precio',
+    'price',
+    'priceAmount',
+    'valor',
+    'sale_price',
+    'salePrice',
+    'forSalePrice'
+  ) as number | string | null
   if (price == null || price === '' || (typeof price === 'number' && price <= 0)) {
     if (forSale) price = getValue(item, 'for_sale_price') as number | string | null
     if ((price == null || price === '') && forRent) price = getValue(item, 'for_rent_price') as number | string | null
@@ -124,7 +192,19 @@ export function mapYumblinItem(
   const priceNum = typeof price === 'number' ? price : parseFloat(String(price ?? 0))
   if (isNaN(priceNum) || priceNum <= 0) return null
 
-  const surface = getValue(item, 'total_meters', 'covered_meters', 'superficie_total', 'surface', 'm2', 'superficie', 'm2_totales', 'exclusive_meters') as number | string | null
+  const surface = getValue(
+    item,
+    'total_meters',
+    'surface_total',
+    'surfaceTotal',
+    'superficie_total',
+    'covered_meters',
+    'surface',
+    'm2',
+    'superficie',
+    'm2_totales',
+    'exclusive_meters'
+  ) as number | string | null
   const surfaceNum = typeof surface === 'number' ? surface : parseFloat(String(surface ?? 1))
   if (isNaN(surfaceNum) || surfaceNum <= 0) return null
 
@@ -132,12 +212,38 @@ export function mapYumblinItem(
   if (forRent && !forSale) operationType = 'rent'
   else if (forTemp && !forSale && !forRent) operationType = 'temporary_rent'
   else if (!forSale && !forRent && !forTemp) {
-    const opRaw = String(getValue(item, 'operacion', 'operation', 'tipo_operacion') ?? 'venta').toLowerCase()
+    const opRaw = String(
+      getValue(
+        item,
+        'typeoperation',
+        'type_operation',
+        'operacion',
+        'operation',
+        'tipo_operacion',
+        'transaction_type',
+        'transactionType'
+      ) ?? 'venta'
+    ).toLowerCase()
     operationType = OP_MAP[opRaw] ?? 'sale'
   }
 
-  const typeRaw = String(getValue(item, 'property_type', 'tipo_propiedad', 'tipo') ?? 'departamento').toLowerCase()
-  const propertyType = TYPE_MAP[typeRaw] ?? 'apartment'
+  const typeFromStrongNested = findDeepValueByKeyAliases(
+    item,
+    TYPE_PROPERTY_STRONG_KEYS,
+    5
+  )
+  const typeRaw =
+    typeFromStrongNested ??
+    getValue(
+      item,
+      'typeproperty',
+      'property_type',
+      'tipo_propiedad',
+      'propertyType',
+      'tipo_inmueble',
+      'tipo'
+    )
+  const propertyType = mapFeedPropertyType(typeRaw ?? '')
 
   const lat = getValue(item, 'latitude', 'lat', 'latitud') as number | string | null
   const lng = getValue(item, 'longitude', 'lng', 'longitud', 'lon') as number | string | null
@@ -169,6 +275,9 @@ export function mapYumblinItem(
   const floorStr =
     floorVal != null ? String(floorVal) : null
 
+  const countryRaw = getValue(item, 'country', 'pais') as string | null
+  const stateVal = (state != null && String(state).trim() !== '' ? String(state).trim() : null) ?? 'Santa Fe'
+
   const address: Record<string, unknown> = {
     street: (typeof addrVal === 'object' && addrVal && (addrVal as { street?: string }).street) ?? street ?? '',
     number: getValue(item, 'numero', 'number') ?? null,
@@ -176,8 +285,8 @@ export function mapYumblinItem(
     unit: getValue(item, 'unidad', 'unit', 'depto') ?? null,
     neighborhood: neighborhood ?? '',
     city: city ?? '',
-    state: state ?? 'Santa Fe',
-    country: 'Argentina',
+    state: stateVal,
+    country: countryRaw && String(countryRaw).trim() !== '' ? String(countryRaw).trim() : 'Argentina',
     postalCode: getValue(item, 'postcode', 'codigo_postal', 'postalCode') ?? null,
   }
 
@@ -223,7 +332,9 @@ export function mapYumblinItem(
   const orientationVal = getValue(item, 'orientation', 'orientacion', 'orientación')
   const orientation = orientationVal != null ? String(orientationVal).trim().slice(0, 10) : null
 
-  const amenities = extractAmenitiesFromFeedItem(item as Record<string, unknown>)
+  const { amenities, feedRawTokens } = extractAmenitiesFromFeedItemDetailed(
+    item as Record<string, unknown>
+  )
 
   const features: Record<string, unknown> = {
     amenities,
@@ -231,6 +342,7 @@ export function mapYumblinItem(
     totalFloors: Number.isFinite(totalFloors) ? totalFloors : null,
     orientation: orientation ?? null,
     escalera: escalera ?? null,
+    ...(feedRawTokens.length > 0 ? { feedAmenityRaw: feedRawTokens } : {}),
   }
 
   return {
@@ -273,4 +385,36 @@ export function extractListingsFromFeed(data: unknown): JsonItem[] {
     return Array.isArray(arr) ? arr : []
   }
   return []
+}
+
+/**
+ * ID estable en portal (misma prioridad que `mapYumblinItem`) sin mapear todo el ítem.
+ * Properstar / Kiteprop: `public_code` (ej. KP499781) antes que `id` numérico.
+ */
+export function peekFeedExternalId(item: JsonItem): string | null {
+  const v = getValue(item, 'public_code', 'id', 'codigo', 'external_id', 'id_aviso')
+  if (v === undefined || v === null) return null
+  const s = String(v).trim()
+  return s.length > 0 ? s : null
+}
+
+/**
+ * Fecha de modificación en el feed (Properstar: `last_update` ISO).
+ * Si falta o no parsea, devuelve null (no se aplica atajo incremental).
+ */
+export function parseFeedItemSourceUpdatedAt(item: JsonItem): Date | null {
+  const raw = getValue(
+    item,
+    'last_update',
+    'lastUpdate',
+    'updated_at',
+    'updatedAt',
+    'modified_at',
+    'modifiedAt'
+  )
+  if (raw === undefined || raw === null) return null
+  const s = String(raw).trim()
+  if (!s) return null
+  const d = new Date(s)
+  return Number.isNaN(d.getTime()) ? null : d
 }

@@ -15,7 +15,7 @@ Todo lo automatizable ya está hecho. Esto es lo que **solo vos** podés hacer:
 
 ## 🔲 Paso 1: Mergear el PR en GitHub
 
-1. **Abrí:** https://github.com/TeknoAriel/PropieYa/pull/new/deploy/infra  
+1. **Abrí:** https://github.com/kiteprop/ia-propieya/pull/new/deploy/infra  
 2. Creá el Pull Request de `deploy/infra` → `main`.  
 3. Esperá a que pase el check **Typecheck** (si falla, avisame).  
 4. Hacé **Merge** del PR.
@@ -45,7 +45,7 @@ DATABASE_URL="postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/neondb?s
 ## 🔲 Paso 4: Proyecto Web en Vercel
 
 1. **Abrí:** https://vercel.com/new  
-2. Importá `TeknoAriel/PropieYa`.  
+2. Importá `kiteprop/ia-propieya`.  
 3. **Root Directory:** `apps/web`  
 4. **Variables de entorno:**
    - `DATABASE_URL` = tu connection string de Neon  
@@ -71,7 +71,7 @@ DATABASE_URL="postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/neondb?s
 
 | Acción        | URL |
 |---------------|-----|
-| Crear PR      | https://github.com/TeknoAriel/PropieYa/pull/new/deploy/infra |
+| Crear PR      | https://github.com/kiteprop/ia-propieya/pull/new/deploy/infra |
 | Neon          | https://console.neon.tech |
 | Vercel nuevo  | https://vercel.com/new |
 

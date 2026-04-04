@@ -1,6 +1,11 @@
 import Link from 'next/link'
 
+import { PORTAL_BRAND_FOOTER_TAGLINE } from '@propieya/shared'
+
+import { getPanelPublicUrl } from '@/lib/panel-public-url'
+
 export function Footer() {
+  const panelHref = getPanelPublicUrl()
   return (
     <footer className="border-t border-border bg-surface-secondary">
       <div className="container mx-auto px-4 py-12">
@@ -9,7 +14,7 @@ export function Footer() {
           <div className="space-y-4">
             <span className="text-xl font-bold text-brand-primary">Propieya</span>
             <p className="text-sm text-text-secondary">
-              La plataforma inmobiliaria donde podés buscar hablando.
+              {PORTAL_BRAND_FOOTER_TAGLINE}
             </p>
           </div>
 
@@ -40,13 +45,18 @@ export function Footer() {
             <ul className="space-y-2 text-sm text-text-secondary">
               <li>
                 <Link href="/publicar" className="hover:text-text-primary transition-colors">
-                  Publicar propiedad
+                  Publicá tu aviso
                 </Link>
               </li>
               <li>
-                <Link href="/panel" className="hover:text-text-primary transition-colors">
+                <a
+                  href={panelHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-text-primary transition-colors"
+                >
                   Panel de gestión
-                </Link>
+                </a>
               </li>
               <li>
                 <Link href="/planes" className="hover:text-text-primary transition-colors">

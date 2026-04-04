@@ -5,6 +5,8 @@
 **Tipo:** Criterios de producto y arquitectura — complementa `docs/00-fundacion-producto.md`  
 **Objetivo del portal:** combinar **experiencia conversacional cálida y moderna** con **estructura de búsqueda profunda**, MLS-ready, geoespacial y altamente filtrable, **sin abrumar**.
 
+**Orden de evolución y anti-Frankenstein:** `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md` · **Matriz/backlog:** `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md`.
+
 ---
 
 ## X. Capacidades MLS-ready reales
@@ -90,7 +92,7 @@ No basta un mapa con pins: la geografía es **eje de producto**.
 - Compatibilidad con **variantes de ubicación** y jerarquías (ciudad, partido, polígono administrativo, etc.).  
 - Integración con **filtros manuales** y **asistente IA** (misma query unificada).
 
-**Estado actual:** hay `locationLat` / `locationLng` en listings y hooks en schemas de búsqueda; la **UI mapa completa** y **viewport/polígono** son trabajo mayor pendiente.
+**Estado actual:** hay `locationLat` / `locationLng` en listings y hooks en schemas de búsqueda; **viewport (bbox)** y lista sincronizada en `/buscar`; **clusters** en zoom bajo (Sprint 21). Pendiente mayor: **polígono / radio**, jerarquías de zona, alertas por área dibujada.
 
 ---
 

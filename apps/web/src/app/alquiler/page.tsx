@@ -2,6 +2,7 @@
 
 import { Suspense } from 'react'
 
+import { PORTAL_SEARCH_UX_COPY } from '@propieya/shared'
 import { Card, Skeleton } from '@propieya/ui'
 
 import { BuscarContent } from '@/components/buscar/buscar-content'
@@ -32,8 +33,8 @@ export default function AlquilerPage() {
         >
           <BuscarContent
             forcedOperation="rent"
-            pageTitle="Propiedades en alquiler"
-            pageSubtitle="Alquiler tradicional y opciones en tu zona. Refiná con los filtros."
+            pageTitle={PORTAL_SEARCH_UX_COPY.alquilerTitle}
+            pageSubtitle={PORTAL_SEARCH_UX_COPY.alquilerSubtitle}
           />
         </Suspense>
       </main>

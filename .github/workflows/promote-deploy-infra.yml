@@ -5,9 +5,11 @@ on:
     branches: [deploy/infra]
   workflow_dispatch:
 
+# No cancelar runs en curso: varios push/manual seguidos dejaban todos en "skipped"
+# y el dominio nunca llegaba al último deployment.
 concurrency:
   group: deploy-produccion-web
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -27,6 +29,8 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      TURBO_DAEMON: 'false'
+      NEXT_TELEMETRY_DISABLED: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -80,50 +84,90 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify (lint + typecheck + build)
-        run: pnpm verify
+      # Pasos separados para ver en GitHub QUÉ falla (~4m30s suele ser build OOM o tsc).
+      - name: Lint
+        run: pnpm lint
 
-      # El proyecto web en Vercel tiene Root Directory = apps/web (docs/33, DEPLOY-PASOS).
-      # Link + pull + deploy deben ejecutarse desde apps/web; .vercel en la raíz del repo
-      # provocaba desalineación y fallos intermitentes del CLI con monorepo.
-      - name: Linkear proyecto web y pull (apps/web)
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build (turbo)
+        run: pnpm build
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+
+      # Root Directory del proyecto web en Vercel = apps/web (docs/33). pull/deploy desde la
+      # raíz del monorepo para que el CLI suba packages/* y lockfile; solo apps/web rompe el build remoto.
+      - name: Linkear proyecto web y pull (raíz monorepo)
         run: |
           set -euo pipefail
-          mkdir -p apps/web/.vercel
-          cat > apps/web/.vercel/project.json <<JSON
+          mkdir -p .vercel
+          cat > .vercel/project.json <<JSON
           {
             "orgId": "${VERCEL_ORG_ID}",
             "projectId": "${VERCEL_PROJECT_ID}"
           }
           JSON
-          cd apps/web
           npx --yes vercel@41 pull --yes --environment=production --token "${VERCEL_TOKEN}"
 
-      # Patrón Vercel: pull (production) → build --prod → deploy --prebuilt --prod.
-      # Si build --prod falla en el runner, fallback a deploy remoto (misma cwd apps/web).
-      - name: Deploy producción (Vercel build --prod + prebuilt o remoto)
+      - name: Deploy producción (Vercel remoto, raíz monorepo)
         env:
           TURBO_FORCE: "1"
         run: |
           set -euo pipefail
-          cd apps/web
           TOKEN="${VERCEL_TOKEN}"
           META=( --meta "githubSha=${GITHUB_SHA}" --meta "githubRepo=${GITHUB_REPOSITORY}" )
-          if npx --yes vercel@41 build --prod --token "${TOKEN}"; then
-            echo "::notice::vercel build --prod OK → deploy --prebuilt"
-            out="$(npx --yes vercel@41 deploy --prebuilt --prod --yes --token "${TOKEN}" "${META[@]}")"
-          else
-            echo "::warning::vercel build --prod falló en Actions → deploy remoto (build en Vercel)"
-            out="$(npx --yes vercel@41 deploy --prod --yes --token "${TOKEN}" "${META[@]}")"
+          if ! out=$(npx --yes vercel@41 deploy --prod --yes --token "${TOKEN}" \
+            --build-env "BUILD_COMMIT_SHA=${GITHUB_SHA}" \
+            --build-env "BUILD_GIT_REF=${GITHUB_REF_NAME}" \
+            --env "BUILD_COMMIT_SHA=${GITHUB_SHA}" \
+            --env "BUILD_GIT_REF=${GITHUB_REF_NAME}" \
+            "${META[@]}" 2>&1); then
+            echo "::error::vercel deploy --prod falló"
+            echo "$out" | tail -n 100
+            exit 1
           fi
           echo "$out"
-          url="$(echo "$out" | grep -Eo 'https?://[^ ]+\\.vercel\\.app' | tail -n 1 || true)"
+          # Preferir la línea "Production:" del CLI (evita quedarse con otra URL .vercel.app).
+          url="$(
+            echo "$out" | grep -i 'Production:' | grep -oE 'https://[a-zA-Z0-9][a-zA-Z0-9.-]*\.vercel\.app' | head -n 1 || true
+          )"
+          if [ -z "${url:-}" ]; then
+            url="$(
+              echo "$out" | grep -oE 'https://[a-zA-Z0-9][a-zA-Z0-9.-]*\.vercel\.app' | tail -n 1 || true
+            )"
+          fi
+          if [ -z "${url:-}" ]; then
+            url="$(
+              echo "$out" | grep -Eo 'https?://[^ ]+\.vercel\.app' | tail -n 1 || true
+            )"
+          fi
           if [ -n "${url:-}" ]; then
             echo "DEPLOY_URL=$url" >> "$GITHUB_ENV"
             echo "Deploy URL detectada: $url"
           else
-            echo "::warning::No pude detectar DEPLOY_URL desde la salida de vercel deploy"
+            echo "::warning::No se pudo extraer DEPLOY_URL (salida CLI cambió). Smoke en dominio canónico igual corre."
+            echo "$out" | tail -n 40
           fi
+
+      # Best-effort: no bloquear el job (modo recuperación sin owner org / dominio desalineado).
+      - name: Opcional — promote y alias si hay DEPLOY_URL
+        run: |
+          set +e
+          TOKEN="${VERCEL_TOKEN}"
+          if [ -z "${DEPLOY_URL:-}" ]; then
+            echo "Sin DEPLOY_URL; omito promote/alias."
+            exit 0
+          fi
+          echo "Promoviendo (best effort) ${DEPLOY_URL}"
+          npx --yes vercel@41 promote "${DEPLOY_URL}" --yes --token "${TOKEN}" --timeout=5m
+          pr=$?
+          if [ "$pr" -ne 0 ]; then
+            echo "::warning::vercel promote falló o timeout (código $pr); el deploy --prod igual puede estar publicado."
+          fi
+          echo "Alias propieyaweb.vercel.app (best effort)"
+          npx --yes vercel@41 alias set "${DEPLOY_URL}" propieyaweb.vercel.app --yes --token "${TOKEN}" 2>/dev/null
+          exit 0
 
       - name: Esperar propagación
         run: sleep 90
@@ -166,6 +210,17 @@ jobs:
             exit 1
           fi
           echo "$body" | head -c 600
+
+      - name: Aviso si /api/version no coincide con este push (no bloquea)
+        run: |
+          set -euo pipefail
+          want="${GITHUB_SHA:0:7}"
+          body=$(curl -sS "${PORTAL_URL}/api/version" 2>/dev/null || true)
+          got=$(echo "$body" | jq -r '.commit // empty')
+          echo "Canónico /api/version commit='$got' · este workflow esperaba '$want'"
+          if [ "$got" != "$want" ]; then
+            echo "::warning::El dominio canónico puede seguir en un deployment anterior. Revisar Vercel → Domains y promote manual si hace falta."
+          fi
 
       - name: Aviso si /api/version no refleja la rama de deploy
         run: |

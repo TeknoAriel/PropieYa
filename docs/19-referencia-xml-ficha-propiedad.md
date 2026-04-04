@@ -11,7 +11,7 @@ https://static.kiteprop.com/kp/difusions/13d87da051c790afaf09c7afd094f151d7d0629
 ### Feed JSON (Yumblin)
 
 ```
-https://static.kiteprop.com/kp/difusions/23705a4a85ab8f1d301c73aae5359a81a8b5c1ca/yumblin.json
+https://static.kiteprop.com/kp/difusions/f89cbd8ca785fc34317df63d29ab8ea9d68a7b1c/properstar.json (feed import actual; el JSON Yumblin antiguo puede usarse como archivo local de prueba)
 ```
 
 - **Propósito:** referencia de campos / estructura esperada en difusiones inmobiliarias (mapeo hacia `Listing` / ficha pública).

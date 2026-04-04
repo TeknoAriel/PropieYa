@@ -1,3 +1,5 @@
+import type { FacetFilters } from '../search-facets'
+
 import {
   type Currency,
   type GeoPoint,
@@ -48,6 +50,8 @@ export interface SearchFilters {
 
   // Características
   amenities?: Amenity[]
+  /** Filtros por catálogo de facets (búsqueda avanzada / mismo contrato que `listing.search`). */
+  facets?: FacetFilters
   orientations?: Orientation[]
   floorMin?: number
   floorMax?: number

@@ -1,18 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
 import { Badge, Button, Card, MessageSquare, Skeleton } from '@propieya/ui'
 
+import { AddToCompareButton } from '@/components/compare/add-to-compare-button'
 import { ContactModal } from '@/components/contact-modal'
+import { ListingTrustPanel } from '@/components/property/listing-trust-panel'
+import { ListingRelatedSearches } from '@/components/property/listing-related-searches'
 import { PropertyLocationMap } from '@/components/property/property-location-map'
 import {
   formatPrice,
   formatSurface,
   OPERATION_TYPE_LABELS,
+  PORTAL_LISTING_UX_COPY as L,
 } from '@propieya/shared'
 import type {
   Currency,
@@ -92,7 +96,7 @@ function ContactButton({
     <>
       <Button onClick={() => setOpen(true)} className="w-full">
         <MessageSquare className="h-4 w-4 mr-2" />
-        Contactar
+        {L.contactButton}
       </Button>
       <ContactModal
         listingId={listingId}
@@ -194,11 +198,28 @@ function CommercialSubSummary({
 export default function PropiedadPage() {
   const params = useParams<{ id: string }>()
   const id = params?.id
+  const viewRecordedRef = useRef(false)
 
   const { data, isLoading } = trpc.listing.getById.useQuery(
     { id: typeof id === 'string' ? id : ('' as string) },
     { enabled: typeof id === 'string' && id.length > 0 }
   )
+
+  const { mutate: recordPublicViewMutate } =
+    trpc.listing.recordPublicView.useMutation()
+
+  useEffect(() => {
+    viewRecordedRef.current = false
+  }, [id])
+
+  useEffect(() => {
+    if (typeof id !== 'string' || !id || !data?.id || viewRecordedRef.current) {
+      return
+    }
+    viewRecordedRef.current = true
+    recordPublicViewMutate({ listingId: id })
+  }, [id, data?.id, recordPublicViewMutate])
+
 
   if (isLoading) {
     return (
@@ -237,6 +258,12 @@ export default function PropiedadPage() {
     propertyType: PropertyType
     priceAmount: number
     priceCurrency: Currency
+    source: string
+    publishedAt: Date | string | null
+    expiresAt: Date | string | null
+    qualityScore: number | null
+    mediaCount: number
+    primaryImageUrl: string | null
     address?: { neighborhood?: string; city?: string } | null
     surfaceTotal: number
     bedrooms: number | null
@@ -348,15 +375,17 @@ export default function PropiedadPage() {
         </div>
 
         <div className="space-y-4">
+          <ListingTrustPanel listing={listing} />
+
           <Card className="p-6 space-y-4">
-            <h2 className="text-lg font-semibold">¿Te interesa?</h2>
-            <p className="text-sm text-text-secondary">
-              Consultá por esta propiedad y te responderán a la brevedad.
-            </p>
+            <h2 className="text-lg font-semibold">{L.sidebarTitle}</h2>
+            <p className="text-sm text-text-secondary">{L.sidebarLead}</p>
+            <p className="text-xs text-text-tertiary leading-relaxed">{L.trustNote}</p>
             <ContactButton
               listingId={listing.id}
               listingTitle={listing.title}
             />
+            <AddToCompareButton listingId={listing.id} />
           </Card>
 
           <Card className="p-6 space-y-4">
@@ -417,7 +446,21 @@ export default function PropiedadPage() {
         </div>
       </div>
 
-      <SimilarSection listingId={listing.id} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-1">
+          <ListingRelatedSearches
+            operationType={listing.operationType}
+            propertyType={listing.propertyType}
+            city={addressCity !== '—' ? addressCity : null}
+            neighborhood={
+              addressNeighborhood !== '—' ? addressNeighborhood : null
+            }
+          />
+        </div>
+        <div className="lg:col-span-2">
+          <SimilarSection listingId={listing.id} />
+        </div>
+      </div>
     </div>
   )
 }

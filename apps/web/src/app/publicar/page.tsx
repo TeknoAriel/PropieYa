@@ -15,7 +15,7 @@ export default function PublicarPage() {
       <main className="container mx-auto flex flex-1 flex-col items-center justify-center px-4 py-16">
         <Card className="w-full max-w-lg space-y-6 p-8">
           <div>
-            <h1 className="text-2xl font-bold text-text-primary">Publicar propiedad</h1>
+            <h1 className="text-2xl font-bold text-text-primary">Publicá tu aviso</h1>
             <p className="mt-2 text-text-secondary">
               Los avisos se cargan y publican desde el panel de Propieya (cuenta de
               publicador). El portal web es para buscar y ver fichas.

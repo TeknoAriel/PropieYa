@@ -2,6 +2,7 @@
 
 import { Suspense } from 'react'
 
+import { PORTAL_SEARCH_UX_COPY } from '@propieya/shared'
 import { Card, Skeleton } from '@propieya/ui'
 
 import { BuscarContent } from '@/components/buscar/buscar-content'
@@ -32,8 +33,8 @@ export default function VentaPage() {
         >
           <BuscarContent
             forcedOperation="sale"
-            pageTitle="Propiedades en venta"
-            pageSubtitle="Publicaciones activas en venta. Ajustá tipo, ciudad y precio."
+            pageTitle={PORTAL_SEARCH_UX_COPY.ventaTitle}
+            pageSubtitle={PORTAL_SEARCH_UX_COPY.ventaSubtitle}
           />
         </Suspense>
       </main>

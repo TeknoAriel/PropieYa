@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
+import { PORTAL_VOICE_CTA } from '@propieya/shared'
 import { Button, Card } from '@propieya/ui'
 
 import { Footer } from '@/components/layout/footer'
@@ -70,7 +71,7 @@ export function AceptarInvitacionContent() {
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Button asChild>
-                <Link href={loginHref}>Iniciar sesión</Link>
+                <Link href={loginHref}>{PORTAL_VOICE_CTA.login}</Link>
               </Button>
               <Button asChild variant="outline">
                 <Link

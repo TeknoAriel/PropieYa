@@ -1,3 +1,5 @@
+import type { Amenity } from '../types/listing'
+
 /**
  * Feed OpenNavent (Kiteprop / Zonaprop XML): estructura y mapeo a modelo Propieya.
  *
@@ -101,4 +103,15 @@ export function opennaventCharacteristicRole(
   nombre: string
 ): OpenNaventCharacteristicRole {
   return OPENNAVENT_CARACTERISTICA_NOMBRE_TO_ROLE[nombre] ?? 'other'
+}
+
+/**
+ * Roles OpenNavent con equivalente en `Amenity` / catálogo de facets.
+ * (p. ej. WiFi/cocina no están en el enum; quedan solo en características crudas o extras.)
+ */
+export const OPENNAVENT_ROLE_TO_AMENITY: Partial<
+  Record<OpenNaventCharacteristicRole, Amenity>
+> = {
+  amenity_elevator: 'elevator',
+  flag_pets: 'pet_friendly',
 }

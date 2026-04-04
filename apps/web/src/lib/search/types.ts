@@ -32,6 +32,7 @@ export interface ListingRow {
   updatedAt: Date
   createdAt: Date
   amenities?: string[]
+  feedAmenityRaw?: string[]
 }
 
 export interface SearchFilters {
@@ -55,8 +56,25 @@ export interface SearchFilters {
   city?: string
   neighborhood?: string
   amenities?: string[]
+  geoPoint?: { lat: number; lng: number }
+  /** Radio en metros (requiere `geoPoint`). */
+  geoRadius?: number
+  /**
+   * Facets escalables (Sprint 26). Inicialmente convivirá con `amenities`.
+   * El backend debe interpretar esto de forma compatible.
+   */
+  facets?: {
+    flags?: string[]
+    excludeFlags?: string[]
+    enums?: Record<string, string[]>
+    ranges?: Record<string, { min?: number | null; max?: number | null }>
+  }
   /** Filtro por rectángulo (mapa). */
   bbox?: { south: number; north: number; west: number; east: number }
+  /** Polígono (mapa); orden de vértices = contorno. */
+  polygon?: { lat: number; lng: number }[]
   limit?: number
   offset?: number
+  /** Paginación ES: valores de `sort` del último hit de la página anterior. */
+  searchAfter?: unknown[]
 }
