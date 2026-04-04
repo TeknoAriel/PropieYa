@@ -789,22 +789,7 @@ export function BuscarContent({
         </div>
 
         <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
-          {!classicFiltersOpen ? (
-            <div className="rounded-2xl border border-dashed border-border/70 bg-surface-secondary/15 px-4 py-6 text-center md:px-6">
-              <p className="mx-auto max-w-lg text-sm text-text-secondary">
-                {S.filtersCollapsedHint}
-              </p>
-              <Button
-                type="button"
-                variant="default"
-                size="sm"
-                className="mt-4"
-                onClick={() => setClassicFiltersOpen(true)}
-              >
-                {S.filtersOptionalExpand}
-              </Button>
-            </div>
-          ) : (
+          {classicFiltersOpen ? (
             <Card className="space-y-4 p-4 md:p-6">
           <div>
             <h2 className="text-lg font-semibold text-text-primary">
@@ -1043,8 +1028,8 @@ export function BuscarContent({
               </div>
             </div>
           ) : null}
-            </Card>
-          )}
+          </Card>
+          ) : null}
         </div>
 
         {showMap ? (

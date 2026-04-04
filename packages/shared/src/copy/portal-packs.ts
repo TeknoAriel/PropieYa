@@ -333,8 +333,6 @@ export const PORTAL_SEARCH_UX_COPY = {
   /** Filtros clásicos: ocultos por defecto para no abrumar. */
   filtersOptionalExpand: 'Mostrar filtros para afinar',
   filtersOptionalCollapse: 'Ocultar filtros',
-  filtersCollapsedHint:
-    'No hace falta completar todo: podés buscar arriba con una frase o tocá un atajo. Abrí los filtros solo cuando quieras afinar operación, zona o números.',
   essentialsFriendlyTitle: 'Afinar con criterios',
   essentialsFriendlySubtitle:
     'Opcional — mismo motor que la búsqueda por frase. Tocá «Más filtros» para ir más al detalle.',
