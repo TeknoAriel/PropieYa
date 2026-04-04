@@ -5,9 +5,11 @@ on:
     branches: [deploy/infra]
   workflow_dispatch:
 
+# No cancelar runs en curso: varios push/manual seguidos dejaban todos en "skipped"
+# y el dominio nunca llegaba al último deployment.
 concurrency:
   group: deploy-produccion-web
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -105,6 +107,8 @@ jobs:
           TOKEN="${VERCEL_TOKEN}"
           META=( --meta "githubSha=${GITHUB_SHA}" --meta "githubRepo=${GITHUB_REPOSITORY}" )
           if ! out=$(npx --yes vercel@41 deploy --prod --yes --token "${TOKEN}" \
+            --build-env "BUILD_COMMIT_SHA=${GITHUB_SHA}" \
+            --build-env "BUILD_GIT_REF=${GITHUB_REF_NAME}" \
             --env "BUILD_COMMIT_SHA=${GITHUB_SHA}" \
             --env "BUILD_GIT_REF=${GITHUB_REF_NAME}" \
             "${META[@]}" 2>&1); then
@@ -113,10 +117,15 @@ jobs:
             exit 1
           fi
           echo "$out"
-          # Varias formas de URL en la salida del CLI (evita quedar sin DEPLOY_URL).
+          # Preferir la línea "Production:" del CLI (evita quedarse con otra URL .vercel.app).
           url="$(
-            echo "$out" | grep -oE 'https://[a-zA-Z0-9][a-zA-Z0-9.-]*\.vercel\.app' | tail -n 1 || true
+            echo "$out" | grep -i 'Production:' | grep -oE 'https://[a-zA-Z0-9][a-zA-Z0-9.-]*\.vercel\.app' | head -n 1 || true
           )"
+          if [ -z "${url:-}" ]; then
+            url="$(
+              echo "$out" | grep -oE 'https://[a-zA-Z0-9][a-zA-Z0-9.-]*\.vercel\.app' | tail -n 1 || true
+            )"
+          fi
           if [ -z "${url:-}" ]; then
             url="$(
               echo "$out" | grep -Eo 'https?://[^ ]+\.vercel\.app' | tail -n 1 || true
@@ -131,6 +140,38 @@ jobs:
             exit 1
           fi
 
+      - name: Esperar deployment listo (DEPLOY_URL)
+        run: |
+          set -euo pipefail
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" "${DEPLOY_URL}" 2>/dev/null || echo "000")
+            echo "Intento $i/20 HEAD ${DEPLOY_URL}: HTTP $code"
+            if [[ "$code" =~ ^2 ]]; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::El deployment no respondió 2xx a tiempo: ${DEPLOY_URL}"
+          exit 1
+
+      - name: Verificar commit en DEPLOY_URL (antes de promote)
+        run: |
+          set -euo pipefail
+          want="${GITHUB_SHA:0:7}"
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18; do
+            body=$(curl -sS "${DEPLOY_URL}/api/version" 2>/dev/null || true)
+            got=$(echo "$body" | jq -r '.commit // empty')
+            echo "Intento $i/18 ${DEPLOY_URL}/api/version commit='$got' (esperado '$want')"
+            if [ "$got" = "$want" ]; then
+              echo "OK: el build nuevo expone el commit correcto."
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::En ${DEPLOY_URL}/api/version no aparece BUILD_COMMIT_SHA (${want}). Revisar --env/--build-env del deploy."
+          echo "$body"
+          exit 1
+
       - name: Promover deployment al dominio de producción
         run: |
           set -euo pipefail
@@ -138,12 +179,14 @@ jobs:
           echo "Promoviendo ${DEPLOY_URL} (asigna dominios Production del proyecto)."
           npx --yes vercel@41 promote "${DEPLOY_URL}" --yes --token "${TOKEN}" --timeout=5m
 
-      - name: Alias explícito al hostname canónico del portal
+      - name: Alias explícito al hostname canónico del portal (no fatal)
         run: |
           set -euo pipefail
           TOKEN="${VERCEL_TOKEN}"
           echo "Alias ${DEPLOY_URL} → propieyaweb.vercel.app"
-          npx --yes vercel@41 alias set "${DEPLOY_URL}" propieyaweb.vercel.app --yes --token "${TOKEN}"
+          if ! npx --yes vercel@41 alias set "${DEPLOY_URL}" propieyaweb.vercel.app --yes --token "${TOKEN}"; then
+            echo "::warning::alias set falló (dominio ya asignado u otro proyecto). Si promote fue OK, el canónico puede igual actualizarse."
+          fi
 
       - name: Esperar propagación
         run: sleep 90
@@ -187,23 +230,23 @@ jobs:
           fi
           echo "$body" | head -c 600
 
-      - name: Exigir que /api/version refleje este commit
+      - name: Exigir que /api/version refleje este commit (canónico)
         run: |
           set -euo pipefail
           want="${GITHUB_SHA:0:7}"
-          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+          for i in $(seq 1 24); do
             body=$(curl -sS "${PORTAL_URL}/api/version" 2>/dev/null || true)
             got=$(echo "$body" | jq -r '.commit // empty')
-            echo "Intento $i/12: commit en /api/version='$got' (esperado prefijo '$want')"
+            echo "Intento $i/24: ${PORTAL_URL}/api/version commit='$got' (esperado '$want')"
             if [ "$got" = "$want" ]; then
               echo "OK: dominio canónico sirve el deployment de este push."
               exit 0
             fi
-            sleep 25
+            sleep 30
           done
           echo "::error::Tras promote/alias, ${PORTAL_URL}/api/version sigue sin el commit $want."
-          echo "Comprobar en Vercel que el dominio propieyaweb.vercel.app pertenezca al proyecto propie-ya-web (Settings → Domains)."
-          echo "$body"
+          echo "Comprobar en Vercel → propie-ya-web → Domains que propieyaweb.vercel.app esté en este proyecto."
+          echo "Última respuesta: $body"
           exit 1
 
       - name: Aviso si /api/version no refleja la rama de deploy

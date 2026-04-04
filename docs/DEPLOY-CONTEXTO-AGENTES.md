@@ -15,7 +15,7 @@
 | **Root Directory en Vercel** | `apps/web` |
 | **Rama de integración deploy** | Push a `deploy/infra` → workflow → **Vercel CLI** (portal). **`main` debe fusionarse con `deploy/infra`** para mantener el repo y el deploy del panel (Git) alineados; el workflow **no** mergea solo. |
 | **Secretos GitHub** | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` deben apuntar al proyecto **`propie-ya-web`** (el workflow Promote **falla** si el ID no resuelve a ese nombre vía API Vercel). |
-| **`/api/version` en deploy CLI** | Tras `vercel deploy --prod`, el workflow ejecuta **`vercel promote <url del deployment>`** para que el dominio canónico deje de quedar en un build viejo (p. ej. solo Git). Además pasa `BUILD_COMMIT_SHA` / `BUILD_GIT_REF` al deploy; `GET /api/version` los prioriza sobre `VERCEL_GIT_*`. Un paso final exige que el commit en `/api/version` coincida con `GITHUB_SHA` del push. |
+| **`/api/version` en deploy CLI** | Tras `vercel deploy --prod` (con `--build-env` y `--env` para `BUILD_COMMIT_SHA`), el workflow espera 2xx en `DEPLOY_URL`, valida `/api/version` **en esa URL**, luego **`vercel promote`** y opcionalmente `alias set` (warning si falla). Concurrencia **sin** cancelar runs en curso, para que no queden todos en gris. Gate final en el dominio canónico (~12 min de reintentos). |
 | **Fuente única de constantes** | `scripts/production-canonical.env.sh` — URL canónica, nombre del proyecto web, rama de deploy. Scripts: `pnpm verificar:ruta-produccion`. |
 | **Variables Vercel (web, Production)** | Mínimo: `DATABASE_URL`, `JWT_SECRET`, `TRUSTED_PANEL_ORIGINS`. [Environment Variables →](https://vercel.com/teknoariels-projects/propie-ya-web/settings/environment-variables) |
 
