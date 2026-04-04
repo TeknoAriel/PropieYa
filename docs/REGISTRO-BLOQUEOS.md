@@ -17,6 +17,7 @@ El agente anota aquí fallos que **no puede resolver** sin acción externa (GitH
 
 | 2026-03-30 | **Migración repo** a `kiteprop/ia-propieya` | Tras el primer push: en **Vercel** → proyecto web → Settings → Git → conectar el nuevo repo; en **GitHub** del nuevo repo → Settings → Secrets → volver a cargar `VERCEL_*` si hace falta; Actions en https://github.com/kiteprop/ia-propieya/actions |
 | 2026-03-31 | **Portal sin propiedades / tRPC 500:** `column "dedup_canonical_id" does not exist` | **Causa:** schema con columna nueva sin migrar en Neon. **Arreglo en código:** quitada la columna del ORM y filtros hasta alinear DB. **Opcional (dedup real):** ejecutar una vez `docs/sql/add-dedup-canonical-id.sql` en prod y volver a añadir columna + filtros en el repo. |
+| 2026-04-04 | **`/api/version` sigue en `2e7cb32`** pese a `main`/`deploy/infra` en `e952f99+` y portal en 200 | **Diagnóstico:** el tráfico de `propieyaweb.vercel.app` no está tomando el último deploy (CLI o Git). **Un paso:** [Actions → Deploy producción desde deploy/infra](https://github.com/kiteprop/ia-propieya/actions/workflows/promote-deploy-infra.yml) → último run: si falló, log del paso *Deploy producción* y secretos `VERCEL_*` (Parte D de `docs/DEPLOY-PASOS-URIs.md`). En Vercel → proyecto **`propie-ya-web`** → *Deployments*: confirmar qué commit está en **Production** y si hay otro origen (Git) pisando al CLI. **Código ya listo:** workflow pasa `BUILD_COMMIT_SHA` al CLI; `/api/version` lo prioriza cuando el deploy nuevo recibe tráfico. |
 
 Formato al añadir fila:
 
