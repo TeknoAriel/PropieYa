@@ -5,6 +5,7 @@
 import {
   validateConversationalPipeline,
   type ConversationalPipelineDebug,
+  type LocalityCatalogEntry,
 } from '@propieya/shared'
 
 import {
@@ -21,13 +22,15 @@ export type ConversationalOrchestratorResult = {
 
 export async function runConversationalSearchOrchestrator(
   message: string,
-  previous?: ConversationPrior | null
+  previous?: ConversationPrior | null,
+  options?: { localityCatalog?: readonly LocalityCatalogEntry[] }
 ): Promise<ConversationalOrchestratorResult> {
   const trimmed = message.trim()
   const preliminary = await extractIntentionFromMessage(trimmed, previous ?? undefined)
   const { extracted, amenitiesMatchMode, debug } = validateConversationalPipeline(
     trimmed,
-    preliminary
+    preliminary,
+    { localityCatalog: options?.localityCatalog }
   )
   return {
     intention: extracted as ExtractedIntention,

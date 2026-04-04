@@ -246,6 +246,13 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarFieldPropertyType: 'Tipo de propiedad',
   buscarFieldCity: 'Ciudad',
   buscarFieldNeighborhood: 'Barrio',
+  buscarLocalityCatalogButton: 'Elegir del catálogo',
+  buscarLocalityCatalogTitle: 'Localidades con avisos',
+  buscarLocalityCatalogHint:
+    'Solo aparecen ciudad y barrio que ya figuran en avisos activos. Podés seguir escribiendo a mano en los campos si preferís.',
+  buscarLocalityCatalogPlaceholder: 'Filtrar por nombre…',
+  buscarLocalityCatalogEmpty: 'No hay coincidencias. Probá otra palabra o escribí la zona a mano.',
+  buscarLocalityCatalogLoading: 'Cargando catálogo…',
   buscarFieldMinPrice: 'Precio mínimo',
   buscarFieldMaxPrice: 'Precio máximo',
   buscarFieldMinBedrooms: 'Dormitorios mínimos',

@@ -51,6 +51,7 @@ import {
 } from '@propieya/shared'
 
 import { AddToCompareButton } from '@/components/compare/add-to-compare-button'
+import { BuscarLocalityModal } from '@/components/buscar/buscar-locality-modal'
 import { BuscarRecentSearches } from '@/components/buscar/buscar-recent-searches'
 import { ConversationalSearchBlock } from '@/components/portal/conversational-search-block'
 import { InductiveSearchChips } from '@/components/portal/inductive-search-chips'
@@ -313,6 +314,7 @@ export function BuscarContent({
   /** Filtros clásicos colapsados por defecto para no abrumar; se abren si la URL trae criterios. */
   const [classicFiltersOpen, setClassicFiltersOpen] = useState(false)
   const [flowDialogOpen, setFlowDialogOpen] = useState(false)
+  const [localityModalOpen, setLocalityModalOpen] = useState(false)
   const [flowGuideDontShowAgain, setFlowGuideDontShowAgain] = useState(false)
   const [polygonDrawHint, setPolygonDrawHint] = useState<string | null>(null)
   const [searchPage, setSearchPage] = useState<{
@@ -1071,6 +1073,17 @@ export function BuscarContent({
                 onChange={(e) => setNeighborhood(e.target.value)}
               />
             </BuscarLabeledField>
+            <div className="flex flex-wrap items-end gap-2 md:col-span-2 lg:col-span-4">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={() => setLocalityModalOpen(true)}
+              >
+                {S.buscarLocalityCatalogButton}
+              </Button>
+            </div>
           </div>
 
           <div
@@ -1561,6 +1574,15 @@ export function BuscarContent({
           )}
         </div>
       </div>
+
+      <BuscarLocalityModal
+        open={localityModalOpen}
+        onOpenChange={setLocalityModalOpen}
+        onPick={({ city: nextCity, neighborhood: nextNb }) => {
+          setCity(nextCity)
+          setNeighborhood(nextNb)
+        }}
+      />
 
       <Dialog open={flowDialogOpen} onOpenChange={setFlowDialogOpen}>
         <DialogContent className="max-w-md gap-4 sm:max-w-lg">

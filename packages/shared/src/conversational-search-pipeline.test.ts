@@ -7,6 +7,7 @@ import {
   validateConversationalPipeline,
   type ConversationalFlatIntent,
 } from './conversational-search-pipeline'
+import type { LocalityCatalogEntry } from './locality-catalog-resolver'
 
 describe('normalizeConversationalText', () => {
   it('colapsa espacios y pasa a minúsculas', () => {
@@ -130,6 +131,33 @@ describe('validateConversationalPipeline', () => {
       city: 'CABA',
     })
     expect(r.extracted.city).toBe('CABA')
+  })
+
+  it('con catálogo dinámico que no incluye Funes, rechaza ciudad', () => {
+    const catalog: LocalityCatalogEntry[] = [
+      { city: 'Rosario', neighborhood: null, count: 5 },
+    ]
+    const r = validateConversationalPipeline(
+      'lote en Funes',
+      { city: 'Funes', propertyType: 'land', operationType: 'sale' },
+      { localityCatalog: catalog }
+    )
+    expect(r.extracted.city).toBeUndefined()
+    expect(r.debug.unknownTerms).toContain('Funes')
+  })
+
+  it('con catálogo dinámico valida barrio con hint de ciudad', () => {
+    const catalog: LocalityCatalogEntry[] = [
+      { city: 'CABA', neighborhood: 'Palermo', count: 10 },
+      { city: 'Rosario', neighborhood: 'Palermo', count: 1 },
+    ]
+    const r = validateConversationalPipeline('depto en Palermo CABA', {
+      city: 'CABA',
+      neighborhood: 'Palermo',
+      propertyType: 'apartment',
+    }, { localityCatalog: catalog })
+    expect(r.extracted.city).toBe('CABA')
+    expect(r.extracted.neighborhood).toBe('Palermo')
   })
 })
 

@@ -5,6 +5,11 @@
  * Prioridad semántica: operación > tipo > ubicación (catálogo) > numéricos > preferencias (amenities).
  */
 
+import {
+  createLocalityResolver,
+  foldLocalityKey,
+  type LocalityCatalogEntry,
+} from './locality-catalog-resolver'
 import { FACET_FLAG_IDS_SET } from './search-facets'
 import {
   matchOperationTypeFromText,
@@ -75,62 +80,17 @@ const PROPERTY_ENUM = new Set([
   'development_unit',
 ])
 
-/** Ubicaciones reconocidas (expandir con datos reales / geocoder en prod). */
-const PLACE_ENTRIES: ReadonlyArray<{
-  aliases: readonly string[]
-  kind: 'city' | 'neighborhood'
-  canonical: string
-}> = [
-  { aliases: ['rosario'], kind: 'city', canonical: 'Rosario' },
-  { aliases: ['cordoba', 'córdoba'], kind: 'city', canonical: 'Córdoba' },
-  { aliases: ['buenos aires', 'bs as', 'bsas'], kind: 'city', canonical: 'Buenos Aires' },
-  { aliases: ['caba', 'capital federal', 'ciudad autonoma'], kind: 'city', canonical: 'CABA' },
-  { aliases: ['funes'], kind: 'city', canonical: 'Funes' },
-  { aliases: ['santa fe', 'santa fé'], kind: 'city', canonical: 'Santa Fe' },
-  { aliases: ['mendoza'], kind: 'city', canonical: 'Mendoza' },
-  { aliases: ['palermo'], kind: 'neighborhood', canonical: 'Palermo' },
-  { aliases: ['belgrano'], kind: 'neighborhood', canonical: 'Belgrano' },
-  { aliases: ['nueva cordoba', 'nueva córdoba'], kind: 'neighborhood', canonical: 'Nueva Córdoba' },
-  { aliases: ['villa crespo'], kind: 'neighborhood', canonical: 'Villa Crespo' },
-  { aliases: ['almagro'], kind: 'neighborhood', canonical: 'Almagro' },
-  { aliases: ['caballito'], kind: 'neighborhood', canonical: 'Caballito' },
-  { aliases: ['nuñez', 'nunez'], kind: 'neighborhood', canonical: 'Núñez' },
-  { aliases: ['recoleta'], kind: 'neighborhood', canonical: 'Recoleta' },
-  { aliases: ['san telmo'], kind: 'neighborhood', canonical: 'San Telmo' },
-  { aliases: ['puerto madero'], kind: 'neighborhood', canonical: 'Puerto Madero' },
-]
-
-function fold(s: string): string {
-  return s
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .replace(/\s+/g, ' ')
+export type ValidateConversationalPipelineOptions = {
+  /** Ciudad/barrio reales (avisos activos). Vacío → aliases estáticos mínimos. */
+  localityCatalog?: readonly LocalityCatalogEntry[]
 }
 
 export function normalizeConversationalText(raw: string): string {
-  return fold(raw)
-}
-
-function resolveCatalogLocation(raw: string | undefined): {
-  kind: 'city' | 'neighborhood'
-  canonical: string
-} | null {
-  if (!raw?.trim()) return null
-  const key = fold(raw)
-  for (const e of PLACE_ENTRIES) {
-    for (const a of e.aliases) {
-      if (fold(a) === key) {
-        return { kind: e.kind, canonical: e.canonical }
-      }
-    }
-  }
-  return null
+  return foldLocalityKey(raw)
 }
 
 function isDeniedAsLocation(token: string): boolean {
-  const f = fold(token)
+  const f = foldLocalityKey(token)
   if (f.length < 2) return true
   if (matchOperationTypeFromText(f) != null) return true
   if (matchPropertyTypeFromText(f) != null) return true
@@ -253,7 +213,8 @@ function buildStructuredSnapshot(
  */
 export function validateConversationalPipeline(
   rawMessage: string,
-  preliminary: ConversationalFlatIntent
+  preliminary: ConversationalFlatIntent,
+  options?: ValidateConversationalPipelineOptions
 ): {
   extracted: ConversationalFlatIntent
   amenitiesMatchMode: ConversationalAmenitiesMatchMode
@@ -266,6 +227,7 @@ export function validateConversationalPipeline(
 
   const normalizedText = normalizeConversationalText(rawMessage)
   const out: ConversationalFlatIntent = { ...preliminary }
+  const localityResolver = createLocalityResolver(options?.localityCatalog)
 
   applyConversationalPhraseRules(normalizedText, out)
 
@@ -286,7 +248,7 @@ export function validateConversationalPipeline(
       delete out.city
       validationNotes.push(`city rechazada (no es topónimo): ${c}`)
     } else {
-      const hit = resolveCatalogLocation(c)
+      const hit = localityResolver.resolveForCityField(c)
       if (hit) {
         if (hit.kind === 'city') out.city = hit.canonical
         else {
@@ -311,7 +273,7 @@ export function validateConversationalPipeline(
       delete out.neighborhood
       validationNotes.push(`neighborhood rechazada (token de negocio): ${n}`)
     } else {
-      const hit = resolveCatalogLocation(n)
+      const hit = localityResolver.resolveForNeighborhoodField(n, out.city)
       if (hit) {
         if (hit.kind === 'neighborhood') out.neighborhood = hit.canonical
         else {
