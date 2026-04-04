@@ -240,11 +240,51 @@ export const PORTAL_SEARCH_UX_COPY = {
 
   keywordPlaceholder: 'Palabras clave (título, descripción)',
 
+  /** Etiquetas fijas encima de cada control (el placeholder solo ayuda vacío). */
+  buscarFieldKeywords: 'Palabras clave',
+  buscarFieldOperation: 'Operación',
+  buscarFieldPropertyType: 'Tipo de propiedad',
+  buscarFieldCity: 'Ciudad',
+  buscarFieldNeighborhood: 'Barrio',
+  buscarFieldMinPrice: 'Precio mínimo',
+  buscarFieldMaxPrice: 'Precio máximo',
+  buscarFieldMinBedrooms: 'Dormitorios mínimos',
+  buscarFieldMinSurface: 'Superficie mínima (m²)',
+  buscarFieldMinBathrooms: 'Baños mínimos',
+  buscarFieldMinGarages: 'Cocheras mínimas',
+  buscarFieldMaxSurface: 'Superficie máxima (m²)',
+  buscarFieldFloorMin: 'Piso desde',
+  buscarFieldFloorMax: 'Piso hasta',
+  buscarFieldEscalera: 'Escalera o entrada',
+  buscarFieldOrientation: 'Orientación',
+  buscarFieldMinSurfaceCovered: 'Superficie cubierta mín. (m²)',
+  buscarFieldMaxSurfaceCovered: 'Superficie cubierta máx. (m²)',
+  buscarFieldMinTotalRooms: 'Ambientes mínimos',
+
   showMap: 'Ver mapa',
   moreFilters: 'Más filtros',
   hideAdvanced: 'Ocultar filtros avanzados',
 
   advancedSectionLocation: 'Ubicación y superficie',
+
+  mainFiltersTitle: 'Filtros principales',
+  mainFiltersSubtitle:
+    'Operación, tipo, ubicación y cifras clave. Las palabras clave refinan el texto sin sustituir el resto.',
+  locationBlockTitle: 'Ubicación',
+  mapIntegratedTitle: 'Mapa y zona',
+  advancedFiltersTitle: 'Filtros avanzados',
+  advancedComfortTitle: 'Confort y condiciones',
+  refineLayerTitle: 'Afinar más opciones',
+  refineLayerSubtitle:
+    'Amenities y detalles: por defecto favorecen resultados compatibles sin vaciar el listado.',
+  facetChipsHintRefine:
+    'Atajos del mismo catálogo que las casillas; se combinan con lo que elijas abajo.',
+  strictAmenitiesLabel: 'Amenities obligatorios',
+  strictAmenitiesHint:
+    'Si está marcado, cada amenity elegido debe figurar en el aviso; si no, actúan como preferencia (más arriba quien cumple más).',
+  refineCatalogTitle: 'Más amenities',
+  moreRefineLayer: 'Afinar más',
+  hideRefineLayer: 'Ocultar afinado',
 
   matchWhyTitle: 'Por qué encaja',
 
@@ -256,7 +296,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   emptyResults: 'No hay resultados. Probá con otros filtros o ampliá la búsqueda.',
 
   mapHelp:
-    'Solo se marcan avisos con ubicación. Mové el mapa y tocá «Buscar en esta zona» para filtrar por el rectángulo visible. Con 3+ vértices en polígono se filtra por el área dibujada.',
+    'Solo se marcan avisos con ubicación. El filtro por mapa aplica solo con el mapa abierto: «Buscar en esta zona» o polígono de 3+ vértices. Con ciudad o barrio, el listado se ordena por cercanía al centro de esa zona (sin recortar). Sin zona, el mapa puede abrir cerca de tu ubicación si el navegador lo permite.',
 
   mapNoPins:
     'No hay resultados con pin en este momento (falta geolocalización en los avisos o los filtros no devolvieron coincidencias con coordenadas).',
@@ -308,6 +348,8 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Este navegador no permite dictado por voz; podés escribir en el campo.',
   conversationalInterpretedTitle: 'Lo que entendimos',
   conversationalResultsPrefix: 'Avisos que encajan ahora',
+  conversationalRelaxedCountNote:
+    'Incluye coincidencias ampliadas: el listado abajo respeta la misma lógica.',
   conversationalNextTitle: 'Siguiente paso',
   conversationalNextMap: 'Afinar en el mapa',
   conversationalNextFilters: 'Abrir más filtros',
@@ -317,7 +359,12 @@ export const PORTAL_SEARCH_UX_COPY = {
   conversationalContextBanner:
     'Seguimos desde tu última búsqueda: podés afinar con una frase corta o tocá una idea abajo.',
   conversationalContextSummaryPrefix: 'Criterios activos:',
+  /** Sin repetir el resumen largo: ya está en «Tu búsqueda ahora» y en la tarjeta de abajo. */
+  conversationalContextShortHint:
+    'El detalle de criterios aparece debajo; acá solo seguís la conversación.',
   conversationalClearContext: 'Empezar de cero',
+  conversationalResultsZero:
+    'No encontramos avisos ni con criterios relajados. Probá otra zona o ampliá precio en filtros.',
   conversationalChipCheaper: 'Más barato',
   conversationalChipOtherArea: 'Otro barrio o zona',
   conversationalChipParking: 'Con cochera',
@@ -338,6 +385,11 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Opcional — mismo motor que la búsqueda por frase. Tocá «Más filtros» para ir más al detalle.',
   buscarPageGentleHint:
     'Explorá con calma: los resultados se actualizan solos cuando cambiás criterios.',
+  /** Resumen visible de criterios activos (encima del formulario). */
+  buscarActiveSummaryLabel: 'Tu búsqueda ahora',
+  buscarActiveSummaryEmpty:
+    'Sin criterios todavía: escribí palabras clave o abrí filtros para afinar.',
+  buscarClearSearch: 'Limpiar búsqueda',
   buscarLoadMore: 'Cargar más resultados',
   buscarLoadingMore: 'Cargando…',
   buscarShowingCount: 'Mostrando {shown} de {total}',
@@ -351,7 +403,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarFlowBannerSeeSteps: 'Ver pasos',
   buscarFlowBannerDismiss: 'No volver a mostrar',
   mapViewportUpdatesResults:
-    'Los resultados se actualizan según la zona visible del mapa (pan y zoom).',
+    'Ciudad o barrio: mapa y orden por proximidad a esa zona. Sin zona: centro cercano a tu ubicación si aceptás permisos. Filtrar por rectángulo solo con «Buscar en esta zona».',
   polygonSelfIntersectHint:
     'Así el área quedaría cruzada o partida (no es una sola figura cerrada). Tocá otro lugar o borrá el trazo y empezá de nuevo.',
 } as const

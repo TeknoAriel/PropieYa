@@ -43,24 +43,26 @@ export type FacetFilters = {
 
 /**
  * Catálogo público de flags (amenities filtrables). Ampliar aquí antes que en routers sueltos.
+ * Orden: uso frecuente + relevancia (capa “afinar más” del buscador).
  */
 export const FACETS_CATALOG: readonly FacetDefinition[] = [
   { id: 'balcony', type: 'flag', label: 'Balcón', key: 'amenities.balcony' },
-  { id: 'terrace', type: 'flag', label: 'Terraza', key: 'amenities.terrace' },
   { id: 'parking', type: 'flag', label: 'Cochera', key: 'amenities.parking' },
+  { id: 'terrace', type: 'flag', label: 'Terraza', key: 'amenities.terrace' },
+  { id: 'pool', type: 'flag', label: 'Pileta', key: 'amenities.pool' },
+  { id: 'bbq', type: 'flag', label: 'Parrilla', key: 'amenities.bbq' },
+  { id: 'garden', type: 'flag', label: 'Jardín', key: 'amenities.garden' },
   {
     id: 'air_conditioning',
     type: 'flag',
     label: 'Aire acondicionado',
     key: 'amenities.air_conditioning',
   },
-  { id: 'heating', type: 'flag', label: 'Calefacción', key: 'amenities.heating' },
-  { id: 'fireplace', type: 'flag', label: 'Chimenea', key: 'amenities.fireplace' },
   {
-    id: 'front_facing',
+    id: 'security_24h',
     type: 'flag',
-    label: 'Contra frente / frente',
-    key: 'amenities.front_facing',
+    label: 'Seguridad 24 h',
+    key: 'amenities.security_24h',
   },
   {
     id: 'credit_approved',
@@ -68,25 +70,24 @@ export const FACETS_CATALOG: readonly FacetDefinition[] = [
     label: 'Apto crédito',
     key: 'amenities.credit_approved',
   },
-  { id: 'pool', type: 'flag', label: 'Pileta', key: 'amenities.pool' },
   { id: 'gym', type: 'flag', label: 'Gimnasio', key: 'amenities.gym' },
-  {
-    id: 'security_24h',
-    type: 'flag',
-    label: 'Seguridad 24 h',
-    key: 'amenities.security_24h',
-  },
   { id: 'laundry', type: 'flag', label: 'Lavadero', key: 'amenities.laundry' },
-  { id: 'rooftop', type: 'flag', label: 'Rooftop', key: 'amenities.rooftop' },
   { id: 'sum', type: 'flag', label: 'SUM', key: 'amenities.sum' },
+  {
+    id: 'front_facing',
+    type: 'flag',
+    label: 'Contra frente / frente',
+    key: 'amenities.front_facing',
+  },
+  { id: 'heating', type: 'flag', label: 'Calefacción', key: 'amenities.heating' },
+  { id: 'fireplace', type: 'flag', label: 'Chimenea', key: 'amenities.fireplace' },
+  { id: 'rooftop', type: 'flag', label: 'Rooftop', key: 'amenities.rooftop' },
   {
     id: 'playground',
     type: 'flag',
     label: 'Juegos infantiles',
     key: 'amenities.playground',
   },
-  { id: 'garden', type: 'flag', label: 'Jardín', key: 'amenities.garden' },
-  { id: 'bbq', type: 'flag', label: 'Parrilla', key: 'amenities.bbq' },
   { id: 'elevator', type: 'flag', label: 'Ascensor', key: 'amenities.elevator' },
   { id: 'doorman', type: 'flag', label: 'Portero', key: 'amenities.doorman' },
   { id: 'storage', type: 'flag', label: 'Baulera', key: 'amenities.storage' },
@@ -105,10 +106,27 @@ export const FACETS_CATALOG: readonly FacetDefinition[] = [
   },
 ] as const
 
+/**
+ * Amenities que también se ofrecen como toggles en “filtros avanzados”
+ * (se excluyen del listado largo de la capa 3 para no duplicar UI).
+ */
+export const BUSCAR_ADVANCED_AMENITY_FLAG_IDS: ReadonlySet<string> = new Set([
+  'credit_approved',
+  'front_facing',
+  'pet_friendly',
+  'furnished',
+  'wheelchair_accessible',
+])
+
 export type FacetFlagDefinition = Extract<FacetDefinition, { type: 'flag' }>
 
 export function getFacetFlagDefinitions(): readonly FacetFlagDefinition[] {
   return FACETS_CATALOG.filter((f): f is FacetFlagDefinition => f.type === 'flag')
+}
+
+/** Catálogo capa 3 sin duplicar toggles ya mostrados en “filtros avanzados”. */
+export function getFacetFlagsForBuscarRefineLayer(): readonly FacetFlagDefinition[] {
+  return getFacetFlagDefinitions().filter((f) => !BUSCAR_ADVANCED_AMENITY_FLAG_IDS.has(f.id))
 }
 
 /** Misma lista que admite `listing.search` (amenities + facets.flags). */

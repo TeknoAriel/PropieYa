@@ -19,6 +19,8 @@ import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import 'leaflet.markercluster'
 
+export { BUSCAR_MAP_DEFAULT_CENTER } from './buscar-map-constants'
+
 export type BuscarMapBBox = {
   south: number
   north: number
@@ -34,8 +36,6 @@ export type BuscarMapPin = {
 }
 
 export type BuscarMapPoint = { lat: number; lng: number }
-
-const BA_DEFAULT: [number, number] = [-34.6037, -58.3816]
 
 function CurrentCenterReporter({
   onCenter,
@@ -223,6 +223,11 @@ function ZonaControls({
 type BuscarSearchMapProps = {
   pins: BuscarMapPin[]
   onApplyZona: (bbox: BuscarMapBBox) => void
+  /** Centro inicial al montar (localidad geocodificada, usuario o default). */
+  initialCenter: [number, number]
+  initialZoom: number
+  /** Cambia al actualizar ancla: fuerza remount de Leaflet. */
+  mapRemountKey: string
   onCenterChange?: (center: { lat: number; lng: number }) => void
   /** Cada pan/zoom: viewport actual (el padre suele debouncear para filtrar resultados). */
   onViewportBboxChange?: (bbox: BuscarMapBBox) => void
@@ -236,6 +241,9 @@ type BuscarSearchMapProps = {
 export function BuscarSearchMap({
   pins,
   onApplyZona,
+  initialCenter,
+  initialZoom,
+  mapRemountKey,
   onCenterChange,
   onViewportBboxChange,
   polygonRing = [],
@@ -247,16 +255,12 @@ export function BuscarSearchMap({
     [pins]
   )
 
-  const first = pins[0]
-  const center: [number, number] = first
-    ? [first.lat, first.lng]
-    : BA_DEFAULT
-
   return (
     <div className="relative overflow-hidden rounded-lg border border-border">
       <MapContainer
-        center={center}
-        zoom={pins.length > 0 ? 13 : 11}
+        key={mapRemountKey}
+        center={initialCenter}
+        zoom={initialZoom}
         className="h-[min(420px,55vh)] w-full min-h-[280px] z-0"
         scrollWheelZoom
         dragging

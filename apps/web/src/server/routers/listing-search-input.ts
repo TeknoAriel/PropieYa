@@ -40,6 +40,9 @@ export const listingSearchFiltersBaseSchema = z.object({
   minTotalRooms: z.number().int().min(0).max(50).optional(),
   city: z.string().max(120).optional(),
   neighborhood: z.string().max(120).optional(),
+  /** Con ciudad/barrio: orden por cercanía a este punto (no filtra). Ignorado sin localidad. */
+  sortNearLat: z.number().gte(-90).lte(90).optional(),
+  sortNearLng: z.number().gte(-180).lte(180).optional(),
   amenities: z.array(z.string()).optional(),
   geoPoint: z
     .object({
@@ -77,6 +80,11 @@ export const listingSearchFiltersBaseSchema = z.object({
     .min(3)
     .max(60)
     .optional(),
+  /**
+   * `preferred`: amenities / facets.flags no excluyen en ES/SQL (solo ranking o boost).
+   * `strict`: exigen presencia en inventario.
+   */
+  amenitiesMatchMode: z.enum(['preferred', 'strict']).optional().default('preferred'),
 })
 
 /** Filtros con `facets` saneados contra el catálogo (evita ids inyectados). */

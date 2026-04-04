@@ -35,8 +35,14 @@ import {
   syncListingToSearch,
   removeListingFromSearch,
 } from '../../lib/search/sync'
-import { searchListings } from '../../lib/search/search'
-import { getListingSearchSortKeyCount } from '../../lib/search/query'
+import {
+  searchListingsLayered,
+  type ListingSearchUX,
+} from '../../lib/search/search-layered'
+import {
+  getListingSearchSortKeyCount,
+  shouldApplyLocalityProximitySort,
+} from '../../lib/search/query'
 import type { SearchFilters } from '../../lib/search/types'
 import { decodeListingSearchCursor } from '../../lib/search/search-cursor'
 import { sqlPointInPolygonLngLat } from '../../lib/search/point-in-polygon-sql'
@@ -47,7 +53,10 @@ import {
 import { recordPortalStatsEvent } from '../../lib/analytics/record-portal-stats-event'
 import { checkRateLimit } from '../../lib/rate-limit'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
-import { listingSearchInputSchema } from './listing-search-input'
+import {
+  listingSearchInputSchema,
+  type ListingSearchInput,
+} from './listing-search-input'
 
 const conversationalPriorFiltersSchema = z.object({
   q: z.string().max(200).optional(),
@@ -94,9 +103,66 @@ function conversationPriorFromInput(
   }
 }
 
+/** Errores de red / DB que no deben mostrarse crudos al usuario (p. ej. postgres.js en serverless). */
+function isLikelyDbOrNetworkFailure(message: string): boolean {
+  return /CONNECT_TIMEOUT|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|UND_ERR_CONNECT|undefined:undefined|Connection terminated unexpectedly/i.test(
+    message
+  )
+}
+
 /** Evita que el usuario inyecte comodines ILIKE (%, _). */
 function sanitizeIlikeFragment(raw: string): string {
   return raw.trim().slice(0, 120).replace(/[%_\\]/g, ' ').replace(/\s+/g, ' ')
+}
+
+function searchFiltersToListingInputOverlay(
+  base: ListingSearchInput,
+  f: SearchFilters
+): ListingSearchInput {
+  return {
+    ...base,
+    q: f.q,
+    operationType: f.operationType as ListingSearchInput['operationType'],
+    propertyType: f.propertyType,
+    minPrice: f.minPrice,
+    maxPrice: f.maxPrice,
+    minSurface: f.minSurface,
+    maxSurface: f.maxSurface,
+    minBedrooms: f.minBedrooms,
+    minBathrooms: f.minBathrooms,
+    minGarages: f.minGarages,
+    floorMin: f.floorMin,
+    floorMax: f.floorMax,
+    escalera: f.escalera,
+    orientation: f.orientation as ListingSearchInput['orientation'],
+    minSurfaceCovered: f.minSurfaceCovered,
+    maxSurfaceCovered: f.maxSurfaceCovered,
+    minTotalRooms: f.minTotalRooms,
+    city: f.city,
+    neighborhood: f.neighborhood,
+    amenities: f.amenities,
+    facets: f.facets,
+    geoPoint: f.geoPoint,
+    geoRadius: f.geoRadius,
+    sortNearLat: f.sortNearLat,
+    sortNearLng: f.sortNearLng,
+    bbox: f.bbox,
+    polygon: f.polygon,
+    amenitiesMatchMode: f.amenitiesMatchMode ?? 'preferred',
+  }
+}
+
+function defaultSqlSearchUx(sqlTotal: number): ListingSearchUX {
+  return {
+    tier: 'exact',
+    primaryTotal: sqlTotal,
+    strictMatchCount: sqlTotal,
+    mergedSupplement: false,
+    nearAreaSupplement: false,
+    messages: [],
+    relaxationStepIds: [],
+    disableDeepPagination: false,
+  }
 }
 
 /** Historial de búsqueda (usuarios logueados). No bloquea la respuesta si falla el insert. */
@@ -755,7 +821,12 @@ export const listingRouter = createTRPCRouter({
 
       const esOffset = searchAfter ? 0 : offset
 
-      const esResult = await searchListings({
+      const persistThisSearch =
+        Boolean(sessionUserId) &&
+        !cursor?.trim() &&
+        input.offset === 0
+
+      const esFilters: SearchFilters = {
         q: input.q,
         operationType: input.operationType,
         propertyType: input.propertyType,
@@ -778,23 +849,23 @@ export const listingRouter = createTRPCRouter({
         amenities: input.amenities,
         geoPoint: input.geoPoint,
         geoRadius: input.geoRadius,
+        sortNearLat: input.sortNearLat,
+        sortNearLng: input.sortNearLng,
         facets: input.facets,
         bbox: input.bbox,
         polygon: input.polygon,
+        amenitiesMatchMode: input.amenitiesMatchMode,
         limit,
         offset: esOffset,
         searchAfter,
-      })
+      }
 
-      const persistThisSearch =
-        Boolean(sessionUserId) &&
-        !cursor?.trim() &&
-        input.offset === 0
+      const layered = await searchListingsLayered(esFilters)
 
       // Si ES responde pero el índice está vacío o desincronizado, total=0 y antes
       // no había fallback: el buscador quedaba en silencio. SQL es fuente de verdad.
       // Paginación por cursor (search_after) no es reproducible en SQL: no mezclar.
-      if (!(esResult.fromEs && esResult.total > 0) && searchAfter) {
+      if (!(layered.fromEs && layered.total > 0) && searchAfter) {
         throw new TRPCError({
           code: 'PRECONDITION_FAILED',
           message:
@@ -802,32 +873,66 @@ export const listingRouter = createTRPCRouter({
         })
       }
 
-      if (esResult.fromEs && esResult.total > 0) {
+      if (layered.fromEs && layered.total > 0) {
         if (persistThisSearch) {
           persistSearchHistoryRow(ctx.db, {
             userId: sessionUserId!,
             filters: filtersSnapshot,
-            resultCount: esResult.total,
+            resultCount: layered.total,
             startedAt,
           })
+        }
+        if (!cursor?.trim() && input.offset === 0) {
+          if (layered.ux.primaryTotal === 0 && layered.total > 0) {
+            recordPortalStatsEvent(ctx.db, {
+              terminalId:
+                PORTAL_STATS_TERMINALS.LISTING_SEARCH_ZERO_PRIMARY_RESOLVED,
+              userId: ctx.session?.userId ?? null,
+              payload: { tier: layered.ux.tier },
+            })
+          }
+          if (
+            layered.ux.relaxationStepIds.length > 0 ||
+            layered.ux.mergedSupplement
+          ) {
+            recordPortalStatsEvent(ctx.db, {
+              terminalId: PORTAL_STATS_TERMINALS.LISTING_SEARCH_RELAXATION_USED,
+              userId: ctx.session?.userId ?? null,
+              payload: {
+                tier: layered.ux.tier,
+                steps: layered.ux.relaxationStepIds,
+                merged: layered.ux.mergedSupplement,
+              },
+            })
+          }
         }
         return {
           items: withMatchReasons(
             explainFilters as ExplainMatchFilters,
-            esResult.hits
+            layered.hits
           ),
-          total: esResult.total,
-          nextCursor: esResult.nextCursor,
+          total: layered.total,
+          nextCursor: layered.ux.disableDeepPagination
+            ? null
+            : layered.nextCursor,
+          searchUX: layered.ux,
         }
       }
 
-      const merged = mergePublicSearchFromQuery(input)
+      const sqlInputSeed =
+        layered.fromEs && layered.total === 0
+          ? searchFiltersToListingInputOverlay(input, layered.lastTriedFilters)
+          : input
+
+      const merged = mergePublicSearchFromQuery(sqlInputSeed)
       const { residualTextQuery, ...sqlInputBase } = merged
       const sqlInput = {
         ...sqlInputBase,
-        facets: input.facets,
-        polygon: input.polygon,
+        facets: sqlInputSeed.facets,
+        polygon: sqlInputSeed.polygon,
       }
+
+      const amenityStrict = sqlInputSeed.amenitiesMatchMode === 'strict'
 
       const conditions = [eq(listings.status, 'active')]
       if (residualTextQuery.trim()) {
@@ -920,7 +1025,11 @@ export const listingRouter = createTRPCRouter({
           )
         }
       }
-      if (sqlInput.amenities && sqlInput.amenities.length > 0) {
+      if (
+        amenityStrict &&
+        sqlInput.amenities &&
+        sqlInput.amenities.length > 0
+      ) {
         const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
         for (const a of sqlInput.amenities) {
           if (allowed.includes(a)) {
@@ -931,8 +1040,12 @@ export const listingRouter = createTRPCRouter({
         }
       }
 
-      // Facets flags/excludes (Sprint 26). Inicialmente se interpretan como amenities.
-      if (sqlInput.facets?.flags && sqlInput.facets.flags.length > 0) {
+      // Facets flags/excludes (Sprint 26). Inicialmente se materializan como amenities.
+      if (
+        amenityStrict &&
+        sqlInput.facets?.flags &&
+        sqlInput.facets.flags.length > 0
+      ) {
         const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
         for (const f of sqlInput.facets.flags) {
           if (allowed.includes(f)) {
@@ -998,11 +1111,21 @@ export const listingRouter = createTRPCRouter({
         .where(whereClause)
       const sqlTotal = Number(totalRow?.c ?? 0)
 
+      const proximitySqlOrder =
+        shouldApplyLocalityProximitySort(merged as SearchFilters) &&
+        merged.sortNearLat != null &&
+        merged.sortNearLng != null
+          ? sql`(CASE WHEN ${listings.locationLat} IS NOT NULL AND ${listings.locationLng} IS NOT NULL THEN ((${listings.locationLat}::double precision - ${merged.sortNearLat}) * (${listings.locationLat}::double precision - ${merged.sortNearLat}) + (${listings.locationLng}::double precision - ${merged.sortNearLng}) * (${listings.locationLng}::double precision - ${merged.sortNearLng})) ELSE 1e30::double precision END)`
+          : null
+
       const rows = await ctx.db
         .select(listingsSelectPublic)
         .from(listings)
         .where(whereClause)
-        .orderBy(...ORDER_PUBLIC_RECENCY)
+        .orderBy(
+          ...(proximitySqlOrder ? [proximitySqlOrder] : []),
+          ...ORDER_PUBLIC_RECENCY
+        )
         .limit(limit)
         .offset(offset)
       if (persistThisSearch) {
@@ -1026,10 +1149,50 @@ export const listingRouter = createTRPCRouter({
           })
         )
       }
+
+      const sqlUx: ListingSearchUX =
+        layered.fromEs && layered.total === 0
+          ? {
+              ...layered.ux,
+              messages:
+                sqlTotal > 0
+                  ? [
+                      ...layered.ux.messages,
+                      'Mostramos coincidencias desde la base de datos (el índice de búsqueda no devolvió filas con estos criterios).',
+                    ]
+                  : layered.ux.messages,
+            }
+          : defaultSqlSearchUx(sqlTotal)
+
+      if (!cursor?.trim() && input.offset === 0) {
+        if (layered.fromEs && layered.total === 0 && sqlTotal > 0) {
+          if (layered.ux.primaryTotal === 0) {
+            recordPortalStatsEvent(ctx.db, {
+              terminalId:
+                PORTAL_STATS_TERMINALS.LISTING_SEARCH_ZERO_PRIMARY_RESOLVED,
+              userId: ctx.session?.userId ?? null,
+              payload: { tier: layered.ux.tier, source: 'sql_fallback' },
+            })
+          }
+          if (layered.ux.relaxationStepIds.length > 0) {
+            recordPortalStatsEvent(ctx.db, {
+              terminalId: PORTAL_STATS_TERMINALS.LISTING_SEARCH_RELAXATION_USED,
+              userId: ctx.session?.userId ?? null,
+              payload: {
+                tier: layered.ux.tier,
+                steps: layered.ux.relaxationStepIds,
+                source: 'sql_fallback',
+              },
+            })
+          }
+        }
+      }
+
       return {
         items: withMatchReasons(explainFilters as ExplainMatchFilters, rows),
         total: sqlTotal,
         nextCursor: null,
+        searchUX: sqlUx,
       }
     }),
 
@@ -1044,117 +1207,160 @@ export const listingRouter = createTRPCRouter({
         })
       }
 
-      const prior = conversationPriorFromInput(input.previousContext)
-      const intention = await extractIntentionFromMessage(
-        input.message,
-        prior ?? undefined
-      )
-      const explainFilters: ExplainMatchFilters = {
-        q: intention.q,
-        operationType: intention.operationType,
-        propertyType: intention.propertyType,
-        city: intention.city,
-        neighborhood: intention.neighborhood,
-        minPrice: intention.minPrice,
-        maxPrice: intention.maxPrice,
-        minBedrooms: intention.minBedrooms,
-        minSurface: intention.minSurface,
-        amenities: intention.amenities,
-      }
-      const filters = {
-        ...explainFilters,
-        limit: 24,
-        offset: 0,
-      }
-      // Nota: facets aún no se extraen desde texto; solo via UI (Sprint 26).
+      try {
+        const prior = conversationPriorFromInput(input.previousContext)
+        const intention = await extractIntentionFromMessage(
+          input.message,
+          prior ?? undefined
+        )
+        const explainFilters: ExplainMatchFilters = {
+          q: intention.q,
+          operationType: intention.operationType,
+          propertyType: intention.propertyType,
+          city: intention.city,
+          neighborhood: intention.neighborhood,
+          minPrice: intention.minPrice,
+          maxPrice: intention.maxPrice,
+          minBedrooms: intention.minBedrooms,
+          minSurface: intention.minSurface,
+          amenities: intention.amenities,
+        }
+        const filters = {
+          ...explainFilters,
+          amenitiesMatchMode: 'preferred' as const,
+          limit: 24,
+          offset: 0,
+        }
+        // Mismo motor de relajación que `listing.search` (amenities como preferencia en ES).
+        const layered = await searchListingsLayered(filters as SearchFilters)
 
-      const esResult = await searchListings(filters)
+        if (layered.fromEs && layered.total > 0) {
+          return {
+            filters,
+            hits: withMatchReasons(explainFilters, layered.hits),
+            total: layered.total,
+            searchUX: layered.ux,
+          }
+        }
 
-      if (esResult.fromEs && esResult.total > 0) {
-        return {
-          filters,
-          hits: withMatchReasons(explainFilters, esResult.hits),
-          total: esResult.total,
-        }
-      }
+        const sqlFilters: SearchFilters =
+          layered.fromEs && layered.total === 0
+            ? { ...(filters as SearchFilters), ...layered.lastTriedFilters }
+            : (filters as SearchFilters)
 
-      const conditions = [eq(listings.status, 'active')]
-      if (filters.q?.trim()) {
-        const frag = sanitizeIlikeFragment(filters.q)
-        if (frag.length > 0) {
-          const pat = `%${frag}%`
-          conditions.push(
-            or(
-              ilike(listings.title, pat),
-              ilike(listings.description, pat)
-            )!
-          )
-        }
-      }
-      if (filters.operationType) {
-        conditions.push(eq(listings.operationType, filters.operationType))
-      }
-      if (filters.propertyType) {
-        conditions.push(eq(listings.propertyType, filters.propertyType))
-      }
-      if (filters.minPrice !== undefined) {
-        conditions.push(gte(listings.priceAmount, filters.minPrice))
-      }
-      if (filters.maxPrice !== undefined) {
-        conditions.push(lte(listings.priceAmount, filters.maxPrice))
-      }
-      if (filters.minBedrooms !== undefined) {
-        conditions.push(gte(listings.bedrooms, filters.minBedrooms))
-      }
-      if (filters.minSurface !== undefined) {
-        conditions.push(gte(listings.surfaceTotal, filters.minSurface))
-      }
-      if (filters.city?.trim()) {
-        const c = sanitizeIlikeFragment(filters.city)
-        if (c.length > 0) {
-          conditions.push(
-            sql`COALESCE(${listings.address}->>'city', '') ILIKE ${`%${c}%`}`
-          )
-        }
-      }
-      if (filters.neighborhood?.trim()) {
-        const n = sanitizeIlikeFragment(filters.neighborhood)
-        if (n.length > 0) {
-          conditions.push(
-            sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${`%${n}%`}`
-          )
-        }
-      }
-      if (filters.amenities && filters.amenities.length > 0) {
-        const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
-        for (const a of filters.amenities) {
-          if (allowed.includes(a)) {
+        const merged = mergePublicSearchFromQuery(sqlFilters)
+        const { residualTextQuery, ...restMerged } = merged
+        const qForSql = restMerged
+
+        const conditions = [eq(listings.status, 'active')]
+        if (residualTextQuery.trim()) {
+          const frag = sanitizeIlikeFragment(residualTextQuery)
+          if (frag.length > 0) {
+            const pat = `%${frag}%`
             conditions.push(
-              sql`(${listings.features}->'amenities') @> to_jsonb(ARRAY[${a}]::text[])`
+              or(
+                ilike(listings.title, pat),
+                ilike(listings.description, pat)
+              )!
             )
           }
         }
-      }
+        if (qForSql.operationType) {
+          conditions.push(eq(listings.operationType, qForSql.operationType))
+        }
+        if (qForSql.propertyType) {
+          conditions.push(eq(listings.propertyType, qForSql.propertyType))
+        }
+        if (qForSql.minPrice !== undefined) {
+          conditions.push(gte(listings.priceAmount, qForSql.minPrice))
+        }
+        if (qForSql.maxPrice !== undefined) {
+          conditions.push(lte(listings.priceAmount, qForSql.maxPrice))
+        }
+        if (qForSql.minBedrooms !== undefined) {
+          conditions.push(gte(listings.bedrooms, qForSql.minBedrooms))
+        }
+        if (qForSql.minSurface !== undefined) {
+          conditions.push(gte(listings.surfaceTotal, qForSql.minSurface))
+        }
+        if (qForSql.city?.trim()) {
+          const c = sanitizeIlikeFragment(qForSql.city)
+          if (c.length > 0) {
+            conditions.push(
+              sql`COALESCE(${listings.address}->>'city', '') ILIKE ${`%${c}%`}`
+            )
+          }
+        }
+        if (qForSql.neighborhood?.trim()) {
+          const n = sanitizeIlikeFragment(qForSql.neighborhood)
+          if (n.length > 0) {
+            conditions.push(
+              sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${`%${n}%`}`
+            )
+          }
+        }
+        // `preferred`: no filtrar por amenities en SQL (misma regla que listing.search).
 
-      const [countResult] = await ctx.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(listings)
-        .where(and(...conditions))
+        const [countResult] = await ctx.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(listings)
+          .where(and(...conditions))
 
-      const total = countResult?.count ?? 0
+        const total = countResult?.count ?? 0
 
-      const hits = await ctx.db
-        .select(listingsSelectPublic)
-        .from(listings)
-        .where(and(...conditions))
-        .orderBy(...ORDER_PUBLIC_RECENCY)
-        .limit(filters.limit ?? 24)
-        .offset(filters.offset ?? 0)
+        const hits = await ctx.db
+          .select(listingsSelectPublic)
+          .from(listings)
+          .where(and(...conditions))
+          .orderBy(...ORDER_PUBLIC_RECENCY)
+          .limit(filters.limit ?? 24)
+          .offset(filters.offset ?? 0)
 
-      return {
-        filters,
-        hits: withMatchReasons(explainFilters, hits),
-        total,
+        const sqlUx: ListingSearchUX =
+          layered.fromEs && layered.total === 0
+            ? {
+                ...layered.ux,
+                messages:
+                  total > 0
+                    ? [
+                        ...layered.ux.messages,
+                        'Conteo desde la base de datos (índice sin coincidencias para estos criterios).',
+                      ]
+                    : layered.ux.messages,
+              }
+            : {
+                tier: 'exact',
+                primaryTotal: total,
+                strictMatchCount: total,
+                mergedSupplement: false,
+                nearAreaSupplement: false,
+                messages: [],
+                relaxationStepIds: [],
+                disableDeepPagination: false,
+              }
+
+        return {
+          filters,
+          hits: withMatchReasons(explainFilters, hits),
+          total,
+          searchUX: sqlUx,
+        }
+      } catch (err) {
+        if (err instanceof TRPCError) throw err
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error('[listing.searchConversational]', err)
+        if (isLikelyDbOrNetworkFailure(msg)) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message:
+              'No pudimos conectar con la base de datos. Intentá de nuevo en unos segundos o usá los filtros clásicos debajo del buscador.',
+          })
+        }
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message:
+            'La búsqueda por texto falló. Probá de nuevo o refiná con filtros y mapa.',
+        })
       }
     }),
 

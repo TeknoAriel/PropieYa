@@ -1,3 +1,5 @@
+import { inspect } from 'node:util'
+
 import { sql } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 
@@ -5,6 +7,22 @@ import { getDb } from '@propieya/database'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+
+function serializeDbError(err: unknown): string {
+  if (err instanceof Error) {
+    const m = err.message?.trim()
+    if (m) return m.slice(0, 800)
+    const c = err.cause
+    if (c instanceof Error && c.message?.trim()) return c.message.trim().slice(0, 800)
+    return inspect(err, { depth: 3, breakLength: 100 }).slice(0, 800)
+  }
+  if (typeof err === 'string' && err.trim()) return err.slice(0, 800)
+  try {
+    return JSON.stringify(err).slice(0, 800)
+  } catch {
+    return 'error desconocido al conectar con PostgreSQL'
+  }
+}
 
 /**
  * Health check para infra y deploy.
@@ -23,7 +41,7 @@ export async function GET() {
   } catch (err) {
     checks.database = {
       status: 'error',
-      error: err instanceof Error ? err.message : String(err),
+      error: serializeDbError(err),
     }
   }
 

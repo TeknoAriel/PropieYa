@@ -1,10 +1,10 @@
 /**
  * Cursor opaco para paginación profunda en Elasticsearch (`search_after`).
- * Orden en ES: sin texto residual → 4 claves (fechas + id); con full-text → 5 (`_score` + fechas + id).
+ * Orden en ES: 4–6 claves (fechas + id; opcional `_score`; opcional `_geo_distance` con localidad).
  */
 
 const SORT_LEN_MIN = 4
-const SORT_LEN_MAX = 5
+const SORT_LEN_MAX = 6
 
 export function encodeListingSearchCursor(sort: unknown[]): string {
   if (

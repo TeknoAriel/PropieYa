@@ -5,6 +5,20 @@ import * as schema from './schema'
 
 let _db: PostgresJsDatabase<typeof schema> | null = null
 
+function assertPostgresUrlHasHost(connectionString: string): void {
+  try {
+    const u = new URL(connectionString)
+    const h = u.hostname
+    if (!h || h === 'undefined' || h === 'null') {
+      throw new Error('missing host')
+    }
+  } catch {
+    throw new Error(
+      'DATABASE_URL no es una URL PostgreSQL válida (sin host). Revisá variables en Vercel / Neon.'
+    )
+  }
+}
+
 function createClient() {
   const connectionString = process.env.DATABASE_URL
 
@@ -12,10 +26,14 @@ function createClient() {
     throw new Error('DATABASE_URL environment variable is required')
   }
 
+  assertPostgresUrlHasHost(connectionString)
+
   const client = postgres(connectionString, {
     max: 10,
     idle_timeout: 20,
-    connect_timeout: 10,
+    /** Neon pooler (PgBouncer transaction): prepared statements suelen fallar. */
+    prepare: false,
+    connect_timeout: 25,
   })
 
   return drizzle(client, {
