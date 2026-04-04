@@ -202,9 +202,7 @@ jobs:
             sleep 25
           done
           echo "::error::Tras promote/alias, ${PORTAL_URL}/api/version sigue sin el commit $want."
-          echo "Referencia proyecto web (default *.vercel.app):"
-          curl -sS "https://propie-ya-web.vercel.app/api/version" 2>/dev/null || true
-          echo ""
+          echo "Comprobar en Vercel que el dominio propieyaweb.vercel.app pertenezca al proyecto propie-ya-web (Settings → Domains)."
           echo "$body"
           exit 1
 
