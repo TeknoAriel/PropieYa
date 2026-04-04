@@ -1,10 +1,18 @@
 # Mergear deploy/infra a main (3 pasos)
 
+**Repo operativo (Actions + Vercel):** [TeknoAriel/PropieYa](https://github.com/TeknoAriel/PropieYa). Tras cada push a `deploy/infra`, el workflow **Proponer sincronización main** puede abrir un PR `main` ← `deploy/infra` si `main` va atrasada.
+
 ---
 
 ## Paso 1: Abrir la pantalla de creación del PR
 
-Abrí en el navegador:
+**Tekno (recomendado):**
+
+```
+https://github.com/TeknoAriel/PropieYa/compare/main...deploy/infra
+```
+
+**Copia org (auditoría):**
 
 ```
 https://github.com/kiteprop/ia-propieya/compare/main...deploy/infra
@@ -34,6 +42,8 @@ Listo. Vercel va a detectar el nuevo commit en `main` y hará un deploy automát
 
 | Acción | URL |
 |--------|-----|
-| Crear PR | https://github.com/kiteprop/ia-propieya/compare/main...deploy/infra |
-| Ver PRs abiertos | https://github.com/kiteprop/ia-propieya/pulls |
-| Repo | https://github.com/kiteprop/ia-propieya |
+| Crear PR (Tekno) | https://github.com/TeknoAriel/PropieYa/compare/main...deploy/infra |
+| PRs abiertos (Tekno) | https://github.com/TeknoAriel/PropieYa/pulls |
+| Crear PR (kiteprop) | https://github.com/kiteprop/ia-propieya/compare/main...deploy/infra |
+| Repo Tekno | https://github.com/TeknoAriel/PropieYa |
+| Repo kiteprop | https://github.com/kiteprop/ia-propieya |

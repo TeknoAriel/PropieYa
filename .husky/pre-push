@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+# Evita push a ramas de producción si el monorepo no pasa el mismo cheque que CI y el workflow Promote.
+branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" || exit 0
+case "$branch" in
+  main|deploy/infra)
+    echo "husky pre-push: pnpm verify ($branch)"
+    pnpm verify
+    ;;
+esac
