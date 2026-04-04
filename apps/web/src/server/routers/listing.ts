@@ -46,10 +46,8 @@ import {
 import type { SearchFilters } from '../../lib/search/types'
 import { decodeListingSearchCursor } from '../../lib/search/search-cursor'
 import { sqlPointInPolygonLngLat } from '../../lib/search/point-in-polygon-sql'
-import {
-  extractIntentionFromMessage,
-  type ConversationPrior,
-} from '../../lib/llm'
+import { type ConversationPrior } from '../../lib/llm'
+import { runConversationalSearchOrchestrator } from '../../lib/conversational-search'
 import { recordPortalStatsEvent } from '../../lib/analytics/record-portal-stats-event'
 import { checkRateLimit } from '../../lib/rate-limit'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
@@ -1209,10 +1207,24 @@ export const listingRouter = createTRPCRouter({
 
       try {
         const prior = conversationPriorFromInput(input.previousContext)
-        const intention = await extractIntentionFromMessage(
-          input.message,
-          prior ?? undefined
-        )
+        const { intention, amenitiesMatchMode, pipelineDebug } =
+          await runConversationalSearchOrchestrator(input.message, prior ?? undefined)
+
+        if (process.env.LOG_CONVERSATIONAL_SEARCH === '1') {
+          console.info(
+            '[listing.searchConversational]',
+            JSON.stringify({
+              input: input.message,
+              structured: pipelineDebug.structuredSnapshot,
+              notes: pipelineDebug.validationNotes,
+              unknownTerms: pipelineDebug.unknownTerms,
+              droppedLocations: pipelineDebug.droppedLocations,
+              droppedAmenities: pipelineDebug.droppedAmenities,
+              amenitiesMatchMode,
+            })
+          )
+        }
+
         const explainFilters: ExplainMatchFilters = {
           q: intention.q,
           operationType: intention.operationType,
@@ -1227,7 +1239,7 @@ export const listingRouter = createTRPCRouter({
         }
         const filters = {
           ...explainFilters,
-          amenitiesMatchMode: 'preferred' as const,
+          amenitiesMatchMode,
           limit: 24,
           offset: 0,
         }
