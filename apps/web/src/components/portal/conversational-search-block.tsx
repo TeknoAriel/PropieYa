@@ -19,6 +19,13 @@ const PLACEHOLDER_ROTATE_MS = 5500
 const CONV_STORAGE_KEY = 'propieya.conversational.v1'
 const CONV_TTL_MS = 45 * 60 * 1000
 
+/**
+ * Provisional: desactiva memoria de sesión (banner «seguimos desde…», chips y `previousContext`).
+ * Sin esto, cada envío interpreta solo el texto actual y no arrastra filtros de la búsqueda anterior.
+ * Pasar a `true` cuando se revisen reglas de continuación (doc 47).
+ */
+const ENABLE_CONVERSATIONAL_SESSION_CONTEXT = false
+
 type StoredConv = {
   userMessage: string
   filters: ExplainMatchFilters
@@ -145,6 +152,12 @@ export function ConversationalSearchBlock({
   }, [])
 
   useEffect(() => {
+    if (!ENABLE_CONVERSATIONAL_SESSION_CONTEXT) {
+      clearConvStorage()
+    }
+  }, [])
+
+  useEffect(() => {
     if (buscarSearchParamsKey === undefined) return
     if (skipNextUrlQSyncRef.current) {
       skipNextUrlQSyncRef.current = false
@@ -156,6 +169,10 @@ export function ConversationalSearchBlock({
   }, [buscarSearchParamsKey])
 
   useEffect(() => {
+    if (!ENABLE_CONVERSATIONAL_SESSION_CONTEXT) {
+      setSessionPrior(null)
+      return
+    }
     const s = readConvStorage()
     if (!s) {
       setSessionPrior(null)
@@ -214,14 +231,16 @@ export function ConversationalSearchBlock({
         amenities: data.filters.amenities,
       }
       const submitted = lastSubmittedRef.current.trim()
-      writeConvStorage({
-        userMessage: submitted || summarizeSearchFilters(explain).slice(0, 200),
-        filters: explain,
-      })
-      setSessionPrior({
-        userMessage: submitted || summarizeSearchFilters(explain).slice(0, 200),
-        filters: explain,
-      })
+      if (ENABLE_CONVERSATIONAL_SESSION_CONTEXT) {
+        writeConvStorage({
+          userMessage: submitted || summarizeSearchFilters(explain).slice(0, 200),
+          filters: explain,
+        })
+        setSessionPrior({
+          userMessage: submitted || summarizeSearchFilters(explain).slice(0, 200),
+          filters: explain,
+        })
+      }
       skipNextUrlQSyncRef.current = true
       setQuery('')
       onAfterNavigate?.({
@@ -301,7 +320,8 @@ export function ConversationalSearchBlock({
     lastSubmittedRef.current = text
     searchConversational.mutate({
       message: text,
-      previousContext: sessionPrior
+      previousContext:
+        ENABLE_CONVERSATIONAL_SESSION_CONTEXT && sessionPrior
         ? {
             userMessage: sessionPrior.userMessage,
             filters: {
@@ -376,7 +396,9 @@ export function ConversationalSearchBlock({
         </div>
       ) : null}
 
-      {variant === 'buscar' && sessionPrior ? (
+      {variant === 'buscar' &&
+      ENABLE_CONVERSATIONAL_SESSION_CONTEXT &&
+      sessionPrior ? (
         <div
           className={
             compact
