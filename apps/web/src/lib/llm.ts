@@ -4,7 +4,11 @@
  */
 
 import OpenAI from 'openai'
-import { extractFiltersFromQuery } from '@propieya/shared'
+import {
+  extractFiltersFromQuery,
+  matchOperationTypeFromText,
+  matchPropertyTypeFromText,
+} from '@propieya/shared'
 
 export interface ExtractedIntention {
   operationType?: 'sale' | 'rent' | 'temporary_rent'
@@ -163,10 +167,24 @@ function normalizeIntention(raw: Record<string, unknown>): ExtractedIntention {
     out.propertyType = raw.propertyType
   }
   if (typeof raw.city === 'string' && raw.city.trim()) {
-    out.city = raw.city.trim()
+    const c = raw.city.trim()
+    const cLow = c.toLowerCase()
+    if (
+      matchOperationTypeFromText(cLow) == null &&
+      matchPropertyTypeFromText(cLow) == null
+    ) {
+      out.city = c
+    }
   }
   if (typeof raw.neighborhood === 'string' && raw.neighborhood.trim()) {
-    out.neighborhood = raw.neighborhood.trim()
+    const n = raw.neighborhood.trim()
+    const nLow = n.toLowerCase()
+    if (
+      matchOperationTypeFromText(nLow) == null &&
+      matchPropertyTypeFromText(nLow) == null
+    ) {
+      out.neighborhood = n
+    }
   }
   const minP = Number(raw.minPrice)
   if (Number.isFinite(minP) && minP >= 0) out.minPrice = minP
@@ -203,16 +221,21 @@ function fallbackExtract(message: string): ExtractedIntention {
     out.amenities = extracted.amenities
   }
 
-  // city/neighborhood: intentar detectar con patrones comunes (ej. "en Palermo", "en Buenos Aires")
+  // city/neighborhood: "en Palermo", "en Buenos Aires" (no confundir con "en venta" / "en alquiler")
   const inMatch = lower.match(/\ben\s+([a-záéíóúñ\s]+?)(?:\s+con|\s+cerca|\s+hasta|$|,)/i)
   if (inMatch) {
     const place = inMatch[1]!.trim()
     if (place.length >= 2 && place.length <= 80) {
-      // Asumir barrio si es una palabra corta, ciudad si es más larga
-      if (place.split(/\s+/).length === 1 && place.length <= 20) {
-        out.neighborhood = place
-      } else {
-        out.city = place
+      const placeNorm = place.toLowerCase()
+      const looksLikeOpOrType =
+        matchOperationTypeFromText(placeNorm) != null ||
+        matchPropertyTypeFromText(placeNorm) != null
+      if (!looksLikeOpOrType) {
+        if (place.split(/\s+/).length === 1 && place.length <= 20) {
+          out.neighborhood = place
+        } else {
+          out.city = place
+        }
       }
     }
   }
