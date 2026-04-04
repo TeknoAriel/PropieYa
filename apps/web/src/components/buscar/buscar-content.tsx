@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
   useCallback,
   useEffect,
@@ -40,7 +40,9 @@ import {
   getFacetFlagDefinitions,
   OPERATION_TYPE_LABELS,
   PORTAL_SEARCH_UX_COPY as S,
+  summarizeSearchFilters,
   type Currency,
+  type ExplainMatchFilters,
   type OperationType,
   type PortalSearchPage,
   type PropertyType,
@@ -213,6 +215,8 @@ export function BuscarContent({
   pageSubtitle,
 }: BuscarContentProps) {
   const searchParams = useSearchParams()
+  const pathname = usePathname() ?? '/buscar'
+  const router = useRouter()
 
   const utils = trpc.useUtils()
   const [canAuth, setCanAuth] = useState(false)
@@ -567,6 +571,79 @@ export function BuscarContent({
     total: number
   } | null>(null)
 
+  const explainForSummary = useMemo((): ExplainMatchFilters => {
+    const n = (s: string) => {
+      const x = Number(s)
+      return s !== '' && Number.isFinite(x) ? x : undefined
+    }
+    return {
+      q: q.trim() || undefined,
+      operationType: (forcedOperation ?? operationType) || undefined,
+      propertyType: propertyType || undefined,
+      city: city.trim() || undefined,
+      neighborhood: neighborhood.trim() || undefined,
+      minPrice: n(minPrice),
+      maxPrice: n(maxPrice),
+      minBedrooms: n(minBedrooms),
+      minBathrooms: n(minBathrooms),
+      minGarages: n(minGarages),
+      minSurface: n(minSurface),
+      maxSurface: n(maxSurface),
+      floorMin: n(floorMin),
+      floorMax: n(floorMax),
+      escalera: escalera.trim() || undefined,
+      orientation: orientation || undefined,
+      minSurfaceCovered: n(minSurfaceCovered),
+      maxSurfaceCovered: n(maxSurfaceCovered),
+      minTotalRooms: n(minTotalRooms),
+      amenities:
+        selectedAmenityFacets.length > 0 ? selectedAmenityFacets : undefined,
+      bbox: showMap && mapBbox ? mapBbox : undefined,
+      mapPolygonActive: showMap && mapPolygonRing.length >= 3,
+    }
+  }, [
+    q,
+    forcedOperation,
+    operationType,
+    propertyType,
+    city,
+    neighborhood,
+    minPrice,
+    maxPrice,
+    minBedrooms,
+    minBathrooms,
+    minGarages,
+    minSurface,
+    maxSurface,
+    floorMin,
+    floorMax,
+    escalera,
+    orientation,
+    minSurfaceCovered,
+    maxSurfaceCovered,
+    minTotalRooms,
+    selectedAmenityFacets,
+    showMap,
+    mapBbox,
+    mapPolygonRing.length,
+  ])
+
+  const activeSummaryRaw = useMemo(
+    () => summarizeSearchFilters(explainForSummary),
+    [explainForSummary]
+  )
+
+  const displayActiveSummary =
+    activeSummaryRaw === 'Perfil de búsqueda sin criterios guardados.'
+      ? S.buscarActiveSummaryEmpty
+      : activeSummaryRaw
+
+  const clearBuscarSearch = useCallback(() => {
+    setShowMap(false)
+    setAssistantHint(null)
+    router.replace(pathname)
+  }, [router, pathname])
+
   const searchParamsKey = searchParams.toString()
 
   const hasClassicUrlParams = useMemo(() => {
@@ -875,6 +952,28 @@ export function BuscarContent({
             </Button>
           ) : null}
         </div>
+
+        <Card className="border-border/70 bg-surface-secondary/50 p-3 sm:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+                {S.buscarActiveSummaryLabel}
+              </p>
+              <p className="text-sm leading-relaxed text-text-primary">
+                {displayActiveSummary}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 shrink-0 self-start sm:self-center"
+              onClick={clearBuscarSearch}
+            >
+              {S.buscarClearSearch}
+            </Button>
+          </div>
+        </Card>
 
         <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
           {classicFiltersOpen ? (

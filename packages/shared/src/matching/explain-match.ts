@@ -28,6 +28,8 @@ export interface ExplainMatchFilters {
   amenities?: string[]
   /** Rectángulo mapa (WGS84). */
   bbox?: { south: number; north: number; west: number; east: number }
+  /** Polígono dibujado en mapa (solo texto de resumen; no confundir con `polygon` de geo). */
+  mapPolygonActive?: boolean
 }
 
 /** Datos mínimos del aviso (SQL o hit de ES). */
@@ -359,6 +361,7 @@ export function withMatchReasons<T extends ExplainMatchListing>(
 export function summarizeSearchFilters(filters: ExplainMatchFilters): string {
   const parts: string[] = []
 
+  if (filters.q?.trim()) parts.push(`«${filters.q.trim().slice(0, 80)}»`)
   if (filters.operationType) {
     const op = filters.operationType as OperationType
     parts.push(OPERATION_TYPE_LABELS[op] ?? filters.operationType)
@@ -377,8 +380,23 @@ export function summarizeSearchFilters(filters: ExplainMatchFilters): string {
   if (filters.minBedrooms !== undefined) {
     parts.push(`mín. ${filters.minBedrooms} dormitorios`)
   }
+  if (filters.minBathrooms !== undefined) {
+    parts.push(`mín. ${filters.minBathrooms} baños`)
+  }
+  if (filters.minGarages !== undefined) {
+    parts.push(`mín. ${filters.minGarages} cocheras`)
+  }
   if (filters.minSurface !== undefined) {
     parts.push(`mín. ${filters.minSurface} m²`)
+  }
+  if (filters.maxSurface !== undefined) {
+    parts.push(`hasta ${filters.maxSurface} m²`)
+  }
+  if (filters.floorMin !== undefined || filters.floorMax !== undefined) {
+    const lo = filters.floorMin != null ? `piso ≥ ${filters.floorMin}` : ''
+    const hi = filters.floorMax != null ? `piso ≤ ${filters.floorMax}` : ''
+    const s = [lo, hi].filter(Boolean).join(' ')
+    if (s) parts.push(s)
   }
   if (filters.minSurfaceCovered !== undefined) {
     parts.push(`cubierta ≥ ${filters.minSurfaceCovered} m²`)
@@ -395,9 +413,20 @@ export function summarizeSearchFilters(filters: ExplainMatchFilters): string {
   if (filters.escalera?.trim()) {
     parts.push(`esc. ${filters.escalera.trim()}`)
   }
-  if (filters.q?.trim()) parts.push(`búsqueda: «${filters.q.trim().slice(0, 80)}»`)
+  if (filters.amenities?.length) {
+    const labels = filters.amenities.map(
+      (id) => AMENITY_LABELS[id as Amenity] ?? id
+    )
+    const shown = labels.slice(0, 10)
+    parts.push(
+      shown.join(', ') + (labels.length > shown.length ? '…' : '')
+    )
+  }
   if (filters.bbox) {
     parts.push('área del mapa')
+  }
+  if (filters.mapPolygonActive) {
+    parts.push('zona dibujada en mapa')
   }
 
   return parts.length > 0
@@ -416,7 +445,10 @@ export function completenessFromFilters(filters: ExplainMatchFilters): number {
   if (filters.city?.trim() || filters.neighborhood?.trim()) bump(20)
   if (filters.minPrice != null || filters.maxPrice != null) bump(15)
   if (filters.minBedrooms != null) bump(10)
-  if (filters.minSurface != null) bump(10)
+  if (filters.minSurface != null || filters.maxSurface != null) bump(10)
+  if (filters.minBathrooms != null) bump(5)
+  if (filters.minGarages != null) bump(5)
+  if (filters.floorMin != null || filters.floorMax != null) bump(3)
   if (filters.minSurfaceCovered != null || filters.maxSurfaceCovered != null) bump(5)
   if (filters.minTotalRooms != null) bump(5)
   if (filters.orientation?.trim()) bump(3)
@@ -424,5 +456,6 @@ export function completenessFromFilters(filters: ExplainMatchFilters): number {
   if (filters.q?.trim()) bump(10)
   if (filters.amenities?.length) bump(5)
   if (filters.bbox) bump(10)
+  if (filters.mapPolygonActive) bump(10)
   return score
 }

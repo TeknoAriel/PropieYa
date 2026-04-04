@@ -338,6 +338,11 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Opcional — mismo motor que la búsqueda por frase. Tocá «Más filtros» para ir más al detalle.',
   buscarPageGentleHint:
     'Explorá con calma: los resultados se actualizan solos cuando cambiás criterios.',
+  /** Resumen visible de criterios activos (encima del formulario). */
+  buscarActiveSummaryLabel: 'Tu búsqueda ahora',
+  buscarActiveSummaryEmpty:
+    'Sin criterios todavía: escribí palabras clave o abrí filtros para afinar.',
+  buscarClearSearch: 'Limpiar búsqueda',
   buscarLoadMore: 'Cargar más resultados',
   buscarLoadingMore: 'Cargando…',
   buscarShowingCount: 'Mostrando {shown} de {total}',
