@@ -85,6 +85,8 @@ Ver también: `docs/DEPLOY-CONTEXTO-AGENTES.md`.
 
 ### A4. Vercel “no conecta” a `kiteprop/ia-propieya` (falta aprobación)
 
+Si **`https://github.com/organizations/kiteprop/settings/installations`** te da **404**, no sos **owner** de la org: esa URL solo la ven owners. Igual podés usar **solo** [secretos de Actions en el repo](https://github.com/kiteprop/ia-propieya/settings/secrets/actions) (`VERCEL_*`): el workflow Promote **no requiere** instalar Vercel en la org para desplegar por CLI. Para **conectar Git en el dashboard de Vercel** al repo kiteprop, hace falta que un **owner** apruebe la app (o te den ese rol).
+
 Si en **Settings → Git** del proyecto (web o panel) al elegir **kiteprop/ia-propieya** aparece que **falta una aprobación**:
 
 1. **Aprobar la GitHub App de Vercel en la org `kiteprop`**
@@ -125,12 +127,14 @@ Workflow: **`.github/workflows/promote-deploy-infra.yml`**
 1. Install dependencies
 2. `pnpm lint`, `pnpm typecheck`, `pnpm build` (equivalente a `pnpm verify`; pasos separados en CI para ver el fallo)
 3. `vercel pull` (production) + **`vercel deploy --prod`** desde la **raíz del monorepo** (sube `packages/*`; Root Directory en Vercel sigue siendo `apps/web`). CLI `vercel@41`.
-4. Smoke tests estrictos:
-   - `/` debe ser 2xx
-   - `/api/health` debe ser 200 o 503
-   - `/api/version` debe responder
+4. Smoke tests **obligatorios** en el dominio canónico:
+   - `/` → 2xx
+   - `/api/health` → 200 o 503
+   - `/api/version` → debe responder (cuerpo no vacío)
 
-Si algo falla, el workflow queda en rojo.
+   Si `/api/version.commit` no coincide con el commit del push, el job puede quedar **verde** igual (warning): el deploy CLI igual se ejecutó; el dominio puede actualizarse después o requerir ajuste en Vercel.
+
+Si fallan lint, typecheck, build, `vercel deploy` o los smoke anteriores, el workflow queda en rojo.
 
 ### B4. Verificar resultado
 
