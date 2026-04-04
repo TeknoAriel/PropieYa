@@ -81,6 +81,11 @@ type ConversationalSearchBlockProps = {
   className?: string
   /** Menos padding tipográfico y campo más bajo (p. ej. /buscar en un solo card). */
   compact?: boolean
+  /**
+   * Solo en `/buscar`: si la URL incluye `q`, copia su valor al campo al cambiar la query (chips, etc.).
+   * No pisa el texto si `q` no está en la URL (p. ej. solo cambió `op` o filtros clásicos).
+   */
+  buscarSearchParamsKey?: string
 }
 
 function getSpeechRecognitionCtor(): (new () => {
@@ -109,6 +114,7 @@ export function ConversationalSearchBlock({
   onAfterNavigate,
   className = '',
   compact = false,
+  buscarSearchParamsKey,
 }: ConversationalSearchBlockProps) {
   const router = useRouter()
   const pack = getPortalPack()
@@ -118,6 +124,11 @@ export function ConversationalSearchBlock({
   const [listening, setListening] = useState(false)
   const recognitionRef = useRef<{ stop: () => void } | null>(null)
   const lastSubmittedRef = useRef('')
+  /** Evita que la sync URL→campo pise el vaciado tras submit conversacional. */
+  const skipNextUrlQSyncRef = useRef(false)
+  const queryBeforeVoiceRef = useRef('')
+  const queryRef = useRef(query)
+  queryRef.current = query
   const [sessionPrior, setSessionPrior] = useState<{
     userMessage: string
     filters: ExplainMatchFilters
@@ -129,6 +140,17 @@ export function ConversationalSearchBlock({
   useEffect(() => {
     setVoiceSupported(getSpeechRecognitionCtor() != null)
   }, [])
+
+  useEffect(() => {
+    if (buscarSearchParamsKey === undefined) return
+    if (skipNextUrlQSyncRef.current) {
+      skipNextUrlQSyncRef.current = false
+      return
+    }
+    const sp = new URLSearchParams(buscarSearchParamsKey)
+    if (!sp.has('q')) return
+    setQuery(sp.get('q') ?? '')
+  }, [buscarSearchParamsKey])
 
   useEffect(() => {
     const s = readConvStorage()
@@ -196,6 +218,7 @@ export function ConversationalSearchBlock({
         userMessage: submitted || summarizeSearchFilters(explain).slice(0, 200),
         filters: explain,
       })
+      skipNextUrlQSyncRef.current = true
       setQuery('')
       onAfterNavigate?.({
         summary: summarizeSearchFilters(explain),
@@ -223,21 +246,26 @@ export function ConversationalSearchBlock({
   const startListening = useCallback(() => {
     const Ctor = getSpeechRecognitionCtor()
     if (!Ctor || listening) return
+    queryBeforeVoiceRef.current = queryRef.current.trimEnd()
     const rec = new Ctor()
     rec.lang = 'es-AR'
-    rec.continuous = false
+    rec.continuous = true
     rec.interimResults = true
     rec.onresult = (ev: Event) => {
       const e = ev as unknown as {
-        resultIndex: number
         results: Array<{ 0: { transcript: string }; isFinal: boolean }>
       }
-      let text = ''
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        text += e.results[i]?.[0]?.transcript ?? ''
+      let piece = ''
+      for (let i = 0; i < e.results.length; i++) {
+        piece += e.results[i]?.[0]?.transcript ?? ''
       }
-      const t = text.trim()
-      if (t) setQuery((prev) => (prev ? `${prev} ${t}` : t).trim())
+      const spoken = piece.replace(/\s+/g, ' ').trim()
+      const prefix = queryBeforeVoiceRef.current
+      const combined =
+        prefix && spoken
+          ? `${prefix} ${spoken}`.trim()
+          : spoken || prefix
+      setQuery(combined)
     }
     rec.onerror = () => {
       stopListening()

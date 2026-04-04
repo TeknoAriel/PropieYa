@@ -50,16 +50,74 @@ export const PORTAL_INDUCTIVE_CHIPS: readonly {
   label: string
   filters: PortalBuscarUrlFilters
 }[] = [
-  { label: 'Departamentos en venta', filters: { operationType: 'sale', propertyType: 'apartment' } },
-  { label: 'Casas en venta', filters: { operationType: 'sale', propertyType: 'house' } },
-  { label: 'Departamentos en alquiler', filters: { operationType: 'rent', propertyType: 'apartment' } },
-  { label: 'Casas en alquiler', filters: { operationType: 'rent', propertyType: 'house' } },
-  { label: 'PH en venta', filters: { operationType: 'sale', propertyType: 'ph' } },
-  { label: 'Terrenos en venta', filters: { operationType: 'sale', propertyType: 'land' } },
-  { label: 'Locales en venta', filters: { operationType: 'sale', propertyType: 'commercial' } },
-  { label: 'Oficinas en alquiler', filters: { operationType: 'rent', propertyType: 'office' } },
-  { label: 'Cocheras', filters: { operationType: 'sale', propertyType: 'parking' } },
-  { label: 'Galpones / depósitos', filters: { operationType: 'sale', propertyType: 'warehouse' } },
+  {
+    label: 'Departamentos en venta',
+    filters: {
+      q: 'Departamentos en venta',
+      operationType: 'sale',
+      propertyType: 'apartment',
+    },
+  },
+  {
+    label: 'Casas en venta',
+    filters: { q: 'Casas en venta', operationType: 'sale', propertyType: 'house' },
+  },
+  {
+    label: 'Departamentos en alquiler',
+    filters: {
+      q: 'Departamentos en alquiler',
+      operationType: 'rent',
+      propertyType: 'apartment',
+    },
+  },
+  {
+    label: 'Casas en alquiler',
+    filters: {
+      q: 'Casas en alquiler',
+      operationType: 'rent',
+      propertyType: 'house',
+    },
+  },
+  {
+    label: 'PH en venta',
+    filters: { q: 'PH en venta', operationType: 'sale', propertyType: 'ph' },
+  },
+  {
+    label: 'Terrenos en venta',
+    filters: {
+      q: 'Terrenos en venta',
+      operationType: 'sale',
+      propertyType: 'land',
+    },
+  },
+  {
+    label: 'Locales en venta',
+    filters: {
+      q: 'Locales en venta',
+      operationType: 'sale',
+      propertyType: 'commercial',
+    },
+  },
+  {
+    label: 'Oficinas en alquiler',
+    filters: {
+      q: 'Oficinas en alquiler',
+      operationType: 'rent',
+      propertyType: 'office',
+    },
+  },
+  {
+    label: 'Cocheras',
+    filters: { q: 'Cocheras en venta', operationType: 'sale', propertyType: 'parking' },
+  },
+  {
+    label: 'Galpones / depósitos',
+    filters: {
+      q: 'Galpones o depósitos en venta',
+      operationType: 'sale',
+      propertyType: 'warehouse',
+    },
+  },
 ] as const
 
 /** Comparador público (2–3 UUIDs, orden preservado). Sprint 33 / doc 43 §5. */

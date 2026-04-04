@@ -640,6 +640,7 @@ export function BuscarContent({
             forcedOperation={forcedOperation}
             onAfterNavigate={setAssistantHint}
             compact
+            buscarSearchParamsKey={searchParamsKey}
           />
           <div className="mt-3 border-t border-border/40 pt-3">
             <InductiveSearchChips variant="embedded" showSubtitle={false} />
