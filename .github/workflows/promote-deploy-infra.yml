@@ -113,13 +113,30 @@ jobs:
             exit 1
           fi
           echo "$out"
-          url="$(echo "$out" | grep -Eo 'https?://[^ ]+\\.vercel\\.app' | tail -n 1 || true)"
+          # Varias formas de URL en la salida del CLI (evita quedar sin DEPLOY_URL).
+          url="$(
+            echo "$out" | grep -oE 'https://[a-zA-Z0-9][a-zA-Z0-9.-]*\.vercel\.app' | tail -n 1 || true
+          )"
+          if [ -z "${url:-}" ]; then
+            url="$(
+              echo "$out" | grep -Eo 'https?://[^ ]+\.vercel\.app' | tail -n 1 || true
+            )"
+          fi
           if [ -n "${url:-}" ]; then
             echo "DEPLOY_URL=$url" >> "$GITHUB_ENV"
             echo "Deploy URL detectada: $url"
           else
-            echo "::warning::No pude detectar DEPLOY_URL desde la salida de vercel deploy"
+            echo "::error::No se pudo extraer la URL del deployment desde la salida de vercel deploy."
+            echo "$out" | tail -n 40
+            exit 1
           fi
+
+      - name: Promover deployment al dominio de producción
+        run: |
+          set -euo pipefail
+          TOKEN="${VERCEL_TOKEN}"
+          echo "Promoviendo ${DEPLOY_URL} (asigna dominios Production del proyecto)."
+          npx --yes vercel@41 promote "${DEPLOY_URL}" --yes --token "${TOKEN}" --timeout=5m
 
       - name: Esperar propagación
         run: sleep 90
@@ -162,6 +179,24 @@ jobs:
             exit 1
           fi
           echo "$body" | head -c 600
+
+      - name: Exigir que /api/version refleje este commit
+        run: |
+          set -euo pipefail
+          want="${GITHUB_SHA:0:7}"
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            body=$(curl -sS "${PORTAL_URL}/api/version" 2>/dev/null || true)
+            got=$(echo "$body" | jq -r '.commit // empty')
+            echo "Intento $i/12: commit en /api/version='$got' (esperado prefijo '$want')"
+            if [ "$got" = "$want" ]; then
+              echo "OK: dominio canónico sirve el deployment de este push."
+              exit 0
+            fi
+            sleep 25
+          done
+          echo "::error::Tras promote, ${PORTAL_URL}/api/version sigue sin el commit $want. Revisar dominios en Vercel y log de promote."
+          echo "$body"
+          exit 1
 
       - name: Aviso si /api/version no refleja la rama de deploy
         run: |
