@@ -29,6 +29,8 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      TURBO_DAEMON: 'false'
+      NEXT_TELEMETRY_DISABLED: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -82,8 +84,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify (lint + typecheck + build)
-        run: pnpm verify
+      # Pasos separados para ver en GitHub QUÉ falla (~4m30s suele ser build OOM o tsc).
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build (turbo)
+        run: pnpm build
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
 
       # Root Directory del proyecto web en Vercel = apps/web (docs/33). pull/deploy desde la
       # raíz del monorepo para que el CLI suba packages/* y lockfile; solo apps/web rompe el build remoto.

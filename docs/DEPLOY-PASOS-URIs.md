@@ -83,6 +83,22 @@ Ver también: `docs/DEPLOY-CONTEXTO-AGENTES.md`.
 
 > El deploy productivo lo realiza **GitHub Actions + Vercel CLI**, por lo que no dependemos del Git Integration de Vercel para publicar.
 
+### A4. Vercel “no conecta” a `kiteprop/ia-propieya` (falta aprobación)
+
+Si en **Settings → Git** del proyecto (web o panel) al elegir **kiteprop/ia-propieya** aparece que **falta una aprobación**:
+
+1. **Aprobar la GitHub App de Vercel en la org `kiteprop`**
+   - Como **owner** de la org: [Organización kiteprop → Settings → Third-party access / GitHub Apps](https://github.com/organizations/kiteprop/settings/installations) → **Vercel** → **Configure** → marcar acceso a **`ia-propieya`** (o “All repositories”) → Save.
+   - Si la instalación quedó **pending**, revisá el correo de GitHub o [Installations](https://github.com/settings/installations) con la cuenta que administra la org.
+
+2. **Repo equivocado en Vercel**  
+   Si el proyecto sigue enlazado a **`TeknoAriel/PropieYa`** (u otro remoto viejo), los builds de Vercel **no** reflejan `kiteprop/ia-propieya`. Desconectá Git y volvé a conectar **`kiteprop/ia-propieya`** cuando la app esté aprobada.  
+   - **Web:** proyecto **`propie-ya-web`**, Root `apps/web`.  
+   - **Panel:** **`propieya-panel`**, Root `apps/panel`.
+
+3. **Deploy del portal por CLI**  
+   Aunque Git falle o siga en el repo viejo, el workflow **Promote** con secretos `VERCEL_*` (Parte A2) puede publicar **si el job de Actions pasa**. Si Actions está en rojo, corregí primero el error del paso que falla (Lint / Typecheck / Build / Deploy).
+
 ---
 
 ## Parte B: Flujo de deploy (cada vez)
@@ -107,7 +123,7 @@ git push origin deploy/infra
 Workflow: **`.github/workflows/promote-deploy-infra.yml`**
 
 1. Install dependencies
-2. `pnpm verify`
+2. `pnpm lint`, `pnpm typecheck`, `pnpm build` (equivalente a `pnpm verify`; pasos separados en CI para ver el fallo)
 3. `vercel pull` (production) + **`vercel deploy --prod`** desde la **raíz del monorepo** (sube `packages/*`; Root Directory en Vercel sigue siendo `apps/web`). CLI `vercel@41`.
 4. Smoke tests estrictos:
    - `/` debe ser 2xx
