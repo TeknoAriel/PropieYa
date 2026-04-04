@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 import {
@@ -312,37 +312,49 @@ export function ConversationalSearchBlock({
     return () => stopListening()
   }, [stopListening])
 
+  const previousContextForMutation = useMemo(() => {
+    if (!ENABLE_CONVERSATIONAL_SESSION_CONTEXT || !sessionPrior) return undefined
+    return {
+      userMessage: sessionPrior.userMessage,
+      filters: {
+        q: sessionPrior.filters.q,
+        operationType: (():
+          | 'sale'
+          | 'rent'
+          | 'temporary_rent'
+          | undefined => {
+          const op = sessionPrior.filters.operationType
+          if (op === 'sale' || op === 'rent' || op === 'temporary_rent') return op
+          return undefined
+        })(),
+        propertyType: sessionPrior.filters.propertyType,
+        city: sessionPrior.filters.city,
+        neighborhood: sessionPrior.filters.neighborhood,
+        minPrice: sessionPrior.filters.minPrice,
+        maxPrice: sessionPrior.filters.maxPrice,
+        minBedrooms: sessionPrior.filters.minBedrooms,
+        minSurface: sessionPrior.filters.minSurface,
+        amenities: sessionPrior.filters.amenities,
+      },
+    }
+  }, [sessionPrior])
+
+  const submitConversationalMessage = useCallback(
+    (rawText: string) => {
+      const text = rawText.trim()
+      if (!text || searchConversational.isPending) return
+      lastSubmittedRef.current = text
+      searchConversational.mutate({
+        message: text,
+        previousContext: previousContextForMutation,
+      })
+    },
+    [previousContextForMutation, searchConversational]
+  )
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const text = query.trim()
-    if (!text) return
-    lastSubmittedRef.current = text
-    searchConversational.mutate({
-      message: text,
-      previousContext:
-        ENABLE_CONVERSATIONAL_SESSION_CONTEXT && sessionPrior
-        ? {
-            userMessage: sessionPrior.userMessage,
-            filters: {
-              q: sessionPrior.filters.q,
-              operationType:
-                sessionPrior.filters.operationType === 'sale' ||
-                sessionPrior.filters.operationType === 'rent' ||
-                sessionPrior.filters.operationType === 'temporary_rent'
-                  ? sessionPrior.filters.operationType
-                  : undefined,
-              propertyType: sessionPrior.filters.propertyType,
-              city: sessionPrior.filters.city,
-              neighborhood: sessionPrior.filters.neighborhood,
-              minPrice: sessionPrior.filters.minPrice,
-              maxPrice: sessionPrior.filters.maxPrice,
-              minBedrooms: sessionPrior.filters.minBedrooms,
-              minSurface: sessionPrior.filters.minSurface,
-              amenities: sessionPrior.filters.amenities,
-            },
-          }
-        : undefined,
-    })
+    submitConversationalMessage(query)
   }
 
   const clearConversationContext = () => {
@@ -432,7 +444,8 @@ export function ConversationalSearchBlock({
                 variant="outline"
                 size="sm"
                 className="h-7 rounded-full px-2.5 text-xs"
-                onClick={() => setQuery(label)}
+                disabled={searchConversational.isPending}
+                onClick={() => submitConversationalMessage(label)}
               >
                 {label}
               </Button>
