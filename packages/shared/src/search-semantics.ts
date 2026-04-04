@@ -84,7 +84,11 @@ const PROPERTY_PHRASES: Array<{ phrase: string; type: PropertyType }> = [
   { phrase: 'cochera', type: 'parking' },
   { phrase: 'emprendimiento', type: 'development_unit' },
   { phrase: 'en pozo', type: 'development_unit' },
-  { phrase: 'casa', type: 'house' },
+  /**
+   * No mapear la palabra suelta "casa": en búsquedas tipo «casa en venta» el usuario suele
+   * referirse a cualquier inmueble; forzar `house` excluye deptos y vacía el listado.
+   * Siguen vigentes `casa quinta` y `casa de campo`.
+   */
   { phrase: 'local', type: 'commercial' },
 ]
 
