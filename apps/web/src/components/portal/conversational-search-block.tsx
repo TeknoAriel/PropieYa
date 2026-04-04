@@ -77,6 +77,9 @@ type ConversationalSearchBlockProps = {
     summary: string
     total: number
     filters: ExplainMatchFilters
+    /** Mensajes del motor relajado (misma tubería que `listing.search`). */
+    messages?: string[]
+    primaryTotal?: number
   }) => void
   className?: string
   /** Menos padding tipográfico y campo más bajo (p. ej. /buscar en un solo card). */
@@ -224,6 +227,8 @@ export function ConversationalSearchBlock({
         summary: summarizeSearchFilters(explain),
         total: data.total,
         filters: explain,
+        messages: data.searchUX?.messages,
+        primaryTotal: data.searchUX?.primaryTotal,
       })
       if (routerMode === 'replace') {
         router.replace(path)
@@ -332,11 +337,6 @@ export function ConversationalSearchBlock({
     S.conversationalChipMoreBedrooms,
   ] as const
 
-  const contextSummary =
-    sessionPrior != null
-      ? summarizeSearchFilters(sessionPrior.filters)
-      : ''
-
   const isHero = variant === 'hero'
   const inputClass = isHero
     ? compact
@@ -388,11 +388,8 @@ export function ConversationalSearchBlock({
               <p className="text-xs font-medium text-text-primary">
                 {S.conversationalContextBanner}
               </p>
-              <p className="mt-1 break-words text-xs text-text-secondary">
-                {S.conversationalContextSummaryPrefix}{' '}
-                {contextSummary.length > 140
-                  ? `${contextSummary.slice(0, 140)}…`
-                  : contextSummary}
+              <p className="mt-0.5 text-xs text-text-secondary">
+                {S.conversationalContextShortHint}
               </p>
             </div>
             <Button

@@ -348,6 +348,8 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Este navegador no permite dictado por voz; podés escribir en el campo.',
   conversationalInterpretedTitle: 'Lo que entendimos',
   conversationalResultsPrefix: 'Avisos que encajan ahora',
+  conversationalRelaxedCountNote:
+    'Incluye coincidencias ampliadas: el listado abajo respeta la misma lógica.',
   conversationalNextTitle: 'Siguiente paso',
   conversationalNextMap: 'Afinar en el mapa',
   conversationalNextFilters: 'Abrir más filtros',
@@ -357,7 +359,12 @@ export const PORTAL_SEARCH_UX_COPY = {
   conversationalContextBanner:
     'Seguimos desde tu última búsqueda: podés afinar con una frase corta o tocá una idea abajo.',
   conversationalContextSummaryPrefix: 'Criterios activos:',
+  /** Sin repetir el resumen largo: ya está en «Tu búsqueda ahora» y en la tarjeta de abajo. */
+  conversationalContextShortHint:
+    'El detalle de criterios aparece debajo; acá solo seguís la conversación.',
   conversationalClearContext: 'Empezar de cero',
+  conversationalResultsZero:
+    'No encontramos avisos ni con criterios relajados. Probá otra zona o ampliá precio en filtros.',
   conversationalChipCheaper: 'Más barato',
   conversationalChipOtherArea: 'Otro barrio o zona',
   conversationalChipParking: 'Con cochera',

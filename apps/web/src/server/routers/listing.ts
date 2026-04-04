@@ -35,7 +35,6 @@ import {
   syncListingToSearch,
   removeListingFromSearch,
 } from '../../lib/search/sync'
-import { searchListings } from '../../lib/search/search'
 import {
   searchListingsLayered,
   type ListingSearchUX,
@@ -1232,21 +1231,30 @@ export const listingRouter = createTRPCRouter({
           limit: 24,
           offset: 0,
         }
-        // Nota: facets aún no se extraen desde texto; solo via UI (Sprint 26).
+        // Mismo motor de relajación que `listing.search` (amenities como preferencia en ES).
+        const layered = await searchListingsLayered(filters as SearchFilters)
 
-        const esResult = await searchListings(filters as SearchFilters)
-
-        if (esResult.fromEs && esResult.total > 0) {
+        if (layered.fromEs && layered.total > 0) {
           return {
             filters,
-            hits: withMatchReasons(explainFilters, esResult.hits),
-            total: esResult.total,
+            hits: withMatchReasons(explainFilters, layered.hits),
+            total: layered.total,
+            searchUX: layered.ux,
           }
         }
 
+        const sqlFilters: SearchFilters =
+          layered.fromEs && layered.total === 0
+            ? { ...(filters as SearchFilters), ...layered.lastTriedFilters }
+            : (filters as SearchFilters)
+
+        const merged = mergePublicSearchFromQuery(sqlFilters)
+        const { residualTextQuery, ...restMerged } = merged
+        const qForSql = restMerged
+
         const conditions = [eq(listings.status, 'active')]
-        if (filters.q?.trim()) {
-          const frag = sanitizeIlikeFragment(filters.q)
+        if (residualTextQuery.trim()) {
+          const frag = sanitizeIlikeFragment(residualTextQuery)
           if (frag.length > 0) {
             const pat = `%${frag}%`
             conditions.push(
@@ -1257,50 +1265,41 @@ export const listingRouter = createTRPCRouter({
             )
           }
         }
-        if (filters.operationType) {
-          conditions.push(eq(listings.operationType, filters.operationType))
+        if (qForSql.operationType) {
+          conditions.push(eq(listings.operationType, qForSql.operationType))
         }
-        if (filters.propertyType) {
-          conditions.push(eq(listings.propertyType, filters.propertyType))
+        if (qForSql.propertyType) {
+          conditions.push(eq(listings.propertyType, qForSql.propertyType))
         }
-        if (filters.minPrice !== undefined) {
-          conditions.push(gte(listings.priceAmount, filters.minPrice))
+        if (qForSql.minPrice !== undefined) {
+          conditions.push(gte(listings.priceAmount, qForSql.minPrice))
         }
-        if (filters.maxPrice !== undefined) {
-          conditions.push(lte(listings.priceAmount, filters.maxPrice))
+        if (qForSql.maxPrice !== undefined) {
+          conditions.push(lte(listings.priceAmount, qForSql.maxPrice))
         }
-        if (filters.minBedrooms !== undefined) {
-          conditions.push(gte(listings.bedrooms, filters.minBedrooms))
+        if (qForSql.minBedrooms !== undefined) {
+          conditions.push(gte(listings.bedrooms, qForSql.minBedrooms))
         }
-        if (filters.minSurface !== undefined) {
-          conditions.push(gte(listings.surfaceTotal, filters.minSurface))
+        if (qForSql.minSurface !== undefined) {
+          conditions.push(gte(listings.surfaceTotal, qForSql.minSurface))
         }
-        if (filters.city?.trim()) {
-          const c = sanitizeIlikeFragment(filters.city)
+        if (qForSql.city?.trim()) {
+          const c = sanitizeIlikeFragment(qForSql.city)
           if (c.length > 0) {
             conditions.push(
               sql`COALESCE(${listings.address}->>'city', '') ILIKE ${`%${c}%`}`
             )
           }
         }
-        if (filters.neighborhood?.trim()) {
-          const n = sanitizeIlikeFragment(filters.neighborhood)
+        if (qForSql.neighborhood?.trim()) {
+          const n = sanitizeIlikeFragment(qForSql.neighborhood)
           if (n.length > 0) {
             conditions.push(
               sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${`%${n}%`}`
             )
           }
         }
-        if (filters.amenities && filters.amenities.length > 0) {
-          const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
-          for (const a of filters.amenities) {
-            if (allowed.includes(a)) {
-              conditions.push(
-                sql`(${listings.features}->'amenities') @> to_jsonb(ARRAY[${a}]::text[])`
-              )
-            }
-          }
-        }
+        // `preferred`: no filtrar por amenities en SQL (misma regla que listing.search).
 
         const [countResult] = await ctx.db
           .select({ count: sql<number>`count(*)::int` })
@@ -1317,10 +1316,34 @@ export const listingRouter = createTRPCRouter({
           .limit(filters.limit ?? 24)
           .offset(filters.offset ?? 0)
 
+        const sqlUx: ListingSearchUX =
+          layered.fromEs && layered.total === 0
+            ? {
+                ...layered.ux,
+                messages:
+                  total > 0
+                    ? [
+                        ...layered.ux.messages,
+                        'Conteo desde la base de datos (índice sin coincidencias para estos criterios).',
+                      ]
+                    : layered.ux.messages,
+              }
+            : {
+                tier: 'exact',
+                primaryTotal: total,
+                strictMatchCount: total,
+                mergedSupplement: false,
+                nearAreaSupplement: false,
+                messages: [],
+                relaxationStepIds: [],
+                disableDeepPagination: false,
+              }
+
         return {
           filters,
           hits: withMatchReasons(explainFilters, hits),
           total,
+          searchUX: sqlUx,
         }
       } catch (err) {
         if (err instanceof TRPCError) throw err

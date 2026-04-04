@@ -314,7 +314,6 @@ export function BuscarContent({
   const [classicFiltersOpen, setClassicFiltersOpen] = useState(false)
   const [flowDialogOpen, setFlowDialogOpen] = useState(false)
   const [flowGuideDontShowAgain, setFlowGuideDontShowAgain] = useState(false)
-  const [showFlowBanner, setShowFlowBanner] = useState(false)
   const [polygonDrawHint, setPolygonDrawHint] = useState<string | null>(null)
   const [searchPage, setSearchPage] = useState<{
     cursor?: string
@@ -615,6 +614,8 @@ export function BuscarContent({
   const [assistantHint, setAssistantHint] = useState<{
     summary: string
     total: number
+    messages?: string[]
+    primaryTotal?: number
   } | null>(null)
 
   const explainForSummary = useMemo((): ExplainMatchFilters => {
@@ -684,6 +685,9 @@ export function BuscarContent({
       ? S.buscarActiveSummaryEmpty
       : activeSummaryRaw
 
+  const hasActiveSearchCriteria =
+    activeSummaryRaw !== 'Perfil de búsqueda sin criterios guardados.'
+
   const clearBuscarSearch = useCallback(() => {
     setShowMap(false)
     setAssistantHint(null)
@@ -745,35 +749,19 @@ export function BuscarContent({
   }, [searchParamsKey, forcedOperation])
 
   useEffect(() => {
-    try {
-      if (
-        typeof window !== 'undefined' &&
-        localStorage.getItem(FLOW_GUIDE_STORAGE_KEY) !== '1'
-      ) {
-        setShowFlowBanner(true)
-      }
-    } catch {
-      setShowFlowBanner(true)
-    }
-  }, [])
-
-  const dismissFlowBanner = useCallback(() => {
-    try {
-      localStorage.setItem(FLOW_GUIDE_STORAGE_KEY, '1')
-    } catch {
-      /* ignore */
-    }
-    setShowFlowBanner(false)
-  }, [])
-
-  useEffect(() => {
     if (flowDialogOpen) setFlowGuideDontShowAgain(false)
   }, [flowDialogOpen])
 
   const confirmFlowGuideDialog = useCallback(() => {
-    if (flowGuideDontShowAgain) dismissFlowBanner()
+    if (flowGuideDontShowAgain) {
+      try {
+        localStorage.setItem(FLOW_GUIDE_STORAGE_KEY, '1')
+      } catch {
+        /* ignore */
+      }
+    }
     setFlowDialogOpen(false)
-  }, [flowGuideDontShowAgain, dismissFlowBanner])
+  }, [flowGuideDontShowAgain])
 
   const addPolygonVertexSafe = useCallback((p: BuscarMapPoint) => {
     setMapPolygonRing((prev) => {
@@ -799,40 +787,9 @@ export function BuscarContent({
   }
 
   return (
-    <div className="container mx-auto space-y-6 px-4 py-10">
-      <div className="flex flex-col gap-6">
-        <Card className="border-border-strong/40 bg-gradient-to-b from-surface-secondary to-surface-primary p-4 shadow-sm md:p-5">
-          {showFlowBanner ? (
-            <div
-              className="mb-3 flex flex-col gap-2 rounded-lg border border-brand-primary/15 bg-brand-primary/5 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
-              role="region"
-              aria-label={S.buscarFlowTitle}
-            >
-              <p className="line-clamp-2 text-xs text-text-secondary sm:line-clamp-1 sm:pr-2">
-                {S.buscarFlowBannerTeaser}
-              </p>
-              <div className="flex shrink-0 flex-wrap gap-1.5">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => setFlowDialogOpen(true)}
-                >
-                  {S.buscarFlowBannerSeeSteps}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs px-2"
-                  onClick={dismissFlowBanner}
-                >
-                  {S.buscarFlowBannerDismiss}
-                </Button>
-              </div>
-            </div>
-          ) : null}
+    <div className="container mx-auto space-y-4 px-4 py-6 md:py-8">
+      <div className="flex flex-col gap-4">
+        <Card className="border-border-strong/40 bg-gradient-to-b from-surface-secondary to-surface-primary p-3 shadow-sm md:p-4">
           <ConversationalSearchBlock
             variant="buscar"
             routerMode="replace"
@@ -842,20 +799,42 @@ export function BuscarContent({
             compact
             buscarSearchParamsKey={searchParamsKey}
           />
-          <div className="mt-3 border-t border-border/40 pt-3">
+          <div className="mt-2 border-t border-border/40 pt-2">
             <InductiveSearchChips variant="embedded" showSubtitle={false} />
           </div>
         </Card>
 
         {assistantHint ? (
-          <Card className="border-brand-primary/25 bg-brand-primary/5 p-5 space-y-3">
+          <Card className="border-brand-primary/25 bg-brand-primary/5 p-3 space-y-2 md:p-4 md:space-y-3">
             <p className="text-sm font-semibold text-text-primary">
               {S.conversationalInterpretedTitle}
             </p>
-            <p className="text-sm text-text-secondary">{assistantHint.summary}</p>
+            <p className="text-sm text-text-secondary leading-snug">
+              {assistantHint.summary}
+            </p>
+            {assistantHint.messages && assistantHint.messages.length > 0 ? (
+              <ul className="list-disc space-y-1 pl-4 text-xs text-text-secondary md:text-sm">
+                {assistantHint.messages.map((m, i) => (
+                  <li key={`hint-msg-${i}`}>{m}</li>
+                ))}
+              </ul>
+            ) : null}
             <p className="text-sm text-text-primary">
-              {S.conversationalResultsPrefix}:{' '}
-              <strong>{assistantHint.total}</strong>
+              {assistantHint.total > 0 ? (
+                <>
+                  {S.conversationalResultsPrefix}:{' '}
+                  <strong>{assistantHint.total}</strong>
+                  {assistantHint.primaryTotal !== undefined &&
+                  assistantHint.primaryTotal === 0 &&
+                  assistantHint.total > 0 ? (
+                    <span className="block text-xs font-normal text-text-secondary mt-1">
+                      {S.conversationalRelaxedCountNote}
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                <span className="text-text-secondary">{S.conversationalResultsZero}</span>
+              )}
             </p>
             <p className="text-xs font-medium text-text-secondary">
               {S.conversationalNextTitle}
@@ -896,27 +875,43 @@ export function BuscarContent({
           </Card>
         ) : null}
 
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-          <div className="max-w-2xl">
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-4">
-              <h1 className="text-2xl font-bold tracking-tight text-text-primary md:text-3xl">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
+              <h1 className="text-xl font-bold tracking-tight text-text-primary md:text-2xl">
                 {pageTitle}
               </h1>
-              <Button
-                type="button"
-                variant="link"
-                className="h-auto justify-start p-0 text-sm font-medium"
-                onClick={() => setFlowDialogOpen(true)}
-              >
-                {S.buscarFlowLinkInline}
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-sm font-medium"
+                  onClick={() => setFlowDialogOpen(true)}
+                >
+                  {S.buscarFlowLinkInline}
+                </Button>
+                <Button
+                  type="button"
+                  variant={classicFiltersOpen ? 'outline' : 'default'}
+                  size="sm"
+                  className="h-8"
+                  onClick={() => setClassicFiltersOpen((v) => !v)}
+                >
+                  {classicFiltersOpen
+                    ? S.filtersOptionalCollapse
+                    : S.filtersOptionalExpand}
+                </Button>
+              </div>
             </div>
-            <p className="mt-2 text-sm text-text-secondary md:text-base">
-              {pageSubtitle}
+            <p className="text-xs leading-snug text-text-secondary md:text-sm">
+              <span className="block sm:inline">{pageSubtitle}</span>
+              <span className="hidden sm:inline"> · </span>
+              <span className="mt-0.5 block text-text-tertiary sm:mt-0 sm:inline">
+                {S.buscarPageGentleHint}
+              </span>
             </p>
-            <p className="mt-2 text-sm text-text-secondary">{S.buscarPageGentleHint}</p>
           </div>
-          <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          <div className="flex flex-col items-stretch gap-2 lg:shrink-0 lg:items-end">
             {me ? (
               <>
                 <Button
@@ -974,40 +969,29 @@ export function BuscarContent({
 
         {me ? <BuscarRecentSearches /> : null}
 
-        <div className="flex flex-wrap items-center justify-center gap-2 border-y border-border/40 py-4 md:justify-start">
-          <Button
-            type="button"
-            variant={classicFiltersOpen ? 'outline' : 'default'}
-            size="sm"
-            onClick={() => setClassicFiltersOpen((v) => !v)}
-          >
-            {classicFiltersOpen
-              ? S.filtersOptionalCollapse
-              : S.filtersOptionalExpand}
-          </Button>
-        </div>
-
-        <Card className="border-border/70 bg-surface-secondary/50 p-3 sm:p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-            <div className="min-w-0 flex-1 space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
-                {S.buscarActiveSummaryLabel}
-              </p>
-              <p className="text-sm leading-relaxed text-text-primary">
-                {displayActiveSummary}
-              </p>
+        {hasActiveSearchCriteria ? (
+          <Card className="border-border/70 bg-surface-secondary/50 p-2.5 sm:p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">
+                  {S.buscarActiveSummaryLabel}
+                </p>
+                <p className="text-xs leading-snug text-text-primary md:text-sm">
+                  {displayActiveSummary}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 shrink-0 self-start sm:self-center"
+                onClick={clearBuscarSearch}
+              >
+                {S.buscarClearSearch}
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-9 shrink-0 self-start sm:self-center"
-              onClick={clearBuscarSearch}
-            >
-              {S.buscarClearSearch}
-            </Button>
-          </div>
-        </Card>
+          </Card>
+        ) : null}
 
         <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
           {classicFiltersOpen ? (
