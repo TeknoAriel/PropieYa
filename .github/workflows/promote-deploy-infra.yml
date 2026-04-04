@@ -138,6 +138,13 @@ jobs:
           echo "Promoviendo ${DEPLOY_URL} (asigna dominios Production del proyecto)."
           npx --yes vercel@41 promote "${DEPLOY_URL}" --yes --token "${TOKEN}" --timeout=5m
 
+      - name: Alias explícito al hostname canónico del portal
+        run: |
+          set -euo pipefail
+          TOKEN="${VERCEL_TOKEN}"
+          echo "Alias ${DEPLOY_URL} → propieyaweb.vercel.app"
+          npx --yes vercel@41 alias set "${DEPLOY_URL}" propieyaweb.vercel.app --yes --token "${TOKEN}"
+
       - name: Esperar propagación
         run: sleep 90
 
@@ -194,7 +201,10 @@ jobs:
             fi
             sleep 25
           done
-          echo "::error::Tras promote, ${PORTAL_URL}/api/version sigue sin el commit $want. Revisar dominios en Vercel y log de promote."
+          echo "::error::Tras promote/alias, ${PORTAL_URL}/api/version sigue sin el commit $want."
+          echo "Referencia proyecto web (default *.vercel.app):"
+          curl -sS "https://propie-ya-web.vercel.app/api/version" 2>/dev/null || true
+          echo ""
           echo "$body"
           exit 1
 
