@@ -4,38 +4,30 @@
 
 ---
 
-## Repositorio Git oficial
+## Repositorio Git (operativo vs auditoría)
 
-| Qué | Valor |
-|-----|--------|
-| **Remoto (SSH)** | `git@github.com:kiteprop/ia-propieya.git` |
-| **Web** | https://github.com/kiteprop/ia-propieya |
+| Rol | Repo | Remoto típico | Uso |
+|-----|------|---------------|-----|
+| **Operativo (origin)** | [TeknoAriel/PropieYa](https://github.com/TeknoAriel/PropieYa) | `https://github.com/TeknoAriel/PropieYa.git` o `git@github.com:TeknoAriel/PropieYa.git` | Push diario, **GitHub Actions**, **Vercel → conectar este repo** (`propie-ya-web` y panel). |
+| **Copia org (auditoría)** | [kiteprop/ia-propieya](https://github.com/kiteprop/ia-propieya) | `kiteprop` | Solo cuando el propietario pida: `git push kiteprop deploy/infra` (y `main` si aplica). |
 
-**Slug real:** si el repositorio tiene otro nombre (p. ej. `propieya.ia`), confirmalo en **https://github.com/orgs/kiteprop/repositories** y ajustá el remoto:
-
-```bash
-git remote set-url origin git@github.com:kiteprop/NOMBRE-EXACTO-DEL-REPO.git
-```
-
-**Primera subida (repo vacío, rama `main`):** con el historial actual en `deploy/infra`:
+**Clonar / alinear `origin`:**
 
 ```bash
-git push -u origin deploy/infra:main
+git remote add origin https://github.com/TeknoAriel/PropieYa.git
+# o SSH: git@github.com:TeknoAriel/PropieYa.git
+git remote add kiteprop git@github.com:kiteprop/ia-propieya.git
 ```
 
-**Seguir usando el flujo de deploy** (rama `deploy/infra` en el mismo remoto):
+**Flujo de deploy** (siempre contra `origin` = Tekno):
 
 ```bash
 git push -u origin deploy/infra
 ```
 
-El remoto anterior puede quedar como respaldo, por ejemplo:
+**`main` en Tekno:** si el repo tiene reglas que exigen PR, actualizar `main` vía pull request desde `deploy/infra` (no push directo).
 
-```bash
-git remote add old-propiya https://github.com/TeknoAriel/PropieYa.git
-```
-
-Si `git push` devuelve *Repository not found*: crear el repo vacío en la org **kiteprop**, comprobar que tu usuario tiene acceso y que la clave SSH en https://github.com/settings/keys está asociada a esa cuenta (o usar HTTPS + PAT).
+Verificación local del remoto: `pnpm verify:repo-remote`.
 
 ---
 
@@ -53,7 +45,7 @@ Si `git push` devuelve *Repository not found*: crear el repo vacío en la org **
 
 ### A1. Permisos de GitHub Actions
 
-1. Ir a: **https://github.com/kiteprop/ia-propieya/settings/actions**
+1. Ir a: **https://github.com/TeknoAriel/PropieYa/settings/actions**
 2. En **Actions permissions**: permitir acciones (all actions/reusable workflows)
 3. En **Workflow permissions**:
    - **Read and write permissions**
@@ -62,7 +54,7 @@ Si `git push` devuelve *Repository not found*: crear el repo vacío en la org **
 
 ### A2. Secretos Vercel en GitHub (obligatorio)
 
-Ir a: **https://github.com/kiteprop/ia-propieya/settings/secrets/actions** y crear:
+Ir a: **https://github.com/TeknoAriel/PropieYa/settings/secrets/actions** y crear (mismos nombres si también se despliega desde la copia `kiteprop`):
 
 - `VERCEL_TOKEN`
 - `VERCEL_ORG_ID`
@@ -78,28 +70,19 @@ Origen de valores:
 1. Proyecto web único: **`propie-ya-web`**
 2. Root Directory: `apps/web`
 3. Dominio `propieyaweb.vercel.app` asignado a ese proyecto
+4. **Settings → Git:** conectar **`TeknoAriel/PropieYa`** (rama `deploy/infra` o la que uses para producción) para que previews y comentarios de deploy en dashboard coincidan con el repo que administrás.
 
 Ver también: `docs/DEPLOY-CONTEXTO-AGENTES.md`.
 
-> El deploy productivo lo realiza **GitHub Actions + Vercel CLI**, por lo que no dependemos del Git Integration de Vercel para publicar.
+> El deploy productivo lo realiza **GitHub Actions + Vercel CLI** en el repo **Tekno**; los secretos `VERCEL_*` deben estar en **TeknoAriel/PropieYa**. La integración Git en Vercel es complementaria (builds automáticos al push).
 
-### A4. Vercel “no conecta” a `kiteprop/ia-propieya` (falta aprobación)
+### A4. Org `kiteprop` (solo copia / auditoría)
 
-Si **`https://github.com/organizations/kiteprop/settings/installations`** te da **404**, no sos **owner** de la org: esa URL solo la ven owners. Igual podés usar **solo** [secretos de Actions en el repo](https://github.com/kiteprop/ia-propieya/settings/secrets/actions) (`VERCEL_*`): el workflow Promote **no requiere** instalar Vercel en la org para desplegar por CLI. Para **conectar Git en el dashboard de Vercel** al repo kiteprop, hace falta que un **owner** apruebe la app (o te den ese rol).
+La app de Vercel en la org **kiteprop** puede seguir **pendiente de aprobación** por un owner: no bloquea el día a día si trabajás con **Tekno** + secretos en [TeknoAriel/PropieYa → Secrets](https://github.com/TeknoAriel/PropieYa/settings/secrets/actions).
 
-Si en **Settings → Git** del proyecto (web o panel) al elegir **kiteprop/ia-propieya** aparece que **falta una aprobación**:
+Cuando pidan auditoría: `git push kiteprop deploy/infra` (y secretos en `kiteprop/ia-propieya` solo si deben correr Actions desde ese repo).
 
-1. **Aprobar la GitHub App de Vercel en la org `kiteprop`**
-   - Como **owner** de la org: [Organización kiteprop → Settings → Third-party access / GitHub Apps](https://github.com/organizations/kiteprop/settings/installations) → **Vercel** → **Configure** → marcar acceso a **`ia-propieya`** (o “All repositories”) → Save.
-   - Si la instalación quedó **pending**, revisá el correo de GitHub o [Installations](https://github.com/settings/installations) con la cuenta que administra la org.
-
-2. **Repo equivocado en Vercel**  
-   Si el proyecto sigue enlazado a **`TeknoAriel/PropieYa`** (u otro remoto viejo), los builds de Vercel **no** reflejan `kiteprop/ia-propieya`. Desconectá Git y volvé a conectar **`kiteprop/ia-propieya`** cuando la app esté aprobada.  
-   - **Web:** proyecto **`propie-ya-web`**, Root `apps/web`.  
-   - **Panel:** **`propieya-panel`**, Root `apps/panel`.
-
-3. **Deploy del portal por CLI**  
-   Aunque Git falle o siga en el repo viejo, el workflow **Promote** con secretos `VERCEL_*` (Parte A2) puede publicar **si el job de Actions pasa**. Si Actions está en rojo, corregí primero el error del paso que falla (Lint / Typecheck / Build / Deploy).
+**Si más adelante Vercel debe enlazarse solo a `kiteprop/ia-propieya`:** [instalaciones kiteprop](https://github.com/organizations/kiteprop/settings/installations) → **Vercel** → acceso al repo `ia-propieya`; luego reconectar Git en **propie-ya-web** / panel.
 
 ---
 
@@ -164,8 +147,9 @@ Corregir secreto y volver a pushear `deploy/infra`.
 
 ## Resumen de URLs
 
-- https://github.com/kiteprop/ia-propieya/settings/actions
-- https://github.com/kiteprop/ia-propieya/settings/secrets/actions
+- https://github.com/TeknoAriel/PropieYa/settings/actions
+- https://github.com/TeknoAriel/PropieYa/settings/secrets/actions
+- https://github.com/kiteprop/ia-propieya (copia org; sin uso obligatorio diario)
 - https://propieyaweb.vercel.app
 - https://propieyaweb.vercel.app/api/health
 - https://propieyaweb.vercel.app/api/version
