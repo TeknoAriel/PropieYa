@@ -94,6 +94,13 @@ function conversationPriorFromInput(
   }
 }
 
+/** Errores de red / DB que no deben mostrarse crudos al usuario (p. ej. postgres.js en serverless). */
+function isLikelyDbOrNetworkFailure(message: string): boolean {
+  return /CONNECT_TIMEOUT|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|UND_ERR_CONNECT|undefined:undefined|Connection terminated unexpectedly/i.test(
+    message
+  )
+}
+
 /** Evita que el usuario inyecte comodines ILIKE (%, _). */
 function sanitizeIlikeFragment(raw: string): string {
   return raw.trim().slice(0, 120).replace(/[%_\\]/g, ' ').replace(/\s+/g, ' ')
@@ -1044,117 +1051,135 @@ export const listingRouter = createTRPCRouter({
         })
       }
 
-      const prior = conversationPriorFromInput(input.previousContext)
-      const intention = await extractIntentionFromMessage(
-        input.message,
-        prior ?? undefined
-      )
-      const explainFilters: ExplainMatchFilters = {
-        q: intention.q,
-        operationType: intention.operationType,
-        propertyType: intention.propertyType,
-        city: intention.city,
-        neighborhood: intention.neighborhood,
-        minPrice: intention.minPrice,
-        maxPrice: intention.maxPrice,
-        minBedrooms: intention.minBedrooms,
-        minSurface: intention.minSurface,
-        amenities: intention.amenities,
-      }
-      const filters = {
-        ...explainFilters,
-        limit: 24,
-        offset: 0,
-      }
-      // Nota: facets aún no se extraen desde texto; solo via UI (Sprint 26).
+      try {
+        const prior = conversationPriorFromInput(input.previousContext)
+        const intention = await extractIntentionFromMessage(
+          input.message,
+          prior ?? undefined
+        )
+        const explainFilters: ExplainMatchFilters = {
+          q: intention.q,
+          operationType: intention.operationType,
+          propertyType: intention.propertyType,
+          city: intention.city,
+          neighborhood: intention.neighborhood,
+          minPrice: intention.minPrice,
+          maxPrice: intention.maxPrice,
+          minBedrooms: intention.minBedrooms,
+          minSurface: intention.minSurface,
+          amenities: intention.amenities,
+        }
+        const filters = {
+          ...explainFilters,
+          limit: 24,
+          offset: 0,
+        }
+        // Nota: facets aún no se extraen desde texto; solo via UI (Sprint 26).
 
-      const esResult = await searchListings(filters)
+        const esResult = await searchListings(filters)
 
-      if (esResult.fromEs && esResult.total > 0) {
-        return {
-          filters,
-          hits: withMatchReasons(explainFilters, esResult.hits),
-          total: esResult.total,
+        if (esResult.fromEs && esResult.total > 0) {
+          return {
+            filters,
+            hits: withMatchReasons(explainFilters, esResult.hits),
+            total: esResult.total,
+          }
         }
-      }
 
-      const conditions = [eq(listings.status, 'active')]
-      if (filters.q?.trim()) {
-        const frag = sanitizeIlikeFragment(filters.q)
-        if (frag.length > 0) {
-          const pat = `%${frag}%`
-          conditions.push(
-            or(
-              ilike(listings.title, pat),
-              ilike(listings.description, pat)
-            )!
-          )
-        }
-      }
-      if (filters.operationType) {
-        conditions.push(eq(listings.operationType, filters.operationType))
-      }
-      if (filters.propertyType) {
-        conditions.push(eq(listings.propertyType, filters.propertyType))
-      }
-      if (filters.minPrice !== undefined) {
-        conditions.push(gte(listings.priceAmount, filters.minPrice))
-      }
-      if (filters.maxPrice !== undefined) {
-        conditions.push(lte(listings.priceAmount, filters.maxPrice))
-      }
-      if (filters.minBedrooms !== undefined) {
-        conditions.push(gte(listings.bedrooms, filters.minBedrooms))
-      }
-      if (filters.minSurface !== undefined) {
-        conditions.push(gte(listings.surfaceTotal, filters.minSurface))
-      }
-      if (filters.city?.trim()) {
-        const c = sanitizeIlikeFragment(filters.city)
-        if (c.length > 0) {
-          conditions.push(
-            sql`COALESCE(${listings.address}->>'city', '') ILIKE ${`%${c}%`}`
-          )
-        }
-      }
-      if (filters.neighborhood?.trim()) {
-        const n = sanitizeIlikeFragment(filters.neighborhood)
-        if (n.length > 0) {
-          conditions.push(
-            sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${`%${n}%`}`
-          )
-        }
-      }
-      if (filters.amenities && filters.amenities.length > 0) {
-        const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
-        for (const a of filters.amenities) {
-          if (allowed.includes(a)) {
+        const conditions = [eq(listings.status, 'active')]
+        if (filters.q?.trim()) {
+          const frag = sanitizeIlikeFragment(filters.q)
+          if (frag.length > 0) {
+            const pat = `%${frag}%`
             conditions.push(
-              sql`(${listings.features}->'amenities') @> to_jsonb(ARRAY[${a}]::text[])`
+              or(
+                ilike(listings.title, pat),
+                ilike(listings.description, pat)
+              )!
             )
           }
         }
-      }
+        if (filters.operationType) {
+          conditions.push(eq(listings.operationType, filters.operationType))
+        }
+        if (filters.propertyType) {
+          conditions.push(eq(listings.propertyType, filters.propertyType))
+        }
+        if (filters.minPrice !== undefined) {
+          conditions.push(gte(listings.priceAmount, filters.minPrice))
+        }
+        if (filters.maxPrice !== undefined) {
+          conditions.push(lte(listings.priceAmount, filters.maxPrice))
+        }
+        if (filters.minBedrooms !== undefined) {
+          conditions.push(gte(listings.bedrooms, filters.minBedrooms))
+        }
+        if (filters.minSurface !== undefined) {
+          conditions.push(gte(listings.surfaceTotal, filters.minSurface))
+        }
+        if (filters.city?.trim()) {
+          const c = sanitizeIlikeFragment(filters.city)
+          if (c.length > 0) {
+            conditions.push(
+              sql`COALESCE(${listings.address}->>'city', '') ILIKE ${`%${c}%`}`
+            )
+          }
+        }
+        if (filters.neighborhood?.trim()) {
+          const n = sanitizeIlikeFragment(filters.neighborhood)
+          if (n.length > 0) {
+            conditions.push(
+              sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${`%${n}%`}`
+            )
+          }
+        }
+        if (filters.amenities && filters.amenities.length > 0) {
+          const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
+          for (const a of filters.amenities) {
+            if (allowed.includes(a)) {
+              conditions.push(
+                sql`(${listings.features}->'amenities') @> to_jsonb(ARRAY[${a}]::text[])`
+              )
+            }
+          }
+        }
 
-      const [countResult] = await ctx.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(listings)
-        .where(and(...conditions))
+        const [countResult] = await ctx.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(listings)
+          .where(and(...conditions))
 
-      const total = countResult?.count ?? 0
+        const total = countResult?.count ?? 0
 
-      const hits = await ctx.db
-        .select(listingsSelectPublic)
-        .from(listings)
-        .where(and(...conditions))
-        .orderBy(...ORDER_PUBLIC_RECENCY)
-        .limit(filters.limit ?? 24)
-        .offset(filters.offset ?? 0)
+        const hits = await ctx.db
+          .select(listingsSelectPublic)
+          .from(listings)
+          .where(and(...conditions))
+          .orderBy(...ORDER_PUBLIC_RECENCY)
+          .limit(filters.limit ?? 24)
+          .offset(filters.offset ?? 0)
 
-      return {
-        filters,
-        hits: withMatchReasons(explainFilters, hits),
-        total,
+        return {
+          filters,
+          hits: withMatchReasons(explainFilters, hits),
+          total,
+        }
+      } catch (err) {
+        if (err instanceof TRPCError) throw err
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error('[listing.searchConversational]', err)
+        if (isLikelyDbOrNetworkFailure(msg)) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message:
+              'No pudimos conectar con la base de datos. Intentá de nuevo en unos segundos o usá los filtros clásicos debajo del buscador.',
+          })
+        }
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message:
+            'La búsqueda por texto falló. Probá de nuevo o refiná con filtros y mapa.',
+        })
       }
     }),
 
