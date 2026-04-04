@@ -26,6 +26,7 @@ import {
   Skeleton,
 } from '@propieya/ui'
 import type { BuscarMapBBox, BuscarMapPoint } from '@/components/buscar/buscar-search-map'
+import { BUSCAR_MAP_DEFAULT_CENTER } from '@/components/buscar/buscar-map-constants'
 
 const BuscarSearchMap = dynamic(
   () => import('./buscar-search-map').then((mod) => mod.BuscarSearchMap),
@@ -264,6 +265,13 @@ export function BuscarContent({
   const [mapPolygonRing, setMapPolygonRing] = useState<BuscarMapPoint[]>([])
   const [polygonDrawMode, setPolygonDrawMode] = useState(false)
   const [showMap, setShowMap] = useState(false)
+  /** Centro de ciudad/barrio (Nominatim) para mapa y orden por cercanía. */
+  const [localityGeocode, setLocalityGeocode] = useState<{
+    lat: number
+    lng: number
+  } | null>(null)
+  const [userGeo, setUserGeo] = useState<{ lat: number; lng: number } | null>(null)
+  const userGeoRequestRef = useRef(false)
   /** Filtros clásicos colapsados por defecto para no abrumar; se abren si la URL trae criterios. */
   const [classicFiltersOpen, setClassicFiltersOpen] = useState(false)
   const [flowDialogOpen, setFlowDialogOpen] = useState(false)
@@ -289,6 +297,90 @@ export function BuscarContent({
       prev.includes(key) ? prev.filter((x) => x !== key) : [...prev, key]
     )
   }
+
+  useEffect(() => {
+    const c = city.trim()
+    const n = neighborhood.trim()
+    if (!c && !n) {
+      setLocalityGeocode(null)
+      return
+    }
+    const ac = new AbortController()
+    const debounce = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const u = new URL('/api/geocode-locality', window.location.origin)
+          if (c) u.searchParams.set('city', c)
+          if (n) u.searchParams.set('neighborhood', n)
+          const r = await fetch(u.toString(), { signal: ac.signal })
+          const j = (await r.json()) as {
+            ok?: boolean
+            lat?: number
+            lng?: number
+          }
+          if (
+            j.ok === true &&
+            typeof j.lat === 'number' &&
+            typeof j.lng === 'number'
+          ) {
+            setLocalityGeocode({ lat: j.lat, lng: j.lng })
+          } else {
+            setLocalityGeocode(null)
+          }
+        } catch {
+          if (!ac.signal.aborted) setLocalityGeocode(null)
+        }
+      })()
+    }, 400)
+    return () => {
+      ac.abort()
+      window.clearTimeout(debounce)
+    }
+  }, [city, neighborhood])
+
+  useEffect(() => {
+    if (!showMap) return
+    if (city.trim() || neighborhood.trim()) return
+    if (userGeo != null) return
+    if (userGeoRequestRef.current) return
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return
+    userGeoRequestRef.current = true
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserGeo({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        })
+      },
+      () => {
+        /* denegado o error: queda el default del mapa */
+      },
+      { enableHighAccuracy: false, timeout: 12_000, maximumAge: 300_000 }
+    )
+  }, [showMap, city, neighborhood, userGeo])
+
+  const mapInitialCenter = useMemo((): [number, number] => {
+    if (city.trim() || neighborhood.trim()) {
+      if (localityGeocode) return [localityGeocode.lat, localityGeocode.lng]
+      return BUSCAR_MAP_DEFAULT_CENTER
+    }
+    if (userGeo) return [userGeo.lat, userGeo.lng]
+    return BUSCAR_MAP_DEFAULT_CENTER
+  }, [city, neighborhood, localityGeocode, userGeo])
+
+  const mapInitialZoom = useMemo(() => {
+    if (city.trim() || neighborhood.trim()) {
+      return localityGeocode ? 13 : 11
+    }
+    if (userGeo) return 12
+    return 11
+  }, [city, neighborhood, localityGeocode, userGeo])
+
+  const mapRemountKey = useMemo(
+    () =>
+      `${mapInitialCenter[0].toFixed(5)}-${mapInitialCenter[1].toFixed(5)}-${mapInitialZoom}`,
+    [mapInitialCenter, mapInitialZoom]
+  )
 
   const coreSearchFilters = useMemo(
     () => ({
@@ -322,8 +414,15 @@ export function BuscarContent({
           ? { flags: selectedAmenityFacets }
           : undefined,
       bbox:
-        mapPolygonRing.length >= 3 ? undefined : (mapBbox ?? undefined),
-      polygon: mapPolygonRing.length >= 3 ? mapPolygonRing : undefined,
+        showMap && mapPolygonRing.length < 3 ? (mapBbox ?? undefined) : undefined,
+      polygon:
+        showMap && mapPolygonRing.length >= 3 ? mapPolygonRing : undefined,
+      ...((city.trim() || neighborhood.trim()) && localityGeocode
+        ? {
+            sortNearLat: localityGeocode.lat,
+            sortNearLng: localityGeocode.lng,
+          }
+        : {}),
     }),
     [
       q,
@@ -347,8 +446,10 @@ export function BuscarContent({
       maxSurfaceCovered,
       minTotalRooms,
       selectedAmenityFacets,
+      showMap,
       mapBbox,
       mapPolygonRing,
+      localityGeocode,
     ]
   )
 
@@ -1095,6 +1196,9 @@ export function BuscarContent({
             <BuscarSearchMap
               pins={mapPins}
               onApplyZona={setMapBbox}
+              initialCenter={mapInitialCenter}
+              initialZoom={mapInitialZoom}
+              mapRemountKey={mapRemountKey}
               polygonRing={mapPolygonRing}
               polygonDrawMode={polygonDrawMode}
               onPolygonVertex={addPolygonVertexSafe}

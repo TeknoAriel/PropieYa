@@ -36,7 +36,10 @@ import {
   removeListingFromSearch,
 } from '../../lib/search/sync'
 import { searchListings } from '../../lib/search/search'
-import { getListingSearchSortKeyCount } from '../../lib/search/query'
+import {
+  getListingSearchSortKeyCount,
+  shouldApplyLocalityProximitySort,
+} from '../../lib/search/query'
 import type { SearchFilters } from '../../lib/search/types'
 import { decodeListingSearchCursor } from '../../lib/search/search-cursor'
 import { sqlPointInPolygonLngLat } from '../../lib/search/point-in-polygon-sql'
@@ -785,6 +788,8 @@ export const listingRouter = createTRPCRouter({
         amenities: input.amenities,
         geoPoint: input.geoPoint,
         geoRadius: input.geoRadius,
+        sortNearLat: input.sortNearLat,
+        sortNearLng: input.sortNearLng,
         facets: input.facets,
         bbox: input.bbox,
         polygon: input.polygon,
@@ -1005,11 +1010,21 @@ export const listingRouter = createTRPCRouter({
         .where(whereClause)
       const sqlTotal = Number(totalRow?.c ?? 0)
 
+      const proximitySqlOrder =
+        shouldApplyLocalityProximitySort(merged as SearchFilters) &&
+        merged.sortNearLat != null &&
+        merged.sortNearLng != null
+          ? sql`(CASE WHEN ${listings.locationLat} IS NOT NULL AND ${listings.locationLng} IS NOT NULL THEN ((${listings.locationLat}::double precision - ${merged.sortNearLat}) * (${listings.locationLat}::double precision - ${merged.sortNearLat}) + (${listings.locationLng}::double precision - ${merged.sortNearLng}) * (${listings.locationLng}::double precision - ${merged.sortNearLng})) ELSE 1e30::double precision END)`
+          : null
+
       const rows = await ctx.db
         .select(listingsSelectPublic)
         .from(listings)
         .where(whereClause)
-        .orderBy(...ORDER_PUBLIC_RECENCY)
+        .orderBy(
+          ...(proximitySqlOrder ? [proximitySqlOrder] : []),
+          ...ORDER_PUBLIC_RECENCY
+        )
         .limit(limit)
         .offset(offset)
       if (persistThisSearch) {

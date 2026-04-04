@@ -256,7 +256,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   emptyResults: 'No hay resultados. Probá con otros filtros o ampliá la búsqueda.',
 
   mapHelp:
-    'Solo se marcan avisos con ubicación. Mové el mapa y tocá «Buscar en esta zona» para filtrar por el rectángulo visible. Con 3+ vértices en polígono se filtra por el área dibujada.',
+    'Solo se marcan avisos con ubicación. El filtro por mapa aplica solo con el mapa abierto: «Buscar en esta zona» o polígono de 3+ vértices. Con ciudad o barrio, el listado se ordena por cercanía al centro de esa zona (sin recortar). Sin zona, el mapa puede abrir cerca de tu ubicación si el navegador lo permite.',
 
   mapNoPins:
     'No hay resultados con pin en este momento (falta geolocalización en los avisos o los filtros no devolvieron coincidencias con coordenadas).',
@@ -351,7 +351,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarFlowBannerSeeSteps: 'Ver pasos',
   buscarFlowBannerDismiss: 'No volver a mostrar',
   mapViewportUpdatesResults:
-    'El mapa no recorta la búsqueda al moverlo: tocá «Buscar en esta zona» solo si querés filtrar por el rectángulo visible.',
+    'Ciudad o barrio: mapa y orden por proximidad a esa zona. Sin zona: centro cercano a tu ubicación si aceptás permisos. Filtrar por rectángulo solo con «Buscar en esta zona».',
   polygonSelfIntersectHint:
     'Así el área quedaría cruzada o partida (no es una sola figura cerrada). Tocá otro lugar o borrá el trazo y empezá de nuevo.',
 } as const

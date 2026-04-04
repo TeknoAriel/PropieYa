@@ -27,6 +27,9 @@ type MergeableSearchBase = {
   escalera?: string
   minPrice?: number
   maxPrice?: number
+  /** Ancla opcional para orden por cercanía (no filtra); solo con localidad explícita en servidor. */
+  sortNearLat?: number
+  sortNearLng?: number
 }
 
 export function mergePublicSearchFromQuery<T extends MergeableSearchBase>(

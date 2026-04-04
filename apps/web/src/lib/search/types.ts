@@ -69,6 +69,12 @@ export interface SearchFilters {
     enums?: Record<string, string[]>
     ranges?: Record<string, { min?: number | null; max?: number | null }>
   }
+  /**
+   * Orden por distancia a este punto (ES/SQL) solo si hay `city` o `neighborhood`;
+   * nunca filtra resultados.
+   */
+  sortNearLat?: number
+  sortNearLng?: number
   /** Filtro por rectángulo (mapa). */
   bbox?: { south: number; north: number; west: number; east: number }
   /** Polígono (mapa); orden de vértices = contorno. */

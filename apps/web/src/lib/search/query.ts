@@ -13,6 +13,26 @@ function sanitize(q: string): string {
   return q.trim().slice(0, 200).replace(/[<>*?":|\\[\]{}()&]/g, ' ')
 }
 
+/** Orden por distancia solo con localidad explícita y ancla válida (no filtra). */
+export function shouldApplyLocalityProximitySort(
+  rest: Pick<SearchFilters, 'city' | 'neighborhood' | 'sortNearLat' | 'sortNearLng'>
+): boolean {
+  const hasLocality = Boolean(rest.city?.trim() || rest.neighborhood?.trim())
+  const lat = rest.sortNearLat
+  const lng = rest.sortNearLng
+  return (
+    hasLocality &&
+    typeof lat === 'number' &&
+    typeof lng === 'number' &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  )
+}
+
 export function buildSearchBody(filters: SearchFilters): Record<string, unknown> {
   const merged = mergePublicSearchFromQuery(filters)
   const { residualTextQuery, ...rest } = merged
@@ -189,10 +209,28 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
     },
     { id: { order: 'desc' as const } },
   ]
+  const useProximity = shouldApplyLocalityProximitySort(rest)
+  const geoDistSort: Record<string, unknown> | null = useProximity
+    ? {
+        _geo_distance: {
+          location: {
+            lat: rest.sortNearLat!,
+            lon: rest.sortNearLng!,
+          },
+          order: 'asc' as const,
+          unit: 'm' as const,
+          missing: '_last',
+        },
+      }
+    : null
   const sort: Record<string, unknown>[] =
     textQ.length > 0
-      ? [{ _score: { order: 'desc' as const } }, ...dateSort]
-      : dateSort
+      ? geoDistSort
+        ? [{ _score: { order: 'desc' as const } }, geoDistSort, ...dateSort]
+        : [{ _score: { order: 'desc' as const } }, ...dateSort]
+      : geoDistSort
+        ? [geoDistSort, ...dateSort]
+        : dateSort
 
   const body: Record<string, unknown> = {
     query: { bool: { must, ...(mustNot.length > 0 ? { must_not: mustNot } : {}) } },
@@ -234,10 +272,12 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
   return body
 }
 
-/** Longitud del array `sort` / `search_after` en ES (4 sin full-text, 5 con `_score`). */
-export function getListingSearchSortKeyCount(filters: SearchFilters): 4 | 5 {
+/** Longitud del array `sort` / `search_after` en ES (4–6 según texto y cercanía por localidad). */
+export function getListingSearchSortKeyCount(filters: SearchFilters): 4 | 5 | 6 {
   const merged = mergePublicSearchFromQuery(filters)
-  return sanitize(merged.residualTextQuery).length > 0 ? 5 : 4
+  const { residualTextQuery, ...rest } = merged
+  const base = sanitize(residualTextQuery).length > 0 ? 5 : 4
+  return (base + (shouldApplyLocalityProximitySort(rest as SearchFilters) ? 1 : 0)) as 4 | 5 | 6
 }
 
 export function getSearchParams(filters: SearchFilters) {
