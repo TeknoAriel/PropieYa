@@ -1,6 +1,6 @@
 # Contexto y reglas duras — Deploy (para agentes y humanos)
 
-**Última actualización:** 2026-03-31. Este archivo es la **hoja de contexto** cuando haya dudas sobre Vercel, dominios o CI. No duplicar reglas contradictorias en otros docs: enlazar aquí.
+**Última actualización:** 2026-04-04. Este archivo es la **hoja de contexto** cuando haya dudas sobre Vercel, dominios o CI. No duplicar reglas contradictorias en otros docs: enlazar aquí.
 
 ---
 
@@ -15,6 +15,7 @@
 | **Root Directory en Vercel** | `apps/web` |
 | **Rama de integración deploy** | Push a `deploy/infra` → workflow → **Vercel CLI** (portal). **`main` debe fusionarse con `deploy/infra`** para mantener el repo y el deploy del panel (Git) alineados; el workflow **no** mergea solo. |
 | **Secretos GitHub** | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` deben apuntar al proyecto **`propie-ya-web`** (el workflow Promote **falla** si el ID no resuelve a ese nombre vía API Vercel). |
+| **`/api/version` en deploy CLI** | El paso `vercel deploy --prod` del workflow inyecta `BUILD_COMMIT_SHA` y `BUILD_GIT_REF` (`GITHUB_SHA` / `GITHUB_REF_NAME`) para que el portal no quede mostrando un commit viejo de integración Git. `GET /api/version` prioriza esas variables sobre `VERCEL_GIT_*`. |
 | **Fuente única de constantes** | `scripts/production-canonical.env.sh` — URL canónica, nombre del proyecto web, rama de deploy. Scripts: `pnpm verificar:ruta-produccion`. |
 | **Variables Vercel (web, Production)** | Mínimo: `DATABASE_URL`, `JWT_SECRET`, `TRUSTED_PANEL_ORIGINS`. [Environment Variables →](https://vercel.com/teknoariels-projects/propie-ya-web/settings/environment-variables) |
 

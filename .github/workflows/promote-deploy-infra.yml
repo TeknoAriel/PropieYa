@@ -104,7 +104,10 @@ jobs:
           set -euo pipefail
           TOKEN="${VERCEL_TOKEN}"
           META=( --meta "githubSha=${GITHUB_SHA}" --meta "githubRepo=${GITHUB_REPOSITORY}" )
-          if ! out=$(npx --yes vercel@41 deploy --prod --yes --token "${TOKEN}" "${META[@]}" 2>&1); then
+          if ! out=$(npx --yes vercel@41 deploy --prod --yes --token "${TOKEN}" \
+            --env "BUILD_COMMIT_SHA=${GITHUB_SHA}" \
+            --env "BUILD_GIT_REF=${GITHUB_REF_NAME}" \
+            "${META[@]}" 2>&1); then
             echo "::error::vercel deploy --prod falló"
             echo "$out" | tail -n 100
             exit 1
