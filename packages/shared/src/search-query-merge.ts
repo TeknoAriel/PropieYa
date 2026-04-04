@@ -43,8 +43,13 @@ export function mergePublicSearchFromQuery<T extends MergeableSearchBase>(
   const residualTextQuery = stripConsumedPartsFromQuery(q, consumedParts)
   return {
     ...input,
-    operationType: input.operationType ?? ex.operationType,
-    propertyType: input.propertyType ?? ex.propertyType,
+    /**
+     * Si el texto declara operación o tipo (p. ej. «en alquiler», «departamento»), debe ganar
+     * sobre la URL / páginas `/venta` y `/alquiler` que envían `operationType` forzado; si no,
+     * seguiríamos buscando venta+depto y el listado queda en cero.
+     */
+    operationType: ex.operationType ?? input.operationType,
+    propertyType: ex.propertyType ?? input.propertyType,
     amenities: [...new Set([...(input.amenities ?? []), ...((ex.amenities ?? []) as string[])])],
     minSurface: ex.minSurface ?? input.minSurface,
     maxSurface: ex.maxSurface ?? input.maxSurface,

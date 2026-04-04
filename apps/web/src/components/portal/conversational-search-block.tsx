@@ -187,7 +187,8 @@ export function ConversationalSearchBlock({
 
   const searchConversational = trpc.listing.searchConversational.useMutation({
     onSuccess: (data) => {
-      const mergedOp = forcedOperation ?? data.filters.operationType
+      /** Intención del mensaje por encima del contexto de página (venta/alquiler). */
+      const mergedOp = data.filters.operationType ?? forcedOperation
       const urlFilters = {
         q: data.filters.q,
         operationType: mergedOp,
