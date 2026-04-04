@@ -56,6 +56,11 @@ export interface SearchFilters {
   city?: string
   neighborhood?: string
   amenities?: string[]
+  /**
+   * `preferred` (default): amenities y facets.flags suman score, no excluyen.
+   * `strict`: cada amenity/flag positivo exige coincidencia en índice.
+   */
+  amenitiesMatchMode?: 'preferred' | 'strict'
   geoPoint?: { lat: number; lng: number }
   /** Radio en metros (requiere `geoPoint`). */
   geoRadius?: number

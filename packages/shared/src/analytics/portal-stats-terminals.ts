@@ -8,6 +8,10 @@
 export const PORTAL_STATS_TERMINALS = {
   /** Ejecución exitosa del listado (portal); alinear con persistencia en search_history si hay sesión. */
   LISTING_SEARCH_EXECUTED: 'listing.search.executed',
+  /** Primera pasada devolvió 0 y la relajación o SQL devolvió resultados. */
+  LISTING_SEARCH_ZERO_PRIMARY_RESOLVED: 'listing.search.zero_primary_resolved',
+  /** Se aplicó al menos un paso de relajación de filtros (payload: stepIds, tier). */
+  LISTING_SEARCH_RELAXATION_USED: 'listing.search.relaxation_used',
   /** Vista de ficha pública (antes de incrementar view_count / ES). */
   LISTING_FICHA_VIEW: 'listing.ficha.view',
   /** Lead enviado desde ficha u otro CTA. */
@@ -36,6 +40,10 @@ export type PortalStatsTerminalId =
 /** Etiquetas cortas para panel B2B / informes. */
 export const PORTAL_STATS_TERMINAL_LABELS: Record<PortalStatsTerminalId, string> = {
   [PORTAL_STATS_TERMINALS.LISTING_SEARCH_EXECUTED]: 'Búsqueda en listado',
+  [PORTAL_STATS_TERMINALS.LISTING_SEARCH_ZERO_PRIMARY_RESOLVED]:
+    'Búsqueda: 0 exactos resueltos con relajación',
+  [PORTAL_STATS_TERMINALS.LISTING_SEARCH_RELAXATION_USED]:
+    'Búsqueda: relajación de filtros aplicada',
   [PORTAL_STATS_TERMINALS.LISTING_FICHA_VIEW]: 'Vista de ficha pública',
   [PORTAL_STATS_TERMINALS.LEAD_SUBMITTED]: 'Lead enviado',
   [PORTAL_STATS_TERMINALS.LISTING_COMPARE_ADD]: 'Aviso al comparador',

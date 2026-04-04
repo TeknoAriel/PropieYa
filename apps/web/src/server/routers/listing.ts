@@ -37,6 +37,10 @@ import {
 } from '../../lib/search/sync'
 import { searchListings } from '../../lib/search/search'
 import {
+  searchListingsLayered,
+  type ListingSearchUX,
+} from '../../lib/search/search-layered'
+import {
   getListingSearchSortKeyCount,
   shouldApplyLocalityProximitySort,
 } from '../../lib/search/query'
@@ -50,7 +54,10 @@ import {
 import { recordPortalStatsEvent } from '../../lib/analytics/record-portal-stats-event'
 import { checkRateLimit } from '../../lib/rate-limit'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
-import { listingSearchInputSchema } from './listing-search-input'
+import {
+  listingSearchInputSchema,
+  type ListingSearchInput,
+} from './listing-search-input'
 
 const conversationalPriorFiltersSchema = z.object({
   q: z.string().max(200).optional(),
@@ -107,6 +114,56 @@ function isLikelyDbOrNetworkFailure(message: string): boolean {
 /** Evita que el usuario inyecte comodines ILIKE (%, _). */
 function sanitizeIlikeFragment(raw: string): string {
   return raw.trim().slice(0, 120).replace(/[%_\\]/g, ' ').replace(/\s+/g, ' ')
+}
+
+function searchFiltersToListingInputOverlay(
+  base: ListingSearchInput,
+  f: SearchFilters
+): ListingSearchInput {
+  return {
+    ...base,
+    q: f.q,
+    operationType: f.operationType as ListingSearchInput['operationType'],
+    propertyType: f.propertyType,
+    minPrice: f.minPrice,
+    maxPrice: f.maxPrice,
+    minSurface: f.minSurface,
+    maxSurface: f.maxSurface,
+    minBedrooms: f.minBedrooms,
+    minBathrooms: f.minBathrooms,
+    minGarages: f.minGarages,
+    floorMin: f.floorMin,
+    floorMax: f.floorMax,
+    escalera: f.escalera,
+    orientation: f.orientation as ListingSearchInput['orientation'],
+    minSurfaceCovered: f.minSurfaceCovered,
+    maxSurfaceCovered: f.maxSurfaceCovered,
+    minTotalRooms: f.minTotalRooms,
+    city: f.city,
+    neighborhood: f.neighborhood,
+    amenities: f.amenities,
+    facets: f.facets,
+    geoPoint: f.geoPoint,
+    geoRadius: f.geoRadius,
+    sortNearLat: f.sortNearLat,
+    sortNearLng: f.sortNearLng,
+    bbox: f.bbox,
+    polygon: f.polygon,
+    amenitiesMatchMode: f.amenitiesMatchMode ?? 'preferred',
+  }
+}
+
+function defaultSqlSearchUx(sqlTotal: number): ListingSearchUX {
+  return {
+    tier: 'exact',
+    primaryTotal: sqlTotal,
+    strictMatchCount: sqlTotal,
+    mergedSupplement: false,
+    nearAreaSupplement: false,
+    messages: [],
+    relaxationStepIds: [],
+    disableDeepPagination: false,
+  }
 }
 
 /** Historial de búsqueda (usuarios logueados). No bloquea la respuesta si falla el insert. */
@@ -765,7 +822,12 @@ export const listingRouter = createTRPCRouter({
 
       const esOffset = searchAfter ? 0 : offset
 
-      const esResult = await searchListings({
+      const persistThisSearch =
+        Boolean(sessionUserId) &&
+        !cursor?.trim() &&
+        input.offset === 0
+
+      const esFilters: SearchFilters = {
         q: input.q,
         operationType: input.operationType,
         propertyType: input.propertyType,
@@ -793,20 +855,18 @@ export const listingRouter = createTRPCRouter({
         facets: input.facets,
         bbox: input.bbox,
         polygon: input.polygon,
+        amenitiesMatchMode: input.amenitiesMatchMode,
         limit,
         offset: esOffset,
         searchAfter,
-      })
+      }
 
-      const persistThisSearch =
-        Boolean(sessionUserId) &&
-        !cursor?.trim() &&
-        input.offset === 0
+      const layered = await searchListingsLayered(esFilters)
 
       // Si ES responde pero el índice está vacío o desincronizado, total=0 y antes
       // no había fallback: el buscador quedaba en silencio. SQL es fuente de verdad.
       // Paginación por cursor (search_after) no es reproducible en SQL: no mezclar.
-      if (!(esResult.fromEs && esResult.total > 0) && searchAfter) {
+      if (!(layered.fromEs && layered.total > 0) && searchAfter) {
         throw new TRPCError({
           code: 'PRECONDITION_FAILED',
           message:
@@ -814,32 +874,66 @@ export const listingRouter = createTRPCRouter({
         })
       }
 
-      if (esResult.fromEs && esResult.total > 0) {
+      if (layered.fromEs && layered.total > 0) {
         if (persistThisSearch) {
           persistSearchHistoryRow(ctx.db, {
             userId: sessionUserId!,
             filters: filtersSnapshot,
-            resultCount: esResult.total,
+            resultCount: layered.total,
             startedAt,
           })
+        }
+        if (!cursor?.trim() && input.offset === 0) {
+          if (layered.ux.primaryTotal === 0 && layered.total > 0) {
+            recordPortalStatsEvent(ctx.db, {
+              terminalId:
+                PORTAL_STATS_TERMINALS.LISTING_SEARCH_ZERO_PRIMARY_RESOLVED,
+              userId: ctx.session?.userId ?? null,
+              payload: { tier: layered.ux.tier },
+            })
+          }
+          if (
+            layered.ux.relaxationStepIds.length > 0 ||
+            layered.ux.mergedSupplement
+          ) {
+            recordPortalStatsEvent(ctx.db, {
+              terminalId: PORTAL_STATS_TERMINALS.LISTING_SEARCH_RELAXATION_USED,
+              userId: ctx.session?.userId ?? null,
+              payload: {
+                tier: layered.ux.tier,
+                steps: layered.ux.relaxationStepIds,
+                merged: layered.ux.mergedSupplement,
+              },
+            })
+          }
         }
         return {
           items: withMatchReasons(
             explainFilters as ExplainMatchFilters,
-            esResult.hits
+            layered.hits
           ),
-          total: esResult.total,
-          nextCursor: esResult.nextCursor,
+          total: layered.total,
+          nextCursor: layered.ux.disableDeepPagination
+            ? null
+            : layered.nextCursor,
+          searchUX: layered.ux,
         }
       }
 
-      const merged = mergePublicSearchFromQuery(input)
+      const sqlInputSeed =
+        layered.fromEs && layered.total === 0
+          ? searchFiltersToListingInputOverlay(input, layered.lastTriedFilters)
+          : input
+
+      const merged = mergePublicSearchFromQuery(sqlInputSeed)
       const { residualTextQuery, ...sqlInputBase } = merged
       const sqlInput = {
         ...sqlInputBase,
-        facets: input.facets,
-        polygon: input.polygon,
+        facets: sqlInputSeed.facets,
+        polygon: sqlInputSeed.polygon,
       }
+
+      const amenityStrict = sqlInputSeed.amenitiesMatchMode === 'strict'
 
       const conditions = [eq(listings.status, 'active')]
       if (residualTextQuery.trim()) {
@@ -932,7 +1026,11 @@ export const listingRouter = createTRPCRouter({
           )
         }
       }
-      if (sqlInput.amenities && sqlInput.amenities.length > 0) {
+      if (
+        amenityStrict &&
+        sqlInput.amenities &&
+        sqlInput.amenities.length > 0
+      ) {
         const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
         for (const a of sqlInput.amenities) {
           if (allowed.includes(a)) {
@@ -943,8 +1041,12 @@ export const listingRouter = createTRPCRouter({
         }
       }
 
-      // Facets flags/excludes (Sprint 26). Inicialmente se interpretan como amenities.
-      if (sqlInput.facets?.flags && sqlInput.facets.flags.length > 0) {
+      // Facets flags/excludes (Sprint 26). Inicialmente se materializan como amenities.
+      if (
+        amenityStrict &&
+        sqlInput.facets?.flags &&
+        sqlInput.facets.flags.length > 0
+      ) {
         const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
         for (const f of sqlInput.facets.flags) {
           if (allowed.includes(f)) {
@@ -1048,10 +1150,50 @@ export const listingRouter = createTRPCRouter({
           })
         )
       }
+
+      const sqlUx: ListingSearchUX =
+        layered.fromEs && layered.total === 0
+          ? {
+              ...layered.ux,
+              messages:
+                sqlTotal > 0
+                  ? [
+                      ...layered.ux.messages,
+                      'Mostramos coincidencias desde la base de datos (el índice de búsqueda no devolvió filas con estos criterios).',
+                    ]
+                  : layered.ux.messages,
+            }
+          : defaultSqlSearchUx(sqlTotal)
+
+      if (!cursor?.trim() && input.offset === 0) {
+        if (layered.fromEs && layered.total === 0 && sqlTotal > 0) {
+          if (layered.ux.primaryTotal === 0) {
+            recordPortalStatsEvent(ctx.db, {
+              terminalId:
+                PORTAL_STATS_TERMINALS.LISTING_SEARCH_ZERO_PRIMARY_RESOLVED,
+              userId: ctx.session?.userId ?? null,
+              payload: { tier: layered.ux.tier, source: 'sql_fallback' },
+            })
+          }
+          if (layered.ux.relaxationStepIds.length > 0) {
+            recordPortalStatsEvent(ctx.db, {
+              terminalId: PORTAL_STATS_TERMINALS.LISTING_SEARCH_RELAXATION_USED,
+              userId: ctx.session?.userId ?? null,
+              payload: {
+                tier: layered.ux.tier,
+                steps: layered.ux.relaxationStepIds,
+                source: 'sql_fallback',
+              },
+            })
+          }
+        }
+      }
+
       return {
         items: withMatchReasons(explainFilters as ExplainMatchFilters, rows),
         total: sqlTotal,
         nextCursor: null,
+        searchUX: sqlUx,
       }
     }),
 
@@ -1086,12 +1228,13 @@ export const listingRouter = createTRPCRouter({
         }
         const filters = {
           ...explainFilters,
+          amenitiesMatchMode: 'preferred' as const,
           limit: 24,
           offset: 0,
         }
         // Nota: facets aún no se extraen desde texto; solo via UI (Sprint 26).
 
-        const esResult = await searchListings(filters)
+        const esResult = await searchListings(filters as SearchFilters)
 
         if (esResult.fromEs && esResult.total > 0) {
           return {

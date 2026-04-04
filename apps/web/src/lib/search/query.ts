@@ -38,18 +38,27 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
   const { residualTextQuery, ...rest } = merged
   const must: Record<string, unknown>[] = [{ term: { status: 'active' } }]
   const mustNot: Record<string, unknown>[] = []
+  const should: Record<string, unknown>[] = []
 
-  /** Cada amenity como `term` (AND), alineado al SQL con varios `@>`. */
-  if ((rest.amenities?.length ?? 0) > 0) {
-    for (const a of rest.amenities!) {
-      must.push({ term: { amenities: a } })
-    }
-  }
+  const amenityTerms = new Set<string>()
+  for (const a of rest.amenities ?? []) amenityTerms.add(a)
+  for (const f of rest.facets?.flags ?? []) amenityTerms.add(f)
 
-  /** Facets flags/excludes (Sprint 26). Inicialmente se materializan como amenities. */
-  if ((rest.facets?.flags?.length ?? 0) > 0) {
-    for (const f of rest.facets!.flags!) {
-      must.push({ term: { amenities: f } })
+  const strictAmenities = rest.amenitiesMatchMode === 'strict'
+  if (amenityTerms.size > 0) {
+    if (strictAmenities) {
+      for (const term of amenityTerms) {
+        must.push({ term: { amenities: term } })
+      }
+    } else {
+      for (const term of amenityTerms) {
+        should.push({
+          constant_score: {
+            filter: { term: { amenities: term } },
+            boost: 2.2,
+          },
+        })
+      }
     }
   }
   if ((rest.facets?.excludeFlags?.length ?? 0) > 0) {
@@ -232,8 +241,12 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
         ? [geoDistSort, ...dateSort]
         : dateSort
 
+  const boolQuery: Record<string, unknown> = { must }
+  if (mustNot.length > 0) boolQuery.must_not = mustNot
+  if (should.length > 0) boolQuery.should = should
+
   const body: Record<string, unknown> = {
-    query: { bool: { must, ...(mustNot.length > 0 ? { must_not: mustNot } : {}) } },
+    query: { bool: boolQuery },
     sort,
     size,
     track_total_hits: true,

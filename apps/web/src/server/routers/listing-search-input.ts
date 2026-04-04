@@ -80,6 +80,11 @@ export const listingSearchFiltersBaseSchema = z.object({
     .min(3)
     .max(60)
     .optional(),
+  /**
+   * `preferred`: amenities / facets.flags no excluyen en ES/SQL (solo ranking o boost).
+   * `strict`: exigen presencia en inventario.
+   */
+  amenitiesMatchMode: z.enum(['preferred', 'strict']).optional().default('preferred'),
 })
 
 /** Filtros con `facets` saneados contra el catálogo (evita ids inyectados). */

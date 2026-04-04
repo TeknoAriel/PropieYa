@@ -267,6 +267,25 @@ export const PORTAL_SEARCH_UX_COPY = {
 
   advancedSectionLocation: 'Ubicación y superficie',
 
+  mainFiltersTitle: 'Filtros principales',
+  mainFiltersSubtitle:
+    'Operación, tipo, ubicación y cifras clave. Las palabras clave refinan el texto sin sustituir el resto.',
+  locationBlockTitle: 'Ubicación',
+  mapIntegratedTitle: 'Mapa y zona',
+  advancedFiltersTitle: 'Filtros avanzados',
+  advancedComfortTitle: 'Confort y condiciones',
+  refineLayerTitle: 'Afinar más opciones',
+  refineLayerSubtitle:
+    'Amenities y detalles: por defecto favorecen resultados compatibles sin vaciar el listado.',
+  facetChipsHintRefine:
+    'Atajos del mismo catálogo que las casillas; se combinan con lo que elijas abajo.',
+  strictAmenitiesLabel: 'Amenities obligatorios',
+  strictAmenitiesHint:
+    'Si está marcado, cada amenity elegido debe figurar en el aviso; si no, actúan como preferencia (más arriba quien cumple más).',
+  refineCatalogTitle: 'Más amenities',
+  moreRefineLayer: 'Afinar más',
+  hideRefineLayer: 'Ocultar afinado',
+
   matchWhyTitle: 'Por qué encaja',
 
   loadError: 'No pudimos cargar los resultados.',
