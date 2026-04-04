@@ -343,6 +343,8 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarShowingCount: 'Mostrando {shown} de {total}',
 
   buscarFlowDialogOpen: 'Cómo buscar en Propieya',
+  buscarFlowDialogDontShowAgain: 'No volver a mostrar esta guía',
+  buscarFlowDialogConfirm: 'Listo',
   buscarFlowLinkInline: '¿Cómo funciona la búsqueda?',
   buscarFlowBannerTeaser:
     'Podés arrancar con una frase; mapa y filtros son opcionales cuando quieras afinar.',

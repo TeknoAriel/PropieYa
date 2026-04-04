@@ -19,6 +19,7 @@ import {
   Card,
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   Input,
@@ -266,6 +267,7 @@ export function BuscarContent({
   /** Filtros clásicos colapsados por defecto para no abrumar; se abren si la URL trae criterios. */
   const [classicFiltersOpen, setClassicFiltersOpen] = useState(false)
   const [flowDialogOpen, setFlowDialogOpen] = useState(false)
+  const [flowGuideDontShowAgain, setFlowGuideDontShowAgain] = useState(false)
   const [showFlowBanner, setShowFlowBanner] = useState(false)
   const [polygonDrawHint, setPolygonDrawHint] = useState<string | null>(null)
   const [searchPage, setSearchPage] = useState<{
@@ -553,6 +555,15 @@ export function BuscarContent({
     }
     setShowFlowBanner(false)
   }, [])
+
+  useEffect(() => {
+    if (flowDialogOpen) setFlowGuideDontShowAgain(false)
+  }, [flowDialogOpen])
+
+  const confirmFlowGuideDialog = useCallback(() => {
+    if (flowGuideDontShowAgain) dismissFlowBanner()
+    setFlowDialogOpen(false)
+  }, [flowGuideDontShowAgain, dismissFlowBanner])
 
   const handleViewportBbox = useCallback((bbox: BuscarMapBBox) => {
     if (spatialBlockLiveBboxRef.current) return
@@ -1187,7 +1198,7 @@ export function BuscarContent({
       </div>
 
       <Dialog open={flowDialogOpen} onOpenChange={setFlowDialogOpen}>
-        <DialogContent className="max-w-md sm:max-w-lg">
+        <DialogContent className="max-w-md gap-4 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{S.buscarFlowDialogOpen}</DialogTitle>
           </DialogHeader>
@@ -1197,6 +1208,28 @@ export function BuscarContent({
             <li>{S.buscarFlowStep3}</li>
             <li>{S.buscarFlowStep4}</li>
           </ol>
+          <DialogFooter className="flex flex-col gap-3 sm:flex-col sm:justify-stretch sm:space-x-0">
+            <label
+              htmlFor="propieya-flow-guide-dismiss"
+              className="flex cursor-pointer items-start gap-2 text-left text-sm text-text-secondary"
+            >
+              <input
+                id="propieya-flow-guide-dismiss"
+                type="checkbox"
+                className="mt-0.5 shrink-0 rounded border-border"
+                checked={flowGuideDontShowAgain}
+                onChange={(e) => setFlowGuideDontShowAgain(e.target.checked)}
+              />
+              <span>{S.buscarFlowDialogDontShowAgain}</span>
+            </label>
+            <Button
+              type="button"
+              className="w-full"
+              onClick={confirmFlowGuideDialog}
+            >
+              {S.buscarFlowDialogConfirm}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
