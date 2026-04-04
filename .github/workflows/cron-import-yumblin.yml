@@ -1,0 +1,23 @@
+# Disparo manual de ingesta (misma URL que el cron Vercel). Sin `schedule`: la ingesta
+# rutinaria es a pedido (webhook §48); el cron en vercel.json queda ~2×/mes (Hobby).
+name: Cron import Yumblin (portal)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: GET /api/cron/import-yumblin
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          URL="https://propieyaweb.vercel.app/api/cron/import-yumblin"
+          if [ -n "${CRON_SECRET:-}" ]; then
+            curl -sfS -H "Authorization: Bearer ${CRON_SECRET}" "$URL"
+          else
+            echo "::warning::CRON_SECRET no está definido en GitHub; se llama sin Bearer (solo válido si Production no define CRON_SECRET)."
+            curl -sfS "$URL"
+          fi

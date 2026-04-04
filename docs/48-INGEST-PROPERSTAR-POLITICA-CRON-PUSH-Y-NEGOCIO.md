@@ -18,7 +18,7 @@
 
 | Entorno | Objetivo | Cómo se implementa |
 |---------|----------|-------------------|
-| **Producción** | Mantener el portal alineado al JSON con latencia baja. | **Vercel Cron** en `apps/web/vercel.json` y `vercel.json` (raíz): ruta `GET /api/cron/import-yumblin`, schedule **`*/30 * * * *`** (cada 30 minutos, UTC). Variable **`IMPORT_SYNC_INTERVAL_HOURS=0`** en Vercel Production para que **cada tick del cron ejecute** sync real (sin saltarse por intervalo). |
+| **Producción** | Ingesta **a pedido**; cron solo como respaldo poco frecuente (Hobby). | **Operación normal:** webhook `POST /api/webhooks/kiteprop-ingest` o llamada manual a `GET /api/cron/import-yumblin`. **Vercel Cron** en `vercel.json` / `apps/web/vercel.json`: `import-yumblin` con **`0 6 1,16 * *`** (días 1 y 16 de cada mes, ~cada 15 días, UTC) — compatible con plan Hobby (no más de una vez por día). **GitHub:** `.github/workflows/cron-import-yumblin.yml` **solo** `workflow_dispatch` (preparado para pruebas u operador; sin schedule). Para cadencia agresiva (p. ej. cada 30 min) hace falta **Vercel Pro** u otro scheduler externo. Variable **`IMPORT_SYNC_INTERVAL_HOURS`:** ajustar según política (p. ej. `0` si cada disparo debe intentar sync real). Crons diarios del portal: `check-validity`, `sync-search`. |
 | **Prueba / staging** | Menos carga sobre origen y sobre DB; misma lógica que prod. | **Opción A:** dejar el cron de Vercel solo en **Production** (comportamiento habitual de Vercel: crons en deploys de producción). Previews sin cron automático. **Opción B:** en un proyecto o env de staging, `IMPORT_SYNC_INTERVAL_HOURS=48` para que, si el cron dispara más seguido, la mayoría de llamadas retornen `skipped: interval` sin bajar el JSON. **Opción C:** sin cron; solo **ingesta puntual** (webhook o CLI). |
 | **Actualización bajo demanda** | Publicación inmediata tras un alta o cambio en origen. | **POST** `https://<dominio-canónico>/api/webhooks/kiteprop-ingest` con `Authorization: Bearer <KITEPROP_INGEST_WEBHOOK_SECRET>` (si no existe, se acepta `CRON_SECRET`). **No** aplica `IMPORT_SYNC_INTERVAL_HOURS`. Dispara el mismo pipeline que el cron (ver §5). |
 
@@ -58,7 +58,7 @@
 
 | Ruta | Método | Uso |
 |------|--------|-----|
-| `/api/cron/import-yumblin` | GET | Vercel Cron; `Authorization: Bearer <CRON_SECRET>` si `CRON_SECRET` está definido. Respeta `IMPORT_SYNC_ENFORCE_INTERVAL` y `IMPORT_SYNC_INTERVAL_HOURS` salvo `IMPORT_SYNC_ENFORCE_INTERVAL=false`. |
+| `/api/cron/import-yumblin` | GET | Vercel Cron ~2×/mes (ver §2); **workflow_dispatch** en GitHub para disparo manual. `Authorization: Bearer <CRON_SECRET>` si `CRON_SECRET` está definido. Respeta `IMPORT_SYNC_ENFORCE_INTERVAL` y `IMPORT_SYNC_INTERVAL_HOURS` salvo `IMPORT_SYNC_ENFORCE_INTERVAL=false`. |
 | `/api/webhooks/kiteprop-ingest` | POST | Push desde Kiteprop (o operador). `Bearer <KITEPROP_INGEST_WEBHOOK_SECRET>` preferido; si no hay, `CRON_SECRET`. Cuerpo JSON **opcional** (solo trazabilidad). **Siempre** `enforceInterval: false`. |
 
 Variables relacionadas: `docs/37` §3 y `.env.example` (`IMPORT_SYNC_INTERVAL_HOURS` admite **decimales**, p. ej. `0.5` = 30 min entre ejecuciones **reales** si no se usa `0`).
@@ -67,13 +67,13 @@ Variables relacionadas: `docs/37` §3 y `.env.example` (`IMPORT_SYNC_INTERVAL_HO
 
 ## 6. Elasticsearch y cron `sync-search`
 
-El pipeline del **import** publica borradores nuevos y elimina de ES los **withdrawn** de ese run. Los avisos **ya activos** que solo se **actualizan** en DB pueden quedar en ES hasta el próximo **`/api/cron/sync-search`** o reindex manual. Con ingest cada 30 min, **conviene** revisar la cadencia de `sync-search` en `vercel.json` (hoy diaria) si se exige paridad casi inmediata en `/buscar`; cambio sujeto a coste y plan Vercel.
+El pipeline del **import** publica borradores nuevos y elimina de ES los **withdrawn** de ese run. Los avisos **ya activos** que solo se **actualizan** en DB pueden quedar en ES hasta el próximo **`/api/cron/sync-search`** o reindex manual. Con ingesta a pedido y cron de import espaciado, la paridad en `/buscar` depende del webhook/cron `sync-search` (hoy diario en `vercel.json`).
 
 ---
 
 ## 7. Checklist operativo (agente)
 
-1. Production: `IMPORT_SYNC_INTERVAL_HOURS=0`, `CRON_SECRET`, feed URL, `IMPORT_WITHDRAW_SCOPE=org` si un solo feed.
+1. Production: `CRON_SECRET` en Vercel si se quiere proteger GET cron/webhook; opcionalmente el mismo secreto en GitHub solo si se usa **workflow_dispatch** manual; `IMPORT_SYNC_INTERVAL_HOURS` según política; feed URL; `IMPORT_WITHDRAW_SCOPE=org` si un solo feed.
 2. Webhook: definir `KITEPROP_INGEST_WEBHOOK_SECRET` y configurar en Kiteprop la URL POST del dominio canónico.
 3. Contrato JSON: documentar el **campo del código de tipo de aviso** y la clave en `features` donde se guardará hasta tener columna dedicada.
 4. Tras cambiar `vercel.json` (crons): referencia en `docs/DEPLOY-CONTEXTO-AGENTES.md` (excepción autorizada por propietario 2026-03-31).

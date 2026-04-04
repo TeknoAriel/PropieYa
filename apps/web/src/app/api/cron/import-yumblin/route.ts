@@ -6,7 +6,8 @@
  * - Altas, actualizaciones (hash por ítem) y bajas (withdrawn si ya no está en el feed; scope `IMPORT_WITHDRAW_SCOPE`).
  * - Tras bajas: elimina documentos en Elasticsearch (`removeListingFromSearch`).
  *
- * Cadencia Vercel: `apps/web/vercel.json` (producción). Entre ejecuciones: `IMPORT_SYNC_INTERVAL_HOURS`
+ * Cadencia: ingesta principal **a pedido** (webhook §48). En `vercel.json` hay cron de
+ * respaldo ~cada 15 días (`0 6 1,16 * *`, UTC). Entre ejecuciones: `IMPORT_SYNC_INTERVAL_HOURS`
  * (`0` = sin mínimo; admite decimales, p. ej. `0.5` = 30 min).
  *
  * Ingesta puntual sin intervalo: POST `/api/webhooks/kiteprop-ingest` (Bearer secret).
