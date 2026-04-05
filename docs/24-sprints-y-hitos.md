@@ -34,7 +34,8 @@
 | Panel estadísticas (arquitectura + terminales) | `docs/49-ARQUITECTURA-PANEL-ESTADISTICAS-Y-TELEMETRIA.md`, `PORTAL_STATS_TERMINALS` en `@propieya/shared` |
 | Sprint 35 (comparar v1.1) | ✅ — tabla: precio/m², cocheras, expensas; quitar fila + URL |
 | Sprint 36 (mapa `/buscar`: aviso filtro + scroll a resultados) | ✅ — ver sección Sprint 36 |
-| Siguiente backlog doc 43 §5 | Lista sincronizada con mapa en `/buscar` (capa mayor: sync bidireccional), o filtros capa 4 contextual |
+| Sprint 37 (lista ↔ mapa en `/buscar`, v0) | ✅ — ver sección Sprint 37 |
+| Siguiente backlog doc 43 §5 | Sync mapa más profundo (viewport / refinamiento), o filtros capa 4 contextual |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
 | Infra GitHub/Vercel nuevo repo (Sprint 25.6–25.8) | Confirmar secretos `VERCEL_*`, Actions verde y Git del proyecto web → `docs/DEPLOY-PASOS-URIs.md` Parte A |
@@ -447,7 +448,7 @@
 
 ---
 
-*Actualizado: 2026-03-31 (Sprint 35–36 en cuerpo; mapa `/buscar` UX + doc 47 F3; doc 49 panel estadísticas + terminales; Sprint 34 doc 47; 25.6–25.8 según dashboard)*
+*Actualizado: 2026-03-31 (Sprint 35–37; lista↔mapa v0 en `/buscar`; doc 47 F3; doc 49 panel estadísticas; 25.6–25.8 según dashboard)*
 
 ---
 
@@ -644,3 +645,18 @@
 - [x] 36.5 `pnpm verify` + push `deploy/infra`
 
 **Criterios:** con mapa visible, el usuario ve cuándo el área del mapa **sí** filtra resultados; al aplicar rectángulo, los resultados entran en foco sin buscar la sección a mano.
+
+---
+
+## Sprint 37 — Lista ↔ mapa en `/buscar` (sincronización v0) ✅
+
+**Objetivo:** primera capa de **lista sincronizada con mapa** (doc 43): el usuario relaciona pin y tarjeta sin adivinar.
+
+- [x] 37.1 Clic en pin del mapa → scroll a la tarjeta del aviso y resaltado temporal (anillo)
+- [x] 37.2 Hover en tarjeta con coordenadas (mapa abierto y hay pins) → `flyTo` al punto y pin más visible; hover tiene prioridad sobre selección por clic
+- [x] 37.3 Texto de ayuda bajo el mapa; selección por pin se limpia si el aviso deja de estar en la página cargada
+- [x] 37.4 `pnpm verify` + push `deploy/infra`
+
+**Criterios:** con mapa abierto y resultados georreferenciados, pin y tarjeta se refuerzan mutuamente; en móvil el clic en pin sigue siendo útil aunque no haya hover en lista.
+
+**Nota:** sync “viewport = filtro” o refinamiento automático al mover el mapa queda para un sprint posterior (mayor alcance que este v0).

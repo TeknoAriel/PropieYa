@@ -418,6 +418,10 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Mover el mapa no recorta resultados. Tocá «Buscar en esta zona» o dibujá un polígono de al menos 3 puntos para filtrar por área.',
   buscarMapFilterActiveHint:
     'Los resultados están acotados al rectángulo o polígono elegido en el mapa.',
+
+  /** Sprint 37 — lista ↔ mapa (hover y clic en pin). */
+  buscarMapListSyncHint:
+    'Con avisos en el mapa: pasá el mouse por una tarjeta que tenga ubicación para centrar el mapa; tocá un punto azul para resaltar ese aviso en la lista.',
   polygonSelfIntersectHint:
     'Así el área quedaría cruzada o partida (no es una sola figura cerrada). Tocá otro lugar o borrá el trazo y empezá de nuevo.',
 } as const

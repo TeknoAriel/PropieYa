@@ -108,14 +108,58 @@ function pinsFromListings(list: BuscarListingCardData[]) {
   return out
 }
 
-function ListingCard({ listing }: { listing: BuscarListingCardData }) {
+function getListingPinCoords(
+  l: BuscarListingCardData
+): { lat: number; lng: number } | null {
+  let lat: number | undefined
+  let lng: number | undefined
+  if (l.location?.lat != null && l.location?.lon != null) {
+    lat = l.location.lat
+    lng = l.location.lon
+  }
+  if (l.locationLat != null && l.locationLng != null) {
+    lat = Number(l.locationLat)
+    lng = Number(l.locationLng)
+  }
+  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) return null
+  const ok = sanitizeListingCoordinates(lat, lng)
+  return ok ? { lat: ok.lat, lng: ok.lng } : null
+}
+
+function ListingCard({
+  listing,
+  mapSelectedListingId,
+  onMapSyncHover,
+}: {
+  listing: BuscarListingCardData
+  mapSelectedListingId: string | null
+  onMapSyncHover?: (listingId: string | null) => void
+}) {
   const operationLabel = OPERATION_TYPE_LABELS[listing.operationType] ?? listing.operationType
   const neighborhood = listing.address?.neighborhood ?? '—'
   const city = listing.address?.city ?? '—'
+  const pinCoords = getListingPinCoords(listing)
+  const emphasizeFromMap = mapSelectedListingId === listing.id
 
   return (
-    <Link href={`/propiedad/${listing.id}`}>
-      <Card className="overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow">
+    <div id={`buscar-listing-${listing.id}`} className="scroll-mt-24 rounded-lg">
+      <Link
+        href={`/propiedad/${listing.id}`}
+        className="block"
+        onMouseEnter={() => {
+          if (pinCoords && onMapSyncHover) onMapSyncHover(listing.id)
+        }}
+        onMouseLeave={() => {
+          if (onMapSyncHover) onMapSyncHover(null)
+        }}
+      >
+        <Card
+          className={`overflow-hidden group cursor-pointer transition-shadow hover:shadow-lg ${
+            emphasizeFromMap
+              ? 'ring-2 ring-brand-primary ring-offset-2 ring-offset-surface-primary'
+              : ''
+          }`}
+        >
         <div className="relative h-48 overflow-hidden bg-surface-secondary">
           <Image
             src={
@@ -191,6 +235,7 @@ function ListingCard({ listing }: { listing: BuscarListingCardData }) {
         </div>
       </Card>
     </Link>
+    </div>
   )
 }
 
@@ -317,6 +362,8 @@ export function BuscarContent({
   const [localityModalOpen, setLocalityModalOpen] = useState(false)
   const [flowGuideDontShowAgain, setFlowGuideDontShowAgain] = useState(false)
   const [polygonDrawHint, setPolygonDrawHint] = useState<string | null>(null)
+  const [mapSyncHoverId, setMapSyncHoverId] = useState<string | null>(null)
+  const [mapSyncSelectedId, setMapSyncSelectedId] = useState<string | null>(null)
   const [searchPage, setSearchPage] = useState<{
     cursor?: string
     offset: number
@@ -575,6 +622,24 @@ export function BuscarContent({
 
   const mapPins = useMemo(() => pinsFromListings(listings), [listings])
 
+  useEffect(() => {
+    if (mapSyncSelectedId && !listings.some((l) => l.id === mapSyncSelectedId)) {
+      setMapSyncSelectedId(null)
+    }
+  }, [listings, mapSyncSelectedId])
+
+  const mapPinEmphasisId = mapSyncHoverId ?? mapSyncSelectedId
+
+  const mapSyncFlyCoords = useMemo(() => {
+    if (!mapSyncHoverId) return null
+    const l = listings.find((x) => x.id === mapSyncHoverId)
+    return l ? getListingPinCoords(l) : null
+  }, [mapSyncHoverId, listings])
+
+  const onMapSyncHover = useCallback((id: string | null) => {
+    setMapSyncHoverId(id)
+  }, [])
+
   const demandPayload = useMemo(() => {
     const { limit: _l, offset: _o, cursor: _c, ...rest } = filters
     return rest
@@ -777,7 +842,7 @@ export function BuscarContent({
     })
   }, [])
 
-  const scrollToElementId = (id: string) => {
+  const scrollToElementId = useCallback((id: string) => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         document.getElementById(id)?.scrollIntoView({
@@ -786,7 +851,15 @@ export function BuscarContent({
         })
       })
     })
-  }
+  }, [])
+
+  const onMapPinSelect = useCallback(
+    (id: string) => {
+      setMapSyncSelectedId(id)
+      scrollToElementId(`buscar-listing-${id}`)
+    },
+    [scrollToElementId]
+  )
 
   return (
     <div className="container mx-auto space-y-4 px-4 py-6 md:py-8">
@@ -1190,6 +1263,11 @@ export function BuscarContent({
                   polygonRing={mapPolygonRing}
                   polygonDrawMode={polygonDrawMode}
                   onPolygonVertex={addPolygonVertexSafe}
+                  mapPinEmphasisId={mapPinEmphasisId}
+                  onPinClickListing={mapPins.length > 0 ? onMapPinSelect : undefined}
+                  flyToPinCoords={
+                    mapPins.length > 0 ? mapSyncFlyCoords : null
+                  }
                 />
                 <div className="mt-2 space-y-2">
                   {mapBbox || mapPolygonRing.length >= 3 ? (
@@ -1204,6 +1282,9 @@ export function BuscarContent({
                     </div>
                   )}
                   <p className="text-xs text-text-tertiary">{S.mapHelp}</p>
+                  {mapPins.length > 0 ? (
+                    <p className="text-xs text-text-tertiary">{S.buscarMapListSyncHint}</p>
+                  ) : null}
                 </div>
                 {mapPins.length === 0 && !isLoading ? (
                   <p className="text-sm text-text-secondary">{S.mapNoPins}</p>
@@ -1561,7 +1642,14 @@ export function BuscarContent({
             <div className="space-y-6">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {listings.map((listing) => (
-                  <ListingCard key={listing.id} listing={listing} />
+                  <ListingCard
+                    key={listing.id}
+                    listing={listing}
+                    mapSelectedListingId={mapSyncSelectedId}
+                    onMapSyncHover={
+                      showMap && mapPins.length > 0 ? onMapSyncHover : undefined
+                    }
+                  />
                 ))}
               </div>
               {data && data.total > 0 ? (

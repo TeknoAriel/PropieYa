@@ -114,8 +114,32 @@ function escapeHtml(text: string) {
     .replace(/"/g, '&quot;')
 }
 
+/** Sprint 37 — centrar mapa al enfocar un aviso desde la lista. */
+function FlyToPinHighlight({
+  lat,
+  lng,
+}: {
+  lat: number | undefined
+  lng: number | undefined
+}) {
+  const map = useMap()
+  useEffect(() => {
+    if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) return
+    map.flyTo([lat, lng], Math.max(map.getZoom(), 15), { duration: 0.45 })
+  }, [map, lat, lng])
+  return null
+}
+
 /** Agrupa marcadores en zoom bajo (doc 38 AA — clusters). */
-function ClusteredPins({ pins }: { pins: BuscarMapPin[] }) {
+function ClusteredPins({
+  pins,
+  emphasisPinId,
+  onPinClickListing,
+}: {
+  pins: BuscarMapPin[]
+  emphasisPinId?: string | null
+  onPinClickListing?: (listingId: string) => void
+}) {
   const map = useMap()
 
   useEffect(() => {
@@ -128,17 +152,24 @@ function ClusteredPins({ pins }: { pins: BuscarMapPin[] }) {
     })
 
     for (const p of pins) {
+      const isEmphasis = emphasisPinId === p.id
       const cm = L.circleMarker([p.lat, p.lng], {
-        radius: 8,
-        color: '#2563eb',
-        fillColor: '#3b82f6',
-        fillOpacity: 0.85,
-        weight: 2,
+        radius: isEmphasis ? 11 : 8,
+        color: isEmphasis ? '#1e40af' : '#2563eb',
+        fillColor: isEmphasis ? '#1d4ed8' : '#3b82f6',
+        fillOpacity: isEmphasis ? 0.95 : 0.85,
+        weight: isEmphasis ? 3 : 2,
       })
       const safeTitle = escapeHtml(p.title)
       cm.bindPopup(
         `<a href="/propiedad/${escapeHtml(p.id)}" class="text-sm font-medium text-blue-600 hover:underline">${safeTitle}</a>`,
       )
+      if (onPinClickListing) {
+        cm.on('click', (e) => {
+          L.DomEvent.stopPropagation(e)
+          onPinClickListing(p.id)
+        })
+      }
       mcg.addLayer(cm)
     }
 
@@ -147,7 +178,7 @@ function ClusteredPins({ pins }: { pins: BuscarMapPin[] }) {
       mcg.clearLayers()
       map.removeLayer(mcg)
     }
-  }, [map, pins])
+  }, [map, pins, emphasisPinId, onPinClickListing])
 
   return null
 }
@@ -236,6 +267,11 @@ type BuscarSearchMapProps = {
   /** Si true, cada clic en el mapa agrega un vértice. */
   polygonDrawMode?: boolean
   onPolygonVertex?: (p: BuscarMapPoint) => void
+  /** Sprint 37 — hover lista / clic pin: mismo id resalta marcador y tarjeta. */
+  mapPinEmphasisId?: string | null
+  onPinClickListing?: (listingId: string) => void
+  /** Centrar mapa (p. ej. hover en tarjeta con coordenadas). */
+  flyToPinCoords?: { lat: number; lng: number } | null
 }
 
 export function BuscarSearchMap({
@@ -249,6 +285,9 @@ export function BuscarSearchMap({
   polygonRing = [],
   polygonDrawMode = false,
   onPolygonVertex,
+  mapPinEmphasisId = null,
+  onPinClickListing,
+  flyToPinCoords = null,
 }: BuscarSearchMapProps) {
   const points = useMemo(
     () => pins.map((p) => [p.lat, p.lng] as [number, number]),
@@ -288,7 +327,12 @@ export function BuscarSearchMap({
           </>
         ) : null}
         <ZonaControls onApplyZona={onApplyZona} />
-        <ClusteredPins pins={pins} />
+        <FlyToPinHighlight lat={flyToPinCoords?.lat} lng={flyToPinCoords?.lng} />
+        <ClusteredPins
+          pins={pins}
+          emphasisPinId={mapPinEmphasisId}
+          onPinClickListing={onPinClickListing}
+        />
       </MapContainer>
     </div>
   )
