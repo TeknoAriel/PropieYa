@@ -35,7 +35,7 @@
 
 2. **No crear** un segundo “proyecto web” en Vercel sin actualizar `docs/CANONICAL-URLS.md`, este archivo y `docs/33-VERCEL-CONFIG-PROYECTO-WEB.md`.
 
-3. **Un solo flujo de producción:** monorepo en **`TeknoAriel/PropieYa`**; cambios al portal en `deploy/infra`, `pnpm verify`, `git push origin deploy/infra`, workflow Promote + Vercel CLI al proyecto **`propie-ya-web`**. **Copia** en `kiteprop/ia-propieya` solo para auditoría cuando lo indique el propietario. Después, **fusionar `deploy/infra` → `main`** (PR en Tekno si hay reglas de rama). Verificación: `pnpm verificar:deploy` y/o `pnpm verificar:ruta-produccion`. Lista de sprints: `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md`.
+3. **Un solo flujo de producción:** monorepo en **`TeknoAriel/PropieYa`**; cambios al portal en `deploy/infra`, `pnpm verify`, `git push origin deploy/infra`, workflow Promote + Vercel CLI al proyecto **`propie-ya-web`**. **Copia** en `kiteprop/ia-propieya`: tras releases, `git push kiteprop deploy/infra` y `git push kiteprop main` para mantener la copia alineada. Después, **fusionar `deploy/infra` → `main`** y, si hace falta, **fast-forward `deploy/infra` a `main`** para que ambas ramas apunten al **mismo SHA** (ver **`docs/54-FLUJO-PRODUCCION-PORTAL.md`**). Verificación: `pnpm verificar:deploy` y/o `pnpm verificar:ruta-produccion`. Lista de sprints: `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md`.
 
 4. **Antes de cualquier push** que dispare CI/deploy: `pnpm verify` (lint + typecheck + build).
 

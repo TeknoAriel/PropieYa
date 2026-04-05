@@ -4,7 +4,7 @@
 - El **agente** ejecuta lint/typecheck (y build si aplica) **antes de push**, corrige CI sin pedir revisión, documenta bloqueos en `docs/REGISTRO-BLOQUEOS.md`. En clones con **Husky** activo, `git push` a `main` o `deploy/infra` dispara `pnpm verify` (`.husky/pre-push`).
 - **Tras push a `deploy/infra`:** el agente ejecuta `pnpm verificar:deploy` y, si hace falta, `pnpm diagnostico:prod` o `pnpm verificar:ruta-produccion` (valida URL canónica y, con `VERCEL_TOKEN`+`VERCEL_PROJECT_ID`, que el secret apunte a `propie-ya-web`). El workflow Promote **falla** si producción no responde o si `VERCEL_PROJECT_ID` no es el proyecto web canónico. Bloqueos: `docs/REGISTRO-BLOQUEOS.md` — ver `.cursor/rules/deploy-infra.mdc`.
 - **Repositorio GitHub operativo (origin):** `https://github.com/TeknoAriel/PropieYa` — push habitual y **Vercel → Git** enlazado aquí. **Copia auditoría (org):** `kiteprop/ia-propieya` como remoto `kiteprop`; subir solo cuando el propietario pida (`git push kiteprop deploy/infra` / `main` según acuerdo).
-- **Flujo portal producción (único):** un solo repo monorepo; rama **`deploy/infra`** → workflow **Promote** → Vercel CLI → proyecto **`propie-ya-web`**. Alinear **`main`** con PR/merge aparte (no lo hace el Promote). Constantes: `scripts/production-canonical.env.sh`.
+- **Flujo portal producción (único):** rama **`deploy/infra`** → workflow **Promote** → Vercel CLI → **`propie-ya-web`**. Tras cada release estable: merge **`deploy/infra` → `main`**, opcional **fast-forward `deploy/infra` a `main`**, push **`origin` + `kiteprop`**, ver `docs/54-FLUJO-PRODUCCION-PORTAL.md`. Constantes: `scripts/production-canonical.env.sh`.
 
 **URL portal (pruebas/prod):** https://propieyaweb.vercel.app — `docs/CANONICAL-URLS.md`.
 

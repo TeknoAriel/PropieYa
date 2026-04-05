@@ -68,6 +68,8 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 
 Si `/api/version` no avanza pese a pushes: documentar el bloqueo en `docs/REGISTRO-BLOQUEOS.md` (Actions, secretos Parte D de `docs/DEPLOY-PASOS-URIs.md`).
 
+**Tras alinear Git y deploy** (`docs/54-FLUJO-PRODUCCION-PORTAL.md`): el portal puede estar en el último commit y aun así `activeListings` ser bajo hasta correr **ingesta completa** o **`publish:imported`** contra la misma Neon que usa Vercel (pasos A–D arriba).
+
 ### Automático (cron)
 
 - **Ruta:** `GET /api/cron/import-yumblin`
