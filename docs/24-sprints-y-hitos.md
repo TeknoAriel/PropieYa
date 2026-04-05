@@ -33,7 +33,8 @@
 | Sprint 34 (producción: búsqueda medible + hoja de ruta escala/asistente) | ✅ — `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` |
 | Panel estadísticas (arquitectura + terminales) | `docs/49-ARQUITECTURA-PANEL-ESTADISTICAS-Y-TELEMETRIA.md`, `PORTAL_STATS_TERMINALS` en `@propieya/shared` |
 | Sprint 35 (comparar v1.1) | ✅ — tabla: precio/m², cocheras, expensas; quitar fila + URL |
-| Siguiente backlog doc 43 §5 | Lista sincronizada con mapa en `/buscar`, o filtros capa 4 contextual |
+| Sprint 36 (mapa `/buscar`: aviso filtro + scroll a resultados) | ✅ — ver sección Sprint 36 |
+| Siguiente backlog doc 43 §5 | Lista sincronizada con mapa en `/buscar` (capa mayor: sync bidireccional), o filtros capa 4 contextual |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
 | Infra GitHub/Vercel nuevo repo (Sprint 25.6–25.8) | Confirmar secretos `VERCEL_*`, Actions verde y Git del proyecto web → `docs/DEPLOY-PASOS-URIs.md` Parte A |
@@ -446,7 +447,7 @@
 
 ---
 
-*Actualizado: 2026-03-31 (doc 49 panel estadísticas + terminales; Sprint 34 cerrado doc 47; Sprint 33 comparador; 25.6–25.8 según dashboard)*
+*Actualizado: 2026-03-31 (Sprint 35–36 en cuerpo; mapa `/buscar` UX + doc 47 F3; doc 49 panel estadísticas + terminales; Sprint 34 doc 47; 25.6–25.8 según dashboard)*
 
 ---
 
@@ -617,3 +618,29 @@
 - [x] 34.6 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy` (tras cada bloque de tareas listo para prod)
 
 **Criterios:** cualquier agente puede leer doc 47 y saber prioridades; con `LOG_SEARCH_MS` en Preview/Pro se pueden correlacionar tiempos con logs de Vercel sin cambiar respuestas al cliente.
+
+---
+
+## Sprint 35 — Comparador v1.1 ✅
+
+**Objetivo:** enriquecer la tabla de comparación y alinear URLs sin filas huérfanas.
+
+- [x] 35.1 Tabla: precio por m², cocheras, expensas donde aplique
+- [x] 35.2 Quitar fila / limpiar estado de comparación + coherencia de URL
+- [x] 35.3 `pnpm verify` + push `deploy/infra`
+
+**Criterios:** el usuario compara hasta 3 avisos con señales de costo y superficie más legibles.
+
+---
+
+## Sprint 36 — Mapa en `/buscar`: claridad de filtro y scroll a resultados ✅
+
+**Objetivo:** reducir la fricción “moví el mapa y el listado no cambió” y acercar la vista a los resultados tras acotar por rectángulo.
+
+- [x] 36.1 Aviso visible cuando el mapa está abierto y **no** hay bbox ni polígono de 3+ vértices (el listado no se recorta al mover la ventana)
+- [x] 36.2 Tras «Buscar en esta zona», scroll suave al bloque `#buscar-resultados`
+- [x] 36.3 `docs/47` §F3: nota de producto alineada al flag `ENABLE_CONVERSATIONAL_SESSION_CONTEXT` en `ConversationalSearchBlock`
+- [x] 36.4 Tabla de estado y esta sección en `docs/24`
+- [x] 36.5 `pnpm verify` + push `deploy/infra`
+
+**Criterios:** con mapa visible, el usuario ve cuándo el área del mapa **sí** filtra resultados; al aplicar rectángulo, los resultados entran en foco sin buscar la sección a mano.

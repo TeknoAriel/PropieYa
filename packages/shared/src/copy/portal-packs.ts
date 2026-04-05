@@ -411,6 +411,13 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarFlowBannerDismiss: 'No volver a mostrar',
   mapViewportUpdatesResults:
     'Ciudad o barrio: mapa y orden por proximidad a esa zona. Sin zona: centro cercano a tu ubicación si aceptás permisos. Filtrar por rectángulo solo con «Buscar en esta zona».',
+
+  /** Sprint 36 — mapa abierto sin bbox/polígono: el listado no sigue la ventana. */
+  buscarMapFilterHintTitle: 'Listado y mapa',
+  buscarMapFilterHintBody:
+    'Mover el mapa no recorta resultados. Tocá «Buscar en esta zona» o dibujá un polígono de al menos 3 puntos para filtrar por área.',
+  buscarMapFilterActiveHint:
+    'Los resultados están acotados al rectángulo o polígono elegido en el mapa.',
   polygonSelfIntersectHint:
     'Así el área quedaría cruzada o partida (no es una sola figura cerrada). Tocá otro lugar o borrá el trazo y empezá de nuevo.',
 } as const

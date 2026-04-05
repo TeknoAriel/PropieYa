@@ -1180,7 +1180,10 @@ export function BuscarContent({
                 ) : null}
                 <BuscarSearchMap
                   pins={mapPins}
-                  onApplyZona={setMapBbox}
+                  onApplyZona={(bbox) => {
+                    setMapBbox(bbox)
+                    scrollToElementId('buscar-resultados')
+                  }}
                   initialCenter={mapInitialCenter}
                   initialZoom={mapInitialZoom}
                   mapRemountKey={mapRemountKey}
@@ -1188,9 +1191,19 @@ export function BuscarContent({
                   polygonDrawMode={polygonDrawMode}
                   onPolygonVertex={addPolygonVertexSafe}
                 />
-                <div className="space-y-1 text-xs text-text-tertiary">
-                  <p>{S.mapViewportUpdatesResults}</p>
-                  <p>{S.mapHelp}</p>
+                <div className="mt-2 space-y-2">
+                  {mapBbox || mapPolygonRing.length >= 3 ? (
+                    <p className="text-xs text-text-secondary">{S.buscarMapFilterActiveHint}</p>
+                  ) : (
+                    <div
+                      className="rounded-md border border-brand-primary/25 bg-brand-primary/5 px-3 py-2 text-xs"
+                      role="status"
+                    >
+                      <span className="font-medium text-text-primary">{S.buscarMapFilterHintTitle}</span>
+                      <p className="mt-1 text-text-secondary">{S.buscarMapFilterHintBody}</p>
+                    </div>
+                  )}
+                  <p className="text-xs text-text-tertiary">{S.mapHelp}</p>
                 </div>
                 {mapPins.length === 0 && !isLoading ? (
                   <p className="text-sm text-text-secondary">{S.mapNoPins}</p>

@@ -47,7 +47,8 @@ Referencias duras: `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`, `docs/43-ANEXO-MAS
 **F3 — Asistente con continuidad** (en código, v0)  
 - `searchConversational` acepta `previousContext: { userMessage, filters }` y el LLM (o merge heurístico sin API) **fusiona** el nuevo mensaje con filtros previos.  
 - `sessionStorage` (`propieya.conversational.v1`, TTL 45 min) + banner y chips en `/buscar` dentro de `ConversationalSearchBlock`; “Empezar de cero” limpia contexto.  
-- La home reutiliza el mismo storage al enviar (sin banner, para no ocupar el hero).
+- La home reutiliza el mismo storage al enviar (sin banner, para no ocupar el hero).  
+- **Marzo 2026 (producto):** en `ConversationalSearchBlock` el flag `ENABLE_CONVERSATIONAL_SESSION_CONTEXT` está en `false`: la tubería del servidor con `previousContext` sigue disponible, pero la UI de continuidad (banner, chips de seguimiento y lectura del storage en `/buscar`) queda apagada hasta un rediseño que evite criterios duplicados o listados vacíos no intencionales.
 
 **Paralelo (producto)**  
 - `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` cuando el inventario lo permita.
