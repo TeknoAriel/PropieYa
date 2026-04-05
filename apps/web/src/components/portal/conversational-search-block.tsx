@@ -20,10 +20,10 @@ const CONV_STORAGE_KEY = 'propieya.conversational.v1'
 const CONV_TTL_MS = 45 * 60 * 1000
 
 /**
- * Memoria de sesión: banner, chips de refinamiento y `previousContext` al intérprete.
- * Desactivar solo para depuración (`false`).
+ * Memoria de sesión: banner «Seguimos desde…», chips y `previousContext` al intérprete.
+ * Desactivado hasta reimplementar el flujo (evita criterios duplicados / 0 resultados).
  */
-const ENABLE_CONVERSATIONAL_SESSION_CONTEXT = true
+const ENABLE_CONVERSATIONAL_SESSION_CONTEXT = false
 
 type StoredConv = {
   userMessage: string
