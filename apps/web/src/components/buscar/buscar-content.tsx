@@ -37,6 +37,7 @@ const BuscarSearchMap = dynamic(
 )
 import {
   formatPrice,
+  getBuscarContextualBlock,
   getFacetFlagDefinitions,
   getFacetFlagsForBuscarRefineLayer,
   OPERATION_TYPE_LABELS,
@@ -347,6 +348,9 @@ export function BuscarContent({
   const [mapBbox, setMapBbox] = useState<BuscarMapBBox | null>(null)
   const [mapPolygonRing, setMapPolygonRing] = useState<BuscarMapPoint[]>([])
   const [polygonDrawMode, setPolygonDrawMode] = useState(false)
+  /** Sprint 40 — rectángulo del mapa se aplica al listado al panear (debounce). */
+  const [mapLiveViewport, setMapLiveViewport] = useState(false)
+  const liveViewportDebounceRef = useRef<number | null>(null)
   const [showMap, setShowMap] = useState(false)
   /** Centro de ciudad/barrio (Nominatim) para mapa y orden por cercanía. */
   const [localityGeocode, setLocalityGeocode] = useState<{
@@ -476,6 +480,47 @@ export function BuscarContent({
       `${mapInitialCenter[0].toFixed(5)}-${mapInitialCenter[1].toFixed(5)}-${mapInitialZoom}`,
     [mapInitialCenter, mapInitialZoom]
   )
+
+  useEffect(() => {
+    return () => {
+      if (liveViewportDebounceRef.current != null) {
+        window.clearTimeout(liveViewportDebounceRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (polygonDrawMode || mapPolygonRing.length > 0) {
+      setMapLiveViewport(false)
+    }
+  }, [polygonDrawMode, mapPolygonRing.length])
+
+  const onViewportBboxChange = useCallback((bbox: BuscarMapBBox) => {
+    if (liveViewportDebounceRef.current != null) {
+      window.clearTimeout(liveViewportDebounceRef.current)
+    }
+    liveViewportDebounceRef.current = window.setTimeout(() => {
+      setMapBbox(bbox)
+      liveViewportDebounceRef.current = null
+    }, 450)
+  }, [])
+
+  const mapViewportReporterActive =
+    showMap &&
+    mapLiveViewport &&
+    !polygonDrawMode &&
+    mapPolygonRing.length === 0
+
+  const contextualBlock = useMemo(
+    () =>
+      getBuscarContextualBlock(
+        propertyType,
+        (forcedOperation ?? operationType) || ''
+      ),
+    [propertyType, forcedOperation, operationType]
+  )
+
+  const facetFlagCatalog = useMemo(() => getFacetFlagDefinitions(), [])
 
   const coreSearchFilters = useMemo(
     () => ({
@@ -756,6 +801,7 @@ export function BuscarContent({
 
   const clearBuscarSearch = useCallback(() => {
     setShowMap(false)
+    setMapLiveViewport(false)
     setAssistantHint(null)
     router.replace(pathname)
   }, [router, pathname])
@@ -790,6 +836,7 @@ export function BuscarContent({
     setMapBbox(null)
     setMapPolygonRing([])
     setPolygonDrawMode(false)
+    setMapLiveViewport(false)
   }, [searchParamsKey, forcedOperation])
 
   useEffect(() => {
@@ -1136,6 +1183,56 @@ export function BuscarContent({
             </div>
           </div>
 
+          {contextualBlock ? (
+            <div
+              className="space-y-3 rounded-lg border border-brand-primary/20 bg-brand-primary/5 p-3"
+              role="region"
+              aria-label="Sugerencias según tipo de propiedad"
+            >
+              <h3 className="text-sm font-semibold text-text-primary">
+                {contextualBlock.title}
+              </h3>
+              <p className="text-xs leading-relaxed text-text-secondary">
+                {contextualBlock.body}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                {contextualBlock.quickFacetIds?.map((fid) => {
+                  const def = facetFlagCatalog.find((f) => f.id === fid)
+                  if (!def) return null
+                  const on = selectedAmenityFacets.includes(fid)
+                  return (
+                    <Button
+                      key={fid}
+                      type="button"
+                      size="sm"
+                      variant={on ? 'default' : 'outline'}
+                      className="h-8 text-xs"
+                      onClick={() =>
+                        setSelectedAmenityFacets((prev) =>
+                          on ? prev.filter((x) => x !== fid) : [...prev, fid]
+                        )
+                      }
+                    >
+                      {def.label}
+                    </Button>
+                  )
+                })}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="h-8 text-xs"
+                  onClick={() => {
+                    setShowAdvanced(true)
+                    scrollToElementId('buscar-filtros-avanzados')
+                  }}
+                >
+                  {S.contextualOpenAdvancedButton}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
           <div
             id="buscar-mapa"
             className="scroll-mt-24 space-y-2 rounded-lg border border-border/60 bg-surface-primary/80 p-3"
@@ -1178,6 +1275,7 @@ export function BuscarContent({
                     className="h-8 text-xs"
                     onClick={() => {
                       setShowMap(false)
+                      setMapLiveViewport(false)
                       setMapBbox(null)
                       setMapPolygonRing([])
                       setPolygonDrawMode(false)
@@ -1228,6 +1326,34 @@ export function BuscarContent({
                     {polygonDrawHint}
                   </p>
                 ) : null}
+                <div className="flex flex-col gap-2 border-t border-border pt-2">
+                  <label
+                    className={`flex cursor-pointer items-start gap-2 text-xs text-text-primary ${
+                      polygonDrawMode || mapPolygonRing.length > 0
+                        ? 'opacity-60'
+                        : ''
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 rounded border-border"
+                      checked={mapLiveViewport}
+                      disabled={polygonDrawMode || mapPolygonRing.length > 0}
+                      onChange={(e) => setMapLiveViewport(e.target.checked)}
+                    />
+                    <span>
+                      <span className="font-medium">{S.mapLiveViewportLabel}</span>
+                      <span className="mt-0.5 block text-text-tertiary">
+                        {S.mapLiveViewportHint}
+                      </span>
+                    </span>
+                  </label>
+                  {polygonDrawMode || mapPolygonRing.length > 0 ? (
+                    <p className="text-xs text-text-tertiary" role="status">
+                      {S.mapLiveViewportDisabledHint}
+                    </p>
+                  ) : null}
+                </div>
                 <BuscarSearchMap
                   pins={mapPins}
                   onApplyZona={(bbox) => {
@@ -1237,6 +1363,9 @@ export function BuscarContent({
                   initialCenter={mapInitialCenter}
                   initialZoom={mapInitialZoom}
                   mapRemountKey={mapRemountKey}
+                  onViewportBboxChange={
+                    mapViewportReporterActive ? onViewportBboxChange : undefined
+                  }
                   polygonRing={mapPolygonRing}
                   polygonDrawMode={polygonDrawMode}
                   onPolygonVertex={addPolygonVertexSafe}
@@ -1350,7 +1479,10 @@ export function BuscarContent({
           </div>
 
           {showAdvanced ? (
-            <div className="mt-4 space-y-4 border-t border-border pt-4">
+            <div
+              id="buscar-filtros-avanzados"
+              className="mt-4 scroll-mt-24 space-y-4 border-t border-border pt-4"
+            >
               <p className="text-sm font-medium text-text-primary">
                 {S.advancedFiltersTitle}
               </p>
@@ -1570,6 +1702,49 @@ export function BuscarContent({
             </div>
           ) : null}
           </Card>
+          ) : null}
+
+          {!classicFiltersOpen && contextualBlock ? (
+            <Card className="space-y-3 border-brand-primary/20 bg-brand-primary/5 p-3">
+              <h3 className="text-sm font-semibold text-text-primary">
+                {contextualBlock.title}
+              </h3>
+              <p className="text-xs leading-relaxed text-text-secondary">
+                {contextualBlock.body}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                {contextualBlock.quickFacetIds?.map((fid) => {
+                  const def = facetFlagCatalog.find((f) => f.id === fid)
+                  if (!def) return null
+                  const on = selectedAmenityFacets.includes(fid)
+                  return (
+                    <Button
+                      key={`compact-${fid}`}
+                      type="button"
+                      size="sm"
+                      variant={on ? 'default' : 'outline'}
+                      className="h-8 text-xs"
+                      onClick={() =>
+                        setSelectedAmenityFacets((prev) =>
+                          on ? prev.filter((x) => x !== fid) : [...prev, fid]
+                        )
+                      }
+                    >
+                      {def.label}
+                    </Button>
+                  )
+                })}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="h-8 text-xs"
+                  onClick={() => setClassicFiltersOpen(true)}
+                >
+                  {S.filtersOptionalExpand}
+                </Button>
+              </div>
+            </Card>
           ) : null}
         </div>
 

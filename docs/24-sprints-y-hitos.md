@@ -37,7 +37,9 @@
 | Sprint 37 (lista ↔ mapa en `/buscar`, v0) | ✅ — ver sección Sprint 37 |
 | Sprint 38 (UX filtros + tipos feed/DB) | ✅ — ver sección Sprint 38 |
 | Sprint 39 (catálogo import: active + pipeline ES) | ✅ — ver sección Sprint 39 |
-| Siguiente backlog doc 43 §5 | Sync mapa más profundo (viewport / refinamiento), o filtros capa 4 contextual |
+| Sprint 40 (mapa: viewport en vivo) | ✅ — ver sección Sprint 40 |
+| Sprint 41 (filtros capa 4 contextual) | ✅ — ver sección Sprint 41 |
+| Siguiente backlog doc 43 §5 | Alertas por área dibujada, jerarquías de zona, simulador / verificación org |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
 | Infra GitHub/Vercel nuevo repo (Sprint 25.6–25.8) | Confirmar secretos `VERCEL_*`, Actions verde y Git del proyecto web → `docs/DEPLOY-PASOS-URIs.md` Parte A |
@@ -450,7 +452,7 @@
 
 ---
 
-*Actualizado: 2026-03-31 (Sprint 35–39; catálogo import active; doc 37; 25.6–25.8 según dashboard)*
+*Actualizado: 2026-03-31 (Sprint 35–41; mapa viewport en vivo; filtros contextuales capa 4)*
 
 ---
 
@@ -690,3 +692,33 @@
 - [x] 39.4 `pnpm verify` + push `deploy/infra`
 
 **Criterios:** tras un import completo, `activeListings` en `/api/inventory-stats` se alinea al catálogo; ES puede actualizarse en el job masivo sin agotar `maxDuration` del cron.
+
+---
+
+## Sprint 40 — Mapa `/buscar`: viewport en vivo (doc 38 AA)
+
+**Objetivo:** además del botón «Buscar en esta zona», permitir que el **rectángulo visible** del mapa actualice el listado al panear/zoom (con debounce), sin confundir con polígono en dibujo.
+
+### Tareas (agente / CI)
+
+- [x] 40.1 `BuscarSearchMap`: ya exponía `onViewportBboxChange`; conectar desde `buscar-content` con debounce (~450 ms) y estado `mapLiveViewport`
+- [x] 40.2 Checkbox para activar/desactivar; desactivar automáticamente si hay modo dibujo de polígono o vértices en el anillo
+- [x] 40.3 Copy en `PORTAL_SEARCH_UX_COPY` (`mapHelp`, `buscarMapFilterHintBody`, textos live viewport)
+- [x] 40.4 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** con la opción activa, el bbox aplicado a `listing.search` sigue el mapa de forma estable; con polígono o trazo, no compite con el filtro por área dibujada.
+
+---
+
+## Sprint 41 — `/buscar`: filtros capa 4 contextuales (doc 38 §Z)
+
+**Objetivo:** según **tipo de propiedad** (y operación), mostrar copy breve y atajos (amenities o «Ir a más filtros») sin duplicar todo el formulario.
+
+### Tareas (agente / CI)
+
+- [x] 41.1 `packages/shared`: `getBuscarContextualBlock` + tests Vitest
+- [x] 41.2 `buscar-content`: bloque contextual con filtros clásicos abiertos; variante compacta si los clásicos están cerrados (CTA «Mostrar filtros»)
+- [x] 41.3 Ancla `id="buscar-filtros-avanzados"` para scroll desde el bloque contextual
+- [x] 41.4 `pnpm verify` + push `deploy/infra`
+
+**Criterios:** al elegir tipo (p. ej. terreno, casa, depto), el usuario ve pistas alineadas al tipo; casas obtienen toggles rápidos de amenities outdoor sin romper el catálogo de facets.
