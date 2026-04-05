@@ -2,6 +2,7 @@ import {
   computeImportContentHash,
   extractListingsFromFeed,
   fetchYumblinFeedConditional,
+  LISTING_VALIDITY,
   mapYumblinItem,
   parseFeedItemSourceUpdatedAt,
   peekFeedExternalId,
@@ -20,6 +21,40 @@ import {
 
 const DEFAULT_FEED_URL =
   'https://static.kiteprop.com/kp/difusions/f89cbd8ca785fc34317df63d29ab8ea9d68a7b1c/properstar.json'
+
+/** Por defecto el catálogo importado se publica como `active` (visible en portal). `IMPORT_INGEST_AS_DRAFT=true` restaura el comportamiento anterior (solo borrador). */
+function resolveIngestAsDraft(): boolean {
+  const v = (process.env.IMPORT_INGEST_AS_DRAFT ?? '').trim().toLowerCase()
+  return v === '1' || v === 'true' || v === 'yes'
+}
+
+function buildImportLifecycleFields(
+  now: Date,
+  ingestAsDraft: boolean
+): {
+  status: 'draft' | 'active'
+  publishedAt: Date | null
+  lastValidatedAt: Date | null
+  expiresAt: Date | null
+} {
+  if (ingestAsDraft) {
+    return {
+      status: 'draft',
+      publishedAt: null,
+      lastValidatedAt: null,
+      expiresAt: null,
+    }
+  }
+  const expiresAt = new Date(
+    now.getTime() + LISTING_VALIDITY.MANUAL_VALIDITY_DAYS * 24 * 60 * 60 * 1000
+  )
+  return {
+    status: 'active',
+    publishedAt: now,
+    lastValidatedAt: now,
+    expiresAt,
+  }
+}
 
 export interface YumblinImportSyncOptions {
   feedUrl?: string
@@ -177,6 +212,8 @@ export async function runYumblinImportSync(
   const source = await getOrCreateFeedSource(organizationId, feedUrl)
   const includeUnassigned = options.assumeUnassignedBelongsToThisSource === true
   const now = new Date()
+  const ingestAsDraft = resolveIngestAsDraft()
+  const lifecycle = buildImportLifecycleFields(now, ingestAsDraft)
 
   if (enforceInterval && source.lastSuccessfulSyncAt) {
     const intervalMs = getIntervalMs()
@@ -413,7 +450,7 @@ export async function runYumblinImportSync(
           primaryImageUrl: mapped.primaryImageUrl,
           mediaCount: mapped.imageUrls.length,
           features: mapped.features ?? { amenities: mapped.amenities ?? [] },
-          status: 'draft',
+          ...lifecycle,
         })
         .returning()
 
@@ -456,7 +493,7 @@ export async function runYumblinImportSync(
           primaryImageUrl: mapped.primaryImageUrl,
           mediaCount: mapped.imageUrls.length,
           features: mapped.features ?? { amenities: mapped.amenities ?? [] },
-          status: 'draft',
+          ...lifecycle,
         })
         .returning()
 
@@ -493,6 +530,18 @@ export async function runYumblinImportSync(
       continue
     }
 
+    const promoteDraftToActive =
+      !ingestAsDraft && existing.status === 'draft'
+        ? {
+            status: 'active' as const,
+            publishedAt: now,
+            lastValidatedAt: now,
+            expiresAt: new Date(
+              now.getTime() + LISTING_VALIDITY.MANUAL_VALIDITY_DAYS * 24 * 60 * 60 * 1000
+            ),
+          }
+        : {}
+
     await db
       .update(listings)
       .set({
@@ -521,6 +570,7 @@ export async function runYumblinImportSync(
         mediaCount: mapped.imageUrls.length,
         features: mapped.features ?? { amenities: mapped.amenities ?? [] },
         updatedAt: now,
+        ...promoteDraftToActive,
       })
       .where(eq(listings.id, existing.id))
 
@@ -569,6 +619,51 @@ export async function runYumblinImportSync(
         .set({ status: 'withdrawn', updatedAt: now })
         .where(inArray(listings.id, withdrawnListingIds))
       counts.withdrawn = toWithdraw.length
+    }
+  }
+
+  /**
+   * Import completo: todos los `draft` de este feed en org pasan a `active` (histórico de catálogo).
+   * Import parcial (`limit`): solo `external_id` presentes en el lote, para no publicar fuera del slice.
+   */
+  if (!ingestAsDraft) {
+    const promoteScope = includeUnassigned
+      ? or(eq(listings.importFeedSourceId, source.id), isNull(listings.importFeedSourceId))
+      : eq(listings.importFeedSourceId, source.id)
+
+    const expiresAtBulk = new Date(
+      now.getTime() + LISTING_VALIDITY.MANUAL_VALIDITY_DAYS * 24 * 60 * 60 * 1000
+    )
+
+    const promoteBase = and(
+      eq(listings.organizationId, organizationId),
+      eq(listings.source, 'import'),
+      eq(listings.status, 'draft'),
+      promoteScope
+    )
+
+    if (isPartialImport && extIdsForQuery.length > 0) {
+      await db
+        .update(listings)
+        .set({
+          status: 'active',
+          publishedAt: now,
+          lastValidatedAt: now,
+          expiresAt: expiresAtBulk,
+          updatedAt: now,
+        })
+        .where(and(promoteBase, inArray(listings.externalId, extIdsForQuery)))
+    } else if (!isPartialImport) {
+      await db
+        .update(listings)
+        .set({
+          status: 'active',
+          publishedAt: now,
+          lastValidatedAt: now,
+          expiresAt: expiresAtBulk,
+          updatedAt: now,
+        })
+        .where(promoteBase)
     }
   }
 

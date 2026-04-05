@@ -5,6 +5,7 @@
  * - Si cambia solo la marca temporal de origen, se refrescan igualmente las imágenes (política doc 48).
  * - Altas, actualizaciones (hash por ítem) y bajas (withdrawn si ya no está en el feed; scope `IMPORT_WITHDRAW_SCOPE`).
  * - Tras bajas: elimina documentos en Elasticsearch (`removeListingFromSearch`).
+ * - Publicación masiva de drafts: si son muchos, el pipeline deja ES para `sync-search` / reindex (ver `run-yumblin-import-pipeline`).
  *
  * Cadencia: ingesta principal **a pedido** (webhook §48). En `vercel.json` hay cron de
  * respaldo ~cada 15 días (`0 6 1,16 * *`, UTC). Entre ejecuciones: `IMPORT_SYNC_INTERVAL_HOURS`

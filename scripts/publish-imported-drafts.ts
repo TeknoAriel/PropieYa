@@ -2,6 +2,9 @@
 /**
  * Publica todas las propiedades en draft importadas (source=import).
  *
+ * El import por defecto ya crea avisos `active` (salvo IMPORT_INGEST_AS_DRAFT=true).
+ * Este script sirve para bases con miles de drafts históricos o tras cambiar la política.
+ *
  * Uso: DATABASE_URL=... pnpm publish:imported
  */
 

@@ -36,6 +36,7 @@
 | Sprint 36 (mapa `/buscar`: aviso filtro + scroll a resultados) | ✅ — ver sección Sprint 36 |
 | Sprint 37 (lista ↔ mapa en `/buscar`, v0) | ✅ — ver sección Sprint 37 |
 | Sprint 38 (UX filtros + tipos feed/DB) | ✅ — ver sección Sprint 38 |
+| Sprint 39 (catálogo import: active + pipeline ES) | ✅ — ver sección Sprint 39 |
 | Siguiente backlog doc 43 §5 | Sync mapa más profundo (viewport / refinamiento), o filtros capa 4 contextual |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
@@ -449,7 +450,7 @@
 
 ---
 
-*Actualizado: 2026-03-31 (Sprint 35–38; filtros `/buscar` + mapper tipo; doc 37; 25.6–25.8 según dashboard)*
+*Actualizado: 2026-03-31 (Sprint 35–39; catálogo import active; doc 37; 25.6–25.8 según dashboard)*
 
 ---
 
@@ -676,3 +677,16 @@
 **Criterios:** tras buscar desde la home o chips, el listado se ve sin abrir el acordeón de filtros; los nuevos imports y el script opcional alinean tipos con el texto cuando el feed es genérico.
 
 **Operación:** tras `APPLY=1` en producción, ejecutar sync/reindex ES si aplica (`pnpm reindex:es`).
+
+---
+
+## Sprint 39 — Catálogo import: miles de avisos `active` + pipeline sin timeout ✅
+
+**Objetivo:** el feed Properstar/Kiteprop (~14k ítems) debe verse en el portal como **activos**, no quedar en `draft` por defecto; el cron no debe fallar al intentar indexar 14k documentos en ES uno a uno.
+
+- [x] 39.1 Ingesta Yumblin: inserts `active` + vigencia (opt-out `IMPORT_INGEST_AS_DRAFT`); UPDATE promueve `draft`→`active` al cambiar hash; al final del sync completo, UPDATE masivo de drafts del feed
+- [x] 39.2 `runYumblinImportPipeline`: si hay más de ~80 drafts a publicar, UPDATE masivo **sin** `syncListingToSearch` por ítem; flag `searchIndexDeferred` en JSON — usar cron `sync-search` o `pnpm reindex:es`
+- [x] 39.3 `.env.example` + `docs/37`
+- [x] 39.4 `pnpm verify` + push `deploy/infra`
+
+**Criterios:** tras un import completo, `activeListings` en `/api/inventory-stats` se alinea al catálogo; ES puede actualizarse en el job masivo sin agotar `maxDuration` del cron.

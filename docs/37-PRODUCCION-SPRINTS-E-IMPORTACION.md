@@ -53,6 +53,12 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 
 **Política operativa completa (cron 30 min prod, prueba 48 h, webhook push, bajas, código tipo de aviso):** `docs/48-INGEST-PROPERSTAR-POLITICA-CRON-PUSH-Y-NEGOCIO.md`.
 
+### Catálogo visible (active vs draft)
+
+- Por defecto, cada sync de Yumblin/Kiteprop **inserta y mantiene** los avisos del JSON como **`status: active`** (con `published_at`, `expires_at` según `LISTING_VALIDITY.MANUAL_VALIDITY_DAYS`), para que el portal liste **todo el feed** sin paso manual.
+- Al final de cada sync completo, un **UPDATE masivo** pasa a `active` los importados que sigan en `draft` pero cuyo `external_id` sigue en el JSON (corrige histórico de ~14k drafts).
+- Solo staging u operación especial: `IMPORT_INGEST_AS_DRAFT=true` vuelve a dejar ingesta en borrador; luego `pnpm publish:imported` publica en lote.
+
 ### Automático (cron)
 
 - **Ruta:** `GET /api/cron/import-yumblin`
