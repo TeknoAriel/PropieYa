@@ -7,7 +7,6 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -356,7 +355,7 @@ export function BuscarContent({
   } | null>(null)
   const [userGeo, setUserGeo] = useState<{ lat: number; lng: number } | null>(null)
   const userGeoRequestRef = useRef(false)
-  /** Filtros clásicos colapsados por defecto para no abrumar; se abren si la URL trae criterios. */
+  /** Filtros clásicos colapsados por defecto; solo se abren si el usuario toca «Mostrar filtros». */
   const [classicFiltersOpen, setClassicFiltersOpen] = useState(false)
   const [flowDialogOpen, setFlowDialogOpen] = useState(false)
   const [localityModalOpen, setLocalityModalOpen] = useState(false)
@@ -762,28 +761,6 @@ export function BuscarContent({
   }, [router, pathname])
 
   const searchParamsKey = searchParams.toString()
-
-  const hasClassicUrlParams = useMemo(() => {
-    const sp = new URLSearchParams(searchParamsKey)
-    const keys = [
-      'op',
-      'tipo',
-      'ciudad',
-      'barrio',
-      'min',
-      'max',
-      'dorm',
-      'sup',
-    ] as const
-    return keys.some((k) => {
-      const v = sp.get(k)
-      return v != null && v.trim() !== ''
-    })
-  }, [searchParamsKey])
-
-  useLayoutEffect(() => {
-    if (hasClassicUrlParams) setClassicFiltersOpen(true)
-  }, [hasClassicUrlParams])
 
   useEffect(() => {
     const sp = new URLSearchParams(searchParamsKey)

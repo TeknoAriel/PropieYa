@@ -90,10 +90,11 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 ### Tipos de propiedad en feed Kiteprop / Yumblin (inglés y alias)
 
 - El campo habitual es **`property_type`** con códigos en **inglés** (`houses`, `apartments`, `residential_lands`, `retail_spaces`, etc.), no solo español.
-- **`mapFeedPropertyType`** (`packages/shared/src/map-feed-property-type.ts`) normaliza esos códigos al enum interno (`house`, `apartment`, `land`, …).
-- El mapper JSON (**`mapYumblinItem`**) también resuelve claves con **mayúsculas/guiones** equivalentes (`typeProperty`, `type_property`, …) y busca **`typeproperty` anidado** si existiera.
-- El hash **`computeImportContentHash`** incluye `propertyType`: si el mapper pasa a devolver otro tipo para el mismo aviso, el **siguiente import** detecta cambio y hace **UPDATE** de la fila (no hace falta migración SQL manual salvo casos fuera del feed).
+- **`mapFeedPropertyType`** / **`mapFeedPropertyTypeWithListingText`** (`packages/shared/src/map-feed-property-type.ts`): el feed se normaliza al enum interno; además, si el código dice “departamento” pero el **título o la descripción** describen otro tipo (terreno, PH, local, etc.), se usa el texto para no quedar todo como `apartment`.
+- El mapper JSON (**`mapYumblinItem`**) usa `mapFeedPropertyTypeWithListingText`, resuelve claves con **mayúsculas/guiones** equivalentes (`typeProperty`, `type_property`, …) y busca **`typeproperty` anidado** si existiera.
+- El hash **`computeImportContentHash`** incluye `propertyType`: si el mapper pasa a devolver otro tipo para el mismo aviso, el **siguiente import** detecta cambio y hace **UPDATE** de la fila.
 - **Depuración:** `pnpm audit:yumblin-fields` (distribución en el JSON remoto), `pnpm audit:listing-types` (SQL + sospechosos “casa” en texto), `pnpm diff:import-types` (feed mapper vs DB por `external_id`).
+- **Reclasificación en DB (sin esperar al próximo import):** `pnpm reclassify:listing-types` (dry-run). Con **`APPLY=1`** escribe cambios (por defecto solo **apartment → otro** cuando el texto lo justifica). Con **`RECLASSIFY_ALL=1`** compara cualquier tipo actual con la sugerencia (más riesgoso). Después conviene **`pnpm reindex:es`** si usás Elasticsearch.
 
 ---
 
@@ -125,4 +126,4 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 
 ---
 
-*Actualizado: 2026-03-31 (doc 48 política ingest + webhook + cron 30 min)*
+*Actualizado: 2026-03-31 (mapper tipo + título/descripción; script `reclassify:listing-types`; doc 48 ingest)*

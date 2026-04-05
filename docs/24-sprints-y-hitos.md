@@ -35,6 +35,7 @@
 | Sprint 35 (comparar v1.1) | ✅ — tabla: precio/m², cocheras, expensas; quitar fila + URL |
 | Sprint 36 (mapa `/buscar`: aviso filtro + scroll a resultados) | ✅ — ver sección Sprint 36 |
 | Sprint 37 (lista ↔ mapa en `/buscar`, v0) | ✅ — ver sección Sprint 37 |
+| Sprint 38 (UX filtros + tipos feed/DB) | ✅ — ver sección Sprint 38 |
 | Siguiente backlog doc 43 §5 | Sync mapa más profundo (viewport / refinamiento), o filtros capa 4 contextual |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
@@ -448,7 +449,7 @@
 
 ---
 
-*Actualizado: 2026-03-31 (Sprint 35–37; lista↔mapa v0 en `/buscar`; doc 47 F3; doc 49 panel estadísticas; 25.6–25.8 según dashboard)*
+*Actualizado: 2026-03-31 (Sprint 35–38; filtros `/buscar` + mapper tipo; doc 37; 25.6–25.8 según dashboard)*
 
 ---
 
@@ -660,3 +661,18 @@
 **Criterios:** con mapa abierto y resultados georreferenciados, pin y tarjeta se refuerzan mutuamente; en móvil el clic en pin sigue siendo útil aunque no haya hover en lista.
 
 **Nota:** sync “viewport = filtro” o refinamiento automático al mover el mapa queda para un sprint posterior (mayor alcance que este v0).
+
+---
+
+## Sprint 38 — `/buscar`: filtros sin auto-apertura + tipos de propiedad feed/DB ✅
+
+**Objetivo:** que una búsqueda con query string (chips, asistente, URL compartida) **no despliegue sola** el panel de filtros avanzados; mejorar la **calidad de `property_type`** en import y ofrecer herramienta de reclasificación sobre la base activa.
+
+- [x] 38.1 Quitar apertura automática de filtros clásicos cuando la URL trae `op` / `tipo` / ciudad / precio / etc.; el usuario abre con «Mostrar filtros»
+- [x] 38.2 `mapFeedPropertyTypeWithListingText` en `mapYumblinItem`: si el feed marca apartment pero título/descripción indican otro tipo canónico, corregir
+- [x] 38.3 Script `pnpm reclassify:listing-types` (dry-run / `APPLY=1`); tests en `@propieya/shared`; doc `docs/37`
+- [x] 38.4 `pnpm verify` + push `deploy/infra`
+
+**Criterios:** tras buscar desde la home o chips, el listado se ve sin abrir el acordeón de filtros; los nuevos imports y el script opcional alinean tipos con el texto cuando el feed es genérico.
+
+**Operación:** tras `APPLY=1` en producción, ejecutar sync/reindex ES si aplica (`pnpm reindex:es`).

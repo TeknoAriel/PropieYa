@@ -30,6 +30,7 @@
     "dedup:apply": "pnpm exec tsx scripts/apply-dedup-listings.ts",
     "reindex:es": "pnpm sync-search:local",
     "audit:listing-types": "pnpm exec tsx scripts/audit-listing-property-types.ts",
+    "reclassify:listing-types": "pnpm exec tsx scripts/reclassify-listing-property-types.ts",
     "audit:yumblin-fields": "pnpm exec tsx scripts/audit-yumblin-fields.ts",
     "diff:import-types": "pnpm exec tsx scripts/diff-import-property-types.ts",
     "verificar:prod": "bash scripts/verificar-produccion.sh",
