@@ -33,7 +33,13 @@
 | Sprint 34 (producción: búsqueda medible + hoja de ruta escala/asistente) | ✅ — `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` |
 | Panel estadísticas (arquitectura + terminales) | `docs/49-ARQUITECTURA-PANEL-ESTADISTICAS-Y-TELEMETRIA.md`, `PORTAL_STATS_TERMINALS` en `@propieya/shared` |
 | Sprint 35 (comparar v1.1) | ✅ — tabla: precio/m², cocheras, expensas; quitar fila + URL |
-| Siguiente backlog doc 43 §5 | Lista sincronizada con mapa en `/buscar`, o filtros capa 4 contextual |
+| Sprint 36 (mapa `/buscar`: aviso filtro + scroll a resultados) | ✅ — ver sección Sprint 36 |
+| Sprint 37 (lista ↔ mapa en `/buscar`, v0) | ✅ — ver sección Sprint 37 |
+| Sprint 38 (UX filtros + tipos feed/DB) | ✅ — ver sección Sprint 38 |
+| Sprint 39 (catálogo import: active + pipeline ES) | ✅ — ver sección Sprint 39 |
+| Sprint 40 (mapa: viewport en vivo) | ✅ — ver sección Sprint 40 |
+| Sprint 41 (filtros capa 4 contextual) | ✅ — ver sección Sprint 41 |
+| Siguiente backlog doc 43 §5 | Alertas por área dibujada, jerarquías de zona, simulador / verificación org |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
 | Infra GitHub/Vercel nuevo repo (Sprint 25.6–25.8) | Confirmar secretos `VERCEL_*`, Actions verde y Git del proyecto web → `docs/DEPLOY-PASOS-URIs.md` Parte A |
@@ -446,7 +452,7 @@
 
 ---
 
-*Actualizado: 2026-03-31 (doc 49 panel estadísticas + terminales; Sprint 34 cerrado doc 47; Sprint 33 comparador; 25.6–25.8 según dashboard)*
+*Actualizado: 2026-03-31 (Sprint 35–41; mapa viewport en vivo; filtros contextuales capa 4)*
 
 ---
 
@@ -617,3 +623,102 @@
 - [x] 34.6 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy` (tras cada bloque de tareas listo para prod)
 
 **Criterios:** cualquier agente puede leer doc 47 y saber prioridades; con `LOG_SEARCH_MS` en Preview/Pro se pueden correlacionar tiempos con logs de Vercel sin cambiar respuestas al cliente.
+
+---
+
+## Sprint 35 — Comparador v1.1 ✅
+
+**Objetivo:** enriquecer la tabla de comparación y alinear URLs sin filas huérfanas.
+
+- [x] 35.1 Tabla: precio por m², cocheras, expensas donde aplique
+- [x] 35.2 Quitar fila / limpiar estado de comparación + coherencia de URL
+- [x] 35.3 `pnpm verify` + push `deploy/infra`
+
+**Criterios:** el usuario compara hasta 3 avisos con señales de costo y superficie más legibles.
+
+---
+
+## Sprint 36 — Mapa en `/buscar`: claridad de filtro y scroll a resultados ✅
+
+**Objetivo:** reducir la fricción “moví el mapa y el listado no cambió” y acercar la vista a los resultados tras acotar por rectángulo.
+
+- [x] 36.1 Aviso visible cuando el mapa está abierto y **no** hay bbox ni polígono de 3+ vértices (el listado no se recorta al mover la ventana)
+- [x] 36.2 Tras «Buscar en esta zona», scroll suave al bloque `#buscar-resultados`
+- [x] 36.3 `docs/47` §F3: nota de producto alineada al flag `ENABLE_CONVERSATIONAL_SESSION_CONTEXT` en `ConversationalSearchBlock`
+- [x] 36.4 Tabla de estado y esta sección en `docs/24`
+- [x] 36.5 `pnpm verify` + push `deploy/infra`
+
+**Criterios:** con mapa visible, el usuario ve cuándo el área del mapa **sí** filtra resultados; al aplicar rectángulo, los resultados entran en foco sin buscar la sección a mano.
+
+---
+
+## Sprint 37 — Lista ↔ mapa en `/buscar` (sincronización v0) ✅
+
+**Objetivo:** primera capa de **lista sincronizada con mapa** (doc 43): el usuario relaciona pin y tarjeta sin adivinar.
+
+- [x] 37.1 Clic en pin del mapa → scroll a la tarjeta del aviso y resaltado temporal (anillo)
+- [x] 37.2 Hover en tarjeta con coordenadas (mapa abierto y hay pins) → `flyTo` al punto y pin más visible; hover tiene prioridad sobre selección por clic
+- [x] 37.3 Texto de ayuda bajo el mapa; selección por pin se limpia si el aviso deja de estar en la página cargada
+- [x] 37.4 `pnpm verify` + push `deploy/infra`
+
+**Criterios:** con mapa abierto y resultados georreferenciados, pin y tarjeta se refuerzan mutuamente; en móvil el clic en pin sigue siendo útil aunque no haya hover en lista.
+
+**Nota:** sync “viewport = filtro” o refinamiento automático al mover el mapa queda para un sprint posterior (mayor alcance que este v0).
+
+---
+
+## Sprint 38 — `/buscar`: filtros sin auto-apertura + tipos de propiedad feed/DB ✅
+
+**Objetivo:** que una búsqueda con query string (chips, asistente, URL compartida) **no despliegue sola** el panel de filtros avanzados; mejorar la **calidad de `property_type`** en import y ofrecer herramienta de reclasificación sobre la base activa.
+
+- [x] 38.1 Quitar apertura automática de filtros clásicos cuando la URL trae `op` / `tipo` / ciudad / precio / etc.; el usuario abre con «Mostrar filtros»
+- [x] 38.2 `mapFeedPropertyTypeWithListingText` en `mapYumblinItem`: si el feed marca apartment pero título/descripción indican otro tipo canónico, corregir
+- [x] 38.3 Script `pnpm reclassify:listing-types` (dry-run / `APPLY=1`); tests en `@propieya/shared`; doc `docs/37`
+- [x] 38.4 `pnpm verify` + push `deploy/infra`
+
+**Criterios:** tras buscar desde la home o chips, el listado se ve sin abrir el acordeón de filtros; los nuevos imports y el script opcional alinean tipos con el texto cuando el feed es genérico.
+
+**Operación:** tras `APPLY=1` en producción, ejecutar sync/reindex ES si aplica (`pnpm reindex:es`).
+
+---
+
+## Sprint 39 — Catálogo import: miles de avisos `active` + pipeline sin timeout ✅
+
+**Objetivo:** el feed Properstar/Kiteprop (~14k ítems) debe verse en el portal como **activos**, no quedar en `draft` por defecto; el cron no debe fallar al intentar indexar 14k documentos en ES uno a uno.
+
+- [x] 39.1 Ingesta Yumblin: inserts `active` + vigencia (opt-out `IMPORT_INGEST_AS_DRAFT`); UPDATE promueve `draft`→`active` al cambiar hash; al final del sync completo, UPDATE masivo de drafts del feed
+- [x] 39.2 `runYumblinImportPipeline`: si hay más de ~80 drafts a publicar, UPDATE masivo **sin** `syncListingToSearch` por ítem; flag `searchIndexDeferred` en JSON — usar cron `sync-search` o `pnpm reindex:es`
+- [x] 39.3 `.env.example` + `docs/37`
+- [x] 39.4 `pnpm verify` + push `deploy/infra`
+
+**Criterios:** tras un import completo, `activeListings` en `/api/inventory-stats` se alinea al catálogo; ES puede actualizarse en el job masivo sin agotar `maxDuration` del cron.
+
+---
+
+## Sprint 40 — Mapa `/buscar`: viewport en vivo (doc 38 AA)
+
+**Objetivo:** además del botón «Buscar en esta zona», permitir que el **rectángulo visible** del mapa actualice el listado al panear/zoom (con debounce), sin confundir con polígono en dibujo.
+
+### Tareas (agente / CI)
+
+- [x] 40.1 `BuscarSearchMap`: ya exponía `onViewportBboxChange`; conectar desde `buscar-content` con debounce (~450 ms) y estado `mapLiveViewport`
+- [x] 40.2 Checkbox para activar/desactivar; desactivar automáticamente si hay modo dibujo de polígono o vértices en el anillo
+- [x] 40.3 Copy en `PORTAL_SEARCH_UX_COPY` (`mapHelp`, `buscarMapFilterHintBody`, textos live viewport)
+- [x] 40.4 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** con la opción activa, el bbox aplicado a `listing.search` sigue el mapa de forma estable; con polígono o trazo, no compite con el filtro por área dibujada.
+
+---
+
+## Sprint 41 — `/buscar`: filtros capa 4 contextuales (doc 38 §Z)
+
+**Objetivo:** según **tipo de propiedad** (y operación), mostrar copy breve y atajos (amenities o «Ir a más filtros») sin duplicar todo el formulario.
+
+### Tareas (agente / CI)
+
+- [x] 41.1 `packages/shared`: `getBuscarContextualBlock` + tests Vitest
+- [x] 41.2 `buscar-content`: bloque contextual con filtros clásicos abiertos; variante compacta si los clásicos están cerrados (CTA «Mostrar filtros»)
+- [x] 41.3 Ancla `id="buscar-filtros-avanzados"` para scroll desde el bloque contextual
+- [x] 41.4 `pnpm verify` + push `deploy/infra`
+
+**Criterios:** al elegir tipo (p. ej. terreno, casa, depto), el usuario ve pistas alineadas al tipo; casas obtienen toggles rápidos de amenities outdoor sin romper el catálogo de facets.

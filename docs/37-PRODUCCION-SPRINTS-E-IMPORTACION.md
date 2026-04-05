@@ -53,6 +53,21 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 
 **Política operativa completa (cron 30 min prod, prueba 48 h, webhook push, bajas, código tipo de aviso):** `docs/48-INGEST-PROPERSTAR-POLITICA-CRON-PUSH-Y-NEGOCIO.md`.
 
+### Catálogo visible (active vs draft)
+
+- Por defecto, cada sync de Yumblin/Kiteprop **inserta y mantiene** los avisos del JSON como **`status: active`** (con `published_at`, `expires_at` según `LISTING_VALIDITY.MANUAL_VALIDITY_DAYS`), para que el portal liste **todo el feed** sin paso manual.
+- Al final de cada sync **completo** (sin `--limit` / no parcial), un **UPDATE masivo** pasa a `active` **todos** los `draft` de esa org con `source: import` y el mismo alcance de `import_feed_source` que el sync (corrige histórico de miles de borradores). En import **parcial**, solo se promueven los `external_id` del lote (`packages/database/src/yumblin-import-sync.ts`).
+- Solo staging u operación especial: `IMPORT_INGEST_AS_DRAFT=true` vuelve a dejar ingesta en borrador; luego `pnpm publish:imported` publica en lote.
+
+### Checklist: catálogo cargado, activo y depurado (producción)
+
+1. **Código desplegado:** `curl -s https://propieyaweb.vercel.app/api/version` — el `commit` debe coincidir con el último push útil de **`deploy/infra`** en Git (p. ej. Sprints 38–39: mapper de tipo, ingesta `active` + promoción masiva). Si el SHA es claramente anterior, el portal **no** tiene esa lógica: revisar el workflow Promote en GitHub Actions y `docs/DEPLOY-CONTEXTO-AGENTES.md`.
+2. **DB y totales:** `curl -s https://propieyaweb.vercel.app/api/health` → `healthy` y DB `ok`. `curl -s https://propieyaweb.vercel.app/api/inventory-stats` → `activeListings` del mismo orden de magnitud que el catálogo publicado (p. ej. ~14k si el feed trae ~14k y casi todo está activo). Si `totalListings` es alto pero `activeListings` es muy bajo (p. ej. ~100): falta **publicar** con código actual (`pnpm publish:imported` con `DATABASE_URL` de prod) o **correr import completo** ya desplegado (`GET /api/cron/import-yumblin` con `CRON_SECRET` si aplica).
+3. **Elasticsearch:** si la respuesta del import incluye `searchIndexDeferred: true`, ejecutar **`GET /api/cron/sync-search`** (auth según env) o `pnpm reindex:es` con la misma `DATABASE_URL` y `ELASTICSEARCH_URL`.
+4. **Depuración de `property_type`:** `pnpm audit:listing-types`; opcional `pnpm reclassify:listing-types` (dry-run → `APPLY=1`) y luego reindex si usás ES.
+
+Si `/api/version` no avanza pese a pushes: documentar el bloqueo en `docs/REGISTRO-BLOQUEOS.md` (Actions, secretos Parte D de `docs/DEPLOY-PASOS-URIs.md`).
+
 ### Automático (cron)
 
 - **Ruta:** `GET /api/cron/import-yumblin`
@@ -90,10 +105,11 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 ### Tipos de propiedad en feed Kiteprop / Yumblin (inglés y alias)
 
 - El campo habitual es **`property_type`** con códigos en **inglés** (`houses`, `apartments`, `residential_lands`, `retail_spaces`, etc.), no solo español.
-- **`mapFeedPropertyType`** (`packages/shared/src/map-feed-property-type.ts`) normaliza esos códigos al enum interno (`house`, `apartment`, `land`, …).
-- El mapper JSON (**`mapYumblinItem`**) también resuelve claves con **mayúsculas/guiones** equivalentes (`typeProperty`, `type_property`, …) y busca **`typeproperty` anidado** si existiera.
-- El hash **`computeImportContentHash`** incluye `propertyType`: si el mapper pasa a devolver otro tipo para el mismo aviso, el **siguiente import** detecta cambio y hace **UPDATE** de la fila (no hace falta migración SQL manual salvo casos fuera del feed).
+- **`mapFeedPropertyType`** / **`mapFeedPropertyTypeWithListingText`** (`packages/shared/src/map-feed-property-type.ts`): el feed se normaliza al enum interno; además, si el código dice “departamento” pero el **título o la descripción** describen otro tipo (terreno, PH, local, etc.), se usa el texto para no quedar todo como `apartment`.
+- El mapper JSON (**`mapYumblinItem`**) usa `mapFeedPropertyTypeWithListingText`, resuelve claves con **mayúsculas/guiones** equivalentes (`typeProperty`, `type_property`, …) y busca **`typeproperty` anidado** si existiera.
+- El hash **`computeImportContentHash`** incluye `propertyType`: si el mapper pasa a devolver otro tipo para el mismo aviso, el **siguiente import** detecta cambio y hace **UPDATE** de la fila.
 - **Depuración:** `pnpm audit:yumblin-fields` (distribución en el JSON remoto), `pnpm audit:listing-types` (SQL + sospechosos “casa” en texto), `pnpm diff:import-types` (feed mapper vs DB por `external_id`).
+- **Reclasificación en DB (sin esperar al próximo import):** `pnpm reclassify:listing-types` (dry-run). Con **`APPLY=1`** escribe cambios (por defecto solo **apartment → otro** cuando el texto lo justifica). Con **`RECLASSIFY_ALL=1`** compara cualquier tipo actual con la sugerencia (más riesgoso). Después conviene **`pnpm reindex:es`** si usás Elasticsearch.
 
 ---
 
@@ -125,4 +141,4 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 
 ---
 
-*Actualizado: 2026-03-31 (doc 48 política ingest + webhook + cron 30 min)*
+*Actualizado: 2026-03-31 (checklist catálogo activo; UPDATE masivo full vs parcial; mapper tipo; `reclassify:listing-types`; doc 48 ingest)*

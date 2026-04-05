@@ -7,7 +7,6 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -38,6 +37,7 @@ const BuscarSearchMap = dynamic(
 )
 import {
   formatPrice,
+  getBuscarContextualBlock,
   getFacetFlagDefinitions,
   getFacetFlagsForBuscarRefineLayer,
   OPERATION_TYPE_LABELS,
@@ -51,6 +51,7 @@ import {
 } from '@propieya/shared'
 
 import { AddToCompareButton } from '@/components/compare/add-to-compare-button'
+import { BuscarLocalityModal } from '@/components/buscar/buscar-locality-modal'
 import { BuscarRecentSearches } from '@/components/buscar/buscar-recent-searches'
 import { ConversationalSearchBlock } from '@/components/portal/conversational-search-block'
 import { InductiveSearchChips } from '@/components/portal/inductive-search-chips'
@@ -107,14 +108,58 @@ function pinsFromListings(list: BuscarListingCardData[]) {
   return out
 }
 
-function ListingCard({ listing }: { listing: BuscarListingCardData }) {
+function getListingPinCoords(
+  l: BuscarListingCardData
+): { lat: number; lng: number } | null {
+  let lat: number | undefined
+  let lng: number | undefined
+  if (l.location?.lat != null && l.location?.lon != null) {
+    lat = l.location.lat
+    lng = l.location.lon
+  }
+  if (l.locationLat != null && l.locationLng != null) {
+    lat = Number(l.locationLat)
+    lng = Number(l.locationLng)
+  }
+  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) return null
+  const ok = sanitizeListingCoordinates(lat, lng)
+  return ok ? { lat: ok.lat, lng: ok.lng } : null
+}
+
+function ListingCard({
+  listing,
+  mapSelectedListingId,
+  onMapSyncHover,
+}: {
+  listing: BuscarListingCardData
+  mapSelectedListingId: string | null
+  onMapSyncHover?: (listingId: string | null) => void
+}) {
   const operationLabel = OPERATION_TYPE_LABELS[listing.operationType] ?? listing.operationType
   const neighborhood = listing.address?.neighborhood ?? '—'
   const city = listing.address?.city ?? '—'
+  const pinCoords = getListingPinCoords(listing)
+  const emphasizeFromMap = mapSelectedListingId === listing.id
 
   return (
-    <Link href={`/propiedad/${listing.id}`}>
-      <Card className="overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow">
+    <div id={`buscar-listing-${listing.id}`} className="scroll-mt-24 rounded-lg">
+      <Link
+        href={`/propiedad/${listing.id}`}
+        className="block"
+        onMouseEnter={() => {
+          if (pinCoords && onMapSyncHover) onMapSyncHover(listing.id)
+        }}
+        onMouseLeave={() => {
+          if (onMapSyncHover) onMapSyncHover(null)
+        }}
+      >
+        <Card
+          className={`overflow-hidden group cursor-pointer transition-shadow hover:shadow-lg ${
+            emphasizeFromMap
+              ? 'ring-2 ring-brand-primary ring-offset-2 ring-offset-surface-primary'
+              : ''
+          }`}
+        >
         <div className="relative h-48 overflow-hidden bg-surface-secondary">
           <Image
             src={
@@ -190,6 +235,7 @@ function ListingCard({ listing }: { listing: BuscarListingCardData }) {
         </div>
       </Card>
     </Link>
+    </div>
   )
 }
 
@@ -302,6 +348,9 @@ export function BuscarContent({
   const [mapBbox, setMapBbox] = useState<BuscarMapBBox | null>(null)
   const [mapPolygonRing, setMapPolygonRing] = useState<BuscarMapPoint[]>([])
   const [polygonDrawMode, setPolygonDrawMode] = useState(false)
+  /** Sprint 40 — rectángulo del mapa se aplica al listado al panear (debounce). */
+  const [mapLiveViewport, setMapLiveViewport] = useState(false)
+  const liveViewportDebounceRef = useRef<number | null>(null)
   const [showMap, setShowMap] = useState(false)
   /** Centro de ciudad/barrio (Nominatim) para mapa y orden por cercanía. */
   const [localityGeocode, setLocalityGeocode] = useState<{
@@ -310,11 +359,14 @@ export function BuscarContent({
   } | null>(null)
   const [userGeo, setUserGeo] = useState<{ lat: number; lng: number } | null>(null)
   const userGeoRequestRef = useRef(false)
-  /** Filtros clásicos colapsados por defecto para no abrumar; se abren si la URL trae criterios. */
+  /** Filtros clásicos colapsados por defecto; solo se abren si el usuario toca «Mostrar filtros». */
   const [classicFiltersOpen, setClassicFiltersOpen] = useState(false)
   const [flowDialogOpen, setFlowDialogOpen] = useState(false)
+  const [localityModalOpen, setLocalityModalOpen] = useState(false)
   const [flowGuideDontShowAgain, setFlowGuideDontShowAgain] = useState(false)
   const [polygonDrawHint, setPolygonDrawHint] = useState<string | null>(null)
+  const [mapSyncHoverId, setMapSyncHoverId] = useState<string | null>(null)
+  const [mapSyncSelectedId, setMapSyncSelectedId] = useState<string | null>(null)
   const [searchPage, setSearchPage] = useState<{
     cursor?: string
     offset: number
@@ -428,6 +480,47 @@ export function BuscarContent({
       `${mapInitialCenter[0].toFixed(5)}-${mapInitialCenter[1].toFixed(5)}-${mapInitialZoom}`,
     [mapInitialCenter, mapInitialZoom]
   )
+
+  useEffect(() => {
+    return () => {
+      if (liveViewportDebounceRef.current != null) {
+        window.clearTimeout(liveViewportDebounceRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (polygonDrawMode || mapPolygonRing.length > 0) {
+      setMapLiveViewport(false)
+    }
+  }, [polygonDrawMode, mapPolygonRing.length])
+
+  const onViewportBboxChange = useCallback((bbox: BuscarMapBBox) => {
+    if (liveViewportDebounceRef.current != null) {
+      window.clearTimeout(liveViewportDebounceRef.current)
+    }
+    liveViewportDebounceRef.current = window.setTimeout(() => {
+      setMapBbox(bbox)
+      liveViewportDebounceRef.current = null
+    }, 450)
+  }, [])
+
+  const mapViewportReporterActive =
+    showMap &&
+    mapLiveViewport &&
+    !polygonDrawMode &&
+    mapPolygonRing.length === 0
+
+  const contextualBlock = useMemo(
+    () =>
+      getBuscarContextualBlock(
+        propertyType,
+        (forcedOperation ?? operationType) || ''
+      ),
+    [propertyType, forcedOperation, operationType]
+  )
+
+  const facetFlagCatalog = useMemo(() => getFacetFlagDefinitions(), [])
 
   const coreSearchFilters = useMemo(
     () => ({
@@ -573,6 +666,24 @@ export function BuscarContent({
 
   const mapPins = useMemo(() => pinsFromListings(listings), [listings])
 
+  useEffect(() => {
+    if (mapSyncSelectedId && !listings.some((l) => l.id === mapSyncSelectedId)) {
+      setMapSyncSelectedId(null)
+    }
+  }, [listings, mapSyncSelectedId])
+
+  const mapPinEmphasisId = mapSyncHoverId ?? mapSyncSelectedId
+
+  const mapSyncFlyCoords = useMemo(() => {
+    if (!mapSyncHoverId) return null
+    const l = listings.find((x) => x.id === mapSyncHoverId)
+    return l ? getListingPinCoords(l) : null
+  }, [mapSyncHoverId, listings])
+
+  const onMapSyncHover = useCallback((id: string | null) => {
+    setMapSyncHoverId(id)
+  }, [])
+
   const demandPayload = useMemo(() => {
     const { limit: _l, offset: _o, cursor: _c, ...rest } = filters
     return rest
@@ -690,33 +801,12 @@ export function BuscarContent({
 
   const clearBuscarSearch = useCallback(() => {
     setShowMap(false)
+    setMapLiveViewport(false)
     setAssistantHint(null)
     router.replace(pathname)
   }, [router, pathname])
 
   const searchParamsKey = searchParams.toString()
-
-  const hasClassicUrlParams = useMemo(() => {
-    const sp = new URLSearchParams(searchParamsKey)
-    const keys = [
-      'op',
-      'tipo',
-      'ciudad',
-      'barrio',
-      'min',
-      'max',
-      'dorm',
-      'sup',
-    ] as const
-    return keys.some((k) => {
-      const v = sp.get(k)
-      return v != null && v.trim() !== ''
-    })
-  }, [searchParamsKey])
-
-  useLayoutEffect(() => {
-    if (hasClassicUrlParams) setClassicFiltersOpen(true)
-  }, [hasClassicUrlParams])
 
   useEffect(() => {
     const sp = new URLSearchParams(searchParamsKey)
@@ -746,6 +836,7 @@ export function BuscarContent({
     setMapBbox(null)
     setMapPolygonRing([])
     setPolygonDrawMode(false)
+    setMapLiveViewport(false)
   }, [searchParamsKey, forcedOperation])
 
   useEffect(() => {
@@ -775,7 +866,7 @@ export function BuscarContent({
     })
   }, [])
 
-  const scrollToElementId = (id: string) => {
+  const scrollToElementId = useCallback((id: string) => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         document.getElementById(id)?.scrollIntoView({
@@ -784,7 +875,15 @@ export function BuscarContent({
         })
       })
     })
-  }
+  }, [])
+
+  const onMapPinSelect = useCallback(
+    (id: string) => {
+      setMapSyncSelectedId(id)
+      scrollToElementId(`buscar-listing-${id}`)
+    },
+    [scrollToElementId]
+  )
 
   return (
     <div className="container mx-auto space-y-4 px-4 py-6 md:py-8">
@@ -1071,7 +1170,68 @@ export function BuscarContent({
                 onChange={(e) => setNeighborhood(e.target.value)}
               />
             </BuscarLabeledField>
+            <div className="flex flex-wrap items-end gap-2 md:col-span-2 lg:col-span-4">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={() => setLocalityModalOpen(true)}
+              >
+                {S.buscarLocalityCatalogButton}
+              </Button>
+            </div>
           </div>
+
+          {contextualBlock ? (
+            <div
+              className="space-y-3 rounded-lg border border-brand-primary/20 bg-brand-primary/5 p-3"
+              role="region"
+              aria-label="Sugerencias según tipo de propiedad"
+            >
+              <h3 className="text-sm font-semibold text-text-primary">
+                {contextualBlock.title}
+              </h3>
+              <p className="text-xs leading-relaxed text-text-secondary">
+                {contextualBlock.body}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                {contextualBlock.quickFacetIds?.map((fid) => {
+                  const def = facetFlagCatalog.find((f) => f.id === fid)
+                  if (!def) return null
+                  const on = selectedAmenityFacets.includes(fid)
+                  return (
+                    <Button
+                      key={fid}
+                      type="button"
+                      size="sm"
+                      variant={on ? 'default' : 'outline'}
+                      className="h-8 text-xs"
+                      onClick={() =>
+                        setSelectedAmenityFacets((prev) =>
+                          on ? prev.filter((x) => x !== fid) : [...prev, fid]
+                        )
+                      }
+                    >
+                      {def.label}
+                    </Button>
+                  )
+                })}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="h-8 text-xs"
+                  onClick={() => {
+                    setShowAdvanced(true)
+                    scrollToElementId('buscar-filtros-avanzados')
+                  }}
+                >
+                  {S.contextualOpenAdvancedButton}
+                </Button>
+              </div>
+            </div>
+          ) : null}
 
           <div
             id="buscar-mapa"
@@ -1115,6 +1275,7 @@ export function BuscarContent({
                     className="h-8 text-xs"
                     onClick={() => {
                       setShowMap(false)
+                      setMapLiveViewport(false)
                       setMapBbox(null)
                       setMapPolygonRing([])
                       setPolygonDrawMode(false)
@@ -1165,19 +1326,71 @@ export function BuscarContent({
                     {polygonDrawHint}
                   </p>
                 ) : null}
+                <div className="flex flex-col gap-2 border-t border-border pt-2">
+                  <label
+                    className={`flex cursor-pointer items-start gap-2 text-xs text-text-primary ${
+                      polygonDrawMode || mapPolygonRing.length > 0
+                        ? 'opacity-60'
+                        : ''
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 rounded border-border"
+                      checked={mapLiveViewport}
+                      disabled={polygonDrawMode || mapPolygonRing.length > 0}
+                      onChange={(e) => setMapLiveViewport(e.target.checked)}
+                    />
+                    <span>
+                      <span className="font-medium">{S.mapLiveViewportLabel}</span>
+                      <span className="mt-0.5 block text-text-tertiary">
+                        {S.mapLiveViewportHint}
+                      </span>
+                    </span>
+                  </label>
+                  {polygonDrawMode || mapPolygonRing.length > 0 ? (
+                    <p className="text-xs text-text-tertiary" role="status">
+                      {S.mapLiveViewportDisabledHint}
+                    </p>
+                  ) : null}
+                </div>
                 <BuscarSearchMap
                   pins={mapPins}
-                  onApplyZona={setMapBbox}
+                  onApplyZona={(bbox) => {
+                    setMapBbox(bbox)
+                    scrollToElementId('buscar-resultados')
+                  }}
                   initialCenter={mapInitialCenter}
                   initialZoom={mapInitialZoom}
                   mapRemountKey={mapRemountKey}
+                  onViewportBboxChange={
+                    mapViewportReporterActive ? onViewportBboxChange : undefined
+                  }
                   polygonRing={mapPolygonRing}
                   polygonDrawMode={polygonDrawMode}
                   onPolygonVertex={addPolygonVertexSafe}
+                  mapPinEmphasisId={mapPinEmphasisId}
+                  onPinClickListing={mapPins.length > 0 ? onMapPinSelect : undefined}
+                  flyToPinCoords={
+                    mapPins.length > 0 ? mapSyncFlyCoords : null
+                  }
                 />
-                <div className="space-y-1 text-xs text-text-tertiary">
-                  <p>{S.mapViewportUpdatesResults}</p>
-                  <p>{S.mapHelp}</p>
+                <div className="mt-2 space-y-2">
+                  {mapBbox || mapPolygonRing.length >= 3 ? (
+                    <p className="text-xs text-text-secondary">{S.buscarMapFilterActiveHint}</p>
+                  ) : (
+                    <div
+                      className="rounded-md border border-brand-primary/25 bg-brand-primary/5 px-3 py-2 text-xs"
+                      role="status"
+                    >
+                      <span className="font-medium text-text-primary">{S.buscarMapFilterHintTitle}</span>
+                      <p className="mt-1 text-text-secondary">{S.buscarMapFilterHintBody}</p>
+                    </div>
+                  )}
+                  <p className="text-xs text-text-tertiary">{S.mapHelp}</p>
+                  {mapPins.length > 0 ? (
+                    <p className="text-xs text-text-tertiary">{S.buscarMapListSyncHint}</p>
+                  ) : null}
                 </div>
                 {mapPins.length === 0 && !isLoading ? (
                   <p className="text-sm text-text-secondary">{S.mapNoPins}</p>
@@ -1266,7 +1479,10 @@ export function BuscarContent({
           </div>
 
           {showAdvanced ? (
-            <div className="mt-4 space-y-4 border-t border-border pt-4">
+            <div
+              id="buscar-filtros-avanzados"
+              className="mt-4 scroll-mt-24 space-y-4 border-t border-border pt-4"
+            >
               <p className="text-sm font-medium text-text-primary">
                 {S.advancedFiltersTitle}
               </p>
@@ -1487,6 +1703,49 @@ export function BuscarContent({
           ) : null}
           </Card>
           ) : null}
+
+          {!classicFiltersOpen && contextualBlock ? (
+            <Card className="space-y-3 border-brand-primary/20 bg-brand-primary/5 p-3">
+              <h3 className="text-sm font-semibold text-text-primary">
+                {contextualBlock.title}
+              </h3>
+              <p className="text-xs leading-relaxed text-text-secondary">
+                {contextualBlock.body}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                {contextualBlock.quickFacetIds?.map((fid) => {
+                  const def = facetFlagCatalog.find((f) => f.id === fid)
+                  if (!def) return null
+                  const on = selectedAmenityFacets.includes(fid)
+                  return (
+                    <Button
+                      key={`compact-${fid}`}
+                      type="button"
+                      size="sm"
+                      variant={on ? 'default' : 'outline'}
+                      className="h-8 text-xs"
+                      onClick={() =>
+                        setSelectedAmenityFacets((prev) =>
+                          on ? prev.filter((x) => x !== fid) : [...prev, fid]
+                        )
+                      }
+                    >
+                      {def.label}
+                    </Button>
+                  )
+                })}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="h-8 text-xs"
+                  onClick={() => setClassicFiltersOpen(true)}
+                >
+                  {S.filtersOptionalExpand}
+                </Button>
+              </div>
+            </Card>
+          ) : null}
         </div>
 
         <div id="buscar-resultados" className="scroll-mt-24 space-y-6">
@@ -1535,7 +1794,14 @@ export function BuscarContent({
             <div className="space-y-6">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {listings.map((listing) => (
-                  <ListingCard key={listing.id} listing={listing} />
+                  <ListingCard
+                    key={listing.id}
+                    listing={listing}
+                    mapSelectedListingId={mapSyncSelectedId}
+                    onMapSyncHover={
+                      showMap && mapPins.length > 0 ? onMapSyncHover : undefined
+                    }
+                  />
                 ))}
               </div>
               {data && data.total > 0 ? (
@@ -1561,6 +1827,15 @@ export function BuscarContent({
           )}
         </div>
       </div>
+
+      <BuscarLocalityModal
+        open={localityModalOpen}
+        onOpenChange={setLocalityModalOpen}
+        onPick={({ city: nextCity, neighborhood: nextNb }) => {
+          setCity(nextCity)
+          setNeighborhood(nextNb)
+        }}
+      />
 
       <Dialog open={flowDialogOpen} onOpenChange={setFlowDialogOpen}>
         <DialogContent className="max-w-md gap-4 sm:max-w-lg">

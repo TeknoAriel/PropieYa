@@ -60,7 +60,8 @@ export const PORTAL_INDUCTIVE_CHIPS: readonly {
   },
   {
     label: 'Casas en venta',
-    filters: { q: 'Casas en venta', operationType: 'sale', propertyType: 'house' },
+    /** Sin `propertyType`: «casa» genérica no debe filtrar solo `house` (listado vacío si hay deptos). */
+    filters: { q: 'Casas en venta', operationType: 'sale' },
   },
   {
     label: 'Departamentos en alquiler',
@@ -75,7 +76,6 @@ export const PORTAL_INDUCTIVE_CHIPS: readonly {
     filters: {
       q: 'Casas en alquiler',
       operationType: 'rent',
-      propertyType: 'house',
     },
   },
   {

@@ -151,7 +151,7 @@ async function main() {
   }
 
   console.log(`\nmapYumblinItem: válidos ${mappedOk}, omitidos (null) ${skipped}`)
-  console.log('Distribución propertyType tras mapper (con getValue + mapFeedPropertyType):')
+  console.log('Distribución propertyType tras mapper (getValue + mapFeedPropertyTypeWithListingText):')
   for (const [t, c] of [...fromMap.entries()].sort((a, b) => b[1] - a[1])) {
     console.log(`  ${t}: ${c}`)
   }

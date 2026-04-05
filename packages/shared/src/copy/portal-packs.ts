@@ -246,6 +246,13 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarFieldPropertyType: 'Tipo de propiedad',
   buscarFieldCity: 'Ciudad',
   buscarFieldNeighborhood: 'Barrio',
+  buscarLocalityCatalogButton: 'Elegir del catálogo',
+  buscarLocalityCatalogTitle: 'Localidades con avisos',
+  buscarLocalityCatalogHint:
+    'Solo aparecen ciudad y barrio que ya figuran en avisos activos. Podés seguir escribiendo a mano en los campos si preferís.',
+  buscarLocalityCatalogPlaceholder: 'Filtrar por nombre…',
+  buscarLocalityCatalogEmpty: 'No hay coincidencias. Probá otra palabra o escribí la zona a mano.',
+  buscarLocalityCatalogLoading: 'Cargando catálogo…',
   buscarFieldMinPrice: 'Precio mínimo',
   buscarFieldMaxPrice: 'Precio máximo',
   buscarFieldMinBedrooms: 'Dormitorios mínimos',
@@ -296,7 +303,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   emptyResults: 'No hay resultados. Probá con otros filtros o ampliá la búsqueda.',
 
   mapHelp:
-    'Solo se marcan avisos con ubicación. El filtro por mapa aplica solo con el mapa abierto: «Buscar en esta zona» o polígono de 3+ vértices. Con ciudad o barrio, el listado se ordena por cercanía al centro de esa zona (sin recortar). Sin zona, el mapa puede abrir cerca de tu ubicación si el navegador lo permite.',
+    'Solo se marcan avisos con ubicación. El filtro por mapa aplica con el mapa abierto: opción «Actualizar resultados al mover el mapa», o un clic en «Buscar en esta zona», o polígono de 3+ vértices. Con ciudad o barrio, el listado se ordena por cercanía al centro de esa zona (sin recortar). Sin zona, el mapa puede abrir cerca de tu ubicación si el navegador lo permite.',
 
   mapNoPins:
     'No hay resultados con pin en este momento (falta geolocalización en los avisos o los filtros no devolvieron coincidencias con coordenadas).',
@@ -404,8 +411,29 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarFlowBannerDismiss: 'No volver a mostrar',
   mapViewportUpdatesResults:
     'Ciudad o barrio: mapa y orden por proximidad a esa zona. Sin zona: centro cercano a tu ubicación si aceptás permisos. Filtrar por rectángulo solo con «Buscar en esta zona».',
+
+  /** Sprint 36 — mapa abierto sin bbox/polígono: el listado no sigue la ventana. */
+  buscarMapFilterHintTitle: 'Listado y mapa',
+  buscarMapFilterHintBody:
+    'Sin «Actualizar al mover el mapa», mover la ventana no cambia el listado. Tocá «Buscar en esta zona», activá la opción de seguimiento abajo o dibujá un polígono de al menos 3 puntos.',
+  buscarMapFilterActiveHint:
+    'Los resultados están acotados al rectángulo o polígono elegido en el mapa.',
+
+  /** Sprint 37 — lista ↔ mapa (hover y clic en pin). */
+  buscarMapListSyncHint:
+    'Con avisos en el mapa: pasá el mouse por una tarjeta que tenga ubicación para centrar el mapa; tocá un punto azul para resaltar ese aviso en la lista.',
   polygonSelfIntersectHint:
     'Así el área quedaría cruzada o partida (no es una sola figura cerrada). Tocá otro lugar o borrá el trazo y empezá de nuevo.',
+
+  /** Sprint 40 — viewport en vivo (doc 38 AA). */
+  mapLiveViewportLabel: 'Actualizar resultados al mover el mapa',
+  mapLiveViewportHint:
+    'Aplica el rectángulo visible con una pausa corta al panear o hacer zoom. Desactivalo si preferís solo el botón «Buscar en esta zona».',
+  mapLiveViewportDisabledHint:
+    'Seguimiento del mapa desactivado mientras dibujás un polígono o hay vértices en el trazo.',
+
+  /** Sprint 41 — capa 4 contextual (doc 38 §Z). */
+  contextualOpenAdvancedButton: 'Ir a más filtros',
 } as const
 
 /** Ficha de propiedad: contacto y confianza (Sprint 28.8, voseo). */

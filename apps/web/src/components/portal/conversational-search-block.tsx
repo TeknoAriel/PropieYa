@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 import {
@@ -18,6 +18,12 @@ import { trpc } from '@/lib/trpc'
 const PLACEHOLDER_ROTATE_MS = 5500
 const CONV_STORAGE_KEY = 'propieya.conversational.v1'
 const CONV_TTL_MS = 45 * 60 * 1000
+
+/**
+ * Memoria de sesión: banner «Seguimos desde…», chips y `previousContext` al intérprete.
+ * Desactivado hasta reimplementar el flujo (evita criterios duplicados / 0 resultados).
+ */
+const ENABLE_CONVERSATIONAL_SESSION_CONTEXT = false
 
 type StoredConv = {
   userMessage: string
@@ -145,6 +151,12 @@ export function ConversationalSearchBlock({
   }, [])
 
   useEffect(() => {
+    if (!ENABLE_CONVERSATIONAL_SESSION_CONTEXT) {
+      clearConvStorage()
+    }
+  }, [])
+
+  useEffect(() => {
     if (buscarSearchParamsKey === undefined) return
     if (skipNextUrlQSyncRef.current) {
       skipNextUrlQSyncRef.current = false
@@ -156,6 +168,10 @@ export function ConversationalSearchBlock({
   }, [buscarSearchParamsKey])
 
   useEffect(() => {
+    if (!ENABLE_CONVERSATIONAL_SESSION_CONTEXT) {
+      setSessionPrior(null)
+      return
+    }
     const s = readConvStorage()
     if (!s) {
       setSessionPrior(null)
@@ -187,7 +203,8 @@ export function ConversationalSearchBlock({
 
   const searchConversational = trpc.listing.searchConversational.useMutation({
     onSuccess: (data) => {
-      const mergedOp = forcedOperation ?? data.filters.operationType
+      /** Intención del mensaje por encima del contexto de página (venta/alquiler). */
+      const mergedOp = data.filters.operationType ?? forcedOperation
       const urlFilters = {
         q: data.filters.q,
         operationType: mergedOp,
@@ -213,14 +230,16 @@ export function ConversationalSearchBlock({
         amenities: data.filters.amenities,
       }
       const submitted = lastSubmittedRef.current.trim()
-      writeConvStorage({
-        userMessage: submitted || summarizeSearchFilters(explain).slice(0, 200),
-        filters: explain,
-      })
-      setSessionPrior({
-        userMessage: submitted || summarizeSearchFilters(explain).slice(0, 200),
-        filters: explain,
-      })
+      if (ENABLE_CONVERSATIONAL_SESSION_CONTEXT) {
+        writeConvStorage({
+          userMessage: submitted || summarizeSearchFilters(explain).slice(0, 200),
+          filters: explain,
+        })
+        setSessionPrior({
+          userMessage: submitted || summarizeSearchFilters(explain).slice(0, 200),
+          filters: explain,
+        })
+      }
       skipNextUrlQSyncRef.current = true
       setQuery('')
       onAfterNavigate?.({
@@ -293,36 +312,49 @@ export function ConversationalSearchBlock({
     return () => stopListening()
   }, [stopListening])
 
+  const previousContextForMutation = useMemo(() => {
+    if (!ENABLE_CONVERSATIONAL_SESSION_CONTEXT || !sessionPrior) return undefined
+    return {
+      userMessage: sessionPrior.userMessage,
+      filters: {
+        q: sessionPrior.filters.q,
+        operationType: (():
+          | 'sale'
+          | 'rent'
+          | 'temporary_rent'
+          | undefined => {
+          const op = sessionPrior.filters.operationType
+          if (op === 'sale' || op === 'rent' || op === 'temporary_rent') return op
+          return undefined
+        })(),
+        propertyType: sessionPrior.filters.propertyType,
+        city: sessionPrior.filters.city,
+        neighborhood: sessionPrior.filters.neighborhood,
+        minPrice: sessionPrior.filters.minPrice,
+        maxPrice: sessionPrior.filters.maxPrice,
+        minBedrooms: sessionPrior.filters.minBedrooms,
+        minSurface: sessionPrior.filters.minSurface,
+        amenities: sessionPrior.filters.amenities,
+      },
+    }
+  }, [sessionPrior])
+
+  const submitConversationalMessage = useCallback(
+    (rawText: string) => {
+      const text = rawText.trim()
+      if (!text || searchConversational.isPending) return
+      lastSubmittedRef.current = text
+      searchConversational.mutate({
+        message: text,
+        previousContext: previousContextForMutation,
+      })
+    },
+    [previousContextForMutation, searchConversational]
+  )
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const text = query.trim()
-    if (!text) return
-    lastSubmittedRef.current = text
-    searchConversational.mutate({
-      message: text,
-      previousContext: sessionPrior
-        ? {
-            userMessage: sessionPrior.userMessage,
-            filters: {
-              q: sessionPrior.filters.q,
-              operationType:
-                sessionPrior.filters.operationType === 'sale' ||
-                sessionPrior.filters.operationType === 'rent' ||
-                sessionPrior.filters.operationType === 'temporary_rent'
-                  ? sessionPrior.filters.operationType
-                  : undefined,
-              propertyType: sessionPrior.filters.propertyType,
-              city: sessionPrior.filters.city,
-              neighborhood: sessionPrior.filters.neighborhood,
-              minPrice: sessionPrior.filters.minPrice,
-              maxPrice: sessionPrior.filters.maxPrice,
-              minBedrooms: sessionPrior.filters.minBedrooms,
-              minSurface: sessionPrior.filters.minSurface,
-              amenities: sessionPrior.filters.amenities,
-            },
-          }
-        : undefined,
-    })
+    submitConversationalMessage(query)
   }
 
   const clearConversationContext = () => {
@@ -375,7 +407,9 @@ export function ConversationalSearchBlock({
         </div>
       ) : null}
 
-      {variant === 'buscar' && sessionPrior ? (
+      {variant === 'buscar' &&
+      ENABLE_CONVERSATIONAL_SESSION_CONTEXT &&
+      sessionPrior ? (
         <div
           className={
             compact
@@ -410,7 +444,8 @@ export function ConversationalSearchBlock({
                 variant="outline"
                 size="sm"
                 className="h-7 rounded-full px-2.5 text-xs"
-                onClick={() => setQuery(label)}
+                disabled={searchConversational.isPending}
+                onClick={() => submitConversationalMessage(label)}
               >
                 {label}
               </Button>

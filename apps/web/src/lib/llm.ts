@@ -1,10 +1,14 @@
 /**
  * Abstracción LLM para extracción de intención conversacional.
- * Usa OpenAI si OPENAI_API_KEY está configurada; fallback a extractFiltersFromQuery.
+ * Usa OpenAI si OPENAI_API_KEY está configurada; heurísticas locales refuerzan y cubren huecos.
  */
 
 import OpenAI from 'openai'
-import { extractFiltersFromQuery } from '@propieya/shared'
+import {
+  extractFiltersFromQuery,
+  matchOperationTypeFromText,
+  matchPropertyTypeFromText,
+} from '@propieya/shared'
 
 export interface ExtractedIntention {
   operationType?: 'sale' | 'rent' | 'temporary_rent'
@@ -16,9 +20,21 @@ export interface ExtractedIntention {
   minBedrooms?: number
   minSurface?: number
   amenities?: string[]
-  /** Texto de búsqueda libre residual (ej. "luminoso", "cerca del subte") */
+  /** Texto para el motor (típicamente el mensaje o lo que quedó libre tras estructurar). */
   q?: string
 }
+
+const CANONICAL_PROPERTY_TYPES = new Set([
+  'apartment',
+  'house',
+  'ph',
+  'land',
+  'office',
+  'commercial',
+  'warehouse',
+  'parking',
+  'development_unit',
+])
 
 function getOpenAIClient(): OpenAI | null {
   const key = process.env.OPENAI_API_KEY
@@ -29,6 +45,54 @@ function getOpenAIClient(): OpenAI | null {
 export type ConversationPrior = {
   userMessage: string
   intention: ExtractedIntention
+}
+
+function extractJsonObject(content: string): Record<string, unknown> | null {
+  let s = content.trim()
+  if (s.startsWith('```')) {
+    s = s.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/u, '')
+  }
+  try {
+    const parsed = JSON.parse(s) as unknown
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null
+  } catch {
+    return null
+  }
+}
+
+function sanitizePropertyType(raw: string | undefined): string | undefined {
+  if (!raw || typeof raw !== 'string') return undefined
+  const t = raw.trim().toLowerCase().replace(/\s+/g, '_')
+  return CANONICAL_PROPERTY_TYPES.has(t) ? t : undefined
+}
+
+/**
+ * Une intención del modelo (o fallback previo) con heurísticas del mensaje y normaliza `q`
+ * para el motor unificado (misma tubería que filtros clásicos).
+ */
+function finalizeConversationalIntention(
+  message: string,
+  intention: ExtractedIntention
+): ExtractedIntention {
+  const fb = fallbackExtract(message)
+  const out: ExtractedIntention = {
+    operationType: intention.operationType ?? fb.operationType,
+    propertyType: sanitizePropertyType(intention.propertyType) ?? fb.propertyType,
+    city: intention.city ?? fb.city,
+    neighborhood: intention.neighborhood ?? fb.neighborhood,
+    minPrice: intention.minPrice ?? fb.minPrice,
+    maxPrice: intention.maxPrice ?? fb.maxPrice,
+    minBedrooms: intention.minBedrooms ?? fb.minBedrooms,
+    minSurface: intention.minSurface ?? fb.minSurface,
+    amenities: [...new Set([...(intention.amenities ?? []), ...(fb.amenities ?? [])])],
+    q: (intention.q?.trim() || message.trim()).slice(0, 200) || undefined,
+  }
+  if (out.propertyType && !CANONICAL_PROPERTY_TYPES.has(out.propertyType)) {
+    delete out.propertyType
+  }
+  return out
 }
 
 /**
@@ -43,27 +107,33 @@ export async function extractIntentionFromMessage(
   if (client) {
     try {
       const model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini'
-      const systemBase = `Sos el extractor de intención de Propieya: plataforma inmobiliaria conversacional-first (Argentina, español rioplatense). La apuesta de producto es cambiar el paradigma de búsqueda (intención humana → mismo motor que filtros y mapa), no "un chat decorativo".
+      const systemBase = `Sos el intérprete de búsqueda de Propieya (Argentina, español rioplatense). El usuario escribe en lenguaje natural; vos traducís a filtros JSON para el mismo motor que los filtros manuales y el mapa. No charlás: solo JSON.
 
-Tu salida NO es conversación con el usuario: solo JSON con filtros para el motor unificado.
+Salida: un único objeto JSON (sin markdown, sin texto antes ni después).
+
+Campos opcionales (omití clave o usá null si no aplica):
+- operationType: "sale" | "rent" | "temporary_rent" (comprar/vendo/venta → sale; alquilar/alquiler → rent; temporal/airbnb → temporary_rent)
+- propertyType: "apartment"|"house"|"ph"|"land"|"office"|"commercial"|"warehouse"|"parking"|"development_unit" (depto/monoambiente/loft → apartment; casa quinta/casa de campo → house; terreno/lote → land; local → commercial; galpón → warehouse; cochera → parking; emprendimiento/en pozo → development_unit)
+- city, neighborhood: solo topónimos reales (ej. Rosario, Palermo, Córdoba). NUNCA pongas aquí "venta", "alquiler", "comprar", "departamento", "casa" como si fueran lugar.
+- minPrice, maxPrice: enteros (sin puntos de miles)
+- minBedrooms, minSurface: números si el usuario los da
+- amenities: array de códigos en inglés permitidos en catálogo (balcony, terrace, parking, pool, garden, bbq, gym, laundry, etc.)
+- q: solo matices que no entran arriba (ej. "luminoso", "frente al río", "a estrenar"). Si todo quedó en campos estructurados, q puede ser null o "".
 
 Reglas:
-- Respondé ÚNICAMENTE con un objeto JSON válido, sin markdown ni texto extra.
-- Campos opcionales: operationType (sale|rent|temporary_rent), propertyType (apartment|house|ph|land|office|commercial|warehouse|parking), city, neighborhood, minPrice, maxPrice, minBedrooms, minSurface, amenities (array de códigos en inglés: balcony, terrace, parking, pool, garden, bbq, air_conditioning, etc.), q (texto libre residual que no encaje en campos estructurados: ej. "luminoso", "reciclado a nuevo", "frente a plaza").
-- Usá null para lo no detectado. Precios en números enteros (sin separadores de miles).
-- Interpretá frases largas, matices y lenguaje coloquial o disruptivo si el usuario lo usa ("comprar", "alquilar", "depto", "casa quinta", "pileta", "quincho", "a refaccionar", "inversión fuerte").
-- Capturá la intención aunque el usuario no use jerga de corredor; traducila a los campos anteriores.
-
-Ejemplo: {"operationType":"rent","propertyType":"apartment","city":"Buenos Aires","neighborhood":"Palermo","minPrice":null,"maxPrice":200000,"minBedrooms":2,"minSurface":null,"amenities":["balcony"],"q":"luminoso"}`
+- Frases como "casa en venta" → operationType sale; no inventes barrio "venta".
+- "Depto en alquiler en Nueva Córdoba" → rent, apartment, neighborhood si corresponde al texto.
+- Precios en pesos o USD según contexto; número entero.
+- Si el mensaje es ambiguo en operación, elegí la más probable o null (el motor puede usar contexto de página).`
 
       const systemFollowUp = `
 
-Modo seguimiento: el usuario ya había buscado y ahora envía un mensaje corto para afinar (ej. "más barato", "en Belgrano", "con pileta", "sacá el tope de precio").
-- Partí de los filtros previos que te damos en el mensaje de usuario y devolvé el JSON COMPLETO resultante (no un diff).
-- Si el nuevo mensaje contradice un campo anterior, ganá el mensaje nuevo.
-- "Más barato" / "más económico": bajá maxPrice ~15–20% o agregá tope si no había.
-- "Otro barrio" sin nombre nuevo: dejá neighborhood en null y conservá ciudad si había.
-- Frases como "igual pero con cochera": sumá amenity parking si aplica.`
+Modo seguimiento: ya hay una búsqueda previa (JSON en el mensaje de usuario). El nuevo texto es un refinamiento.
+- Devolvé el JSON COMPLETO resultante (no un diff).
+- Si contradice un campo anterior, gana el mensaje nuevo.
+- "Más barato" / "más económico": bajá maxPrice ~15–20% si había tope.
+- "Otro barrio" sin nombre: neighborhood null, conservá city si había.
+- "Igual pero con cochera": sumá amenity parking si aplica.`
 
       const userContent = previous
         ? `[Búsqueda anterior]\nUsuario había dicho: ${previous.userMessage}\nFiltros inferidos (JSON): ${JSON.stringify(previous.intention)}\n\n[Nuevo mensaje — refiná o corregí]\n${message}`
@@ -78,12 +148,18 @@ Modo seguimiento: el usuario ya había buscado y ahora envía un mensaje corto p
           },
           { role: 'user', content: userContent },
         ],
-        temperature: 0.1,
+        temperature: 0.15,
+        response_format: { type: 'json_object' },
       })
       const content = response.choices[0]?.message?.content?.trim()
       if (content) {
-        const parsed = JSON.parse(content) as Record<string, unknown>
-        return normalizeIntention(parsed)
+        const parsed = extractJsonObject(content)
+        if (parsed) {
+          return finalizeConversationalIntention(
+            message,
+            normalizeIntention(parsed)
+          )
+        }
       }
     } catch (err) {
       console.warn('[llm] OpenAI error, falling back to regex:', err)
@@ -91,10 +167,13 @@ Modo seguimiento: el usuario ya había buscado y ahora envía un mensaje corto p
   }
 
   if (previous) {
-    return mergeFollowUpFallback(message, previous.intention)
+    return finalizeConversationalIntention(
+      message,
+      mergeFollowUpFallback(message, previous.intention)
+    )
   }
 
-  return fallbackExtract(message)
+  return finalizeConversationalIntention(message, fallbackExtract(message))
 }
 
 /** Sin LLM: combina heurísticas locales con el estado previo. */
@@ -160,13 +239,28 @@ function normalizeIntention(raw: Record<string, unknown>): ExtractedIntention {
     out.operationType = op
   }
   if (typeof raw.propertyType === 'string' && raw.propertyType) {
-    out.propertyType = raw.propertyType
+    const sanitized = sanitizePropertyType(raw.propertyType)
+    if (sanitized) out.propertyType = sanitized
   }
   if (typeof raw.city === 'string' && raw.city.trim()) {
-    out.city = raw.city.trim()
+    const c = raw.city.trim()
+    const cLow = c.toLowerCase()
+    if (
+      matchOperationTypeFromText(cLow) == null &&
+      matchPropertyTypeFromText(cLow) == null
+    ) {
+      out.city = c
+    }
   }
   if (typeof raw.neighborhood === 'string' && raw.neighborhood.trim()) {
-    out.neighborhood = raw.neighborhood.trim()
+    const n = raw.neighborhood.trim()
+    const nLow = n.toLowerCase()
+    if (
+      matchOperationTypeFromText(nLow) == null &&
+      matchPropertyTypeFromText(nLow) == null
+    ) {
+      out.neighborhood = n
+    }
   }
   const minP = Number(raw.minPrice)
   if (Number.isFinite(minP) && minP >= 0) out.minPrice = minP
@@ -203,16 +297,21 @@ function fallbackExtract(message: string): ExtractedIntention {
     out.amenities = extracted.amenities
   }
 
-  // city/neighborhood: intentar detectar con patrones comunes (ej. "en Palermo", "en Buenos Aires")
+  // city/neighborhood: "en Palermo", "en Buenos Aires" (no confundir con "en venta" / "en alquiler")
   const inMatch = lower.match(/\ben\s+([a-záéíóúñ\s]+?)(?:\s+con|\s+cerca|\s+hasta|$|,)/i)
   if (inMatch) {
     const place = inMatch[1]!.trim()
     if (place.length >= 2 && place.length <= 80) {
-      // Asumir barrio si es una palabra corta, ciudad si es más larga
-      if (place.split(/\s+/).length === 1 && place.length <= 20) {
-        out.neighborhood = place
-      } else {
-        out.city = place
+      const placeNorm = place.toLowerCase()
+      const looksLikeOpOrType =
+        matchOperationTypeFromText(placeNorm) != null ||
+        matchPropertyTypeFromText(placeNorm) != null
+      if (!looksLikeOpOrType) {
+        if (place.split(/\s+/).length === 1 && place.length <= 20) {
+          out.neighborhood = place
+        } else {
+          out.city = place
+        }
       }
     }
   }

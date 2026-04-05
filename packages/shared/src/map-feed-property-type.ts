@@ -81,19 +81,57 @@ const FEED_TYPE_EXACT: Record<string, PropertyType> = {
 }
 
 /**
- * Mapea texto de feed a `PropertyType`. Si falta o es ambiguo, usa `apartment`
- * (comportamiento histórico para feeds que solo envían “departamento”).
+ * Mapea código de feed + título/descripción del aviso.
+ * Si el feed dice `apartment` pero el texto describe otro tipo (terreno, PH, local…), se prefiere el texto.
+ * Si el código de feed es desconocido, se intenta inferir solo desde el texto antes de caer en `apartment`.
  */
-export function mapFeedPropertyType(raw: unknown): PropertyType {
+export function mapFeedPropertyTypeWithListingText(
+  raw: unknown,
+  context: { title: string; description?: string | null }
+): PropertyType {
   const key = feedTypeKey(raw)
-  if (!key) return 'apartment'
+  const textBlob = `${context.title} ${context.description ?? ''}`.trim().toLowerCase()
+  const fromText = textBlob ? matchPropertyTypeFromText(textBlob) : undefined
+
+  if (!key) {
+    if (fromText) return fromText
+    return 'apartment'
+  }
 
   const exact = FEED_TYPE_EXACT[key]
-  if (exact) return exact
+  if (exact != null) {
+    if (exact !== 'apartment') return exact
+    if (fromText && fromText !== 'apartment') return fromText
+    return exact
+  }
 
   const spaced = key.replace(/_/g, ' ')
-  const fromSemantics = matchPropertyTypeFromText(spaced)
-  if (fromSemantics) return fromSemantics
+  const fromKeySemantic = matchPropertyTypeFromText(spaced)
+  if (fromKeySemantic != null) {
+    if (fromKeySemantic !== 'apartment') return fromKeySemantic
+    if (fromText && fromText !== 'apartment') return fromText
+    return fromKeySemantic
+  }
 
+  if (fromText) return fromText
   return 'apartment'
+}
+
+/**
+ * Mapea solo el código del feed (sin título). Para import usar `mapFeedPropertyTypeWithListingText`.
+ */
+export function mapFeedPropertyType(raw: unknown): PropertyType {
+  return mapFeedPropertyTypeWithListingText(raw, { title: '', description: '' })
+}
+
+/**
+ * Inferencia desde título+descripción (p. ej. reclasificación en DB sin re-leer el feed).
+ */
+export function inferPropertyTypeFromListingNarrative(
+  title: string,
+  description?: string | null
+): PropertyType | undefined {
+  const blob = `${title} ${description ?? ''}`.trim().toLowerCase()
+  if (!blob) return undefined
+  return matchPropertyTypeFromText(blob)
 }

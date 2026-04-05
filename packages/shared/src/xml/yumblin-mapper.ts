@@ -6,7 +6,7 @@
  */
 
 import { extractAmenitiesFromFeedItemDetailed } from '../amenity-mapping'
-import { mapFeedPropertyType } from '../map-feed-property-type'
+import { mapFeedPropertyTypeWithListingText } from '../map-feed-property-type'
 import type { Amenity, OperationType } from '../types/listing'
 
 type JsonItem = Record<string, unknown>
@@ -243,7 +243,10 @@ export function mapYumblinItem(
       'tipo_inmueble',
       'tipo'
     )
-  const propertyType = mapFeedPropertyType(typeRaw ?? '')
+  const propertyType = mapFeedPropertyTypeWithListingText(typeRaw ?? '', {
+    title: title.slice(0, 255),
+    description: desc ?? '',
+  })
 
   const lat = getValue(item, 'latitude', 'lat', 'latitud') as number | string | null
   const lng = getValue(item, 'longitude', 'lng', 'longitud', 'lon') as number | string | null

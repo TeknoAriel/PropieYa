@@ -23,6 +23,7 @@ import {
   withMatchReasons,
   PORTAL_STATS_TERMINALS,
   type ExplainMatchFilters,
+  type LocalityCatalogEntry,
 } from '@propieya/shared'
 
 import {
@@ -46,10 +47,9 @@ import {
 import type { SearchFilters } from '../../lib/search/types'
 import { decodeListingSearchCursor } from '../../lib/search/search-cursor'
 import { sqlPointInPolygonLngLat } from '../../lib/search/point-in-polygon-sql'
-import {
-  extractIntentionFromMessage,
-  type ConversationPrior,
-} from '../../lib/llm'
+import { type ConversationPrior } from '../../lib/llm'
+import { runConversationalSearchOrchestrator } from '../../lib/conversational-search'
+import { getListingLocalityCatalog } from '../../lib/listing-locality-catalog'
 import { recordPortalStatsEvent } from '../../lib/analytics/record-portal-stats-event'
 import { checkRateLimit } from '../../lib/rate-limit'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
@@ -785,6 +785,20 @@ export const listingRouter = createTRPCRouter({
     facets: FACETS_CATALOG,
   })),
 
+  /**
+   * Ciudades y barrios que aparecen en avisos activos (agregado).
+   * Para el modal predictivo del buscador y validación conversacional.
+   */
+  localityCatalog: publicProcedure.query(async ({ ctx }) => {
+    try {
+      const entries = await getListingLocalityCatalog(ctx.db)
+      return { entries: [...entries] }
+    } catch (err) {
+      console.error('[listing.localityCatalog]', err)
+      return { entries: [] as LocalityCatalogEntry[] }
+    }
+  }),
+
   /** Búsqueda pública (solo avisos activos). Usa ES si está configurado, fallback a SQL. */
   search: publicProcedure
     .input(listingSearchInputSchema)
@@ -1209,10 +1223,27 @@ export const listingRouter = createTRPCRouter({
 
       try {
         const prior = conversationPriorFromInput(input.previousContext)
-        const intention = await extractIntentionFromMessage(
-          input.message,
-          prior ?? undefined
-        )
+        const localityCatalog = await getListingLocalityCatalog(ctx.db)
+        const { intention, amenitiesMatchMode, pipelineDebug } =
+          await runConversationalSearchOrchestrator(input.message, prior ?? undefined, {
+            localityCatalog,
+          })
+
+        if (process.env.LOG_CONVERSATIONAL_SEARCH === '1') {
+          console.info(
+            '[listing.searchConversational]',
+            JSON.stringify({
+              input: input.message,
+              structured: pipelineDebug.structuredSnapshot,
+              notes: pipelineDebug.validationNotes,
+              unknownTerms: pipelineDebug.unknownTerms,
+              droppedLocations: pipelineDebug.droppedLocations,
+              droppedAmenities: pipelineDebug.droppedAmenities,
+              amenitiesMatchMode,
+            })
+          )
+        }
+
         const explainFilters: ExplainMatchFilters = {
           q: intention.q,
           operationType: intention.operationType,
@@ -1227,7 +1258,7 @@ export const listingRouter = createTRPCRouter({
         }
         const filters = {
           ...explainFilters,
-          amenitiesMatchMode: 'preferred' as const,
+          amenitiesMatchMode,
           limit: 24,
           offset: 0,
         }
