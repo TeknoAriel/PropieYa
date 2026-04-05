@@ -16,18 +16,25 @@ describe('normalizeConversationalText', () => {
 })
 
 describe('applyConversationalPhraseRules', () => {
-  it('casa en venta → sale + house', () => {
+  it('casa en venta → solo sale (sin forzar house)', () => {
     const intent: ConversationalFlatIntent = { q: 'casa en venta' }
     applyConversationalPhraseRules('casa en venta', intent)
     expect(intent.operationType).toBe('sale')
-    expect(intent.propertyType).toBe('house')
+    expect(intent.propertyType).toBeUndefined()
   })
 
-  it('casa en alquiler → rent + house', () => {
+  it('casas en venta → sale', () => {
+    const intent: ConversationalFlatIntent = {}
+    applyConversationalPhraseRules('casas en venta', intent)
+    expect(intent.operationType).toBe('sale')
+    expect(intent.propertyType).toBeUndefined()
+  })
+
+  it('casa en alquiler → solo rent', () => {
     const intent: ConversationalFlatIntent = {}
     applyConversationalPhraseRules('quiero alquilar una casa', intent)
     expect(intent.operationType).toBe('rent')
-    expect(intent.propertyType).toBe('house')
+    expect(intent.propertyType).toBeUndefined()
   })
 })
 
@@ -52,14 +59,26 @@ describe('validateConversationalPipeline', () => {
     expect(r.debug.droppedLocations.join(' ')).toMatch(/alquiler/i)
   })
 
-  it('equivale frases de compra a sale + house', () => {
+  it('comprar casa en Rosario: sale y ciudad, sin house genérico', () => {
     const r = validateConversationalPipeline('comprar casa en Rosario', {
       q: 'comprar casa en Rosario',
       city: 'Rosario',
+      propertyType: 'house',
     })
     expect(r.extracted.operationType).toBe('sale')
-    expect(r.extracted.propertyType).toBe('house')
+    expect(r.extracted.propertyType).toBeUndefined()
     expect(r.extracted.city).toBe('Rosario')
+    expect(r.debug.validationNotes.some((n) => /house omitido/i.test(n))).toBe(true)
+  })
+
+  it('Casas en venta: si el LLM manda house, se quita', () => {
+    const r = validateConversationalPipeline('Casas en venta', {
+      q: 'Casas en venta',
+      operationType: 'sale',
+      propertyType: 'house',
+    })
+    expect(r.extracted.operationType).toBe('sale')
+    expect(r.extracted.propertyType).toBeUndefined()
   })
 
   it('departamento en Palermo con catálogo', () => {

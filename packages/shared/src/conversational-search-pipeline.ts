@@ -107,24 +107,45 @@ export function applyConversationalPhraseRules(
 ): void {
   const s = normalizedText
 
+  /**
+   * Solo operación: forzar `propertyType: house` en «casa(s) en venta» vacía el listado
+   * cuando la oferta es mixta (deptos); alineado a `search-semantics.ts` (no mapear casa suelta).
+   */
   const houseSale =
-    /\b(casa en venta|casa venta|comprar casa|busco casa para comprar|quiero comprar una casa|quiero comprar casa|casa para comprar)\b/.test(
+    /\b(casas?\s+en\s+venta|casa\s+venta|comprar\s+casas?|busco\s+casas?\s+para\s+comprar|quiero\s+comprar\s+(una\s+)?casas?|quiero\s+comprar\s+casas?|casas?\s+para\s+comprar)\b/.test(
       s
-    ) || /^(casa en venta|casa venta)$/i.test(s.trim())
+    ) || /^(casas?\s+en\s+venta|casa\s+venta)$/i.test(s.trim())
 
   const houseRent =
-    /\b(casa en alquiler|casa alquiler|alquilar casa|busco casa para alquilar|quiero alquilar una casa|quiero alquilar casa|arriendo casa|casa para alquilar)\b/.test(
+    /\b(casas?\s+en\s+alquiler|casa\s+alquiler|alquilar\s+casas?|busco\s+casas?\s+para\s+alquilar|quiero\s+alquilar\s+(una\s+)?casas?|quiero\s+alquilar\s+casas?|arriendo\s+casas?|casas?\s+para\s+alquilar)\b/.test(
       s
-    ) || /^(casa en alquiler|casa alquiler)$/i.test(s.trim())
+    ) || /^(casas?\s+en\s+alquiler|casa\s+alquiler)$/i.test(s.trim())
 
   if (houseSale) {
     if (!intent.operationType) intent.operationType = 'sale'
-    if (!intent.propertyType) intent.propertyType = 'house'
   }
   if (houseRent) {
     if (!intent.operationType) intent.operationType = 'rent'
-    if (!intent.propertyType) intent.propertyType = 'house'
   }
+}
+
+/**
+ * Quitar `house` cuando el texto es genérico «casa(s) en venta/alquiler» (u homólogos),
+ * p. ej. lo que devuelve el LLM, para no filtrar solo `house` y quedar en cero.
+ */
+export function shouldOmitHouseForGenericCasaPhrase(normalizedText: string): boolean {
+  const s = normalizedText
+  if (/^\s*casas?\s*$/i.test(s.trim())) return true
+  if (/\bcasa\s+quinta|\bcasa\s+de\s+campo|\bd[uú]plex|\btriplex|\btr[ií]plex\b/.test(s)) {
+    return false
+  }
+  if (/\bcasas?\s+en\s+venta\b|\bcasa\s+venta\b/.test(s)) return true
+  if (/\bcasas?\s+en\s+alquiler\b|\bcasa\s+alquiler\b/.test(s)) return true
+  if (/\b(comprar|busco|quiero)\s+casas?\b/.test(s)) return true
+  if (/\bcasas?\s+para\s+comprar\b/.test(s)) return true
+  if (/\balquilar\s+casas?\b|\bcasas?\s+para\s+alquilar\b/.test(s)) return true
+  if (/\barriendo\s+casas?\b/.test(s)) return true
+  return false
 }
 
 function filterAmenitiesToCatalog(raw: string[] | undefined): {
@@ -230,6 +251,16 @@ export function validateConversationalPipeline(
   const localityResolver = createLocalityResolver(options?.localityCatalog)
 
   applyConversationalPhraseRules(normalizedText, out)
+
+  if (
+    out.propertyType === 'house' &&
+    shouldOmitHouseForGenericCasaPhrase(normalizedText)
+  ) {
+    delete out.propertyType
+    validationNotes.push(
+      'propertyType house omitido: frase genérica casa(s) (oferta mixta; ver search-semantics)'
+    )
+  }
 
   if (out.operationType && !OPERATION_ENUM.has(out.operationType)) {
     validationNotes.push(`operationType inválido omitido: ${out.operationType}`)
