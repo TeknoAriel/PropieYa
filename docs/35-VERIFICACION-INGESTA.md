@@ -35,7 +35,7 @@ El script hace:
 
 ## Si el índice de búsqueda no indexa
 
-Bonsai usa OpenSearch: el portal usa `@opensearch-project/opensearch` cuando la URL es Bonsai o `USE_OPENSEARCH=1` (ver `apps/web/src/lib/search/listing-search-engine.ts` y `docs/34-ELASTICSEARCH-BONSAI-CONFIG.md`).
+**Bonsai y OpenSearch:** Bonsai expone OpenSearch (no Elasticsearch 8 “puro”). El portal auto-detecta URLs cuyo host coincide con `*.bonsai.io` (y `*.bonsaisearch.net`) y entonces usa el cliente `@opensearch-project/opensearch` con `ELASTICSEARCH_URL`; en otros clusters OpenSearch podés forzar con `USE_OPENSEARCH=1` o `SEARCH_BACKEND=opensearch` (detalle en `apps/web/src/lib/search/listing-search-engine.ts` y `docs/34-ELASTICSEARCH-BONSAI-CONFIG.md`).
 
 - Cron remoto (requiere `CRON_SECRET`):  
   `curl -H "Authorization: Bearer $CRON_SECRET" https://propieyaweb.vercel.app/api/cron/sync-search`

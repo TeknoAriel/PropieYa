@@ -75,7 +75,8 @@ export async function bulkIndexListings(
   rows: ListingRow[]
 ): Promise<{ indexed: number; errors: number }> {
   const engine = getListingSearchEngine()
-  if (!engine || rows.length === 0) return { indexed: 0, errors: rows.length }
+  if (!engine) return { indexed: 0, errors: rows.length }
+  if (rows.length === 0) return { indexed: 0, errors: 0 }
   return engine.bulkIndex(
     INDEX,
     rows.map((row) => ({ id: row.id, doc: listingToEsDoc(row) }))
