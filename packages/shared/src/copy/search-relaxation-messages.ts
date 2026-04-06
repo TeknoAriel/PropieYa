@@ -4,6 +4,8 @@
  */
 
 export const SEARCH_RELAXATION_STEP_LABELS_ES: Record<string, string> = {
+  property_type:
+    'el tipo de propiedad (casa, depto, PH, etc.) para mostrar todos los avisos que encajan con el resto de criterios',
   amenities_leisure:
     'preferencias de ocio y clima (pileta, parrilla, chimenea, aire acondicionado, calefacción, gimnasio, SUM, juegos o rooftop)',
   amenities_outdoor: 'terraza, jardín y lavadero',

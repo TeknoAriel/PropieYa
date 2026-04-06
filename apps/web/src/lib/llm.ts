@@ -119,7 +119,7 @@ Salida: un único objeto JSON (sin markdown, sin texto antes ni después).
 
 Campos opcionales (omití clave o usá null si no aplica):
 - operationType: "sale" | "rent" | "temporary_rent" (comprar/vendo/venta → sale; alquilar/alquiler → rent; temporal/airbnb → temporary_rent)
-- propertyType: "apartment"|"house"|"ph"|"land"|"office"|"commercial"|"warehouse"|"parking"|"development_unit" (depto/monoambiente/loft → apartment; casa quinta/casa de campo → house; terreno/lote → land; local → commercial; galpón → warehouse; cochera → parking; emprendimiento/en pozo → development_unit)
+- propertyType: "apartment"|"house"|"ph"|"land"|"office"|"commercial"|"warehouse"|"parking"|"development_unit" (depto/monoambiente/loft → apartment; casa quinta/casa de campo/dúplex → house; terreno/lote → land; local → commercial; galpón → warehouse; cochera → parking; emprendimiento/en pozo → development_unit). IMPORTANTE: en argentino «casa» o «casas» solas, o «casa en [ciudad/barrio]» sin decir dúplex ni casa quinta, suelen significar «vivienda» en general: devolvé propertyType null (no uses house), porque el listado mezcla deptos y casas y filtrar solo house vacía resultados.
 - city, neighborhood: solo topónimos reales (ej. Rosario, Palermo, Córdoba). NUNCA pongas aquí "venta", "alquiler", "comprar", "departamento", "casa" como si fueran lugar.
 - minPrice, maxPrice: enteros (sin puntos de miles)
 - minBedrooms, minSurface: números si el usuario los da
@@ -127,6 +127,7 @@ Campos opcionales (omití clave o usá null si no aplica):
 - q: solo matices que no entran arriba (ej. "luminoso", "frente al río", "a estrenar"). Si todo quedó en campos estructurados, q puede ser null o "".
 
 Reglas:
+- «Casa en Funes», «casas en Rosario» → city/barrio sí; propertyType null salvo que digan depto, PH, lote, etc.
 - Frases como "casa en venta" → operationType sale; no inventes barrio "venta".
 - "Depto en alquiler en Nueva Córdoba" → rent, apartment, neighborhood si corresponde al texto.
 - Precios en pesos o USD según contexto; número entero.

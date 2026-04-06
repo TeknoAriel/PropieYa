@@ -54,6 +54,14 @@ export function stripMapGeo(f: SearchFilters): void {
   delete f.polygon
 }
 
+/**
+ * Quita filtro por tipo de propiedad. Con inventario heterogéneo o avisos mal clasificados,
+ * exigir solo `house` u otro tipo deja el listado en cero; se relaja antes que amenities.
+ */
+export function stripPropertyType(f: SearchFilters): void {
+  delete f.propertyType
+}
+
 export function stripMinGarages(f: SearchFilters): void {
   delete f.minGarages
 }
@@ -140,6 +148,7 @@ export function stripAmenitiesParkingSecurity(f: SearchFilters): void {
 }
 
 export type RelaxationStepId =
+  | 'property_type'
   | 'amenities_leisure'
   | 'amenities_outdoor'
   | 'amenities_building'
@@ -156,13 +165,14 @@ export type RelaxationStepId =
   | 'amenities_flags'
 
 /**
- * Orden cuando la primera pasada da 0 resultados: primero preferencias de menor valor,
- * luego detalles finos, números duros y ubicación; al final quitar todo amenity residual.
+ * Orden cuando la primera pasada da 0 resultados: primero tipo (oferta mixta / datos ruidosos),
+ * luego preferencias de menor valor, detalles finos, números y ubicación; al final amenities.
  */
 export const ZERO_RESULTS_RELAXATION_SEQUENCE: readonly {
   id: RelaxationStepId
   apply: (f: SearchFilters) => void
 }[] = [
+  { id: 'property_type', apply: stripPropertyType },
   { id: 'amenities_leisure', apply: stripAmenitiesLeisure },
   { id: 'amenities_outdoor', apply: stripAmenitiesOutdoor },
   { id: 'amenities_building', apply: stripAmenitiesBuilding },
