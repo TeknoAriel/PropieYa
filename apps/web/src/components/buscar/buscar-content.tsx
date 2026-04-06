@@ -612,8 +612,7 @@ export function BuscarContent({
     [coreSearchFilters, searchPage]
   )
 
-  const { data, isLoading, isFetching, isError, error } =
-    trpc.listing.search.useQuery(filters, {
+  const { data, isLoading, isFetching, isError } = trpc.listing.search.useQuery(filters, {
       placeholderData: (previousData) => {
         if (searchFilterFpRef.current !== filterFingerprint) {
           searchFilterFpRef.current = filterFingerprint
@@ -1775,14 +1774,9 @@ export function BuscarContent({
             </div>
           ) : null}
           {isError ? (
-            <Card className="p-6">
-              <p className="text-sm text-text-primary">
-                {S.loadError}{' '}
-                {error?.message?.includes('DATABASE') ||
-                error?.message?.includes('required')
-                  ? S.loadErrorDbHint
-                  : (error?.message ?? S.loadErrorRetry)}
-              </p>
+            <Card className="space-y-2 p-6">
+              <p className="text-sm font-medium text-text-primary">{S.searchLoadErrorSoftTitle}</p>
+              <p className="text-sm text-text-secondary">{S.searchLoadErrorSoftBody}</p>
             </Card>
           ) : isLoading && !data && accumulatedListings.length === 0 ? (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">

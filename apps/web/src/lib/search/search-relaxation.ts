@@ -94,23 +94,81 @@ export function stripPreferredAmenities(f: SearchFilters): void {
   pruneEmptyFacets(f)
 }
 
+/** Amenities de menor “peso” para el usuario: ocio, clima, espacios comunes. */
+const AMENITY_TIER_LEISURE = new Set([
+  'pool',
+  'bbq',
+  'gym',
+  'sum',
+  'playground',
+  'rooftop',
+  'fireplace',
+  'air_conditioning',
+  'heating',
+])
+
+const AMENITY_TIER_OUTDOOR = new Set(['terrace', 'garden', 'laundry'])
+const AMENITY_TIER_BUILDING = new Set(['elevator', 'doorman', 'storage'])
+const AMENITY_TIER_BALCONY = new Set(['balcony'])
+const AMENITY_TIER_PARKING_SECURITY = new Set(['parking', 'security_24h'])
+
+function stripAmenityTier(f: SearchFilters, tier: ReadonlySet<string>): void {
+  if (f.amenities?.length) {
+    f.amenities = f.amenities.filter((a) => !tier.has(a))
+    if (f.amenities.length === 0) delete f.amenities
+  }
+  if (f.facets?.flags?.length) {
+    f.facets.flags = f.facets.flags.filter((id) => !tier.has(id))
+  }
+  pruneEmptyFacets(f)
+}
+
+export function stripAmenitiesLeisure(f: SearchFilters): void {
+  stripAmenityTier(f, AMENITY_TIER_LEISURE)
+}
+export function stripAmenitiesOutdoor(f: SearchFilters): void {
+  stripAmenityTier(f, AMENITY_TIER_OUTDOOR)
+}
+export function stripAmenitiesBuilding(f: SearchFilters): void {
+  stripAmenityTier(f, AMENITY_TIER_BUILDING)
+}
+export function stripAmenitiesBalcony(f: SearchFilters): void {
+  stripAmenityTier(f, AMENITY_TIER_BALCONY)
+}
+export function stripAmenitiesParkingSecurity(f: SearchFilters): void {
+  stripAmenityTier(f, AMENITY_TIER_PARKING_SECURITY)
+}
+
 export type RelaxationStepId =
+  | 'amenities_leisure'
+  | 'amenities_outdoor'
+  | 'amenities_building'
+  | 'amenities_balcony'
   | 'secondary_details'
-  | 'map_geo'
+  | 'amenities_parking_security'
   | 'garages'
   | 'bathrooms'
   | 'surface'
   | 'price'
+  | 'map_geo'
   | 'bedrooms_rooms'
   | 'neighborhood'
   | 'amenities_flags'
 
-/** Orden de relajación cuando la búsqueda estricta devuelve 0 resultados. */
+/**
+ * Orden cuando la primera pasada da 0 resultados: primero preferencias de menor valor,
+ * luego detalles finos, números duros y ubicación; al final quitar todo amenity residual.
+ */
 export const ZERO_RESULTS_RELAXATION_SEQUENCE: readonly {
   id: RelaxationStepId
   apply: (f: SearchFilters) => void
 }[] = [
+  { id: 'amenities_leisure', apply: stripAmenitiesLeisure },
+  { id: 'amenities_outdoor', apply: stripAmenitiesOutdoor },
+  { id: 'amenities_building', apply: stripAmenitiesBuilding },
+  { id: 'amenities_balcony', apply: stripAmenitiesBalcony },
   { id: 'secondary_details', apply: stripSecondaryDetails },
+  { id: 'amenities_parking_security', apply: stripAmenitiesParkingSecurity },
   { id: 'garages', apply: stripMinGarages },
   { id: 'bathrooms', apply: stripMinBathrooms },
   { id: 'surface', apply: stripSurface },

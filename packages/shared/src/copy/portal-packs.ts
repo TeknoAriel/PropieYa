@@ -300,7 +300,49 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Revisá que DATABASE_URL esté definida en Vercel (proyecto web, Production).',
   loadErrorRetry: 'Intentá de nuevo más tarde.',
 
-  emptyResults: 'No hay resultados. Probá con otros filtros o ampliá la búsqueda.',
+  emptyResults:
+    'No encontramos avisos con lo que elegiste. Podés relajar filtros o probar otra zona; más abajo tenés herramientas para afinar.',
+
+  /** Relajación progresiva (ES) — tono claro y respetuoso */
+  searchRelaxBroadenedLead:
+    'No encontramos coincidencias con todos los criterios tan afinados. Para poder ofrecerte opciones útiles en la zona, fuimos flexibilizando preferencias — siempre empezando por lo más opcional (pileta, chimenea, aire acondicionado, etc.) y recién después otros requisitos.',
+  searchRelaxWhatWeDidPrefix: 'Lo que ajustamos, en orden:',
+  searchRelaxMapNote:
+    'Cuando aplica, también ampliamos el área si tenías un recorte muy chico en el mapa.',
+  searchEmptyAfterFullRelaxTitle: 'No hay avisos que se acerquen a esta búsqueda',
+  searchEmptyAfterFullRelaxBody:
+    'En esta zona u operación no aparecen propiedades ni con una búsqueda bien amplia. Te sugerimos, con calma, probar otra ciudad o barrio, cambiar venta por alquiler (o al revés), o ampliar precio desde los filtros. Gracias por la paciencia.',
+  searchFewExactWithMoreTitle: 'Encontramos pocas coincidencias exactas',
+  searchFewExactWithMoreBody:
+    'Te mostramos primero las que cumplen todo lo que pediste y sumamos otras muy parecidas, relajando solo detalles secundarios (orientación, piso, superficie cubierta, etc.).',
+  searchFewExactOnly: 'Encontramos pocas opciones que cumplen todos los criterios afinados.',
+  searchMidCountAmenitiesNote:
+    'Algunos amenities se usan como preferencia para no dejarte sin resultados: los que más encajan aparecen primero.',
+  searchUnexpectedSoft:
+    'Tuvimos un inconveniente momentáneo al buscar. Podés intentar de nuevo en unos segundos; los filtros de abajo suelen funcionar sin problema.',
+  searchLoadErrorSoftTitle: 'No pudimos completar la búsqueda',
+  searchLoadErrorSoftBody:
+    'Probá actualizar en un momento o usá los filtros clásicos más abajo. Si el problema continúa, puede ser un tema de conexión temporal.',
+
+  conversationalAssistantDegraded:
+    'No pudimos interpretar la búsqueda en este momento. Podés intentar de nuevo en unos segundos o usar los filtros y el mapa: el resultado suele ser el mismo.',
+  conversationalRelaxedAmenitiesNote:
+    'Ampliamos la búsqueda: los amenities pasan a ser preferencia para mostrarte más opciones.',
+  conversationalRelaxedOperationNote:
+    'Incluimos venta y alquiler para maximizar coincidencias con lo que buscás.',
+  searchSqlFallbackCountNote:
+    'Contamos avisos desde la base de datos porque el índice de búsqueda no devolvió coincidencias con estos criterios.',
+  searchEsUnderfillNote:
+    'El índice de búsqueda devolvió pocas coincidencias; mostramos el listado alineado con la base de datos (mismos filtros).',
+  searchSqlFallbackRowsNote:
+    'Mostramos coincidencias desde la base de datos porque el índice de búsqueda no devolvió filas con estos criterios.',
+  searchPaginationIndexSoft:
+    'No pudimos cargar la página siguiente en este momento. Volvé al inicio del listado o refrescá la página; el índice puede estar actualizándose.',
+
+  conversationalRateLimitSoft:
+    'Llegaste al límite de búsquedas por minuto. Esperá un momento e intentá de nuevo; también podés usar los filtros debajo.',
+  conversationalDbSoft:
+    'No pudimos conectar con la base de datos por un instante. Intentá de nuevo en unos segundos o usá los filtros clásicos debajo del buscador.',
 
   mapHelp:
     'Solo se marcan avisos con ubicación. El filtro por mapa aplica con el mapa abierto: opción «Actualizar resultados al mover el mapa», o un clic en «Buscar en esta zona», o polígono de 3+ vértices. Con ciudad o barrio, el listado se ordena por cercanía al centro de esa zona (sin recortar). Sin zona, el mapa puede abrir cerca de tu ubicación si el navegador lo permite.',
@@ -372,7 +414,7 @@ export const PORTAL_SEARCH_UX_COPY = {
     'El detalle de criterios aparece debajo; acá solo seguís la conversación.',
   conversationalClearContext: 'Empezar de cero',
   conversationalResultsZero:
-    'No encontramos avisos ni con criterios relajados. Probá otra zona o ampliá precio en filtros.',
+    'No encontramos avisos con los criterios actuales, ni ampliando un poco la búsqueda. Te sugerimos probar otra zona, otra operación o ampliar precio desde los filtros, con calma.',
   conversationalChipCheaper: 'Más barato',
   conversationalChipOtherArea: 'Otro barrio o zona',
   conversationalChipParking: 'Con cochera',

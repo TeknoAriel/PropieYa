@@ -22,6 +22,7 @@ import {
   FACETS_CATALOG,
   SEARCH_FILTER_AMENITIES,
   withMatchReasons,
+  PORTAL_SEARCH_UX_COPY,
   PORTAL_STATS_TERMINALS,
   type ExplainMatchFilters,
   type LocalityCatalogEntry,
@@ -1060,6 +1061,7 @@ export const listingRouter = createTRPCRouter({
 
       const esOffset = searchAfter ? 0 : offset
 
+      try {
       const persistThisSearch =
         Boolean(sessionUserId) &&
         !cursor?.trim() &&
@@ -1107,8 +1109,7 @@ export const listingRouter = createTRPCRouter({
       if (!(layered.fromEs && layered.total > 0) && searchAfter) {
         throw new TRPCError({
           code: 'PRECONDITION_FAILED',
-          message:
-            'No se pudo cargar la página siguiente sin el índice de búsqueda. Volvé al listado o refrescá la página.',
+          message: PORTAL_SEARCH_UX_COPY.searchPaginationIndexSoft,
         })
       }
 
@@ -1164,9 +1165,7 @@ export const listingRouter = createTRPCRouter({
               nextCursor: null,
               searchUX: {
                 ...defaultSqlSearchUx(sqlTotalProbe),
-                messages: [
-                  'El índice de búsqueda devolvió pocas coincidencias; mostramos el listado alineado con la base de datos (mismos filtros).',
-                ],
+                messages: [PORTAL_SEARCH_UX_COPY.searchEsUnderfillNote],
               },
             }
           }
@@ -1255,7 +1254,7 @@ export const listingRouter = createTRPCRouter({
                 sqlTotal > 0
                   ? [
                       ...layered.ux.messages,
-                      'Mostramos coincidencias desde la base de datos (el índice de búsqueda no devolvió filas con estos criterios).',
+                      PORTAL_SEARCH_UX_COPY.searchSqlFallbackRowsNote,
                     ]
                   : layered.ux.messages,
             }
@@ -1291,6 +1290,25 @@ export const listingRouter = createTRPCRouter({
         nextCursor: null,
         searchUX: sqlUx,
       }
+      } catch (searchErr) {
+        if (searchErr instanceof TRPCError) throw searchErr
+        console.error('[listing.search] error inesperado:', searchErr)
+        return {
+          items: [],
+          total: 0,
+          nextCursor: null,
+          searchUX: {
+            tier: 'exact',
+            primaryTotal: 0,
+            strictMatchCount: 0,
+            mergedSupplement: false,
+            nearAreaSupplement: false,
+            messages: [PORTAL_SEARCH_UX_COPY.searchUnexpectedSoft],
+            relaxationStepIds: [],
+            disableDeepPagination: false,
+          },
+        }
+      }
     }),
 
   /** Búsqueda conversacional: extrae intención del mensaje y devuelve filtros + resultados. */
@@ -1300,7 +1318,7 @@ export const listingRouter = createTRPCRouter({
       if (!checkRateLimit(ctx.ip)) {
         throw new TRPCError({
           code: 'TOO_MANY_REQUESTS',
-          message: 'Máximo 10 búsquedas por minuto. Esperá un momento.',
+          message: PORTAL_SEARCH_UX_COPY.conversationalRateLimitSoft,
         })
       }
 
@@ -1366,17 +1384,13 @@ export const listingRouter = createTRPCRouter({
 
         if (layered.fromEs && layered.total === 0 && effective.amenitiesMatchMode === 'strict') {
           effective = { ...effective, amenitiesMatchMode: 'preferred' }
-          relaxationMsgs.push(
-            'Ampliamos la búsqueda: los amenities pasan a ser preferencia para mostrar más opciones.'
-          )
+          relaxationMsgs.push(PORTAL_SEARCH_UX_COPY.conversationalRelaxedAmenitiesNote)
           layered = await searchListingsLayered(effective)
         }
 
         if (layered.fromEs && layered.total === 0 && effective.operationType) {
           effective = { ...effective, operationType: undefined }
-          relaxationMsgs.push(
-            'Incluimos venta y alquiler para maximizar coincidencias con tu búsqueda.'
-          )
+          relaxationMsgs.push(PORTAL_SEARCH_UX_COPY.conversationalRelaxedOperationNote)
           layered = await searchListingsLayered(effective)
         }
 
@@ -1479,7 +1493,7 @@ export const listingRouter = createTRPCRouter({
                   total > 0
                     ? [
                         ...layered.ux.messages,
-                        'Conteo desde la base de datos (índice sin coincidencias para estos criterios).',
+                        PORTAL_SEARCH_UX_COPY.searchSqlFallbackCountNote,
                       ]
                     : layered.ux.messages,
               }
@@ -1516,14 +1530,12 @@ export const listingRouter = createTRPCRouter({
         if (isLikelyDbOrNetworkFailure(msg)) {
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
-            message:
-              'No pudimos conectar con la base de datos. Intentá de nuevo en unos segundos o usá los filtros clásicos debajo del buscador.',
+            message: PORTAL_SEARCH_UX_COPY.conversationalDbSoft,
           })
         }
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message:
-            'La búsqueda por texto falló. Probá de nuevo o refiná con filtros y mapa.',
+          message: PORTAL_SEARCH_UX_COPY.conversationalAssistantDegraded,
         })
       }
     }),

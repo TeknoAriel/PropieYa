@@ -2,6 +2,11 @@
  * Orquestación ES: relajación progresiva y suplemento de la primera página.
  */
 
+import {
+  PORTAL_SEARCH_UX_COPY as S,
+  describeSearchRelaxationSteps,
+} from '@propieya/shared'
+
 import type { SearchFilters } from './types'
 import { searchListings, type SearchHit } from './search'
 import {
@@ -130,9 +135,7 @@ export async function searchListingsLayered(
       baseFilters.amenitiesMatchMode !== 'strict' &&
       hasAmenityPreference(baseFilters)
     ) {
-      messages.push(
-        'Algunos criterios de amenities se usan como preferencia para no vaciar el listado.'
-      )
+      messages.push(S.searchMidCountAmenitiesNote)
     }
     return {
       hits: primary.hits,
@@ -163,12 +166,8 @@ export async function searchListingsLayered(
       const exactIds = new Set(primary.hits.map((h) => h.id))
       const extraHits = secondary.hits.filter((h) => !exactIds.has(h.id))
       const merged = [...primary.hits, ...extraHits].slice(0, limit)
-      messages.push(
-        `Encontramos ${primaryTotal} opciones que cumplen todos los criterios afinados.`
-      )
-      messages.push(
-        'Te mostramos también opciones donde relajamos detalles secundarios (orientación, pisos, cubiertas, etc.).'
-      )
+      messages.push(S.searchFewExactWithMoreTitle)
+      messages.push(S.searchFewExactWithMoreBody)
       return {
         hits: merged,
         total: secondary.total,
@@ -190,8 +189,8 @@ export async function searchListingsLayered(
 
     messages.push(
       primaryTotal === 1
-        ? 'Encontramos 1 opción exacta con tus filtros.'
-        : `Encontramos ${primaryTotal} opciones exactas.`
+        ? 'Encontramos 1 opción que cumple todos los criterios afinados.'
+        : `Encontramos ${primaryTotal} opciones que cumplen todos los criterios afinados.`
     )
     return {
       hits: primary.hits,
@@ -230,13 +229,13 @@ export async function searchListingsLayered(
       const nearArea =
         step.id === 'map_geo' &&
         Boolean(baseFilters.polygon?.length || baseFilters.bbox)
-      messages.push(
-        'No hubo coincidencias con todos los filtros; ampliamos la búsqueda manteniendo operación, tipo y ubicación principal.'
-      )
+      messages.push(S.searchRelaxBroadenedLead)
+      const detail = describeSearchRelaxationSteps(relaxationStepIds)
+      if (detail) {
+        messages.push(`${S.searchRelaxWhatWeDidPrefix} ${detail}.`)
+      }
       if (nearArea) {
-        messages.push(
-          'Quitamos el recorte estricto del mapa y sumamos opciones en la zona.'
-        )
+        messages.push(S.searchRelaxMapNote)
       }
       return {
         hits: attempt.hits,
@@ -276,7 +275,8 @@ export async function searchListingsLayered(
       mergedSupplement: false,
       nearAreaSupplement: false,
       messages: [
-        'No encontramos avisos ni siquiera relajando criterios. Probá otra zona u operación.',
+        S.searchEmptyAfterFullRelaxTitle,
+        S.searchEmptyAfterFullRelaxBody,
       ],
       relaxationStepIds,
       disableDeepPagination: false,

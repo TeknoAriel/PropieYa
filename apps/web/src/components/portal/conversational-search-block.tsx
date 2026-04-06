@@ -523,8 +523,16 @@ export function ConversationalSearchBlock({
           </p>
         ) : null}
         {searchConversational.isError ? (
-          <p className={compact ? 'mt-1 text-sm text-semantic-error' : 'mt-2 text-sm text-semantic-error'}>
-            {searchConversational.error.message}
+          <p
+            className={
+              compact ? 'mt-1 text-sm text-semantic-error' : 'mt-2 text-sm text-semantic-error'
+            }
+            role="alert"
+          >
+            {(searchConversational.error as { data?: { code?: string } } | null)?.data?.code ===
+            'TOO_MANY_REQUESTS'
+              ? S.conversationalRateLimitSoft
+              : S.conversationalAssistantDegraded}
           </p>
         ) : null}
       </form>
