@@ -360,7 +360,8 @@ export const PORTAL_SEARCH_UX_COPY = {
   conversationalNextTitle: 'Siguiente paso',
   conversationalNextMap: 'Afinar en el mapa',
   conversationalNextFilters: 'Abrir más filtros',
-  conversationalNextAgain: 'Pedir otra búsqueda arriba',
+  conversationalNextAgain:
+    'Si querés otra intención, usá de nuevo la búsqueda con frase o ajustá los filtros.',
   conversationalScrollResults: 'Ver resultados',
   /** Continuidad de búsqueda (multi-turno, mismo motor). */
   conversationalContextBanner:
@@ -392,6 +393,10 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Opcional — mismo motor que la búsqueda por frase. Tocá «Más filtros» para ir más al detalle.',
   buscarPageGentleHint:
     'Explorá con calma: los resultados se actualizan solos cuando cambiás criterios.',
+  /** Sección plegable: NLP / chips inductivos (flujo principal = filtros + palabras clave). */
+  buscarOptionalNlpSummary: 'Búsqueda con frase o voz (opcional)',
+  buscarOptionalNlpHint:
+    'Lo habitual es elegir operación, tipo y zona arriba; esta sección suma una frase o dictado si preferís.',
   /** Resumen visible de criterios activos (encima del formulario). */
   buscarActiveSummaryLabel: 'Tu búsqueda ahora',
   buscarActiveSummaryEmpty:
@@ -406,7 +411,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarFlowDialogConfirm: 'Listo',
   buscarFlowLinkInline: '¿Cómo funciona la búsqueda?',
   buscarFlowBannerTeaser:
-    'Podés arrancar con una frase; mapa y filtros son opcionales cuando quieras afinar.',
+    'Arrancá con filtros y palabras clave; mapa y búsqueda por frase son opcionales para afinar.',
   buscarFlowBannerSeeSteps: 'Ver pasos',
   buscarFlowBannerDismiss: 'No volver a mostrar',
   mapViewportUpdatesResults:

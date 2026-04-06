@@ -166,6 +166,237 @@ function defaultSqlSearchUx(sqlTotal: number): ListingSearchUX {
   }
 }
 
+/** Listados públicos: más reciente arriba (publicación + desempate). */
+const ORDER_PUBLIC_RECENCY = [
+  desc(listings.publishedAt),
+  desc(listings.updatedAt),
+  desc(listings.createdAt),
+]
+
+type ListingSearchSqlPrep = {
+  merged: ReturnType<typeof mergePublicSearchFromQuery>
+  residualTextQuery: string
+  sqlInput: ListingSearchInput
+  amenityStrict: boolean
+  whereClause: ReturnType<typeof and>
+}
+
+function buildListingSearchSqlFromSeed(
+  sqlInputSeed: ListingSearchInput
+): ListingSearchSqlPrep {
+  const merged = mergePublicSearchFromQuery(sqlInputSeed)
+  const { residualTextQuery, ...sqlInputBase } = merged
+  const sqlInput: ListingSearchInput = {
+    ...sqlInputBase,
+    facets: sqlInputSeed.facets,
+    polygon: sqlInputSeed.polygon,
+  }
+  const amenityStrict = sqlInputSeed.amenitiesMatchMode === 'strict'
+
+  const conditions = [eq(listings.status, 'active')]
+  if (residualTextQuery.trim()) {
+    const frag = sanitizeIlikeFragment(residualTextQuery)
+    if (frag.length > 0) {
+      const pat = `%${frag}%`
+      conditions.push(
+        or(
+          ilike(listings.title, pat),
+          ilike(listings.description, pat)
+        )!
+      )
+    }
+  }
+  if (sqlInput.operationType) {
+    conditions.push(eq(listings.operationType, sqlInput.operationType))
+  }
+  if (sqlInput.propertyType) {
+    conditions.push(eq(listings.propertyType, sqlInput.propertyType))
+  }
+  if (sqlInput.minPrice !== undefined) {
+    conditions.push(gte(listings.priceAmount, sqlInput.minPrice))
+  }
+  if (sqlInput.maxPrice !== undefined) {
+    conditions.push(lte(listings.priceAmount, sqlInput.maxPrice))
+  }
+  if (sqlInput.minBedrooms !== undefined) {
+    conditions.push(gte(listings.bedrooms, sqlInput.minBedrooms))
+  }
+  if (sqlInput.minBathrooms !== undefined) {
+    conditions.push(gte(listings.bathrooms, sqlInput.minBathrooms))
+  }
+  if (sqlInput.minGarages !== undefined) {
+    conditions.push(gte(listings.garages, sqlInput.minGarages))
+  }
+  if (sqlInput.minSurface !== undefined) {
+    conditions.push(gte(listings.surfaceTotal, sqlInput.minSurface))
+  }
+  if (sqlInput.maxSurface !== undefined) {
+    conditions.push(lte(listings.surfaceTotal, sqlInput.maxSurface))
+  }
+  if (sqlInput.floorMin !== undefined) {
+    conditions.push(
+      sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) >= ${sqlInput.floorMin}`
+    )
+  }
+  if (sqlInput.floorMax !== undefined) {
+    conditions.push(
+      sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) <= ${sqlInput.floorMax}`
+    )
+  }
+  if (sqlInput.escalera?.trim()) {
+    conditions.push(
+      sql`(${listings.features}->>'escalera') = ${sqlInput.escalera.trim().toUpperCase()}`
+    )
+  }
+  if (sqlInput.orientation) {
+    conditions.push(
+      sql`(${listings.features}->>'orientation') = ${sqlInput.orientation}`
+    )
+  }
+  if (sqlInput.minSurfaceCovered !== undefined) {
+    conditions.push(
+      sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} >= ${sqlInput.minSurfaceCovered}`
+    )
+  }
+  if (sqlInput.maxSurfaceCovered !== undefined) {
+    conditions.push(
+      sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} <= ${sqlInput.maxSurfaceCovered}`
+    )
+  }
+  if (sqlInput.minTotalRooms !== undefined) {
+    conditions.push(
+      sql`${listings.totalRooms} IS NOT NULL AND ${listings.totalRooms} >= ${sqlInput.minTotalRooms}`
+    )
+  }
+  if (sqlInput.city?.trim()) {
+    const c = sanitizeIlikeFragment(sqlInput.city)
+    if (c.length > 0) {
+      conditions.push(
+        sql`COALESCE(${listings.address}->>'city', '') ILIKE ${`%${c}%`}`
+      )
+    }
+  }
+  if (sqlInput.neighborhood?.trim()) {
+    const n = sanitizeIlikeFragment(sqlInput.neighborhood)
+    if (n.length > 0) {
+      conditions.push(
+        sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${`%${n}%`}`
+      )
+    }
+  }
+  if (amenityStrict && sqlInput.amenities && sqlInput.amenities.length > 0) {
+    const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
+    for (const a of sqlInput.amenities) {
+      if (allowed.includes(a)) {
+        conditions.push(
+          sql`(${listings.features}->'amenities') @> to_jsonb(ARRAY[${a}]::text[])`
+        )
+      }
+    }
+  }
+  if (
+    amenityStrict &&
+    sqlInput.facets?.flags &&
+    sqlInput.facets.flags.length > 0
+  ) {
+    const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
+    for (const f of sqlInput.facets.flags) {
+      if (allowed.includes(f)) {
+        conditions.push(
+          sql`(${listings.features}->'amenities') @> to_jsonb(ARRAY[${f}]::text[])`
+        )
+      }
+    }
+  }
+  if (sqlInput.facets?.excludeFlags && sqlInput.facets.excludeFlags.length > 0) {
+    const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
+    for (const f of sqlInput.facets.excludeFlags) {
+      if (allowed.includes(f)) {
+        conditions.push(
+          sql`NOT ((${listings.features}->'amenities') @> to_jsonb(ARRAY[${f}]::text[]) )`
+        )
+      }
+    }
+  }
+  if (sqlInput.bbox) {
+    const { south, north, west, east } = sqlInput.bbox
+    conditions.push(sql`${listings.locationLat} IS NOT NULL`)
+    conditions.push(sql`${listings.locationLng} IS NOT NULL`)
+    conditions.push(gte(listings.locationLat, south))
+    conditions.push(lte(listings.locationLat, north))
+    conditions.push(gte(listings.locationLng, west))
+    conditions.push(lte(listings.locationLng, east))
+  }
+  if (sqlInput.geoPoint && sqlInput.geoRadius) {
+    const { lat, lng } = sqlInput.geoPoint
+    const rMeters = sqlInput.geoRadius
+    const rKm = rMeters / 1000
+    const latDelta = rKm / 111
+    const lngDelta = rKm / (111 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)))
+    conditions.push(sql`${listings.locationLat} IS NOT NULL`)
+    conditions.push(sql`${listings.locationLng} IS NOT NULL`)
+    conditions.push(gte(listings.locationLat, lat - latDelta))
+    conditions.push(lte(listings.locationLat, lat + latDelta))
+    conditions.push(gte(listings.locationLng, lng - lngDelta))
+    conditions.push(lte(listings.locationLng, lng + lngDelta))
+  }
+  if (sqlInput.polygon && sqlInput.polygon.length >= 3) {
+    conditions.push(sql`${listings.locationLat} IS NOT NULL`)
+    conditions.push(sql`${listings.locationLng} IS NOT NULL`)
+    conditions.push(
+      sqlPointInPolygonLngLat(
+        listings.locationLng,
+        listings.locationLat,
+        sqlInput.polygon
+      )
+    )
+  }
+
+  return {
+    merged,
+    residualTextQuery,
+    sqlInput,
+    amenityStrict,
+    whereClause: and(...conditions)!,
+  }
+}
+
+async function countListingSearchSql(
+  db: Database,
+  prep: ListingSearchSqlPrep
+): Promise<number> {
+  const [totalRow] = await db
+    .select({ c: count() })
+    .from(listings)
+    .where(prep.whereClause)
+  return Number(totalRow?.c ?? 0)
+}
+
+async function selectListingSearchSqlPage(
+  db: Database,
+  prep: ListingSearchSqlPrep,
+  limit: number,
+  offset: number
+) {
+  const proximitySqlOrder =
+    shouldApplyLocalityProximitySort(prep.merged as SearchFilters) &&
+    prep.merged.sortNearLat != null &&
+    prep.merged.sortNearLng != null
+      ? sql`(CASE WHEN ${listings.locationLat} IS NOT NULL AND ${listings.locationLng} IS NOT NULL THEN ((${listings.locationLat}::double precision - ${prep.merged.sortNearLat}) * (${listings.locationLat}::double precision - ${prep.merged.sortNearLat}) + (${listings.locationLng}::double precision - ${prep.merged.sortNearLng}) * (${listings.locationLng}::double precision - ${prep.merged.sortNearLng})) ELSE 1e30::double precision END)`
+      : null
+
+  return db
+    .select(listingsSelectPublic)
+    .from(listings)
+    .where(prep.whereClause)
+    .orderBy(
+      ...(proximitySqlOrder ? [proximitySqlOrder] : []),
+      ...ORDER_PUBLIC_RECENCY
+    )
+    .limit(limit)
+    .offset(offset)
+}
+
 /** Historial de búsqueda (usuarios logueados). No bloquea la respuesta si falla el insert. */
 function persistSearchHistoryRow(
   db: Database,
@@ -192,13 +423,6 @@ function persistSearchHistoryRow(
     }
   })()
 }
-
-/** Listados: más reciente arriba. Público: por publicación + desempate. Panel (mis avisos): por última modificación. */
-const ORDER_PUBLIC_RECENCY = [
-  desc(listings.publishedAt),
-  desc(listings.updatedAt),
-  desc(listings.createdAt),
-]
 
 const ORDER_PANEL_RECENCY = [
   desc(listings.updatedAt),
@@ -889,6 +1113,65 @@ export const listingRouter = createTRPCRouter({
       }
 
       if (layered.fromEs && layered.total > 0) {
+        const ES_UNDERFILL_CAP = 24
+        const canProbeSqlUnderfill =
+          !cursor?.trim() &&
+          input.offset === 0 &&
+          !searchAfter &&
+          layered.total <= ES_UNDERFILL_CAP
+
+        if (canProbeSqlUnderfill) {
+          const prepUnderfill = buildListingSearchSqlFromSeed(input)
+          const sqlTotalProbe = await countListingSearchSql(ctx.db, prepUnderfill)
+          const ratioOk = sqlTotalProbe >= layered.total * 2.5
+          const deltaOk =
+            layered.total < 12 && sqlTotalProbe - layered.total >= 20
+          if (
+            sqlTotalProbe > layered.total &&
+            (ratioOk || deltaOk)
+          ) {
+            const rowsSql = await selectListingSearchSqlPage(
+              ctx.db,
+              prepUnderfill,
+              limit,
+              offset
+            )
+            if (logSearchMs) {
+              console.info(
+                '[listing.search]',
+                JSON.stringify({
+                  phase: 'es_underfill_sql',
+                  ms: Date.now() - perfStart,
+                  esTotal: layered.total,
+                  sqlTotal: sqlTotalProbe,
+                })
+              )
+            }
+            if (persistThisSearch) {
+              persistSearchHistoryRow(ctx.db, {
+                userId: sessionUserId!,
+                filters: filtersSnapshot,
+                resultCount: sqlTotalProbe,
+                startedAt,
+              })
+            }
+            return {
+              items: withMatchReasons(
+                explainFilters as ExplainMatchFilters,
+                rowsSql
+              ),
+              total: sqlTotalProbe,
+              nextCursor: null,
+              searchUX: {
+                ...defaultSqlSearchUx(sqlTotalProbe),
+                messages: [
+                  'El índice de búsqueda devolvió pocas coincidencias; mostramos el listado alineado con la base de datos (mismos filtros).',
+                ],
+              },
+            }
+          }
+        }
+
         if (persistThisSearch) {
           persistSearchHistoryRow(ctx.db, {
             userId: sessionUserId!,
@@ -939,210 +1222,9 @@ export const listingRouter = createTRPCRouter({
           ? searchFiltersToListingInputOverlay(input, layered.lastTriedFilters)
           : input
 
-      const merged = mergePublicSearchFromQuery(sqlInputSeed)
-      const { residualTextQuery, ...sqlInputBase } = merged
-      const sqlInput = {
-        ...sqlInputBase,
-        facets: sqlInputSeed.facets,
-        polygon: sqlInputSeed.polygon,
-      }
-
-      const amenityStrict = sqlInputSeed.amenitiesMatchMode === 'strict'
-
-      const conditions = [eq(listings.status, 'active')]
-      if (residualTextQuery.trim()) {
-        const frag = sanitizeIlikeFragment(residualTextQuery)
-        if (frag.length > 0) {
-          const pat = `%${frag}%`
-          conditions.push(
-            or(
-              ilike(listings.title, pat),
-              ilike(listings.description, pat)
-            )!
-          )
-        }
-      }
-      if (sqlInput.operationType) {
-        conditions.push(eq(listings.operationType, sqlInput.operationType))
-      }
-      if (sqlInput.propertyType) {
-        conditions.push(eq(listings.propertyType, sqlInput.propertyType))
-      }
-      if (sqlInput.minPrice !== undefined) {
-        conditions.push(gte(listings.priceAmount, sqlInput.minPrice))
-      }
-      if (sqlInput.maxPrice !== undefined) {
-        conditions.push(lte(listings.priceAmount, sqlInput.maxPrice))
-      }
-      if (sqlInput.minBedrooms !== undefined) {
-        conditions.push(gte(listings.bedrooms, sqlInput.minBedrooms))
-      }
-      if (sqlInput.minBathrooms !== undefined) {
-        conditions.push(gte(listings.bathrooms, sqlInput.minBathrooms))
-      }
-      if (sqlInput.minGarages !== undefined) {
-        conditions.push(gte(listings.garages, sqlInput.minGarages))
-      }
-      if (sqlInput.minSurface !== undefined) {
-        conditions.push(gte(listings.surfaceTotal, sqlInput.minSurface))
-      }
-      if (sqlInput.maxSurface !== undefined) {
-        conditions.push(lte(listings.surfaceTotal, sqlInput.maxSurface))
-      }
-      if (sqlInput.floorMin !== undefined) {
-        conditions.push(
-          sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) >= ${sqlInput.floorMin}`
-        )
-      }
-      if (sqlInput.floorMax !== undefined) {
-        conditions.push(
-          sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) <= ${sqlInput.floorMax}`
-        )
-      }
-      if (sqlInput.escalera?.trim()) {
-        conditions.push(
-          sql`(${listings.features}->>'escalera') = ${sqlInput.escalera.trim().toUpperCase()}`
-        )
-      }
-      if (sqlInput.orientation) {
-        conditions.push(
-          sql`(${listings.features}->>'orientation') = ${sqlInput.orientation}`
-        )
-      }
-      if (sqlInput.minSurfaceCovered !== undefined) {
-        conditions.push(
-          sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} >= ${sqlInput.minSurfaceCovered}`
-        )
-      }
-      if (sqlInput.maxSurfaceCovered !== undefined) {
-        conditions.push(
-          sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} <= ${sqlInput.maxSurfaceCovered}`
-        )
-      }
-      if (sqlInput.minTotalRooms !== undefined) {
-        conditions.push(
-          sql`${listings.totalRooms} IS NOT NULL AND ${listings.totalRooms} >= ${sqlInput.minTotalRooms}`
-        )
-      }
-      if (sqlInput.city?.trim()) {
-        const c = sanitizeIlikeFragment(sqlInput.city)
-        if (c.length > 0) {
-          conditions.push(
-            sql`COALESCE(${listings.address}->>'city', '') ILIKE ${`%${c}%`}`
-          )
-        }
-      }
-      if (sqlInput.neighborhood?.trim()) {
-        const n = sanitizeIlikeFragment(sqlInput.neighborhood)
-        if (n.length > 0) {
-          conditions.push(
-            sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${`%${n}%`}`
-          )
-        }
-      }
-      if (
-        amenityStrict &&
-        sqlInput.amenities &&
-        sqlInput.amenities.length > 0
-      ) {
-        const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
-        for (const a of sqlInput.amenities) {
-          if (allowed.includes(a)) {
-            conditions.push(
-              sql`(${listings.features}->'amenities') @> to_jsonb(ARRAY[${a}]::text[])`
-            )
-          }
-        }
-      }
-
-      // Facets flags/excludes (Sprint 26). Inicialmente se materializan como amenities.
-      if (
-        amenityStrict &&
-        sqlInput.facets?.flags &&
-        sqlInput.facets.flags.length > 0
-      ) {
-        const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
-        for (const f of sqlInput.facets.flags) {
-          if (allowed.includes(f)) {
-            conditions.push(
-              sql`(${listings.features}->'amenities') @> to_jsonb(ARRAY[${f}]::text[])`
-            )
-          }
-        }
-      }
-      if (sqlInput.facets?.excludeFlags && sqlInput.facets.excludeFlags.length > 0) {
-        const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
-        for (const f of sqlInput.facets.excludeFlags) {
-          if (allowed.includes(f)) {
-            conditions.push(
-              sql`NOT ((${listings.features}->'amenities') @> to_jsonb(ARRAY[${f}]::text[]) )`
-            )
-          }
-        }
-      }
-
-      if (sqlInput.bbox) {
-        const { south, north, west, east } = sqlInput.bbox
-        conditions.push(sql`${listings.locationLat} IS NOT NULL`)
-        conditions.push(sql`${listings.locationLng} IS NOT NULL`)
-        conditions.push(gte(listings.locationLat, south))
-        conditions.push(lte(listings.locationLat, north))
-        conditions.push(gte(listings.locationLng, west))
-        conditions.push(lte(listings.locationLng, east))
-      }
-
-      // Búsqueda por radio (Sprint 26): aproximación por bounding box.
-      if (sqlInput.geoPoint && sqlInput.geoRadius) {
-        const { lat, lng } = sqlInput.geoPoint
-        const rMeters = sqlInput.geoRadius
-        const rKm = rMeters / 1000
-        const latDelta = rKm / 111
-        const lngDelta = rKm / (111 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)))
-
-        conditions.push(sql`${listings.locationLat} IS NOT NULL`)
-        conditions.push(sql`${listings.locationLng} IS NOT NULL`)
-        conditions.push(gte(listings.locationLat, lat - latDelta))
-        conditions.push(lte(listings.locationLat, lat + latDelta))
-        conditions.push(gte(listings.locationLng, lng - lngDelta))
-        conditions.push(lte(listings.locationLng, lng + lngDelta))
-      }
-
-      if (sqlInput.polygon && sqlInput.polygon.length >= 3) {
-        conditions.push(sql`${listings.locationLat} IS NOT NULL`)
-        conditions.push(sql`${listings.locationLng} IS NOT NULL`)
-        conditions.push(
-          sqlPointInPolygonLngLat(
-            listings.locationLng,
-            listings.locationLat,
-            sqlInput.polygon
-          )
-        )
-      }
-
-      const whereClause = and(...conditions)
-      const [totalRow] = await ctx.db
-        .select({ c: count() })
-        .from(listings)
-        .where(whereClause)
-      const sqlTotal = Number(totalRow?.c ?? 0)
-
-      const proximitySqlOrder =
-        shouldApplyLocalityProximitySort(merged as SearchFilters) &&
-        merged.sortNearLat != null &&
-        merged.sortNearLng != null
-          ? sql`(CASE WHEN ${listings.locationLat} IS NOT NULL AND ${listings.locationLng} IS NOT NULL THEN ((${listings.locationLat}::double precision - ${merged.sortNearLat}) * (${listings.locationLat}::double precision - ${merged.sortNearLat}) + (${listings.locationLng}::double precision - ${merged.sortNearLng}) * (${listings.locationLng}::double precision - ${merged.sortNearLng})) ELSE 1e30::double precision END)`
-          : null
-
-      const rows = await ctx.db
-        .select(listingsSelectPublic)
-        .from(listings)
-        .where(whereClause)
-        .orderBy(
-          ...(proximitySqlOrder ? [proximitySqlOrder] : []),
-          ...ORDER_PUBLIC_RECENCY
-        )
-        .limit(limit)
-        .offset(offset)
+      const prep = buildListingSearchSqlFromSeed(sqlInputSeed)
+      const sqlTotal = await countListingSearchSql(ctx.db, prep)
+      const rows = await selectListingSearchSqlPage(ctx.db, prep, limit, offset)
       if (persistThisSearch) {
         persistSearchHistoryRow(ctx.db, {
           userId: sessionUserId!,

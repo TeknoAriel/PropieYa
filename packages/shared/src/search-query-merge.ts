@@ -50,6 +50,54 @@ function stripPlaceTokens(text: string, place: string | undefined): string {
 }
 
 /**
+ * Si ya hay `propertyType` estructurado, saca del residual palabras que solo repiten ese tipo
+ * (evita «casa» en comillas cuando el chip ya dice Casa).
+ */
+const PROPERTY_TYPE_RESIDUAL_TOKENS: Record<string, readonly string[]> = {
+  house: ['casa', 'casas', 'duplex', 'dúplex', 'triplex', 'tríplex'],
+  apartment: [
+    'depto',
+    'deptos',
+    'departamento',
+    'departamentos',
+    'monoambiente',
+    'monoambientes',
+    'apto',
+    'aptos',
+  ],
+  ph: ['ph', 'p.h.', 'p.h'],
+  land: ['terreno', 'terrenos', 'lote', 'lotes', 'parcela', 'parcelas', 'chacra', 'chacras'],
+  office: ['oficina', 'oficinas'],
+  commercial: ['local', 'locales'],
+  warehouse: [
+    'galpón',
+    'galpon',
+    'galpones',
+    'depósito',
+    'deposito',
+    'depósitos',
+    'depositos',
+  ],
+  parking: ['cochera', 'cocheras', 'garage', 'garajes'],
+  development_unit: ['emprendimiento', 'emprendimientos'],
+}
+
+function stripPropertyTypeSynonymsFromResidual(
+  text: string,
+  propertyType: string | undefined
+): string {
+  if (!propertyType?.trim() || !text) return text
+  const tokens = PROPERTY_TYPE_RESIDUAL_TOKENS[propertyType.trim()]
+  if (!tokens?.length) return text
+  let t = text
+  for (const tok of tokens) {
+    const re = new RegExp(`\\b${escapeRegExp(tok)}\\b`, 'gi')
+    t = t.replace(re, ' ')
+  }
+  return t.replace(/\s+/g, ' ').trim()
+}
+
+/**
  * Merge de `q` + filtros, con `residualTextQuery` ya recortado (sin ciudad/barrio repetidos en texto).
  */
 export function mergePublicSearchWithResidual(input: ResidualSearchTextInput) {
@@ -58,6 +106,7 @@ export function mergePublicSearchWithResidual(input: ResidualSearchTextInput) {
   let r = m.residualTextQuery.trim()
   r = stripPlaceTokens(r, city)
   r = stripPlaceTokens(r, neighborhood)
+  r = stripPropertyTypeSynonymsFromResidual(r, m.propertyType ?? input.propertyType)
   const displayResidual = r.replace(/\s+/g, ' ').trim()
   return { ...m, residualTextQuery: displayResidual }
 }
