@@ -1,9 +1,9 @@
 /**
- * Búsqueda de listings en Elasticsearch.
+ * Búsqueda de listings en Elasticsearch u OpenSearch (Bonsai).
  */
 
 import type { SearchFilters } from './types'
-import { getEsClient } from './client'
+import { getListingSearchEngine } from './client'
 import { getSearchParams } from './query'
 import { encodeListingSearchCursor } from './search-cursor'
 
@@ -45,13 +45,13 @@ export interface SearchResult {
 export async function searchListings(
   filters: SearchFilters
 ): Promise<SearchResult> {
-  const client = getEsClient()
-  if (!client) {
+  const engine = getListingSearchEngine()
+  if (!engine) {
     return { hits: [], total: 0, fromEs: false, nextCursor: null }
   }
   try {
     const params = getSearchParams(filters)
-    const result = await client.search(params)
+    const result = await engine.search(params)
     const rawHits = result.hits.hits ?? []
     const hits = rawHits
       .map((h) => h._source as SearchHit | undefined)
@@ -77,7 +77,7 @@ export async function searchListings(
     }
     return { hits, total, fromEs: true, nextCursor }
   } catch (err) {
-    console.error('[searchListings] Elasticsearch error:', err)
+    console.error('[searchListings] motor de búsqueda (ES/OpenSearch):', err)
     return { hits: [], total: 0, fromEs: false, nextCursor: null }
   }
 }

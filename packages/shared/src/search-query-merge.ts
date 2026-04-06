@@ -12,7 +12,7 @@ import {
  * Campos que el extractor puede completar desde texto libre.
  * `operationType` / `propertyType` como string para compatir con inputs Zod/tRPC.
  */
-type MergeableSearchBase = {
+export type MergeableSearchBase = {
   q?: string
   operationType?: string
   propertyType?: string
@@ -30,6 +30,44 @@ type MergeableSearchBase = {
   /** Ancla opcional para orden por cercanía (no filtra); solo con localidad explícita en servidor. */
   sortNearLat?: number
   sortNearLng?: number
+}
+
+/** Entrada para `residualPublicSearchText` (merge + quitar localidad ya filtrada). */
+export type ResidualSearchTextInput = MergeableSearchBase & {
+  city?: string
+  neighborhood?: string
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function stripPlaceTokens(text: string, place: string | undefined): string {
+  if (!place?.trim() || !text) return text
+  const t = place.trim()
+  const re = new RegExp(`\\b${escapeRegExp(t)}\\b`, 'gi')
+  return text.replace(re, ' ').replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * Merge de `q` + filtros, con `residualTextQuery` ya recortado (sin ciudad/barrio repetidos en texto).
+ */
+export function mergePublicSearchWithResidual(input: ResidualSearchTextInput) {
+  const { city, neighborhood, ...mergeable } = input
+  const m = mergePublicSearchFromQuery(mergeable)
+  let r = m.residualTextQuery.trim()
+  r = stripPlaceTokens(r, city)
+  r = stripPlaceTokens(r, neighborhood)
+  const displayResidual = r.replace(/\s+/g, ' ').trim()
+  return { ...m, residualTextQuery: displayResidual }
+}
+
+/**
+ * Texto que debe ir a `q` en URL y a full-text: sin lo ya cubierto por filtros estructurados
+ * ni por ciudad/barrio explícitos (evita «casa en venta en funes» + en Funes en UI y ES).
+ */
+export function residualPublicSearchText(input: ResidualSearchTextInput): string {
+  return mergePublicSearchWithResidual(input).residualTextQuery
 }
 
 export function mergePublicSearchFromQuery<T extends MergeableSearchBase>(

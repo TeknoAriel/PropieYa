@@ -1,4 +1,8 @@
 import { AMENITY_LABELS, OPERATION_TYPE_LABELS, PROPERTY_TYPE_LABELS } from '../constants/listings'
+import {
+  mergePublicSearchWithResidual,
+  residualPublicSearchText,
+} from '../search-query-merge'
 import type { Amenity, OperationType, PropertyType } from '../types/listing'
 
 /**
@@ -357,44 +361,68 @@ export function withMatchReasons<T extends ExplainMatchListing>(
   }))
 }
 
+function residualInputFromExplain(f: ExplainMatchFilters) {
+  return {
+    q: f.q,
+    operationType: f.operationType,
+    propertyType: f.propertyType,
+    amenities: f.amenities,
+    minSurface: f.minSurface,
+    maxSurface: f.maxSurface,
+    minBedrooms: f.minBedrooms,
+    minBathrooms: f.minBathrooms,
+    minGarages: f.minGarages,
+    floorMin: f.floorMin,
+    floorMax: f.floorMax,
+    escalera: f.escalera,
+    minPrice: f.minPrice,
+    maxPrice: f.maxPrice,
+    city: f.city,
+    neighborhood: f.neighborhood,
+  }
+}
+
 /** Resumen legible para guardar en perfil de demanda o mostrar en UI. */
 export function summarizeSearchFilters(filters: ExplainMatchFilters): string {
+  const row = mergePublicSearchWithResidual(residualInputFromExplain(filters))
   const parts: string[] = []
 
-  if (filters.q?.trim()) parts.push(`«${filters.q.trim().slice(0, 80)}»`)
-  if (filters.operationType) {
-    const op = filters.operationType as OperationType
-    parts.push(OPERATION_TYPE_LABELS[op] ?? filters.operationType)
+  if (row.residualTextQuery) {
+    parts.push(`«${row.residualTextQuery.slice(0, 80)}»`)
   }
-  if (filters.propertyType) {
-    const pt = filters.propertyType as PropertyType
-    parts.push(PROPERTY_TYPE_LABELS[pt] ?? filters.propertyType)
+  if (row.operationType) {
+    const op = row.operationType as OperationType
+    parts.push(OPERATION_TYPE_LABELS[op] ?? row.operationType)
+  }
+  if (row.propertyType) {
+    const pt = row.propertyType as PropertyType
+    parts.push(PROPERTY_TYPE_LABELS[pt] ?? row.propertyType)
   }
   if (filters.city?.trim()) parts.push(`en ${filters.city.trim()}`)
   if (filters.neighborhood?.trim()) parts.push(`barrio ${filters.neighborhood.trim()}`)
-  if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
-    const lo = filters.minPrice != null ? `desde ${filters.minPrice}` : ''
-    const hi = filters.maxPrice != null ? `hasta ${filters.maxPrice}` : ''
+  if (row.minPrice !== undefined || row.maxPrice !== undefined) {
+    const lo = row.minPrice != null ? `desde ${row.minPrice}` : ''
+    const hi = row.maxPrice != null ? `hasta ${row.maxPrice}` : ''
     parts.push(['Precio', lo, hi].filter(Boolean).join(' '))
   }
-  if (filters.minBedrooms !== undefined) {
-    parts.push(`mín. ${filters.minBedrooms} dormitorios`)
+  if (row.minBedrooms !== undefined) {
+    parts.push(`mín. ${row.minBedrooms} dormitorios`)
   }
-  if (filters.minBathrooms !== undefined) {
-    parts.push(`mín. ${filters.minBathrooms} baños`)
+  if (row.minBathrooms !== undefined) {
+    parts.push(`mín. ${row.minBathrooms} baños`)
   }
-  if (filters.minGarages !== undefined) {
-    parts.push(`mín. ${filters.minGarages} cocheras`)
+  if (row.minGarages !== undefined) {
+    parts.push(`mín. ${row.minGarages} cocheras`)
   }
-  if (filters.minSurface !== undefined) {
-    parts.push(`mín. ${filters.minSurface} m²`)
+  if (row.minSurface !== undefined) {
+    parts.push(`mín. ${row.minSurface} m²`)
   }
-  if (filters.maxSurface !== undefined) {
-    parts.push(`hasta ${filters.maxSurface} m²`)
+  if (row.maxSurface !== undefined) {
+    parts.push(`hasta ${row.maxSurface} m²`)
   }
-  if (filters.floorMin !== undefined || filters.floorMax !== undefined) {
-    const lo = filters.floorMin != null ? `piso ≥ ${filters.floorMin}` : ''
-    const hi = filters.floorMax != null ? `piso ≤ ${filters.floorMax}` : ''
+  if (row.floorMin !== undefined || row.floorMax !== undefined) {
+    const lo = row.floorMin != null ? `piso ≥ ${row.floorMin}` : ''
+    const hi = row.floorMax != null ? `piso ≤ ${row.floorMax}` : ''
     const s = [lo, hi].filter(Boolean).join(' ')
     if (s) parts.push(s)
   }
@@ -410,11 +438,11 @@ export function summarizeSearchFilters(filters: ExplainMatchFilters): string {
   if (filters.orientation?.trim()) {
     parts.push(`orientación ${filters.orientation.trim()}`)
   }
-  if (filters.escalera?.trim()) {
-    parts.push(`esc. ${filters.escalera.trim()}`)
+  if (row.escalera?.trim()) {
+    parts.push(`esc. ${row.escalera.trim()}`)
   }
-  if (filters.amenities?.length) {
-    const labels = filters.amenities.map(
+  if (row.amenities?.length) {
+    const labels = row.amenities.map(
       (id) => AMENITY_LABELS[id as Amenity] ?? id
     )
     const shown = labels.slice(0, 10)
@@ -453,7 +481,7 @@ export function completenessFromFilters(filters: ExplainMatchFilters): number {
   if (filters.minTotalRooms != null) bump(5)
   if (filters.orientation?.trim()) bump(3)
   if (filters.escalera?.trim()) bump(3)
-  if (filters.q?.trim()) bump(10)
+  if (residualPublicSearchText(residualInputFromExplain(filters))) bump(10)
   if (filters.amenities?.length) bump(5)
   if (filters.bbox) bump(10)
   if (filters.mapPolygonActive) bump(10)

@@ -1,5 +1,5 @@
 /**
- * Cron: sincroniza listings activos en Elasticsearch.
+ * Cron: sincroniza listings activos al índice de búsqueda (Elasticsearch u OpenSearch/Bonsai).
  * Crea índice si no existe, hace bulk index de activos.
  *
  * Requiere: CRON_SECRET
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     const ok = await ensureIndex()
     if (!ok) {
       return NextResponse.json(
-        { error: 'Elasticsearch no configurado o no disponible' },
+        { error: 'Motor de búsqueda no configurado o no disponible (ES/OpenSearch)' },
         { status: 503 }
       )
     }

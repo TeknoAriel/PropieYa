@@ -8,6 +8,7 @@ import {
   type ConversationalFlatIntent,
 } from './conversational-search-pipeline'
 import type { LocalityCatalogEntry } from './locality-catalog-resolver'
+import { extractFiltersFromQuery } from './search-term-extractor'
 
 describe('normalizeConversationalText', () => {
   it('colapsa espacios y pasa a minúsculas', () => {
@@ -59,16 +60,25 @@ describe('validateConversationalPipeline', () => {
     expect(r.debug.droppedLocations.join(' ')).toMatch(/alquiler/i)
   })
 
-  it('comprar casa en Rosario: sale y ciudad, sin house genérico', () => {
+  it('comprar casa en Rosario: sale, ciudad y house (con localidad no se omite)', () => {
     const r = validateConversationalPipeline('comprar casa en Rosario', {
       q: 'comprar casa en Rosario',
       city: 'Rosario',
       propertyType: 'house',
     })
     expect(r.extracted.operationType).toBe('sale')
-    expect(r.extracted.propertyType).toBeUndefined()
+    expect(r.extracted.propertyType).toBe('house')
     expect(r.extracted.city).toBe('Rosario')
-    expect(r.debug.validationNotes.some((n) => /house omitido/i.test(n))).toBe(true)
+  })
+
+  it('casa en venta en rosario: infiere ciudad y tipo casa', () => {
+    const r = validateConversationalPipeline('casa en venta en rosario', {
+      operationType: 'sale',
+      q: 'casa en venta en rosario',
+    })
+    expect(r.extracted.city).toBe('Rosario')
+    expect(r.extracted.propertyType).toBe('house')
+    expect(r.extracted.operationType).toBe('sale')
   })
 
   it('Casas en venta: si el LLM manda house, se quita', () => {
@@ -152,7 +162,7 @@ describe('validateConversationalPipeline', () => {
     expect(r.extracted.city).toBe('CABA')
   })
 
-  it('con catálogo dinámico que no incluye Funes, rechaza ciudad', () => {
+  it('con catálogo dinámico sin Funes, Funes resuelve por alias estático', () => {
     const catalog: LocalityCatalogEntry[] = [
       { city: 'Rosario', neighborhood: null, count: 5 },
     ]
@@ -161,8 +171,8 @@ describe('validateConversationalPipeline', () => {
       { city: 'Funes', propertyType: 'land', operationType: 'sale' },
       { localityCatalog: catalog }
     )
-    expect(r.extracted.city).toBeUndefined()
-    expect(r.debug.unknownTerms).toContain('Funes')
+    expect(r.extracted.city).toBe('Funes')
+    expect(r.extracted.propertyType).toBe('land')
   })
 
   it('con catálogo dinámico valida barrio con hint de ciudad', () => {
@@ -177,6 +187,20 @@ describe('validateConversationalPipeline', () => {
     }, { localityCatalog: catalog })
     expect(r.extracted.city).toBe('CABA')
     expect(r.extracted.neighborhood).toBe('Palermo')
+  })
+})
+
+describe('extractFiltersFromQuery / cochera', () => {
+  it('con casa y cochera no fuerza propertyType parking (amenity vía otro canal)', () => {
+    const f = extractFiltersFromQuery(
+      'casa en venta funes pileta 2 dormitorios cochera'
+    )
+    expect(f.propertyType).not.toBe('parking')
+  })
+
+  it('solo cochera sigue siendo parking', () => {
+    const f = extractFiltersFromQuery('cochera en venta rosario')
+    expect(f.propertyType).toBe('parking')
   })
 })
 

@@ -1,8 +1,10 @@
 # Configuración Elasticsearch con Bonsai (gratis)
 
-Propieya usa Elasticsearch para la búsqueda en `/buscar`. Sin ES configurado, la búsqueda funciona por fallback a SQL, pero el cron `sync-search` falla y algunas capacidades avanzadas no están disponibles.
+Propieya usa un índice de búsqueda en `/buscar` (Elasticsearch 8 u **OpenSearch**, según el cluster). Sin `ELASTICSEARCH_URL`, la búsqueda funciona por fallback a SQL, pero el cron `sync-search` no indexa y algunas capacidades avanzadas no están disponibles.
 
-**Bonsai Sandbox** ofrece Elasticsearch gestionado gratis para siempre (125 MB, 35.000 documentos). Suficiente para miles de propiedades.
+**Bonsai** expone **OpenSearch** (no Elasticsearch “puro”). El portal detecta hosts `*.bonsai.io` y `*.bonsaisearch.net` y usa el cliente `@opensearch-project/opensearch` con la misma variable `ELASTICSEARCH_URL`. Otro cluster OpenSearch: `USE_OPENSEARCH=1` o `SEARCH_BACKEND=opensearch`. Para forzar el cliente ES 8: `SEARCH_BACKEND=elasticsearch`.
+
+**Bonsai Sandbox** ofrece cluster gestionado gratis (125 MB, 35.000 documentos). Suficiente para miles de propiedades.
 
 ---
 
@@ -94,6 +96,14 @@ curl -H "Authorization: Bearer TU_CRON_SECRET" \
 ```
 
 Reemplazá `TU_CRON_SECRET` por el valor de `CRON_SECRET` de Vercel (mismo proyecto, misma pantalla de Environment Variables).
+
+**Desde el repo (local, misma DB y URL que producción):**
+
+```bash
+ENV_FILE=apps/web/.env.prod.verificar pnpm reindex:bonsai
+```
+
+o `./scripts/reindex-bonsai.sh` con el mismo `ENV_FILE`. `pnpm reindex:es` también sirve si la URL ya es Bonsai (detección automática).
 
 Respuesta esperada (si todo va bien):
 

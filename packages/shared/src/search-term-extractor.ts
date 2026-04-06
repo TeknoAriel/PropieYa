@@ -6,7 +6,11 @@
  */
 
 import { SEARCH_TERM_TO_AMENITY } from './amenity-mapping'
-import { matchOperationSpanInOriginalQuery, PROPERTY_PHRASES_SORTED } from './search-semantics'
+import {
+  matchOperationSpanInOriginalQuery,
+  PROPERTY_PHRASES_SORTED,
+  shouldTreatCocheraAsParkingPropertyType,
+} from './search-semantics'
 import type { Amenity, OperationType, PropertyType } from './types/listing'
 
 export interface ExtractedFilters {
@@ -134,12 +138,18 @@ export function extractFiltersFromQueryDetailed(q: string): ExtractFiltersFromQu
   let propertySet = false
   for (const { phrase, type } of PROPERTY_PHRASES_SORTED) {
     const idx = lower.indexOf(phrase)
-    if (idx >= 0) {
-      filters.propertyType = type
-      consumedParts.push(q.slice(idx, idx + phrase.length))
-      propertySet = true
-      break
+    if (idx < 0) continue
+    if (
+      phrase === 'cochera' &&
+      type === 'parking' &&
+      !shouldTreatCocheraAsParkingPropertyType(lower)
+    ) {
+      continue
     }
+    filters.propertyType = type
+    consumedParts.push(q.slice(idx, idx + phrase.length))
+    propertySet = true
+    break
   }
   if (!propertySet) {
     const depto = q.match(/\bdeptos?\b/i)

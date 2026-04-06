@@ -1,9 +1,9 @@
 /**
- * Indexación de listings en Elasticsearch.
+ * Indexación de listings en Elasticsearch u OpenSearch (Bonsai).
  */
 
 import type { ListingRow } from './types'
-import { getEsClient, getListingsIndex } from './client'
+import { getListingSearchEngine, getListingsIndex } from './client'
 import { listingsMapping } from './mapping'
 
 const INDEX = getListingsIndex()
@@ -54,68 +54,31 @@ export function listingToEsDoc(row: ListingRow): Record<string, unknown> {
 }
 
 export async function ensureIndex(): Promise<boolean> {
-  const client = getEsClient()
-  if (!client) return false
-  try {
-    const exists = await client.indices.exists({ index: INDEX })
-    if (!exists) {
-      await client.indices.create({
-        index: INDEX,
-        body: { mappings: { properties: listingsMapping } },
-      })
-    }
-    return true
-  } catch {
-    return false
-  }
+  const engine = getListingSearchEngine()
+  if (!engine) return false
+  return engine.ensureIndex(INDEX, listingsMapping)
 }
 
 export async function indexListing(row: ListingRow): Promise<boolean> {
-  const client = getEsClient()
-  if (!client) return false
-  try {
-    await client.index({
-      index: INDEX,
-      id: row.id,
-      document: listingToEsDoc(row),
-      refresh: false,
-    })
-    return true
-  } catch {
-    return false
-  }
+  const engine = getListingSearchEngine()
+  if (!engine) return false
+  return engine.indexDocument(INDEX, row.id, listingToEsDoc(row))
 }
 
 export async function deleteListing(id: string): Promise<boolean> {
-  const client = getEsClient()
-  if (!client) return false
-  try {
-    await client.delete({ index: INDEX, id, refresh: false })
-    return true
-  } catch (err: unknown) {
-    const e = err as { meta?: { statusCode?: number } }
-    if (e.meta?.statusCode === 404) return true
-    return false
-  }
+  const engine = getListingSearchEngine()
+  if (!engine) return false
+  return engine.deleteDocument(INDEX, id)
 }
 
 export async function bulkIndexListings(
   rows: ListingRow[]
 ): Promise<{ indexed: number; errors: number }> {
-  const client = getEsClient()
-  if (!client || rows.length === 0) return { indexed: 0, errors: rows.length }
-  try {
-    const operations = rows.flatMap((row) => [
-      { index: { _index: INDEX, _id: row.id } },
-      listingToEsDoc(row),
-    ])
-    const result = await client.bulk({
-      refresh: false,
-      operations,
-    })
-    const errors = result.items.filter((i) => i.index?.error != null).length
-    return { indexed: rows.length - errors, errors }
-  } catch {
-    return { indexed: 0, errors: rows.length }
-  }
+  const engine = getListingSearchEngine()
+  if (!engine) return { indexed: 0, errors: rows.length }
+  if (rows.length === 0) return { indexed: 0, errors: 0 }
+  return engine.bulkIndex(
+    INDEX,
+    rows.map((row) => ({ id: row.id, doc: listingToEsDoc(row) }))
+  )
 }

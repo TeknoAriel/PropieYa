@@ -6,6 +6,7 @@
 import OpenAI from 'openai'
 import {
   extractFiltersFromQuery,
+  inferLocalityFromUserMessage,
   matchOperationTypeFromText,
   matchPropertyTypeFromText,
 } from '@propieya/shared'
@@ -297,20 +298,25 @@ function fallbackExtract(message: string): ExtractedIntention {
     out.amenities = extracted.amenities
   }
 
-  // city/neighborhood: "en Palermo", "en Buenos Aires" (no confundir con "en venta" / "en alquiler")
-  const inMatch = lower.match(/\ben\s+([a-záéíóúñ\s]+?)(?:\s+con|\s+cerca|\s+hasta|$|,)/i)
-  if (inMatch) {
-    const place = inMatch[1]!.trim()
-    if (place.length >= 2 && place.length <= 80) {
-      const placeNorm = place.toLowerCase()
-      const looksLikeOpOrType =
-        matchOperationTypeFromText(placeNorm) != null ||
-        matchPropertyTypeFromText(placeNorm) != null
-      if (!looksLikeOpOrType) {
-        if (place.split(/\s+/).length === 1 && place.length <= 20) {
-          out.neighborhood = place
-        } else {
-          out.city = place
+  const inferredPlace = inferLocalityFromUserMessage(message)
+  if (inferredPlace) {
+    if (inferredPlace.kind === 'city') out.city = inferredPlace.canonical
+    else out.neighborhood = inferredPlace.canonical
+  } else {
+    const tail = lower.match(/\ben\s+([a-záéíóúñ]+(?:\s+[a-záéíóúñ]+)*)\s*$/i)
+    if (tail) {
+      const place = tail[1]!.trim()
+      if (place.length >= 2 && place.length <= 80) {
+        const placeNorm = place.toLowerCase()
+        const looksLikeOpOrType =
+          matchOperationTypeFromText(placeNorm) != null ||
+          matchPropertyTypeFromText(placeNorm) != null
+        if (!looksLikeOpOrType) {
+          if (place.split(/\s+/).length === 1 && place.length <= 20) {
+            out.neighborhood = place
+          } else {
+            out.city = place
+          }
         }
       }
     }

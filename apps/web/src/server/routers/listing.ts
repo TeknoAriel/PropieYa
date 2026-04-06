@@ -18,6 +18,7 @@ import {
   updateListingSchema,
   LISTING_VALIDITY,
   mergePublicSearchFromQuery,
+  residualPublicSearchText,
   FACETS_CATALOG,
   SEARCH_FILTER_AMENITIES,
   withMatchReasons,
@@ -1244,8 +1245,22 @@ export const listingRouter = createTRPCRouter({
           )
         }
 
+        const qForClient =
+          residualPublicSearchText({
+            q: intention.q,
+            operationType: intention.operationType,
+            propertyType: intention.propertyType,
+            amenities: intention.amenities,
+            minSurface: intention.minSurface,
+            minBedrooms: intention.minBedrooms,
+            minPrice: intention.minPrice,
+            maxPrice: intention.maxPrice,
+            city: intention.city,
+            neighborhood: intention.neighborhood,
+          }) || undefined
+
         const explainFilters: ExplainMatchFilters = {
-          q: intention.q,
+          q: qForClient,
           operationType: intention.operationType,
           propertyType: intention.propertyType,
           city: intention.city,
