@@ -1113,7 +1113,7 @@ export const listingRouter = createTRPCRouter({
       }
 
       if (layered.fromEs && layered.total > 0) {
-        const ES_UNDERFILL_CAP = 24
+        const ES_UNDERFILL_CAP = 48
         const canProbeSqlUnderfill =
           !cursor?.trim() &&
           input.offset === 0 &&
@@ -1123,9 +1123,9 @@ export const listingRouter = createTRPCRouter({
         if (canProbeSqlUnderfill) {
           const prepUnderfill = buildListingSearchSqlFromSeed(input)
           const sqlTotalProbe = await countListingSearchSql(ctx.db, prepUnderfill)
-          const ratioOk = sqlTotalProbe >= layered.total * 2.5
+          const ratioOk = sqlTotalProbe >= layered.total * 2
           const deltaOk =
-            layered.total < 12 && sqlTotalProbe - layered.total >= 20
+            layered.total < 15 && sqlTotalProbe - layered.total >= 15
           if (
             sqlTotalProbe > layered.total &&
             (ratioOk || deltaOk)
@@ -1358,23 +1358,50 @@ export const listingRouter = createTRPCRouter({
           amenitiesMatchMode,
           limit: 24,
           offset: 0,
+        } as SearchFilters
+
+        const relaxationMsgs: string[] = []
+        let effective = { ...filters }
+        let layered = await searchListingsLayered(effective)
+
+        if (layered.fromEs && layered.total === 0 && effective.amenitiesMatchMode === 'strict') {
+          effective = { ...effective, amenitiesMatchMode: 'preferred' }
+          relaxationMsgs.push(
+            'Ampliamos la búsqueda: los amenities pasan a ser preferencia para mostrar más opciones.'
+          )
+          layered = await searchListingsLayered(effective)
         }
-        // Mismo motor de relajación que `listing.search` (amenities como preferencia en ES).
-        const layered = await searchListingsLayered(filters as SearchFilters)
+
+        if (layered.fromEs && layered.total === 0 && effective.operationType) {
+          effective = { ...effective, operationType: undefined }
+          relaxationMsgs.push(
+            'Incluimos venta y alquiler para maximizar coincidencias con tu búsqueda.'
+          )
+          layered = await searchListingsLayered(effective)
+        }
 
         if (layered.fromEs && layered.total > 0) {
           return {
-            filters,
+            filters: {
+              ...explainFilters,
+              operationType: effective.operationType,
+              amenitiesMatchMode: effective.amenitiesMatchMode,
+              limit: 24,
+              offset: 0,
+            },
             hits: withMatchReasons(explainFilters, layered.hits),
             total: layered.total,
-            searchUX: layered.ux,
+            searchUX: {
+              ...layered.ux,
+              messages: [...relaxationMsgs, ...(layered.ux.messages ?? [])],
+            },
           }
         }
 
         const sqlFilters: SearchFilters =
           layered.fromEs && layered.total === 0
-            ? { ...(filters as SearchFilters), ...layered.lastTriedFilters }
-            : (filters as SearchFilters)
+            ? { ...effective, ...layered.lastTriedFilters }
+            : effective
 
         const merged = mergePublicSearchFromQuery(sqlFilters)
         const { residualTextQuery, ...restMerged } = merged
@@ -1468,10 +1495,19 @@ export const listingRouter = createTRPCRouter({
               }
 
         return {
-          filters,
+          filters: {
+            ...explainFilters,
+            operationType: effective.operationType,
+            amenitiesMatchMode: effective.amenitiesMatchMode,
+            limit: 24,
+            offset: 0,
+          },
           hits: withMatchReasons(explainFilters, hits),
           total,
-          searchUX: sqlUx,
+          searchUX: {
+            ...sqlUx,
+            messages: [...relaxationMsgs, ...(sqlUx.messages ?? [])],
+          },
         }
       } catch (err) {
         if (err instanceof TRPCError) throw err

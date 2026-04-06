@@ -17,6 +17,8 @@ const OPERATION_RULES: ReadonlyArray<{ re: RegExp; op: OperationType }> = [
   { re: /\barrendar\b/i, op: 'rent' },
   { re: /\brento\b/i, op: 'rent' },
   { re: /\balquilo\b/i, op: 'rent' },
+  { re: /\bpara\s+alquilar\b/i, op: 'rent' },
+  { re: /\bpara\s+comprar\b/i, op: 'sale' },
   { re: /\bbusco\s+comprar\b/i, op: 'sale' },
   { re: /\bventa\b/i, op: 'sale' },
   { re: /\bvendo\b/i, op: 'sale' },

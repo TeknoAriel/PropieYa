@@ -5,6 +5,7 @@
 
 import OpenAI from 'openai'
 import {
+  enrichOperationTypeFromMessage,
   extractFiltersFromQuery,
   inferLocalityFromUserMessage,
   matchOperationTypeFromText,
@@ -93,6 +94,10 @@ function finalizeConversationalIntention(
   if (out.propertyType && !CANONICAL_PROPERTY_TYPES.has(out.propertyType)) {
     delete out.propertyType
   }
+  if (!out.operationType) {
+    const op = enrichOperationTypeFromMessage(message)
+    if (op) out.operationType = op
+  }
   return out
 }
 
@@ -125,7 +130,8 @@ Reglas:
 - Frases como "casa en venta" → operationType sale; no inventes barrio "venta".
 - "Depto en alquiler en Nueva Córdoba" → rent, apartment, neighborhood si corresponde al texto.
 - Precios en pesos o USD según contexto; número entero.
-- Si el mensaje es ambiguo en operación, elegí la más probable o null (el motor puede usar contexto de página).`
+- Menciones de expensas, contrato de alquiler, inquilino → suele ser rent. Compra, inversión, permuta → sale.
+- Si el mensaje es ambiguo en operación, devolvé operationType null (no inventes): el listado puede mostrar todas las operaciones.`
 
       const systemFollowUp = `
 

@@ -209,7 +209,7 @@ describe('conversational UX matrix (sin LLM)', () => {
     // eslint-disable-next-line no-console
     console.info('Muestra fricción (unknownTerms largos):\n' + friction.join('\n'))
 
-    expect(withOp).toBeGreaterThan(n * 0.25)
+    expect(withOp).toBeGreaterThan(n * 0.35)
     expect(n).toBeGreaterThanOrEqual(200)
   })
 

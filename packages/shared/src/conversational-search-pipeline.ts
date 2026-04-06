@@ -12,6 +12,7 @@ import {
   type LocalityCatalogEntry,
 } from './locality-catalog-resolver'
 import { FACET_FLAG_IDS_SET } from './search-facets'
+import { enrichOperationTypeFromMessage } from './search-intent-heuristics'
 import {
   matchOperationTypeFromText,
   matchPropertyTypeFromText,
@@ -252,6 +253,14 @@ export function validateConversationalPipeline(
   const localityResolver = createLocalityResolver(options?.localityCatalog)
 
   applyConversationalPhraseRules(normalizedText, out)
+
+  if (!out.operationType) {
+    const op = enrichOperationTypeFromMessage(rawMessage)
+    if (op) {
+      out.operationType = op
+      validationNotes.push(`operationType enriquecido (intérprete heurístico): ${op}`)
+    }
+  }
 
   if (!(out.city?.trim() || out.neighborhood?.trim())) {
     const inferred = inferLocalityFromUserMessage(rawMessage)
