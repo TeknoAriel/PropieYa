@@ -344,10 +344,11 @@ export function ConversationalSearchBlock({
       const text = rawText.trim()
       if (!text || searchConversational.isPending) return
       lastSubmittedRef.current = text
-      searchConversational.mutate({
-        message: text,
-        previousContext: previousContextForMutation,
-      })
+      searchConversational.mutate(
+        previousContextForMutation
+          ? { message: text, previousContext: previousContextForMutation }
+          : { message: text }
+      )
     },
     [previousContextForMutation, searchConversational]
   )

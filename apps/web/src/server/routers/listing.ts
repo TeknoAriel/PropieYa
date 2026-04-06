@@ -75,12 +75,13 @@ const conversationalPriorFiltersSchema = z.object({
 
 const searchConversationalInputSchema = z.object({
   message: z.string().min(1).max(500),
+  /** SuperJSON puede enviar `null` en el wire aunque en cliente fuera `undefined`; sin meta, Zod fallaba. */
   previousContext: z
     .object({
       userMessage: z.string().max(500),
       filters: conversationalPriorFiltersSchema,
     })
-    .optional(),
+    .nullish(),
 })
 
 function conversationPriorFromInput(
