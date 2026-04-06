@@ -101,7 +101,10 @@ function findDeepValueByKeyAliases(
   return undefined
 }
 
-/** Claves “fuertes” de tipo: prioridad sobre `property_type` plano si vienen anidadas. */
+/**
+ * Tipo en objetos anidados: solo se usa si en la raíz no hay `property_type` / `property_type_old`.
+ * Antes se prefería el deep-scan y un `propertyType` dentro de agency u otro bloque podía pisar el tipo real del aviso.
+ */
 const TYPE_PROPERTY_STRONG_KEYS = [
   'typeproperty',
   'type_property',
@@ -227,17 +230,13 @@ export function mapYumblinItem(
     operationType = OP_MAP[opRaw] ?? 'sale'
   }
 
-  const typeFromStrongNested = findDeepValueByKeyAliases(
-    item,
-    TYPE_PROPERTY_STRONG_KEYS,
-    5
-  )
   const typeRaw =
-    typeFromStrongNested ??
+    getValue(item, 'property_type') ??
+    getValue(item, 'property_type_old', 'propertytype_old') ??
+    findDeepValueByKeyAliases(item, TYPE_PROPERTY_STRONG_KEYS, 5) ??
     getValue(
       item,
       'typeproperty',
-      'property_type',
       'tipo_propiedad',
       'propertyType',
       'tipo_inmueble',
