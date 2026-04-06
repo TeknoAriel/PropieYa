@@ -98,12 +98,26 @@ export const PROPERTY_PHRASES_SORTED = [...PROPERTY_PHRASES].sort(
 )
 
 /**
+ * Si el texto describe una vivienda o terreno habitado, «cochera» suele ser amenity (garage), no lote de estacionamiento.
+ */
+export function shouldTreatCocheraAsParkingPropertyType(text: string): boolean {
+  const s = text.toLowerCase()
+  return !/\b(casa|casas|depto|deptos|departamento|departamentos|monoambiente|ph|dúplex|duplex|tr[ií]plex|(?:\d+\s*)?(?:dormitorios?|ambientes?)|pileta|patio|jard[ií]n|quincho|lote|terreno|chacra|barrio|zona)\b/i.test(
+    s
+  )
+}
+
+/**
  * Detecta tipo de propiedad por subcadenas; prioriza frases largas.
  */
 export function matchPropertyTypeFromText(normalizedLower: string): PropertyType | undefined {
   const s = normalizedLower
   for (const { phrase, type } of PROPERTY_PHRASES_SORTED) {
-    if (s.includes(phrase)) return type
+    if (!s.includes(phrase)) continue
+    if (phrase === 'cochera' && type === 'parking' && !shouldTreatCocheraAsParkingPropertyType(s)) {
+      continue
+    }
+    return type
   }
   if (/\bdepto\b/.test(s) || /\bdeptos\b/.test(s)) return 'apartment'
   if (/\bph\b/.test(s)) return 'ph'

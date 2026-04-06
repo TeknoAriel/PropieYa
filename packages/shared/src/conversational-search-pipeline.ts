@@ -8,6 +8,7 @@
 import {
   createLocalityResolver,
   foldLocalityKey,
+  inferLocalityFromUserMessage,
   type LocalityCatalogEntry,
 } from './locality-catalog-resolver'
 import { FACET_FLAG_IDS_SET } from './search-facets'
@@ -252,13 +253,39 @@ export function validateConversationalPipeline(
 
   applyConversationalPhraseRules(normalizedText, out)
 
+  if (!(out.city?.trim() || out.neighborhood?.trim())) {
+    const inferred = inferLocalityFromUserMessage(rawMessage)
+    if (inferred) {
+      if (inferred.kind === 'city') {
+        out.city = inferred.canonical
+      } else {
+        out.neighborhood = inferred.canonical
+      }
+      validationNotes.push(
+        `localidad inferida del texto: ${inferred.canonical} (${inferred.kind})`
+      )
+    }
+  }
+
+  const hasLocality = Boolean(out.city?.trim() || out.neighborhood?.trim())
+  if (
+    !out.propertyType &&
+    hasLocality &&
+    /\bcasas?\b/.test(normalizedText) &&
+    !/\bcasa\s+quinta\b|\bcasa\s+de\s+campo\b/.test(normalizedText)
+  ) {
+    out.propertyType = 'house'
+    validationNotes.push('propertyType house inferido: casa + localidad en el mensaje')
+  }
+
   if (
     out.propertyType === 'house' &&
-    shouldOmitHouseForGenericCasaPhrase(normalizedText)
+    shouldOmitHouseForGenericCasaPhrase(normalizedText) &&
+    !(out.city?.trim() || out.neighborhood?.trim())
   ) {
     delete out.propertyType
     validationNotes.push(
-      'propertyType house omitido: frase genérica casa(s) (oferta mixta; ver search-semantics)'
+      'propertyType house omitido: frase genérica casa(s) sin localidad (oferta mixta; ver search-semantics)'
     )
   }
 

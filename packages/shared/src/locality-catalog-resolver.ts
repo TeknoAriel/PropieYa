@@ -78,6 +78,33 @@ function resolveStaticAlias(raw: string): LocalityCatalogHit | null {
   return null
 }
 
+/** Aliases más largos primero para no confundir «nueva cordoba» con «cordoba». */
+const STATIC_ALIAS_BY_LENGTH = [...STATIC_ALIAS_ENTRIES]
+  .flatMap((e) =>
+    e.aliases.map((alias) => ({
+      alias,
+      kind: e.kind,
+      canonical: e.canonical,
+    }))
+  )
+  .sort((a, b) => b.alias.length - a.alias.length)
+
+/**
+ * Detecta ciudad/barrio conocido por mención en el mensaje (p. ej. «en Rosario»).
+ * Usa los mismos aliases estáticos que el resolver; no requiere coincidir campo por campo con el catálogo dinámico.
+ */
+export function inferLocalityFromUserMessage(message: string): LocalityCatalogHit | null {
+  if (!message.trim()) return null
+  const pad = ` ${foldLocalityKey(message)} `
+  for (const { alias, kind, canonical } of STATIC_ALIAS_BY_LENGTH) {
+    const needle = ` ${foldLocalityKey(alias)} `
+    if (needle.length >= 3 && pad.includes(needle)) {
+      return { kind, canonical }
+    }
+  }
+  return null
+}
+
 function maxByCount<T extends { count: number }>(rows: T[]): T {
   let best = rows[0]!
   for (let i = 1; i < rows.length; i++) {
@@ -126,8 +153,9 @@ export type LocalityResolver = {
 }
 
 /**
- * Si `entries` tiene filas, solo se usa el catálogo dinámico (avisos reales).
- * Si está vacío o ausente, se usan aliases estáticos mínimos (tests / cold start).
+ * Si `entries` tiene filas, se resuelve primero contra agregados de avisos activos;
+ * si no hay coincidencia, se usa el mismo fallback de aliases estáticos que en cold start.
+ * Así «Rosario» / «Funes» siguen funcionando aunque el feed use otra grafía en `address.city`.
  */
 export function createLocalityResolver(
   entries: readonly LocalityCatalogEntry[] | undefined
@@ -186,7 +214,7 @@ export function createLocalityResolver(
       if (cityHit && nHits.length > 0) {
         return { kind: 'city', canonical: cityHit.display }
       }
-      return null
+      return resolveStaticAlias(raw)
     },
 
     resolveForNeighborhoodField(
@@ -218,7 +246,7 @@ export function createLocalityResolver(
       if (cityHit) {
         return { kind: 'city', canonical: cityHit.display }
       }
-      return null
+      return resolveStaticAlias(raw)
     },
   }
 }
