@@ -37,6 +37,9 @@ pnpm-debug.log*
 coverage
 .nyc_output
 
+# Artefactos locales de scripts (muestras de feed, etc.)
+tmp/
+
 # Misc
 *.tsbuildinfo
 .eslintcache
