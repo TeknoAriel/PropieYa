@@ -361,6 +361,8 @@ export function BuscarContent({
   const userGeoRequestRef = useRef(false)
   /** Filtros clásicos colapsados por defecto; solo se abren si el usuario toca «Mostrar filtros». */
   const [classicFiltersOpen, setClassicFiltersOpen] = useState(true)
+  /** El `<details>` de frase/voz cerrado ocultaba por completo el input; abierto por defecto. */
+  const [buscarNlpSectionOpen, setBuscarNlpSectionOpen] = useState(true)
   const [flowDialogOpen, setFlowDialogOpen] = useState(false)
   const [localityModalOpen, setLocalityModalOpen] = useState(false)
   const [flowGuideDontShowAgain, setFlowGuideDontShowAgain] = useState(false)
@@ -1661,7 +1663,11 @@ export function BuscarContent({
           ) : null}
         </div>
 
-        <details className="group rounded-lg border border-border/60 bg-surface-secondary/30">
+        <details
+          className="group rounded-lg border border-border/60 bg-surface-secondary/30"
+          open={buscarNlpSectionOpen}
+          onToggle={(e) => setBuscarNlpSectionOpen(e.currentTarget.open)}
+        >
           <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-text-primary md:px-4 md:py-3 [&::-webkit-details-marker]:hidden">
             <span className="inline-flex items-center gap-2">
               <span aria-hidden className="text-text-tertiary group-open:rotate-90 transition-transform">
