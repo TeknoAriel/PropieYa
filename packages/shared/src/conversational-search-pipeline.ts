@@ -13,6 +13,7 @@ import {
 } from './locality-catalog-resolver'
 import { FACET_FLAG_IDS_SET } from './search-facets'
 import { enrichOperationTypeFromMessage } from './search-intent-heuristics'
+import { stripPropertyTypeSynonymsFromResidual } from './search-query-merge'
 import {
   matchOperationTypeFromText,
   matchPropertyTypeFromText,
@@ -147,6 +148,19 @@ export function shouldOmitHouseForGenericCasaPhrase(normalizedText: string): boo
   if (/\bcasas?\s+para\s+comprar\b/.test(s)) return true
   if (/\balquilar\s+casas?\b|\bcasas?\s+para\s+alquilar\b/.test(s)) return true
   if (/\barriendo\s+casas?\b/.test(s)) return true
+  /**
+   * «casa(s) en <lugar>» (p. ej. Funes, Rosario): coloquialmente «inmueble», no solo `house`.
+   * Distinto de «casa en venta» / «casa en alquiler», ya cubiertos arriba.
+   */
+  const afterEn = s.match(/\bcasas?\s+en\s+([a-záéíóúñ0-9]+)/i)
+  if (afterEn?.[1]) {
+    const w = afterEn[1].toLowerCase()
+    if (
+      !['venta', 'alquiler', 'temporal', 'temporario', 'temporada'].includes(w)
+    ) {
+      return true
+    }
+  }
   return false
 }
 
@@ -276,25 +290,13 @@ export function validateConversationalPipeline(
     }
   }
 
-  const hasLocality = Boolean(out.city?.trim() || out.neighborhood?.trim())
-  if (
-    !out.propertyType &&
-    hasLocality &&
-    /\bcasas?\b/.test(normalizedText) &&
-    !/\bcasa\s+quinta\b|\bcasa\s+de\s+campo\b/.test(normalizedText)
-  ) {
-    out.propertyType = 'house'
-    validationNotes.push('propertyType house inferido: casa + localidad en el mensaje')
-  }
-
-  if (
-    out.propertyType === 'house' &&
-    shouldOmitHouseForGenericCasaPhrase(normalizedText) &&
-    !(out.city?.trim() || out.neighborhood?.trim())
-  ) {
+  if (out.propertyType === 'house' && shouldOmitHouseForGenericCasaPhrase(normalizedText)) {
+    if (out.q?.trim()) {
+      out.q = stripPropertyTypeSynonymsFromResidual(out.q, 'house')
+    }
     delete out.propertyType
     validationNotes.push(
-      'propertyType house omitido: frase genérica casa(s) sin localidad (oferta mixta; ver search-semantics)'
+      'propertyType house omitido: «casa» genérica (con o sin localidad); alineado a search-semantics y chips públicos'
     )
   }
 

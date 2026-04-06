@@ -361,8 +361,6 @@ export function BuscarContent({
   const userGeoRequestRef = useRef(false)
   /** Filtros clásicos colapsados por defecto; solo se abren si el usuario toca «Mostrar filtros». */
   const [classicFiltersOpen, setClassicFiltersOpen] = useState(true)
-  /** El `<details>` de frase/voz cerrado ocultaba por completo el input; abierto por defecto. */
-  const [buscarNlpSectionOpen, setBuscarNlpSectionOpen] = useState(true)
   const [flowDialogOpen, setFlowDialogOpen] = useState(false)
   const [localityModalOpen, setLocalityModalOpen] = useState(false)
   const [flowGuideDontShowAgain, setFlowGuideDontShowAgain] = useState(false)
@@ -1663,23 +1661,12 @@ export function BuscarContent({
           ) : null}
         </div>
 
-        <details
-          className="group rounded-lg border border-border/60 bg-surface-secondary/30"
-          open={buscarNlpSectionOpen}
-          onToggle={(e) => setBuscarNlpSectionOpen(e.currentTarget.open)}
-        >
-          <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-text-primary md:px-4 md:py-3 [&::-webkit-details-marker]:hidden">
-            <span className="inline-flex items-center gap-2">
-              <span aria-hidden className="text-text-tertiary group-open:rotate-90 transition-transform">
-                ▸
-              </span>
-              {S.buscarOptionalNlpSummary}
-            </span>
-            <span className="mt-1 block text-xs font-normal text-text-secondary">
-              {S.buscarOptionalNlpHint}
-            </span>
-          </summary>
-          <div className="border-t border-border/40 px-3 pb-3 pt-2 md:px-4 md:pb-4">
+        <div className="rounded-lg border border-border/60 bg-surface-secondary/30">
+          <div className="border-b border-border/40 px-3 py-2.5 md:px-4 md:py-3">
+            <p className="text-sm font-medium text-text-primary">{S.buscarOptionalNlpSummary}</p>
+            <p className="mt-1 text-xs font-normal text-text-secondary">{S.buscarOptionalNlpHint}</p>
+          </div>
+          <div className="px-3 pb-3 pt-2 md:px-4 md:pb-4">
             <ConversationalSearchBlock
               variant="buscar"
               routerMode="replace"
@@ -1693,7 +1680,7 @@ export function BuscarContent({
               <InductiveSearchChips variant="embedded" showSubtitle={false} />
             </div>
           </div>
-        </details>
+        </div>
 
         {assistantHint ? (
           <Card className="border-brand-primary/25 bg-brand-primary/5 p-3 space-y-2 md:p-4 md:space-y-3">

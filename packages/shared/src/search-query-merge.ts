@@ -82,7 +82,8 @@ const PROPERTY_TYPE_RESIDUAL_TOKENS: Record<string, readonly string[]> = {
   development_unit: ['emprendimiento', 'emprendimientos'],
 }
 
-function stripPropertyTypeSynonymsFromResidual(
+/** Exportado para el pipeline conversacional al omitir `house` genérico. */
+export function stripPropertyTypeSynonymsFromResidual(
   text: string,
   propertyType: string | undefined
 ): string {

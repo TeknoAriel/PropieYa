@@ -60,24 +60,24 @@ describe('validateConversationalPipeline', () => {
     expect(r.debug.droppedLocations.join(' ')).toMatch(/alquiler/i)
   })
 
-  it('comprar casa en Rosario: sale, ciudad y house (con localidad no se omite)', () => {
+  it('comprar casa en Rosario: sale y ciudad; no fuerza house (frase genérica)', () => {
     const r = validateConversationalPipeline('comprar casa en Rosario', {
       q: 'comprar casa en Rosario',
       city: 'Rosario',
       propertyType: 'house',
     })
     expect(r.extracted.operationType).toBe('sale')
-    expect(r.extracted.propertyType).toBe('house')
+    expect(r.extracted.propertyType).toBeUndefined()
     expect(r.extracted.city).toBe('Rosario')
   })
 
-  it('casa en venta en rosario: infiere ciudad y tipo casa', () => {
+  it('casa en venta en rosario: infiere ciudad; no fuerza house', () => {
     const r = validateConversationalPipeline('casa en venta en rosario', {
       operationType: 'sale',
       q: 'casa en venta en rosario',
     })
     expect(r.extracted.city).toBe('Rosario')
-    expect(r.extracted.propertyType).toBe('house')
+    expect(r.extracted.propertyType).toBeUndefined()
     expect(r.extracted.operationType).toBe('sale')
   })
 
@@ -118,6 +118,16 @@ describe('validateConversationalPipeline', () => {
     })
     expect(r.extracted.city).toBe('Funes')
     expect(r.extracted.operationType).toBe('sale')
+  })
+
+  it('casa en Funes: no fuerza house (deptos y otros tipos siguen en el listado)', () => {
+    const r = validateConversationalPipeline('casa en funes', {
+      propertyType: 'house',
+      city: 'Funes',
+      q: 'casa',
+    })
+    expect(r.extracted.propertyType).toBeUndefined()
+    expect(r.extracted.city).toBe('Funes')
   })
 
   it('casa con pileta: pool catalogada', () => {
