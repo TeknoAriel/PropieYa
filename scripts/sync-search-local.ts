@@ -1,10 +1,11 @@
 #!/usr/bin/env npx tsx
 /**
- * Sincroniza listings activos a Elasticsearch (local, sin CRON_SECRET).
- * Usa DATABASE_URL y ELASTICSEARCH_URL del entorno.
+ * Sincroniza listings activos a Elasticsearch u OpenSearch/Bonsai (sin CRON_SECRET).
+ * Usa DATABASE_URL y ELASTICSEARCH_URL. OpenSearch si `USE_OPENSEARCH=1`, `SEARCH_BACKEND=opensearch`
+ * o URL `*.bonsai.io` (ver `apps/web/src/lib/search/listing-search-engine.ts`).
  *
  * Uso: DATABASE_URL=... ELASTICSEARCH_URL=... pnpm sync-search:local
- * O con archivo: ENV_FILE=apps/web/.env.prod.verificar pnpm sync-search:local
+ * Bonsai: ENV_FILE=apps/web/.env.prod.verificar pnpm reindex:bonsai
  */
 
 import { config } from 'dotenv'
@@ -36,7 +37,7 @@ async function main() {
     const ok = await ensureIndex()
     if (!ok) {
       console.error(
-        'Elasticsearch no disponible. Revisar ELASTICSEARCH_URL y que el cluster esté activo.'
+        'Índice de búsqueda no disponible (Elasticsearch u OpenSearch/Bonsai). Revisar ELASTICSEARCH_URL, credenciales y USE_OPENSEARCH si el host no es Bonsai (*.bonsai.io / *.bonsaisearch.net).'
       )
       process.exit(1)
     }

@@ -33,12 +33,12 @@ El script hace:
 2. **Home:** Debe mostrar "Propiedades destacadas" con las últimas publicadas
 3. **Búsqueda:** `/buscar` — usa Elasticsearch si está configurado; si no, fallback a SQL (las 101 propiedades aparecen igual)
 
-## Si Elasticsearch no indexa
+## Si el índice de búsqueda no indexa
 
-Bonsai usa OpenSearch; el cliente `@elastic/elasticsearch` puede tener incompatibilidades. Opciones:
+Bonsai usa OpenSearch: el portal usa `@opensearch-project/opensearch` cuando la URL es Bonsai o `USE_OPENSEARCH=1` (ver `apps/web/src/lib/search/listing-search-engine.ts` y `docs/34-ELASTICSEARCH-BONSAI-CONFIG.md`).
 
-- Disparar el cron remoto (requiere CRON_SECRET):  
-  `curl -H "Authorization: Bearer $CRON_SECRET" https://TU-URL/api/cron/sync-search`
-- O evaluar migrar a `@opensearch-project/opensearch` para compatibilidad con Bonsai
+- Cron remoto (requiere `CRON_SECRET`):  
+  `curl -H "Authorization: Bearer $CRON_SECRET" https://propieyaweb.vercel.app/api/cron/sync-search`
+- Local: `ENV_FILE=apps/web/.env.prod.verificar pnpm reindex:bonsai`
 
-La búsqueda funciona sin ES (fallback a SQL); las propiedades se ven en home y en `/buscar`.
+La búsqueda funciona sin índice (fallback a SQL); las propiedades se ven en home y en `/buscar`.
