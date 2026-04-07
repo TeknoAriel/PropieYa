@@ -1146,6 +1146,9 @@ export const listingRouter = createTRPCRouter({
                   ms: Date.now() - perfStart,
                   esTotal: layered.total,
                   sqlTotal: sqlTotalProbe,
+                  hasCursor: false,
+                  fromEs: true,
+                  rowCount: rowsSql.length,
                 })
               )
             }
@@ -1204,15 +1207,33 @@ export const listingRouter = createTRPCRouter({
             })
           }
         }
+        const nextOut =
+          layered.ux.disableDeepPagination ? null : layered.nextCursor
+        if (logSearchMs) {
+          console.info(
+            '[listing.search]',
+            JSON.stringify({
+              phase: 'es_done',
+              ms: Date.now() - perfStart,
+              total: layered.total,
+              rowCount: layered.hits.length,
+              limit,
+              offset: input.offset,
+              hasCursor: Boolean(cursor?.trim()),
+              hasNextCursor: Boolean(nextOut),
+              fromEs: true,
+              tier: layered.ux.tier,
+              disableDeepPagination: layered.ux.disableDeepPagination,
+            })
+          )
+        }
         return {
           items: withMatchReasons(
             explainFilters as ExplainMatchFilters,
             layered.hits
           ),
           total: layered.total,
-          nextCursor: layered.ux.disableDeepPagination
-            ? null
-            : layered.nextCursor,
+          nextCursor: nextOut,
           searchUX: layered.ux,
         }
       }
@@ -1243,6 +1264,9 @@ export const listingRouter = createTRPCRouter({
             rowCount: rows.length,
             limit,
             offset,
+            hasCursor: Boolean(cursor?.trim()),
+            fromEs: layered.fromEs,
+            esLayerTotal: layered.fromEs ? layered.total : undefined,
           })
         )
       }
@@ -1324,6 +1348,8 @@ export const listingRouter = createTRPCRouter({
       }
 
       try {
+        const logSearchPerf = process.env.LOG_SEARCH_MS === '1'
+        const convoPerfStart = Date.now()
         const prior = conversationPriorFromInput(input.previousContext)
         const localityCatalog = await getListingLocalityCatalog(ctx.db)
         const { intention, amenitiesMatchMode, pipelineDebug } =
@@ -1396,6 +1422,19 @@ export const listingRouter = createTRPCRouter({
         }
 
         if (layered.fromEs && layered.total > 0) {
+          if (logSearchPerf) {
+            console.info(
+              '[listing.searchConversational]',
+              JSON.stringify({
+                phase: 'conversation_search_done',
+                ms: Date.now() - convoPerfStart,
+                hasPrior: Boolean(prior),
+                total: layered.total,
+                rowCount: layered.hits.length,
+                fromEs: true,
+              })
+            )
+          }
           return {
             filters: {
               ...explainFilters,
@@ -1509,6 +1548,19 @@ export const listingRouter = createTRPCRouter({
                 disableDeepPagination: false,
               }
 
+        if (logSearchPerf) {
+          console.info(
+            '[listing.searchConversational]',
+            JSON.stringify({
+              phase: 'conversation_search_done',
+              ms: Date.now() - convoPerfStart,
+              hasPrior: Boolean(prior),
+              total,
+              rowCount: hits.length,
+              fromEs: layered.fromEs,
+            })
+          )
+        }
         return {
           filters: {
             ...explainFilters,

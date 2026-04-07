@@ -92,7 +92,7 @@ Si `/api/version` no avanza pese a pushes: documentar el bloqueo en `docs/REGIST
 | `IMPORT_SYNC_INTERVAL_HOURS` | Mínimo entre ejecuciones reales del cron (`0` = sin mínimo; admite decimales, p. ej. `48` en prueba). Ver doc 48 |
 | `KITEPROP_INGEST_WEBHOOK_SECRET` | Opcional; auth del POST `/api/webhooks/kiteprop-ingest` |
 | `IMPORT_ORGANIZATION_ID` / `IMPORT_PUBLISHER_ID` | Forzar org/usuario publicador |
-| `LOG_SEARCH_MS` | `1` = logs JSON de rendimiento de `listing.search` en servidor (Vercel); ver `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` |
+| `LOG_SEARCH_MS` | `1` = logs JSON de `listing.search` y `searchConversational` en servidor (Vercel); ver `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` |
 
 **Búsqueda a escala y ritmo de producto:** `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` (golden queries, ES/SQL, roadmap asistente).
 

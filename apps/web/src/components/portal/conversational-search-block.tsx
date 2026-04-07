@@ -21,9 +21,11 @@ const CONV_TTL_MS = 45 * 60 * 1000
 
 /**
  * Memoria de sesión: banner «Seguimos desde…», chips y `previousContext` al intérprete.
- * Desactivado hasta reimplementar el flujo (evita criterios duplicados / 0 resultados).
+ * Opt-in en build: `NEXT_PUBLIC_ENABLE_CONVERSATIONAL_SESSION_CONTEXT=1` en Vercel (apps/web).
+ * Sin variable o distinto de `1`, comportamiento = apagado (doc 47 §F3).
  */
-const ENABLE_CONVERSATIONAL_SESSION_CONTEXT = false
+const ENABLE_CONVERSATIONAL_SESSION_CONTEXT =
+  process.env.NEXT_PUBLIC_ENABLE_CONVERSATIONAL_SESSION_CONTEXT === '1'
 
 type StoredConv = {
   userMessage: string

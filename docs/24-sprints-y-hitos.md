@@ -41,6 +41,7 @@
 | Sprint 41 (filtros capa 4 contextual) | ✅ — ver sección Sprint 41 |
 | Sprint 42 (alertas + geo en URL + reabrir búsqueda) | ✅ — ver sección Sprint 42 |
 | Sprint 43 (ficha: ref import + búsquedas zona/precio) | ✅ — ver sección Sprint 43 |
+| Sprint 44 (ritmo producción: logs búsqueda + flag asistente /buscar) | ✅ — ver sección Sprint 44 |
 | Siguiente backlog doc 43 §5 | Simulador / verificación org, más ítems §5 |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
@@ -646,7 +647,7 @@
 
 - [x] 36.1 Aviso visible cuando el mapa está abierto y **no** hay bbox ni polígono de 3+ vértices (el listado no se recorta al mover la ventana)
 - [x] 36.2 Tras «Buscar en esta zona», scroll suave al bloque `#buscar-resultados`
-- [x] 36.3 `docs/47` §F3: nota de producto alineada al flag `ENABLE_CONVERSATIONAL_SESSION_CONTEXT` en `ConversationalSearchBlock`
+- [x] 36.3 `docs/47` §F3: nota de producto alineada al flag conversacional en `ConversationalSearchBlock` (`NEXT_PUBLIC_ENABLE_CONVERSATIONAL_SESSION_CONTEXT`)
 - [x] 36.4 Tabla de estado y esta sección en `docs/24`
 - [x] 36.5 `pnpm verify` + push `deploy/infra`
 
@@ -756,3 +757,18 @@
 - [x] 43.5 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
 
 **Criterios:** el usuario ve una pista trazable del aviso importado sin exponer el ID externo completo; desde la ficha puede abrir el buscador en «toda la ciudad» o barrio (cualquier tipo) y en un rango de precio similar.
+
+---
+
+## Sprint 44 — Ritmo de producción: observabilidad búsqueda + asistente activable ✅
+
+**Objetivo:** `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` — **F0** más rico para operar a escala; **F3** con continuidad del asistente en `/buscar` **opt-in** por variable pública (sin cambiar comportamiento por defecto).
+
+### Tareas (agente / CI)
+
+- [x] 44.1 `LOG_SEARCH_MS=1`: logs `es_done` (cursor, nextCursor, tier, conteos), enriquecer `sql_done` y `es_underfill_sql`
+- [x] 44.2 Misma variable: `searchConversational` → log `conversation_search_done` (latencia, prior, total, fromEs)
+- [x] 44.3 `NEXT_PUBLIC_ENABLE_CONVERSATIONAL_SESSION_CONTEXT=1` en `ConversationalSearchBlock` (default apagado); `.env.example` + `docs/47` §F3
+- [x] 44.4 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** en Vercel con `LOG_SEARCH_MS=1` se correlaciona paginación ES/SQL y conversacional; quien quiera continuidad en `/buscar` la enciende explícitamente en el proyecto web.

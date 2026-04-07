@@ -30,7 +30,7 @@ Referencias duras: `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`, `docs/43-ANEXO-MAS
 ## 3. Fases de ejecución (entregables)
 
 **F0 — Observabilidad y baseline (ya iniciado)**  
-- Variable `LOG_SEARCH_MS=1`: logs JSON de fase ES / SQL en `listing.search` (ver `.env.example`).  
+- Variable `LOG_SEARCH_MS=1`: logs JSON en `listing.search` — fases `es_done`, `sql_done`, `es_underfill_sql` (incluye `hasCursor`, `hasNextCursor`, `fromEs`, `tier`, conteos). Con la misma variable, `searchConversational` emite `conversation_search_done` (`hasPrior`, `total`, `rowCount`, `fromEs`). Ver `.env.example`.  
 - Ejecutar pruebas manuales o scripts contra `/buscar` usando el **apéndice A** (registrar latencia subjetiva y totales).
 
 **F1 — Escala de listado** (en código)  
@@ -48,7 +48,7 @@ Referencias duras: `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`, `docs/43-ANEXO-MAS
 - `searchConversational` acepta `previousContext: { userMessage, filters }` y el LLM (o merge heurístico sin API) **fusiona** el nuevo mensaje con filtros previos.  
 - `sessionStorage` (`propieya.conversational.v1`, TTL 45 min) + banner y chips en `/buscar` dentro de `ConversationalSearchBlock`; “Empezar de cero” limpia contexto.  
 - La home reutiliza el mismo storage al enviar (sin banner, para no ocupar el hero).  
-- **Marzo 2026 (producto):** en `ConversationalSearchBlock` el flag `ENABLE_CONVERSATIONAL_SESSION_CONTEXT` está en `false`: la tubería del servidor con `previousContext` sigue disponible, pero la UI de continuidad (banner, chips de seguimiento y lectura del storage en `/buscar`) queda apagada hasta un rediseño que evite criterios duplicados o listados vacíos no intencionales.
+- **Continuidad en `/buscar`:** la UI (banner, chips, `sessionStorage`, `previousContext` al servidor) se activa solo si en **apps/web** (Vercel) está `NEXT_PUBLIC_ENABLE_CONVERSATIONAL_SESSION_CONTEXT=1`. Sin variable o distinto de `1`, queda apagada (mismo comportamiento que antes). Si el listado se desvía de la intención, el usuario puede usar «Empezar de cero» en el banner.
 
 **Paralelo (producto)**  
 - `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` cuando el inventario lo permita.
