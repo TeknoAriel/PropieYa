@@ -40,7 +40,8 @@
 | Sprint 40 (mapa: viewport en vivo) | ✅ — ver sección Sprint 40 |
 | Sprint 41 (filtros capa 4 contextual) | ✅ — ver sección Sprint 41 |
 | Sprint 42 (alertas + geo en URL + reabrir búsqueda) | ✅ — ver sección Sprint 42 |
-| Siguiente backlog doc 43 §5 | Jerarquías de zona, simulador / verificación org |
+| Sprint 43 (ficha: ref import + búsquedas zona/precio) | ✅ — ver sección Sprint 43 |
+| Siguiente backlog doc 43 §5 | Simulador / verificación org, más ítems §5 |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
 | Infra GitHub/Vercel nuevo repo (Sprint 25.6–25.8) | Confirmar secretos `VERCEL_*`, Actions verde y Git del proyecto web → `docs/DEPLOY-PASOS-URIs.md` Parte A |
@@ -739,3 +740,19 @@
 - [x] 42.5 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
 
 **Criterios:** una alerta creada con zona en mapa o polígono se puede reabrir con un clic; la URL refleja geo y amenities de forma acotada; nuevas alertas muestran resumen con polígono en texto.
+
+---
+
+## Sprint 43 — Ficha: confianza import + búsquedas relacionadas (zona y precio) ✅
+
+**Objetivo:** doc 43 §5 (iteración corta): reforzar **confianza** en avisos importados con referencia de inventario **acotada**; ampliar **descubrimiento** desde la ficha con enlaces a `/buscar` por ciudad/barrio **sin tipo** y por **rango de precio** cercano al aviso.
+
+### Tareas (agente / CI)
+
+- [x] 43.1 `@propieya/shared`: `formatListingInventoryRefForPortal` + tests Vitest
+- [x] 43.2 `ListingTrustPanel`: línea opcional «Referencia de inventario» solo si `source === 'import'` y hay `externalId`
+- [x] 43.3 `ListingRelatedSearches`: hasta 6 enlaces — ciudad/barrio sin `tipo`, banda de precio ±25 % si `showPrice` y hay ciudad
+- [x] 43.4 Copy en `PORTAL_LISTING_UX_COPY` / `PORTAL_LISTING_RELATED_SEARCH_LABELS`
+- [x] 43.5 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** el usuario ve una pista trazable del aviso importado sin exponer el ID externo completo; desde la ficha puede abrir el buscador en «toda la ciudad» o barrio (cualquier tipo) y en un rango de precio similar.

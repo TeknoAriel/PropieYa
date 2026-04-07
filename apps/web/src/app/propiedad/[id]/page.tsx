@@ -264,6 +264,8 @@ export default function PropiedadPage() {
     qualityScore: number | null
     mediaCount: number
     primaryImageUrl: string | null
+    externalId?: string | null
+    showPrice?: boolean
     address?: { neighborhood?: string; city?: string } | null
     surfaceTotal: number
     bedrooms: number | null
@@ -455,6 +457,8 @@ export default function PropiedadPage() {
             neighborhood={
               addressNeighborhood !== '—' ? addressNeighborhood : null
             }
+            showPrice={listing.showPrice}
+            priceAmount={listing.priceAmount}
           />
         </div>
         <div className="lg:col-span-2">

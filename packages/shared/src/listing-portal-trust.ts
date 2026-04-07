@@ -138,3 +138,17 @@ export function resolveListingCompletenessForPortal(
   }
   return computeListingCompletenessScore(input)
 }
+
+/**
+ * Referencia corta para ficha pública: no muestra el `external_id` completo.
+ * Hasta 8 caracteres: prefijo … + texto; más largo: … + últimos 6.
+ */
+export function formatListingInventoryRefForPortal(
+  externalId: string | null | undefined
+): string | null {
+  if (externalId == null) return null
+  const t = String(externalId).trim()
+  if (t.length === 0) return null
+  if (t.length <= 8) return `…${t}`
+  return `…${t.slice(-6)}`
+}

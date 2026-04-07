@@ -519,10 +519,25 @@ export const PORTAL_LISTING_UX_COPY = {
   sourceImport:
     'Origen: sincronizado desde el feed de socios (mismo inventario que usa la inmobiliaria).',
   sourceManual: 'Origen: publicación gestionada en Propieya.',
+  /** Línea opcional cuando hay `external_id` (solo referencia acotada). */
+  sourceImportRefPrefix: 'Referencia de inventario:',
   expiringSoonBadge: 'Por vencer',
 
   /** Sprint 32 — ampliar zona / mismo criterio en el buscador */
   relatedSearchesTitle: 'Búsquedas relacionadas',
+} as const
+
+/** Etiquetas para enlaces «Búsquedas relacionadas» (jerarquía zona + precio). Sprint 43. */
+export const PORTAL_LISTING_RELATED_SEARCH_LABELS = {
+  allTypesInCity(city: string, opLower: string) {
+    return `Todo en ${city} — ${opLower}`
+  },
+  allTypesInNeighborhood(neighborhood: string, opLower: string) {
+    return `Todo en ${neighborhood} — ${opLower}`
+  },
+  similarPriceInCity(opLower: string, city: string) {
+    return `Precio similar (${opLower}) en ${city}`
+  },
 } as const
 
 /** Comparador de avisos (Sprint 33 — centro de decisión v0). */

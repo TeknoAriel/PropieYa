@@ -4,6 +4,7 @@ import { Badge, Card } from '@propieya/ui'
 import {
   PORTAL_LISTING_UX_COPY as L,
   buildListingFreshnessUi,
+  formatListingInventoryRefForPortal,
   resolveListingCompletenessForPortal,
   type ListingTrustCompletenessInput,
 } from '@propieya/shared'
@@ -24,6 +25,7 @@ type ListingTrustSource = {
   bedrooms: number | null
   bathrooms: number | null
   features?: unknown
+  externalId?: string | null
 }
 
 export function ListingTrustPanel({ listing }: { listing: ListingTrustSource }) {
@@ -49,6 +51,8 @@ export function ListingTrustPanel({ listing }: { listing: ListingTrustSource }) 
 
   const src = listing.source ?? 'manual'
   const originLine = src === 'import' ? L.sourceImport : L.sourceManual
+  const inventoryRef =
+    src === 'import' ? formatListingInventoryRefForPortal(listing.externalId) : null
 
   return (
     <Card className="p-6 space-y-4">
@@ -63,6 +67,11 @@ export function ListingTrustPanel({ listing }: { listing: ListingTrustSource }) 
         {freshness.publishedLine ? <li>{freshness.publishedLine}</li> : null}
         {freshness.expiresLine ? <li>{freshness.expiresLine}</li> : null}
         <li className="text-text-tertiary">{originLine}</li>
+        {inventoryRef ? (
+          <li className="text-text-tertiary">
+            {L.sourceImportRefPrefix} {inventoryRef}
+          </li>
+        ) : null}
       </ul>
 
       <div className="space-y-2">
