@@ -435,14 +435,14 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Opcional — mismo motor que la búsqueda por frase. Tocá «Más filtros» para ir más al detalle.',
   buscarPageGentleHint:
     'Explorá con calma: los resultados se actualizan solos cuando cambiás criterios.',
-  /** Sección plegable: NLP / chips inductivos (flujo principal = filtros + palabras clave). */
-  buscarOptionalNlpSummary: 'Búsqueda con frase o voz (opcional)',
+  /** Encabezado opcional del bloque conversacional (si se muestra aparte del título del componente). */
+  buscarOptionalNlpSummary: 'Búsqueda asistida con frase o voz',
   buscarOptionalNlpHint:
-    'Lo habitual es elegir operación, tipo y zona arriba; esta sección suma una frase o dictado si preferís.',
+    'Primero describí lo que buscás; si querés, después afinás con filtros o mapa.',
   /** Resumen visible de criterios activos (encima del formulario). */
   buscarActiveSummaryLabel: 'Tu búsqueda ahora',
   buscarActiveSummaryEmpty:
-    'Sin criterios todavía: escribí palabras clave o abrí filtros para afinar.',
+    'Sin criterios todavía: describí en una frase lo que buscás arriba o abrí los filtros para afinar.',
   buscarClearSearch: 'Limpiar búsqueda',
   buscarLoadMore: 'Cargar más resultados',
   buscarLoadingMore: 'Cargando…',
@@ -453,7 +453,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarFlowDialogConfirm: 'Listo',
   buscarFlowLinkInline: '¿Cómo funciona la búsqueda?',
   buscarFlowBannerTeaser:
-    'Arrancá con filtros y palabras clave; mapa y búsqueda por frase son opcionales para afinar.',
+    'Arrancá con una frase en el asistente; después afinás con filtros o mapa si hace falta.',
   buscarFlowBannerSeeSteps: 'Ver pasos',
   buscarFlowBannerDismiss: 'No volver a mostrar',
   mapViewportUpdatesResults:

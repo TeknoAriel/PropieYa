@@ -360,7 +360,7 @@ export function BuscarContent({
   const [userGeo, setUserGeo] = useState<{ lat: number; lng: number } | null>(null)
   const userGeoRequestRef = useRef(false)
   /** Filtros clásicos colapsados por defecto; solo se abren si el usuario toca «Mostrar filtros». */
-  const [classicFiltersOpen, setClassicFiltersOpen] = useState(true)
+  const [classicFiltersOpen, setClassicFiltersOpen] = useState(false)
   const [flowDialogOpen, setFlowDialogOpen] = useState(false)
   const [localityModalOpen, setLocalityModalOpen] = useState(false)
   const [flowGuideDontShowAgain, setFlowGuideDontShowAgain] = useState(false)
@@ -1002,6 +1002,98 @@ export function BuscarContent({
                 {S.buscarClearSearch}
               </Button>
             </div>
+          </Card>
+        ) : null}
+
+        <div
+          id="buscar-asistente"
+          className="scroll-mt-24 rounded-lg border border-brand-primary/20 bg-brand-primary/[0.04] p-3 md:p-4"
+        >
+          <ConversationalSearchBlock
+            variant="buscar"
+            routerMode="replace"
+            searchPathPage={searchPathPage}
+            forcedOperation={forcedOperation}
+            onAfterNavigate={setAssistantHint}
+            compact
+            buscarSearchParamsKey={searchParamsKey}
+          />
+          <div className="mt-3 border-t border-border/40 pt-3">
+            <InductiveSearchChips variant="embedded" showSubtitle={false} />
+          </div>
+        </div>
+
+        {assistantHint ? (
+          <Card className="space-y-2 border-brand-primary/25 bg-brand-primary/5 p-3 md:space-y-3 md:p-4">
+            <p className="text-sm font-semibold text-text-primary">
+              {S.conversationalInterpretedTitle}
+            </p>
+            <p className="text-sm text-text-secondary leading-snug">
+              {assistantHint.summary}
+            </p>
+            {assistantHint.messages && assistantHint.messages.length > 0 ? (
+              <ul className="list-disc space-y-1 pl-4 text-xs text-text-secondary md:text-sm">
+                {assistantHint.messages.map((m, i) => (
+                  <li key={`hint-msg-${i}`}>{m}</li>
+                ))}
+              </ul>
+            ) : null}
+            <p className="text-sm text-text-primary">
+              {assistantHint.total > 0 ? (
+                <>
+                  {S.conversationalResultsPrefix}:{' '}
+                  <strong>{assistantHint.total}</strong>
+                  {assistantHint.primaryTotal !== undefined &&
+                  assistantHint.primaryTotal === 0 &&
+                  assistantHint.total > 0 ? (
+                    <span className="mt-1 block text-xs font-normal text-text-secondary">
+                      {S.conversationalRelaxedCountNote}
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                <span className="text-text-secondary">{S.conversationalResultsZero}</span>
+              )}
+            </p>
+            <p className="text-xs font-medium text-text-secondary">
+              {S.conversationalNextTitle}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setClassicFiltersOpen(true)
+                  setShowMap(true)
+                  window.requestAnimationFrame(() =>
+                    scrollToElementId('buscar-mapa')
+                  )
+                }}
+              >
+                {S.conversationalNextMap}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setClassicFiltersOpen(true)
+                  setShowAdvanced(true)
+                  window.requestAnimationFrame(() =>
+                    document
+                      .getElementById('buscar-esenciales')
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  )
+                }}
+              >
+                {S.conversationalNextFilters}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" asChild>
+                <a href="#buscar-resultados">{S.conversationalScrollResults}</a>
+              </Button>
+            </div>
+            <p className="text-xs text-text-secondary">{S.conversationalNextAgain}</p>
           </Card>
         ) : null}
 
@@ -1660,98 +1752,6 @@ export function BuscarContent({
             </Card>
           ) : null}
         </div>
-
-        <div className="rounded-lg border border-border/60 bg-surface-secondary/30">
-          <div className="border-b border-border/40 px-3 py-2.5 md:px-4 md:py-3">
-            <p className="text-sm font-medium text-text-primary">{S.buscarOptionalNlpSummary}</p>
-            <p className="mt-1 text-xs font-normal text-text-secondary">{S.buscarOptionalNlpHint}</p>
-          </div>
-          <div className="px-3 pb-3 pt-2 md:px-4 md:pb-4">
-            <ConversationalSearchBlock
-              variant="buscar"
-              routerMode="replace"
-              searchPathPage={searchPathPage}
-              forcedOperation={forcedOperation}
-              onAfterNavigate={setAssistantHint}
-              compact
-              buscarSearchParamsKey={searchParamsKey}
-            />
-            <div className="mt-2 border-t border-border/40 pt-2">
-              <InductiveSearchChips variant="embedded" showSubtitle={false} />
-            </div>
-          </div>
-        </div>
-
-        {assistantHint ? (
-          <Card className="border-brand-primary/25 bg-brand-primary/5 p-3 space-y-2 md:p-4 md:space-y-3">
-            <p className="text-sm font-semibold text-text-primary">
-              {S.conversationalInterpretedTitle}
-            </p>
-            <p className="text-sm text-text-secondary leading-snug">
-              {assistantHint.summary}
-            </p>
-            {assistantHint.messages && assistantHint.messages.length > 0 ? (
-              <ul className="list-disc space-y-1 pl-4 text-xs text-text-secondary md:text-sm">
-                {assistantHint.messages.map((m, i) => (
-                  <li key={`hint-msg-${i}`}>{m}</li>
-                ))}
-              </ul>
-            ) : null}
-            <p className="text-sm text-text-primary">
-              {assistantHint.total > 0 ? (
-                <>
-                  {S.conversationalResultsPrefix}:{' '}
-                  <strong>{assistantHint.total}</strong>
-                  {assistantHint.primaryTotal !== undefined &&
-                  assistantHint.primaryTotal === 0 &&
-                  assistantHint.total > 0 ? (
-                    <span className="block text-xs font-normal text-text-secondary mt-1">
-                      {S.conversationalRelaxedCountNote}
-                    </span>
-                  ) : null}
-                </>
-              ) : (
-                <span className="text-text-secondary">{S.conversationalResultsZero}</span>
-              )}
-            </p>
-            <p className="text-xs font-medium text-text-secondary">
-              {S.conversationalNextTitle}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowMap(true)
-                  scrollToElementId('buscar-mapa')
-                }}
-              >
-                {S.conversationalNextMap}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setClassicFiltersOpen(true)
-                  setShowAdvanced(true)
-                  window.requestAnimationFrame(() =>
-                    document
-                      .getElementById('buscar-esenciales')
-                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  )
-                }}
-              >
-                {S.conversationalNextFilters}
-              </Button>
-              <Button type="button" variant="ghost" size="sm" asChild>
-                <a href="#buscar-resultados">{S.conversationalScrollResults}</a>
-              </Button>
-            </div>
-            <p className="text-xs text-text-secondary">{S.conversationalNextAgain}</p>
-          </Card>
-        ) : null}
 
         <div id="buscar-resultados" className="scroll-mt-24 space-y-6">
           {data?.searchUX?.messages && data.searchUX.messages.length > 0 ? (
