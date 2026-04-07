@@ -39,4 +39,22 @@ describe('mapYumblinItem property type', () => {
     expect(row).not.toBeNull()
     expect(row!.propertyType).toBe('land')
   })
+
+  it('si property_type es apartment pero property_type_old es más específico, usa old', () => {
+    const row = mapYumblinItem(
+      {
+        title: 'Vivienda amplia en barrio residencial',
+        content: '',
+        public_code: 'KP3',
+        for_sale: true,
+        price: 120_000,
+        total_meters: 120,
+        property_type: 'apartments',
+        property_type_old: 'casas',
+      },
+      baseInput
+    )
+    expect(row).not.toBeNull()
+    expect(row!.propertyType).toBe('house')
+  })
 })

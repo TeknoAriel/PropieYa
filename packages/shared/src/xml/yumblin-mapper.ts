@@ -242,10 +242,20 @@ export function mapYumblinItem(
       'tipo_inmueble',
       'tipo'
     )
-  const propertyType = mapFeedPropertyTypeWithListingText(typeRaw ?? '', {
+  const typeRawOld = getValue(item, 'property_type_old', 'propertytype_old')
+  const listingTypeContext = {
     title: title.slice(0, 255),
     description: desc ?? '',
-  })
+  }
+  let propertyType = mapFeedPropertyTypeWithListingText(typeRaw ?? '', listingTypeContext)
+  if (
+    typeRawOld != null &&
+    String(typeRawOld).trim() !== '' &&
+    propertyType === 'apartment'
+  ) {
+    const fromOld = mapFeedPropertyTypeWithListingText(typeRawOld, listingTypeContext)
+    if (fromOld !== 'apartment') propertyType = fromOld
+  }
 
   const lat = getValue(item, 'latitude', 'lat', 'latitud') as number | string | null
   const lng = getValue(item, 'longitude', 'lng', 'longitud', 'lon') as number | string | null

@@ -79,6 +79,12 @@ export interface YumblinImportSyncOptions {
    * Solo usar con **un** feed activo por org. Env: `IMPORT_WITHDRAW_SCOPE` (`org` | `source`).
    */
   withdrawOrgWide?: boolean
+  /**
+   * Si true: no omitir ítems aunque `import_source_updated_at` coincida con `last_update` del feed.
+   * Necesario tras corregir `mapYumblinItem` / tipos para reescribir filas sin cambiar el JSON remoto.
+   * Env: `IMPORT_BYPASS_SOURCE_UPDATED_AT=1`.
+   */
+  bypassSourceUpdatedAt?: boolean
 }
 
 export interface YumblinImportSyncResult {
@@ -238,6 +244,12 @@ export async function runYumblinImportSync(
   }
 
   const withdrawOrgWide = resolveWithdrawOrgWideExplicit(options)
+  const bypassSourceUpdatedAt =
+    options.bypassSourceUpdatedAt === true ||
+    (() => {
+      const v = (process.env.IMPORT_BYPASS_SOURCE_UPDATED_AT ?? '').trim().toLowerCase()
+      return v === '1' || v === 'true' || v === 'yes'
+    })()
 
   let raw: unknown
   let etag: string | undefined
@@ -403,7 +415,7 @@ export async function runYumblinImportSync(
   for (const item of allItems) {
     const feedUpdated = parseFeedItemSourceUpdatedAt(item as Record<string, unknown>)
     const extEarly = peekFeedExternalId(item as Record<string, unknown>)
-    if (extEarly) {
+    if (extEarly && !bypassSourceUpdatedAt) {
       const rowEarly = byExternal.get(extEarly)
       if (rowEarly && sourceTimesMatch(rowEarly.importSourceUpdatedAt, feedUpdated)) {
         counts.skippedUnchangedBySourceTime++
@@ -690,6 +702,10 @@ export async function runYumblinImportSync(
 
 export interface YumblinImportSyncAllSourcesOptions {
   enforceInterval?: boolean
+  /** Igual que en `runYumblinImportSync`; también `IMPORT_FORCE_FULL_FETCH=1`. */
+  forceFullFetch?: boolean
+  /** Igual que en `runYumblinImportSync`; también `IMPORT_BYPASS_SOURCE_UPDATED_AT=1`. */
+  bypassSourceUpdatedAt?: boolean
   /**
    * Si se pasa, se usa como lista de URLs a sincronizar (en lugar de la env).
    * Si está vacío/undefined, se combinan:
@@ -750,6 +766,15 @@ export async function runYumblinImportSyncAllSources(
 
   const finalFeedUrls = feedUrlsUnique.length > 0 ? feedUrlsUnique : [fallbackDefault]
 
+  const envForceFull = (() => {
+    const v = (process.env.IMPORT_FORCE_FULL_FETCH ?? '').trim().toLowerCase()
+    return v === '1' || v === 'true' || v === 'yes'
+  })()
+  const envBypassSource = (() => {
+    const v = (process.env.IMPORT_BYPASS_SOURCE_UPDATED_AT ?? '').trim().toLowerCase()
+    return v === '1' || v === 'true' || v === 'yes'
+  })()
+
   const results: YumblinImportSyncResult[] = []
   for (const feedUrl of finalFeedUrls) {
     const r = await runYumblinImportSync({
@@ -757,6 +782,8 @@ export async function runYumblinImportSyncAllSources(
       organizationId,
       publisherId,
       enforceInterval: options.enforceInterval ?? true,
+      forceFullFetch: options.forceFullFetch ?? envForceFull,
+      bypassSourceUpdatedAt: options.bypassSourceUpdatedAt ?? envBypassSource,
       assumeUnassignedBelongsToThisSource: finalFeedUrls.length === 1,
       withdrawOrgWide:
         finalFeedUrls.length === 1 && resolveWithdrawOrgWideExplicit({}),

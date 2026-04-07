@@ -4,6 +4,7 @@
  *
  * Uso:
  *   pnpm import:yumblin
+ *   pnpm import:yumblin:reimport   # fuerza GET sin 304, reprocesa todos los ítems (tipos/campos)
  *   pnpm import:yumblin -- --file=./lacapital.json
  *   pnpm import:yumblin -- --limit=100
  *   IMPORT_ORGANIZATION_ID=xxx IMPORT_PUBLISHER_ID=yyy pnpm import:yumblin
@@ -27,6 +28,8 @@ async function main() {
   const limitArg = process.argv.find((a) => a.startsWith('--limit='))
   const limit = limitArg ? parseInt(limitArg.slice('--limit='.length), 10) : undefined
   const forceFullFetch = process.argv.includes('--force-full-fetch')
+  const reimport =
+    process.argv.includes('--reimport') || process.argv.includes('--force-reprocess')
 
   let rawData: unknown | undefined
   let feedUrl: string | undefined
@@ -50,7 +53,8 @@ async function main() {
     rawData,
     limit,
     enforceInterval: false,
-    forceFullFetch,
+    forceFullFetch: forceFullFetch || reimport,
+    bypassSourceUpdatedAt: reimport,
     assumeUnassignedBelongsToThisSource: true,
     withdrawOrgWide: true,
   })
