@@ -23,7 +23,7 @@ Referencias duras: `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`, `docs/43-ANEXO-MAS
 | **Búsqueda a volumen** | 20k–200k avisos sin degradar UX | **Elasticsearch** como camino principal; SQL solo fallback; hoy `offset` máx. 500 — hace falta **`search_after`** o equivalente para catálogos grandes |
 | **Precisión / relevancia** | Resultados percibidos como “justos” | ES: `multi_match` + orden por fecha; pendiente tuning (boosts, sinónimos, métricas) |
 | **Asistente** | Colabora al **traducir intención** y **proponer continuidad** | Hoy: un turno → filtros → `searchListings` (`extractIntentionFromMessage`). Pendiente: multi-turno, sugerencias post-resultado, alineado al mismo motor |
-| **Medición** | Saber si mejoramos | `search_history` (usuarios logueados); logs opcionales `LOG_SEARCH_MS`; golden queries (apéndice); futuro: harness / etiquetado |
+| **Medición** | Saber si mejoramos | `search_history` (usuarios logueados); **`portal_stats_events`:** `listing.search.executed` y `assistant.search.triggered` (primera página / mutación OK); logs `LOG_SEARCH_MS`; golden queries (apéndice); futuro: harness / etiquetado |
 
 ---
 
@@ -31,6 +31,7 @@ Referencias duras: `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`, `docs/43-ANEXO-MAS
 
 **F0 — Observabilidad y baseline (ya iniciado)**  
 - Variable `LOG_SEARCH_MS=1`: logs JSON en `listing.search` — fases `es_done`, `sql_done`, `es_underfill_sql` (incluye `hasCursor`, `hasNextCursor`, `fromEs`, `tier`, conteos). Con la misma variable, `searchConversational` emite `conversation_search_done` (`hasPrior`, `total`, `rowCount`, `fromEs`). Ver `.env.example`.  
+- **Hechos de producto:** cada primera página exitosa de `listing.search` registra `listing.search.executed`; cada `searchConversational` exitoso registra `assistant.search.triggered` (ver `docs/49`, `PORTAL_STATS_TERMINALS`).  
 - Ejecutar pruebas manuales o scripts contra `/buscar` usando el **apéndice A** (registrar latencia subjetiva y totales).
 
 **F1 — Escala de listado** (en código)  

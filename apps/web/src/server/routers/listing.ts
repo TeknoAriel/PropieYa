@@ -1160,6 +1160,14 @@ export const listingRouter = createTRPCRouter({
                 startedAt,
               })
             }
+            recordPortalStatsEvent(ctx.db, {
+              terminalId: PORTAL_STATS_TERMINALS.LISTING_SEARCH_EXECUTED,
+              userId: ctx.session?.userId ?? null,
+              payload: {
+                total: sqlTotalProbe,
+                source: 'sql_underfill',
+              },
+            })
             return {
               items: withMatchReasons(
                 explainFilters as ExplainMatchFilters,
@@ -1184,6 +1192,15 @@ export const listingRouter = createTRPCRouter({
           })
         }
         if (!cursor?.trim() && input.offset === 0) {
+          recordPortalStatsEvent(ctx.db, {
+            terminalId: PORTAL_STATS_TERMINALS.LISTING_SEARCH_EXECUTED,
+            userId: ctx.session?.userId ?? null,
+            payload: {
+              total: layered.total,
+              source: 'es',
+              tier: layered.ux.tier,
+            },
+          })
           if (layered.ux.primaryTotal === 0 && layered.total > 0) {
             recordPortalStatsEvent(ctx.db, {
               terminalId:
@@ -1286,6 +1303,15 @@ export const listingRouter = createTRPCRouter({
           : defaultSqlSearchUx(sqlTotal)
 
       if (!cursor?.trim() && input.offset === 0) {
+        recordPortalStatsEvent(ctx.db, {
+          terminalId: PORTAL_STATS_TERMINALS.LISTING_SEARCH_EXECUTED,
+          userId: ctx.session?.userId ?? null,
+          payload: {
+            total: sqlTotal,
+            source: 'sql',
+            esEmpty: layered.fromEs && layered.total === 0,
+          },
+        })
         if (layered.fromEs && layered.total === 0 && sqlTotal > 0) {
           if (layered.ux.primaryTotal === 0) {
             recordPortalStatsEvent(ctx.db, {
@@ -1435,6 +1461,15 @@ export const listingRouter = createTRPCRouter({
               })
             )
           }
+          recordPortalStatsEvent(ctx.db, {
+            terminalId: PORTAL_STATS_TERMINALS.ASSISTANT_SEARCH_TRIGGERED,
+            userId: ctx.session?.userId ?? null,
+            payload: {
+              total: layered.total,
+              fromEs: true,
+              hasPrior: Boolean(prior),
+            },
+          })
           return {
             filters: {
               ...explainFilters,
@@ -1561,6 +1596,15 @@ export const listingRouter = createTRPCRouter({
             })
           )
         }
+        recordPortalStatsEvent(ctx.db, {
+          terminalId: PORTAL_STATS_TERMINALS.ASSISTANT_SEARCH_TRIGGERED,
+          userId: ctx.session?.userId ?? null,
+          payload: {
+            total,
+            fromEs: layered.fromEs,
+            hasPrior: Boolean(prior),
+          },
+        })
         return {
           filters: {
             ...explainFilters,

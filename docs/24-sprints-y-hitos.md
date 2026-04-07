@@ -42,6 +42,7 @@
 | Sprint 42 (alertas + geo en URL + reabrir búsqueda) | ✅ — ver sección Sprint 42 |
 | Sprint 43 (ficha: ref import + búsquedas zona/precio) | ✅ — ver sección Sprint 43 |
 | Sprint 44 (ritmo producción: logs búsqueda + flag asistente /buscar) | ✅ — ver sección Sprint 44 |
+| Sprint 45 (ritmo producción: telemetría búsqueda + asistente en panel) | ✅ — ver sección Sprint 45 |
 | Siguiente backlog doc 43 §5 | Simulador / verificación org, más ítems §5 |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
@@ -772,3 +773,18 @@
 - [x] 44.4 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
 
 **Criterios:** en Vercel con `LOG_SEARCH_MS=1` se correlaciona paginación ES/SQL y conversacional; quien quiera continuidad en `/buscar` la enciende explícitamente en el proyecto web.
+
+---
+
+## Sprint 45 — Ritmo de producción: telemetría `listing.search` y asistente ✅
+
+**Objetivo:** cerrar el hueco de **medición de producto** en doc 47 / doc 49: terminales ya definidos en `PORTAL_STATS_TERMINALS` pero no cableados para volumen de búsqueda listado y búsqueda vía asistente.
+
+### Tareas (agente / CI)
+
+- [x] 45.1 `listing.search`: `LISTING_SEARCH_EXECUTED` en primera página (sin `cursor`, `offset === 0`) — caminos ES, SQL y `sql_underfill`
+- [x] 45.2 `searchConversational`: `ASSISTANT_SEARCH_TRIGGERED` con payload mínimo (`total`, `fromEs`, `hasPrior`)
+- [x] 45.3 `docs/47`, `docs/49`, tabla de estado en este archivo
+- [x] 45.4 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** el panel puede agregar por `terminal_id` volumen de búsquedas de listado y de disparos del asistente sin duplicar PII; la paginación «cargar más» no multiplica el evento base.

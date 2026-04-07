@@ -77,11 +77,11 @@ Cada terminal es un **punto único** en código donde se registrará el hecho (a
 
 | Área | Terminal (ejemplo) | Dónde cablear |
 |------|---------------------|---------------|
-| Búsqueda | `listing.search.executed` | Tras `listing.search` exitoso (ya hay `search_history` si sesión; alinear nombre / duplicar como evento si hace falta anon) |
+| Búsqueda | `listing.search.executed` | **Implementado (Sprint 45):** primera página de `listing.search` (sin cursor, offset 0); `payload`: `total`, `source` (`es` \| `sql` \| `sql_underfill`), `tier` o `esEmpty` según camino |
 | Ficha | `listing.ficha.view` | **Implementado:** tRPC `listing.recordPublicView` tras `getById` OK en `/propiedad/[id]` |
 | Lead | `lead.submitted` | Creación de lead desde ficha |
 | Comparador | `listing.compare.add` / `listing.compare.view` | Storage + página `/comparar` |
-| Asistente | `assistant.message.sent` / `assistant.search.triggered` | Router conversacional |
+| Asistente | `assistant.message.sent` / `assistant.search.triggered` | **`assistant.search.triggered` implementado (Sprint 45):** `searchConversational` exitoso; `payload`: `total`, `fromEs`, `hasPrior`. `assistant.message.sent` pendiente si se separa envío de búsqueda |
 | Demanda / alertas | `demand.profile.updated`, `search_alert.created` | Routers existentes |
 | Auth | `auth.login.success` (opcional) | Tras login panel/portal |
 | Ingesta | Ya cubierto por respuestas cron; opcional `ingest.run.completed` con counts en payload | Pipeline import |
