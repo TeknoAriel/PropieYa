@@ -33,6 +33,8 @@ type FeedSavedSearchItem = {
   kind: 'saved_search'
   id: string
   createdAt: Date
+  /** Filtros persistidos (mismo shape que `listing.search` / crear alerta). */
+  filters: Record<string, unknown>
   filtersSummary: string
   isActive: boolean
   badgeLabel: string
@@ -130,10 +132,15 @@ export const searchAlertRouter = createTRPCRouter({
     }
 
     for (const a of alertRows) {
+      const filters =
+        a.filters && typeof a.filters === 'object' && !Array.isArray(a.filters)
+          ? (a.filters as Record<string, unknown>)
+          : {}
       items.push({
         kind: 'saved_search',
         id: a.id,
         createdAt: a.createdAt,
+        filters,
         filtersSummary: a.filtersSummary,
         isActive: a.isActive,
         badgeLabel: '🏠 Nuevas publicaciones',

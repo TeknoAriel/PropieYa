@@ -39,6 +39,7 @@ import {
   formatPrice,
   getBuscarContextualBlock,
   getFacetFlagDefinitions,
+  parseBuscarMapGeoFromParams,
   getFacetFlagsForBuscarRefineLayer,
   OPERATION_TYPE_LABELS,
   PORTAL_SEARCH_UX_COPY as S,
@@ -830,10 +831,33 @@ export function BuscarContent({
     setMaxSurfaceCovered('')
     setMinTotalRooms('')
     setOrientation('')
-    setAmenitiesStrict(false)
-    setSelectedAmenityFacets([])
-    setMapBbox(null)
-    setMapPolygonRing([])
+    const amRaw = sp.get('amenities')
+    if (amRaw && amRaw.length > 0) {
+      setSelectedAmenityFacets(
+        amRaw
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0 && s.length <= 80)
+          .slice(0, 40)
+      )
+    } else {
+      setSelectedAmenityFacets([])
+    }
+    setAmenitiesStrict(sp.get('amenities_strict') === '1')
+
+    const geo = parseBuscarMapGeoFromParams(sp)
+    if (geo.polygon.length >= 3) {
+      setMapPolygonRing(geo.polygon)
+      setMapBbox(null)
+      setShowMap(true)
+    } else if (geo.bbox) {
+      setMapBbox(geo.bbox)
+      setMapPolygonRing([])
+      setShowMap(true)
+    } else {
+      setMapBbox(null)
+      setMapPolygonRing([])
+    }
     setPolygonDrawMode(false)
     setMapLiveViewport(false)
   }, [searchParamsKey, forcedOperation])

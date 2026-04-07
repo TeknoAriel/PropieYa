@@ -4,8 +4,10 @@ import Link from 'next/link'
 
 import type { inferRouterOutputs } from '@trpc/server'
 
+import { PORTAL_SEARCH_UX_COPY as S } from '@propieya/shared'
 import { Badge, Button, Card } from '@propieya/ui'
 
+import { storedAlertFiltersToBuscarHref } from '@/lib/alert-filters-to-buscar-url'
 import type { AppRouter } from '@/server/routers/_app'
 
 export type FeedItem = inferRouterOutputs<AppRouter>['searchAlert']['getMyFeed'][number]
@@ -97,6 +99,11 @@ export function AlertFeedCard({
             Eliminar
           </Button>
         </div>
+        <Button asChild size="sm" variant="secondary" className="mt-2 w-full">
+          <Link href={storedAlertFiltersToBuscarHref(item.filters)}>
+            {S.savedAlertOpenSearch}
+          </Link>
+        </Button>
       </Card>
     )
   }

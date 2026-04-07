@@ -39,7 +39,8 @@
 | Sprint 39 (catálogo import: active + pipeline ES) | ✅ — ver sección Sprint 39 |
 | Sprint 40 (mapa: viewport en vivo) | ✅ — ver sección Sprint 40 |
 | Sprint 41 (filtros capa 4 contextual) | ✅ — ver sección Sprint 41 |
-| Siguiente backlog doc 43 §5 | Alertas por área dibujada, jerarquías de zona, simulador / verificación org |
+| Sprint 42 (alertas + geo en URL + reabrir búsqueda) | ✅ — ver sección Sprint 42 |
+| Siguiente backlog doc 43 §5 | Jerarquías de zona, simulador / verificación org |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
 | Infra GitHub/Vercel nuevo repo (Sprint 25.6–25.8) | Confirmar secretos `VERCEL_*`, Actions verde y Git del proyecto web → `docs/DEPLOY-PASOS-URIs.md` Parte A |
@@ -452,7 +453,7 @@
 
 ---
 
-*Actualizado: 2026-03-31 (Sprint 35–41; mapa viewport en vivo; filtros contextuales capa 4)*
+*Actualizado: 2026-04-07 (Sprint 35–42; alertas geo en URL)*
 
 ---
 
@@ -722,3 +723,19 @@
 - [x] 41.4 `pnpm verify` + push `deploy/infra`
 
 **Criterios:** al elegir tipo (p. ej. terreno, casa, depto), el usuario ve pistas alineadas al tipo; casas obtienen toggles rápidos de amenities outdoor sin romper el catálogo de facets.
+
+---
+
+## Sprint 42 — Alertas: resumen con polígono + reabrir `/buscar` con mapa y amenities
+
+**Objetivo:** paridad entre búsqueda guardada y listado: el resumen de alerta menciona **polígono**; desde **Mis alertas** se abre `/buscar` con los mismos criterios, incluyendo **bbox/poly** en query y **amenities** / modo estricto.
+
+### Tareas (agente / CI)
+
+- [x] 42.1 `buildFiltersSummary`: línea explícita cuando hay `polygon` (≥3 puntos)
+- [x] 42.2 `@propieya/shared`: `serializeBuscarMapGeoToParams` / `parseBuscarMapGeoFromParams` + tests Vitest
+- [x] 42.3 `/buscar`: leer `bbox`, `poly`, `amenities`, `amenities_strict` desde la URL y sincronizar estado (mapa visible si hay geo)
+- [x] 42.4 `searchAlert.getMyFeed`: incluir `filters` en ítems `saved_search`; `storedAlertFiltersToBuscarHref` + botón «Abrir búsqueda» en `AlertFeedCard`
+- [x] 42.5 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** una alerta creada con zona en mapa o polígono se puede reabrir con un clic; la URL refleja geo y amenities de forma acotada; nuevas alertas muestran resumen con polígono en texto.

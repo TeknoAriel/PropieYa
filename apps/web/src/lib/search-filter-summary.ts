@@ -89,6 +89,10 @@ export function buildFiltersSummary(f: ListingSearchFiltersInput): string {
     parts.push('Zona del mapa')
   }
 
+  if (f.polygon && f.polygon.length >= 3) {
+    parts.push(`Polígono en mapa (${f.polygon.length} puntos)`)
+  }
+
   let s = parts.filter(Boolean).join(' · ')
   if (s.length > 480) s = `${s.slice(0, 477)}…`
   if (!s) s = 'Búsqueda guardada'

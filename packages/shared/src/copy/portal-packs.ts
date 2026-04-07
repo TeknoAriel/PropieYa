@@ -231,6 +231,8 @@ export const PORTAL_SEARCH_UX_COPY = {
   saveProfilePending: 'Guardando…',
   createAlert: 'Crear alerta con estos filtros',
   createAlertPending: 'Creando…',
+  /** Mis alertas → búsqueda guardada. */
+  savedAlertOpenSearch: 'Abrir búsqueda',
 
   allOperations: 'Todas las operaciones',
   homeLink: 'Inicio',
