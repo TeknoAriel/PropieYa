@@ -269,6 +269,8 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarFieldMinTotalRooms: 'Ambientes mínimos',
 
   showMap: 'Ver mapa',
+  /** CTA en primera pantalla de /buscar (junto a filtros / afinar). */
+  buscarOpenMapCta: 'Buscar en mapa',
   moreFilters: 'Más filtros',
   hideAdvanced: 'Ocultar filtros avanzados',
 

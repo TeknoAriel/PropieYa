@@ -20,8 +20,21 @@ describe('getBuscarContextualBlock', () => {
     expect(rent?.body).toMatch(/mensual/)
   })
 
-  it('casa expone quick facets outdoor', () => {
+  it('casa expone quick facets alineados al buscador', () => {
     const b = getBuscarContextualBlock('house', 'sale')
-    expect(b?.quickFacetIds).toEqual(['garden', 'bbq', 'pool', 'parking'])
+    expect(b?.quickFacetIds?.slice(0, 4)).toEqual([
+      'garden',
+      'bbq',
+      'pool',
+      'parking',
+    ])
+    expect(b?.quickFacetIds).toContain('terrace')
+  })
+
+  it('departamento expone atajos de amenities frecuentes', () => {
+    const b = getBuscarContextualBlock('apartment', 'sale')
+    expect(b?.quickFacetIds).toContain('balcony')
+    expect(b?.quickFacetIds).toContain('parking')
+    expect(b?.quickFacetIds?.length).toBeGreaterThanOrEqual(10)
   })
 })

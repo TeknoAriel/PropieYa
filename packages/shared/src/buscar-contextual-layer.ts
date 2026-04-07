@@ -36,13 +36,40 @@ export function getBuscarContextualBlock(
         title: propertyType === 'ph' ? 'PH' : 'Departamentos',
         body:
           'Piso, orientación y superficie cubierta suelen afinar mucho el listado. Están en «Más filtros».' + rentNote,
+        quickFacetIds: [
+          'balcony',
+          'parking',
+          'terrace',
+          'pool',
+          'bbq',
+          'garden',
+          'air_conditioning',
+          'security_24h',
+          'credit_approved',
+          'gym',
+          'laundry',
+          'sum',
+        ],
       }
     case 'house':
       return {
         title: 'Casas',
         body:
           'Jardín, parrilla, pileta y cochera suelen ser clave. Podés marcarlos acá o en «Afinar más».' + rentNote,
-        quickFacetIds: ['garden', 'bbq', 'pool', 'parking'],
+        quickFacetIds: [
+          'garden',
+          'bbq',
+          'pool',
+          'parking',
+          'terrace',
+          'balcony',
+          'air_conditioning',
+          'security_24h',
+          'credit_approved',
+          'gym',
+          'laundry',
+          'sum',
+        ],
       }
     case 'office':
     case 'commercial':
@@ -51,6 +78,14 @@ export function getBuscarContextualBlock(
         title: 'Espacios comerciales / trabajo',
         body:
           'Superficie, zona y accesos definen buena parte del match. Refiná con mapa y filtros avanzados.' + rentNote,
+        quickFacetIds: [
+          'parking',
+          'air_conditioning',
+          'security_24h',
+          'elevator',
+          'wheelchair_accessible',
+          'storage',
+        ],
       }
     case 'parking':
       return {
@@ -58,11 +93,26 @@ export function getBuscarContextualBlock(
         body:
           'Ubicación y precio suelen bastar; si buscás cubierta o seguridad, probá amenities en «Afinar más».' +
           rentNote,
+        quickFacetIds: ['security_24h', 'credit_approved', 'air_conditioning'],
       }
     case 'development_unit':
       return {
         title: 'Emprendimientos',
         body: 'Combiná zona y precio; el detalle de la unidad suele estar en título y descripción.' + rentNote,
+        quickFacetIds: [
+          'balcony',
+          'parking',
+          'terrace',
+          'pool',
+          'air_conditioning',
+          'security_24h',
+          'gym',
+          'sum',
+          'elevator',
+          'laundry',
+          'bbq',
+          'garden',
+        ],
       }
     default:
       return null

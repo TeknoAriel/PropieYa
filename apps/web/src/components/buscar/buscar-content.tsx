@@ -884,6 +884,21 @@ export function BuscarContent({
     [scrollToElementId]
   )
 
+  const openMapFromAssistant = useCallback(() => {
+    setClassicFiltersOpen(true)
+    setShowMap(true)
+    scrollToElementId('buscar-mapa')
+  }, [scrollToElementId])
+
+  const openRefineFromAssistant = useCallback(() => {
+    setClassicFiltersOpen(true)
+    setShowRefineLayer(true)
+    scrollToElementId('buscar-afinar-mas')
+  }, [scrollToElementId])
+
+  const quickFacetIds = contextualBlock?.quickFacetIds
+  const showQuickAmenityChips = (quickFacetIds?.length ?? 0) > 0
+
   return (
     <div className="container mx-auto space-y-4 px-4 py-6 md:py-8">
       <div className="flex flex-col gap-4">
@@ -1018,8 +1033,97 @@ export function BuscarContent({
             compact
             buscarSearchParamsKey={searchParamsKey}
           />
-          <div className="mt-3 border-t border-border/40 pt-3">
-            <InductiveSearchChips variant="embedded" showSubtitle={false} />
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-border/40 pt-3">
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="h-9"
+              onClick={openMapFromAssistant}
+            >
+              {S.buscarOpenMapCta}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9"
+              onClick={() => setClassicFiltersOpen(true)}
+            >
+              {S.filtersOptionalExpand}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9"
+              onClick={openRefineFromAssistant}
+            >
+              {S.moreRefineLayer}
+            </Button>
+          </div>
+          <div className="mt-4 space-y-3 border-t border-border/40 pt-3">
+            {contextualBlock ? (
+              <div className="space-y-1.5">
+                <h3 className="text-sm font-semibold text-text-primary">
+                  {contextualBlock.title}
+                </h3>
+                <p className="text-xs leading-relaxed text-text-secondary">
+                  {contextualBlock.body}
+                </p>
+              </div>
+            ) : null}
+            {showQuickAmenityChips ? (
+              <div className="space-y-2">
+                <div>
+                  <p className="text-sm font-semibold text-text-primary">
+                    {S.facetChipsTitle}
+                  </p>
+                  <p className="mt-0.5 text-xs text-text-secondary">
+                    {S.facetChipsHintRefine}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {quickFacetIds!.map((fid) => {
+                    const def = facetFlagCatalog.find((f) => f.id === fid)
+                    if (!def) return null
+                    const on = selectedAmenityFacets.includes(fid)
+                    return (
+                      <Button
+                        key={`asistente-facet-${fid}`}
+                        type="button"
+                        size="sm"
+                        variant={on ? 'default' : 'outline'}
+                        className="h-8 text-xs"
+                        onClick={() =>
+                          setSelectedAmenityFacets((prev) =>
+                            on ? prev.filter((x) => x !== fid) : [...prev, fid]
+                          )
+                        }
+                      >
+                        {def.label}
+                      </Button>
+                    )
+                  })}
+                </div>
+                <label className="flex cursor-pointer items-start gap-2 text-sm text-text-primary">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 rounded border-border"
+                    checked={amenitiesStrict}
+                    onChange={(e) => setAmenitiesStrict(e.target.checked)}
+                  />
+                  <span>
+                    <span className="font-medium">{S.strictAmenitiesLabel}</span>
+                    <span className="block text-xs text-text-secondary">
+                      {S.strictAmenitiesHint}
+                    </span>
+                  </span>
+                </label>
+              </div>
+            ) : (
+              <InductiveSearchChips variant="embedded" showSubtitle={false} />
+            )}
           </div>
         </div>
 
@@ -1063,13 +1167,7 @@ export function BuscarContent({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setClassicFiltersOpen(true)
-                  setShowMap(true)
-                  window.requestAnimationFrame(() =>
-                    scrollToElementId('buscar-mapa')
-                  )
-                }}
+                onClick={openMapFromAssistant}
               >
                 {S.conversationalNextMap}
               </Button>
@@ -1635,7 +1733,10 @@ export function BuscarContent({
           ) : null}
 
           {showRefineLayer ? (
-            <div className="mt-4 space-y-4 border-t border-border pt-4">
+            <div
+              id="buscar-afinar-mas"
+              className="mt-4 scroll-mt-24 space-y-4 border-t border-border pt-4"
+            >
               <div>
                 <p className="text-sm font-medium text-text-primary">
                   {S.refineLayerTitle}
@@ -1707,49 +1808,6 @@ export function BuscarContent({
             </div>
           ) : null}
           </Card>
-          ) : null}
-
-          {!classicFiltersOpen && contextualBlock ? (
-            <Card className="space-y-3 border-brand-primary/20 bg-brand-primary/5 p-3">
-              <h3 className="text-sm font-semibold text-text-primary">
-                {contextualBlock.title}
-              </h3>
-              <p className="text-xs leading-relaxed text-text-secondary">
-                {contextualBlock.body}
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                {contextualBlock.quickFacetIds?.map((fid) => {
-                  const def = facetFlagCatalog.find((f) => f.id === fid)
-                  if (!def) return null
-                  const on = selectedAmenityFacets.includes(fid)
-                  return (
-                    <Button
-                      key={`compact-${fid}`}
-                      type="button"
-                      size="sm"
-                      variant={on ? 'default' : 'outline'}
-                      className="h-8 text-xs"
-                      onClick={() =>
-                        setSelectedAmenityFacets((prev) =>
-                          on ? prev.filter((x) => x !== fid) : [...prev, fid]
-                        )
-                      }
-                    >
-                      {def.label}
-                    </Button>
-                  )
-                })}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  className="h-8 text-xs"
-                  onClick={() => setClassicFiltersOpen(true)}
-                >
-                  {S.filtersOptionalExpand}
-                </Button>
-              </div>
-            </Card>
           ) : null}
         </div>
 
