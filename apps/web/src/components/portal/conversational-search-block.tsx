@@ -535,7 +535,8 @@ export function ConversationalSearchBlock({
             {(searchConversational.error as { data?: { code?: string } } | null)?.data?.code ===
             'TOO_MANY_REQUESTS'
               ? S.conversationalRateLimitSoft
-              : S.conversationalAssistantDegraded}
+              : searchConversational.error?.message?.trim() ||
+                S.conversationalAssistantDegraded}
           </p>
         ) : null}
       </form>

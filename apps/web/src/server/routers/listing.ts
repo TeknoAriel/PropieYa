@@ -1468,6 +1468,7 @@ export const listingRouter = createTRPCRouter({
           },
         })
 
+        /** No bloquear el asistente si el agregado de localidades falla (timeout Neon, etc.). */
         const localityCatalog = await getListingLocalityCatalog(ctx.db)
         const { intention, amenitiesMatchMode, pipelineDebug } =
           await runConversationalSearchOrchestrator(input.message, prior ?? undefined, {

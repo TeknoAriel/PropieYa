@@ -28,12 +28,26 @@ function createClient() {
 
   assertPostgresUrlHasHost(connectionString)
 
+  const poolMaxEnv = parseInt(process.env.DATABASE_POOL_MAX ?? '', 10)
+  const maxConnections =
+    Number.isFinite(poolMaxEnv) && poolMaxEnv > 0
+      ? Math.min(poolMaxEnv, 20)
+      : process.env.VERCEL
+        ? 3
+        : 10
+
+  const connectSecEnv = parseInt(process.env.DATABASE_CONNECT_TIMEOUT_SEC ?? '', 10)
+  const connectTimeout =
+    Number.isFinite(connectSecEnv) && connectSecEnv > 0
+      ? Math.min(connectSecEnv, 120)
+      : 40
+
   const client = postgres(connectionString, {
-    max: 10,
+    max: maxConnections,
     idle_timeout: 20,
     /** Neon pooler (PgBouncer transaction): prepared statements suelen fallar. */
     prepare: false,
-    connect_timeout: 25,
+    connect_timeout: connectTimeout,
   })
 
   return drizzle(client, {
