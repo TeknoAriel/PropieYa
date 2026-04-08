@@ -13,6 +13,26 @@ function sanitize(q: string): string {
   return q.trim().slice(0, 200).replace(/[<>*?":|\\[\]{}()&]/g, ' ')
 }
 
+/**
+ * Topónimo en ciudad/barrio del feed suele caer en `neighborhood`, título o descripción
+ * mientras `address.city` queda vacío; un match solo sobre city devuelve 0 aunque haya oferta.
+ */
+function esLocalityMatchClause(placeRaw: string): Record<string, unknown> | null {
+  const q = sanitize(placeRaw)
+  if (q.length === 0) return null
+  return {
+    bool: {
+      should: [
+        { match: { 'address.city': { query: q, operator: 'and' } } },
+        { match: { 'address.neighborhood': { query: q, operator: 'and' } } },
+        { match: { title: { query: q, operator: 'and' } } },
+        { match: { description: { query: q, operator: 'and' } } },
+      ],
+      minimum_should_match: 1,
+    },
+  }
+}
+
 /** Orden por distancia solo con localidad explícita y ancla válida (no filtra). */
 export function shouldApplyLocalityProximitySort(
   rest: Pick<SearchFilters, 'city' | 'neighborhood' | 'sortNearLat' | 'sortNearLng'>
@@ -139,22 +159,12 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
       range: { totalRooms: { gte: rest.minTotalRooms } },
     })
   }
-  if (rest.city?.trim()) {
-    const c = sanitize(rest.city)
-    if (c.length > 0) {
-      must.push({
-        match: { 'address.city': { query: c, operator: 'or' } },
-      })
-    }
-  }
-  if (rest.neighborhood?.trim()) {
-    const n = sanitize(rest.neighborhood)
-    if (n.length > 0) {
-      must.push({
-        match: { 'address.neighborhood': { query: n, operator: 'or' } },
-      })
-    }
-  }
+  const cityClause = rest.city?.trim() ? esLocalityMatchClause(rest.city) : null
+  if (cityClause) must.push(cityClause)
+  const nbClause = rest.neighborhood?.trim()
+    ? esLocalityMatchClause(rest.neighborhood)
+    : null
+  if (nbClause) must.push(nbClause)
 
   if (rest.bbox) {
     const { south, north, west, east } = rest.bbox

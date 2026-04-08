@@ -387,8 +387,9 @@ export function summarizeSearchFilters(filters: ExplainMatchFilters): string {
   const row = mergePublicSearchWithResidual(residualInputFromExplain(filters))
   const parts: string[] = []
 
-  if (row.residualTextQuery) {
-    parts.push(`«${row.residualTextQuery.slice(0, 80)}»`)
+  const rrq = row.residualTextQuery.trim()
+  if (rrq.length >= 2) {
+    parts.push(`«${rrq.slice(0, 80)}»`)
   }
   if (row.operationType) {
     const op = row.operationType as OperationType

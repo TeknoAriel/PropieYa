@@ -1,7 +1,20 @@
 import { randomUUID } from 'node:crypto'
 
 import { z } from 'zod'
-import { eq, and, desc, ilike, or, gte, lte, sql, count, ne, inArray } from 'drizzle-orm'
+import {
+  eq,
+  and,
+  desc,
+  ilike,
+  or,
+  gte,
+  lte,
+  sql,
+  count,
+  ne,
+  inArray,
+  type SQL,
+} from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 
 import type { Database } from '@propieya/database'
@@ -116,6 +129,24 @@ function isLikelyDbOrNetworkFailure(message: string): boolean {
 /** Evita que el usuario inyecte comodines ILIKE (%, _). */
 function sanitizeIlikeFragment(raw: string): string {
   return raw.trim().slice(0, 120).replace(/[%_\\]/g, ' ').replace(/\s+/g, ' ')
+}
+
+/** Ciudad/barrio: misma semántica amplia que ES (query.ts), para no quedar en 0 si el feed no llenó `address.city`. */
+function pushSqlLocalityPlaceConditions(
+  conditions: SQL[],
+  placeRaw: string | undefined
+): void {
+  const frag = sanitizeIlikeFragment(placeRaw ?? '')
+  if (frag.length === 0) return
+  const pat = `%${frag}%`
+  conditions.push(
+    or(
+      sql`COALESCE(${listings.address}->>'city', '') ILIKE ${pat}`,
+      sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${pat}`,
+      ilike(listings.title, pat),
+      ilike(listings.description, pat)
+    )!
+  )
 }
 
 function searchFiltersToListingInputOverlay(
@@ -270,22 +301,8 @@ function buildListingSearchSqlFromSeed(
       sql`${listings.totalRooms} IS NOT NULL AND ${listings.totalRooms} >= ${sqlInput.minTotalRooms}`
     )
   }
-  if (sqlInput.city?.trim()) {
-    const c = sanitizeIlikeFragment(sqlInput.city)
-    if (c.length > 0) {
-      conditions.push(
-        sql`COALESCE(${listings.address}->>'city', '') ILIKE ${`%${c}%`}`
-      )
-    }
-  }
-  if (sqlInput.neighborhood?.trim()) {
-    const n = sanitizeIlikeFragment(sqlInput.neighborhood)
-    if (n.length > 0) {
-      conditions.push(
-        sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${`%${n}%`}`
-      )
-    }
-  }
+  pushSqlLocalityPlaceConditions(conditions, sqlInput.city)
+  pushSqlLocalityPlaceConditions(conditions, sqlInput.neighborhood)
   if (amenityStrict && sqlInput.amenities && sqlInput.amenities.length > 0) {
     const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
     for (const a of sqlInput.amenities) {
@@ -1619,22 +1636,8 @@ export const listingRouter = createTRPCRouter({
         if (qForSql.minSurface !== undefined) {
           conditions.push(gte(listings.surfaceTotal, qForSql.minSurface))
         }
-        if (qForSql.city?.trim()) {
-          const c = sanitizeIlikeFragment(qForSql.city)
-          if (c.length > 0) {
-            conditions.push(
-              sql`COALESCE(${listings.address}->>'city', '') ILIKE ${`%${c}%`}`
-            )
-          }
-        }
-        if (qForSql.neighborhood?.trim()) {
-          const n = sanitizeIlikeFragment(qForSql.neighborhood)
-          if (n.length > 0) {
-            conditions.push(
-              sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${`%${n}%`}`
-            )
-          }
-        }
+        pushSqlLocalityPlaceConditions(conditions, qForSql.city)
+        pushSqlLocalityPlaceConditions(conditions, qForSql.neighborhood)
         // `preferred`: no filtrar por amenities en SQL (misma regla que listing.search).
 
         const [countResult] = await ctx.db
