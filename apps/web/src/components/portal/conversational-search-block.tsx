@@ -21,11 +21,10 @@ const CONV_TTL_MS = 45 * 60 * 1000
 
 /**
  * Memoria de sesión: banner «Seguimos desde…», chips y `previousContext` al intérprete.
- * Opt-in en build: `NEXT_PUBLIC_ENABLE_CONVERSATIONAL_SESSION_CONTEXT=1` en Vercel (apps/web).
- * Sin variable o distinto de `1`, comportamiento = apagado (doc 47 §F3).
+ * Por defecto activo; desactivar con `NEXT_PUBLIC_ENABLE_CONVERSATIONAL_SESSION_CONTEXT=0` (apps/web).
  */
 const ENABLE_CONVERSATIONAL_SESSION_CONTEXT =
-  process.env.NEXT_PUBLIC_ENABLE_CONVERSATIONAL_SESSION_CONTEXT === '1'
+  process.env.NEXT_PUBLIC_ENABLE_CONVERSATIONAL_SESSION_CONTEXT !== '0'
 
 type StoredConv = {
   userMessage: string
@@ -378,7 +377,7 @@ export function ConversationalSearchBlock({
       ? 'h-12 pl-4 pr-[5rem] text-sm md:text-base rounded-xl border-2 border-border bg-surface-primary/90 shadow-sm placeholder:text-text-secondary placeholder:text-[13px] focus-visible:ring-brand-primary'
       : 'h-14 pl-5 pr-[5.5rem] text-base md:text-lg rounded-2xl border-2 border-border bg-surface-primary/90 shadow-md placeholder:text-text-secondary placeholder:text-[13px] md:placeholder:text-sm focus-visible:ring-brand-primary'
     : compact
-      ? 'h-12 pl-4 pr-[5rem] text-sm md:text-base rounded-xl border-2 border-border-default bg-surface-elevated shadow-sm placeholder:text-text-secondary focus-visible:ring-border-focus'
+      ? 'h-12 pl-4 pr-[5rem] text-sm md:text-base rounded-xl border-2 border-brand-primary/20 bg-surface-elevated/95 shadow-sm placeholder:text-text-secondary focus-visible:border-brand-primary/40 focus-visible:ring-brand-primary'
       : 'h-14 pl-5 pr-[5.5rem] text-base rounded-2xl border-2 border-border-default bg-surface-elevated shadow-sm placeholder:text-text-secondary focus-visible:ring-border-focus'
 
   const subtitleBuscar = compact
@@ -388,11 +387,11 @@ export function ConversationalSearchBlock({
   return (
     <div className={className}>
       {variant === 'buscar' ? (
-        <div className={compact ? 'mb-2' : 'mb-4'}>
+        <div className={compact ? 'mb-3' : 'mb-4'}>
           <h2
             className={
               compact
-                ? 'text-lg font-bold text-text-primary md:text-xl'
+                ? 'text-lg font-semibold tracking-tight text-text-primary md:text-xl'
                 : 'text-xl font-bold text-text-primary md:text-2xl'
             }
           >
@@ -401,7 +400,7 @@ export function ConversationalSearchBlock({
           <p
             className={
               compact
-                ? 'mt-1 text-xs text-text-secondary md:text-sm leading-snug'
+                ? 'mt-1 max-w-xl text-xs text-text-secondary md:text-sm leading-snug'
                 : 'mt-2 text-sm text-text-secondary md:text-base leading-relaxed'
             }
           >
@@ -520,8 +519,8 @@ export function ConversationalSearchBlock({
           >
             {S.conversationalVoiceListening}
           </p>
-        ) : !voiceSupported && variant === 'buscar' ? (
-          <p className={compact ? 'mt-1 text-xs text-text-secondary' : 'mt-2 text-xs text-text-secondary'}>
+        ) : !voiceSupported && variant === 'buscar' && !compact ? (
+          <p className="mt-2 text-xs text-text-secondary">
             {S.conversationalVoiceUnsupported}
           </p>
         ) : null}

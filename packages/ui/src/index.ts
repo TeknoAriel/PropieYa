@@ -73,6 +73,7 @@ export {
   LayoutDashboard,
   LogOut,
   Mail,
+  Map,
   Mic,
   Menu,
   MessageSquare,

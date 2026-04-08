@@ -50,7 +50,7 @@ Referencias duras: `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`, `docs/43-ANEXO-MAS
 - `searchConversational` acepta `previousContext: { userMessage, filters }` y el LLM (o merge heurístico sin API) **fusiona** el nuevo mensaje con filtros previos.  
 - `sessionStorage` (`propieya.conversational.v1`, TTL 45 min) + banner y chips en `/buscar` dentro de `ConversationalSearchBlock`; “Empezar de cero” limpia contexto.  
 - La home reutiliza el mismo storage al enviar (sin banner, para no ocupar el hero).  
-- **Continuidad en `/buscar`:** la UI (banner, chips, `sessionStorage`, `previousContext` al servidor) se activa solo si en **apps/web** (Vercel) está `NEXT_PUBLIC_ENABLE_CONVERSATIONAL_SESSION_CONTEXT=1`. Sin variable o distinto de `1`, queda apagada (mismo comportamiento que antes). Si el listado se desvía de la intención, el usuario puede usar «Empezar de cero» en el banner.
+- **Continuidad en `/buscar`:** la UI (banner, chips, `sessionStorage`, `previousContext` al servidor) está **activa por defecto** en **apps/web**. Para desactivarla, definir `NEXT_PUBLIC_ENABLE_CONVERSATIONAL_SESSION_CONTEXT=0` en Vercel. Si el listado se desvía de la intención, el usuario puede usar «Empezar de cero» en el banner.
 
 **Paralelo (producto)**  
 - `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` cuando el inventario lo permita.

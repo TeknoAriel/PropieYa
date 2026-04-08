@@ -213,8 +213,11 @@ const varianteBCercano: PortalCopyPack = {
  */
 export const PORTAL_SEARCH_UX_COPY = {
   buscarTitle: 'Buscá propiedades',
+  /** Una línea; el detalle vive en «Cómo funciona» y en el asistente. */
   buscarSubtitle:
-    'Descubrimiento y decisión con el mismo motor que la home: mapa, filtros y criterios claros en cada aviso.',
+    'Frase, mapa o filtros: mismo motor; en cada aviso te decimos por qué encaja.',
+  /** Chip sobre el bloque conversacional en /buscar */
+  buscarAssistantBadge: 'Asistente activo',
   ventaTitle: 'Propiedades en venta',
   ventaSubtitle:
     'Avisos activos en venta. Refiná con mapa y filtros para decidir con más contexto.',
@@ -385,15 +388,15 @@ export const PORTAL_SEARCH_UX_COPY = {
   /** Sprint 32 — descubrimiento inductivo (mismos params que /buscar). */
   inductiveExploreTitle: 'Búsquedas para arrancar',
   inductiveExploreSubtitle:
-    'Atajos con el mismo motor que el buscador; después refinás con mapa o filtros.',
+    'Mismo motor que arriba; tocá y refinás después.',
 
   /** Bloque conversacional (home + /buscar): intención sin formulario. */
   conversationalBlockTitle: 'Contanos qué buscás',
   conversationalBlockSubtitle:
-    'Escribí o dictá: armamos los criterios con el mismo motor que el mapa y los filtros. Después podés afinar o pedir otra idea.',
+    'Escribí o dictá: traducimos a criterios con el mismo motor que mapa y filtros.',
   /** Versión más corta (bloque compacto en /buscar). */
   conversationalBlockSubtitleCompact:
-    'Escribí o dictá: mismo motor que mapa y filtros; después afinás cuando quieras.',
+    'Escribí o dictá; después afinás con mapa o filtros.',
   conversationalVoiceStart: 'Dictar',
   conversationalVoiceStop: 'Detener',
   conversationalVoiceListening: 'Escuchando…',
@@ -438,7 +441,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   essentialsFriendlySubtitle:
     'Opcional — mismo motor que la búsqueda por frase. Tocá «Más filtros» para ir más al detalle.',
   buscarPageGentleHint:
-    'Explorá con calma: los resultados se actualizan solos cuando cambiás criterios.',
+    'Los resultados se actualizan al cambiar criterios.',
   /** Encabezado opcional del bloque conversacional (si se muestra aparte del título del componente). */
   buscarOptionalNlpSummary: 'Búsqueda asistida con frase o voz',
   buscarOptionalNlpHint:

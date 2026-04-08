@@ -22,8 +22,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Filter,
   Input,
+  Map as MapIcon,
+  Search,
   Skeleton,
+  Sparkles,
 } from '@propieya/ui'
 import type { BuscarMapBBox, BuscarMapPoint } from '@/components/buscar/buscar-search-map'
 import { BUSCAR_MAP_DEFAULT_CENTER } from '@/components/buscar/buscar-map-constants'
@@ -929,37 +933,43 @@ export function BuscarContent({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
-              <h1 className="text-xl font-bold tracking-tight text-text-primary md:text-2xl">
-                {pageTitle}
-              </h1>
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary/12 text-brand-primary shadow-sm ring-1 ring-brand-primary/10"
+                  aria-hidden
+                >
+                  <Search className="h-5 w-5" strokeWidth={2} />
+                </span>
+                <h1 className="text-xl font-bold tracking-tight text-text-primary md:text-2xl">
+                  {pageTitle}
+                </h1>
+              </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
                   variant="link"
-                  className="h-auto p-0 text-sm font-medium"
+                  className="h-auto gap-1 p-0 text-sm font-medium text-brand-primary"
                   onClick={() => setFlowDialogOpen(true)}
                 >
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden />
                   {S.buscarFlowLinkInline}
                 </Button>
                 <Button
                   type="button"
                   variant={classicFiltersOpen ? 'outline' : 'default'}
                   size="sm"
-                  className="h-8"
+                  className="h-8 gap-1.5"
                   onClick={() => setClassicFiltersOpen((v) => !v)}
                 >
+                  <Filter className="h-3.5 w-3.5" aria-hidden />
                   {classicFiltersOpen
                     ? S.filtersOptionalCollapse
                     : S.filtersOptionalExpand}
                 </Button>
               </div>
             </div>
-            <p className="text-xs leading-snug text-text-secondary md:text-sm">
-              <span className="block sm:inline">{pageSubtitle}</span>
-              <span className="hidden sm:inline"> · </span>
-              <span className="mt-0.5 block text-text-tertiary sm:mt-0 sm:inline">
-                {S.buscarPageGentleHint}
-              </span>
+            <p className="max-w-2xl text-xs leading-snug text-text-tertiary md:text-sm">
+              {pageSubtitle}
             </p>
           </div>
           <div className="flex flex-col items-stretch gap-2 lg:shrink-0 lg:items-end">
@@ -1021,10 +1031,11 @@ export function BuscarContent({
         {me ? <BuscarRecentSearches /> : null}
 
         {hasActiveSearchCriteria ? (
-          <Card className="border-border/70 bg-surface-secondary/50 p-2.5 sm:p-3">
+          <Card className="border-brand-primary/15 bg-gradient-to-r from-surface-elevated to-brand-primary/[0.06] p-2.5 shadow-sm sm:p-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <div className="min-w-0 flex-1 space-y-0.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">
+                <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-brand-primary/90">
+                  <Search className="h-3 w-3" aria-hidden />
                   {S.buscarActiveSummaryLabel}
                 </p>
                 <p className="text-xs leading-snug text-text-primary md:text-sm">
@@ -1046,8 +1057,19 @@ export function BuscarContent({
 
         <div
           id="buscar-asistente"
-          className="scroll-mt-24 rounded-lg border border-brand-primary/20 bg-brand-primary/[0.04] p-3 md:p-4"
+          className="scroll-mt-24 relative overflow-hidden rounded-2xl border border-brand-primary/20 bg-gradient-to-br from-surface-elevated via-brand-primary/[0.05] to-brand-secondary/25 p-4 shadow-md ring-1 ring-border/40 md:p-5"
         >
+          <div
+            className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-brand-primary/10 blur-2xl"
+            aria-hidden
+          />
+          <div className="relative">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-primary/25 bg-brand-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-primary">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                {S.buscarAssistantBadge}
+              </span>
+            </div>
           <ConversationalSearchBlock
             variant="buscar"
             routerMode="replace"
@@ -1057,36 +1079,39 @@ export function BuscarContent({
             compact
             buscarSearchParamsKey={searchParamsKey}
           />
-          <div className="mt-3 flex flex-wrap gap-2 border-t border-border/40 pt-3">
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-border/50 pt-4">
             <Button
               type="button"
               variant="default"
               size="sm"
-              className="h-9"
+              className="h-9 gap-1.5"
               onClick={openMapFromAssistant}
             >
+              <MapIcon className="h-3.5 w-3.5" aria-hidden />
               {S.buscarOpenMapCta}
             </Button>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="h-9"
+              className="h-9 gap-1.5"
               onClick={() => setClassicFiltersOpen(true)}
             >
+              <Filter className="h-3.5 w-3.5" aria-hidden />
               {S.filtersOptionalExpand}
             </Button>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="h-9"
+              className="h-9 gap-1.5"
               onClick={openRefineFromAssistant}
             >
+              <Sparkles className="h-3.5 w-3.5" aria-hidden />
               {S.moreRefineLayer}
             </Button>
           </div>
-          <div className="mt-4 space-y-3 border-t border-border/40 pt-3">
+          <div className="mt-4 space-y-3 border-t border-border/50 pt-4">
             {contextualBlock ? (
               <div className="space-y-1.5">
                 <h3 className="text-sm font-semibold text-text-primary">
@@ -1148,6 +1173,7 @@ export function BuscarContent({
             ) : (
               <InductiveSearchChips variant="embedded" showSubtitle={false} />
             )}
+          </div>
           </div>
         </div>
 

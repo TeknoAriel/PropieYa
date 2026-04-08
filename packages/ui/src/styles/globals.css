@@ -20,14 +20,14 @@
   --color-text-tertiary: #999994;
   --color-text-inverse: #ffffff;
 
-  /* Brand - Verde salvia cálido como color principal */
-  --color-brand-primary: #2d6a4f;
-  --color-brand-primary-hover: #1b4332;
-  --color-brand-secondary: #95d5b2;
-  --color-brand-accent: #c17b4a;
+  /* Brand — verde bosque un poco más saturado (misma familia, más presencia) */
+  --color-brand-primary: #186b47;
+  --color-brand-primary-hover: #0f4a31;
+  --color-brand-secondary: #6ec896;
+  --color-brand-accent: #b86f3d;
 
   /* Semantic */
-  --color-semantic-success: #40916c;
+  --color-semantic-success: #2f8f5f;
   --color-semantic-warning: #e9c46a;
   --color-semantic-error: #bc4749;
   --color-semantic-info: #577590;
@@ -84,10 +84,10 @@
   --color-text-tertiary: #a3a3a3;
   --color-text-inverse: #1a1a1a;
 
-  /* Brand */
-  --color-brand-primary: #52b788;
-  --color-brand-primary-hover: #74c69d;
-  --color-brand-secondary: #1b4332;
+  /* Brand — un punto más vivo sin perder contraste */
+  --color-brand-primary: #48c78f;
+  --color-brand-primary-hover: #6ad4a8;
+  --color-brand-secondary: #153d2e;
   --color-brand-accent: #d4956a;
 
   /* Semantic */
@@ -99,7 +99,7 @@
   /* Borders */
   --color-border-default: #3a3a3c;
   --color-border-strong: #545456;
-  --color-border-focus: #52b788;
+  --color-border-focus: #48c78f;
 }
 
 [data-theme='dark'] select {
