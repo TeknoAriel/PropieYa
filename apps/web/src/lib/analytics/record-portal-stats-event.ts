@@ -19,6 +19,9 @@ export function recordPortalStatsEvent(
   db: Database,
   input: RecordPortalStatsEventInput
 ): void {
+  if (process.env.DISABLE_PORTAL_STATS_WRITES === '1') {
+    return
+  }
   void db
     .insert(portalStatsEvents)
     .values({

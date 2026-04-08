@@ -29,18 +29,17 @@ function createClient() {
   assertPostgresUrlHasHost(connectionString)
 
   const poolMaxEnv = parseInt(process.env.DATABASE_POOL_MAX ?? '', 10)
+  /** Mismo tope que antes de tunings serverless (Sprint 45+); bajar con DATABASE_POOL_MAX si Neon limita conexiones. */
   const maxConnections =
     Number.isFinite(poolMaxEnv) && poolMaxEnv > 0
       ? Math.min(poolMaxEnv, 20)
-      : process.env.VERCEL
-        ? 3
-        : 10
+      : 10
 
   const connectSecEnv = parseInt(process.env.DATABASE_CONNECT_TIMEOUT_SEC ?? '', 10)
   const connectTimeout =
     Number.isFinite(connectSecEnv) && connectSecEnv > 0
       ? Math.min(connectSecEnv, 120)
-      : 40
+      : 25
 
   const client = postgres(connectionString, {
     max: maxConnections,
