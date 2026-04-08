@@ -10,6 +10,7 @@ import {
   Users,
   ArrowRight,
   Plus,
+  TrendingUp,
 } from '@propieya/ui'
 import Link from 'next/link'
 
@@ -27,6 +28,11 @@ function relativeTime(iso: Date | string) {
 }
 
 export default function DashboardPage() {
+  const { data: me } = trpc.auth.me.useQuery()
+  const canPlatformAnalytics = Boolean(
+    me?.permissions?.includes('analytics:platform')
+  )
+
   const { data: stats, isLoading: statsLoading } =
     trpc.listing.dashboardStats.useQuery()
   const { data: leadsData, isLoading: leadsLoading } =
@@ -36,6 +42,14 @@ export default function DashboardPage() {
     isLoading: activityLoading,
     isError: activityError,
   } = trpc.stats.portalActivityByTerminal.useQuery({ days: 7 })
+  const {
+    data: platformActivity,
+    isLoading: platformActivityLoading,
+    isError: platformActivityError,
+  } = trpc.stats.platformPortalActivityByTerminal.useQuery(
+    { days: 7 },
+    { enabled: canPlatformAnalytics }
+  )
 
   const by = stats?.byStatus ?? {}
   const cards = [
@@ -184,6 +198,93 @@ export default function DashboardPage() {
           </div>
         )}
       </Card>
+
+      {canPlatformAnalytics ? (
+        <Card className="p-4 border-brand-primary/20">
+          <div className="flex items-start gap-3 mb-3">
+            <div className="p-2 rounded-lg bg-brand-primary/10">
+              <TrendingUp className="h-5 w-5 text-brand-primary" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-text-primary">
+                Operación del portal (plataforma)
+              </h2>
+              <p className="text-xs text-text-tertiary mt-0.5">
+                Agregados globales en los últimos 7 días; visible solo con
+                permiso de analítica de plataforma.
+              </p>
+            </div>
+          </div>
+          {platformActivityError ? (
+            <p className="text-sm text-text-secondary">
+              No se pudieron cargar las métricas globales.
+            </p>
+          ) : platformActivityLoading ? (
+            <div className="h-24 rounded-lg bg-surface-secondary animate-pulse" />
+          ) : platformActivity ? (
+            <div className="space-y-4 text-sm">
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                <div>
+                  <span className="text-text-secondary">Eventos totales</span>
+                  <p className="text-xl font-bold text-text-primary tabular-nums">
+                    {platformActivity.totalEvents}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-text-secondary">
+                    Vistas en fichas (todo el catálogo)
+                  </span>
+                  <p className="text-xl font-bold text-text-primary tabular-nums">
+                    {platformActivity.totalListingViewsAll}
+                  </p>
+                </div>
+              </div>
+              {platformActivity.lastIngestRun ? (
+                <div className="rounded-lg bg-surface-secondary p-3 text-xs text-text-secondary">
+                  <p className="font-medium text-text-primary text-sm mb-1">
+                    Última ingesta (pipeline)
+                  </p>
+                  <p className="tabular-nums">
+                    {relativeTime(platformActivity.lastIngestRun.at)} · feeds{' '}
+                    {platformActivity.lastIngestRun.feedSources} · nuevos{' '}
+                    {platformActivity.lastIngestRun.imported} · actualiz.{' '}
+                    {platformActivity.lastIngestRun.updated} · publicados{' '}
+                    {platformActivity.lastIngestRun.publishedCount}
+                    {platformActivity.lastIngestRun.searchIndexDeferred
+                      ? ' · ES diferido'
+                      : ''}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-text-secondary text-xs">
+                  Aún no hay eventos de ingesta registrados.
+                </p>
+              )}
+              {platformActivity.terminals.length > 0 ? (
+                <ul className="space-y-2 border-t border-border pt-3">
+                  {platformActivity.terminals.map((row) => (
+                    <li
+                      key={row.terminalId}
+                      className="flex justify-between gap-4 py-1 border-b border-border last:border-0"
+                    >
+                      <span className="text-text-primary">
+                        {portalStatsTerminalLabel(row.terminalId)}
+                      </span>
+                      <span className="font-medium text-text-primary tabular-nums shrink-0">
+                        {row.count}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-text-secondary text-xs pt-2">
+                  Sin eventos en esta ventana.
+                </p>
+              )}
+            </div>
+          ) : null}
+        </Card>
+      ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-4">

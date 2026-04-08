@@ -45,6 +45,7 @@
 | Sprint 45 (ritmo producción: telemetría búsqueda + asistente en panel) | ✅ — ver sección Sprint 45 |
 | Sprint 46 (ritmo producción: telemetría leads, comparador, demanda, alertas) | ✅ — ver sección Sprint 46 |
 | Sprint 47 (ritmo producción: ingest telemetría + F2 ranking + golden smoke) | ✅ — ver sección Sprint 47 |
+| Sprint 48 (panel: métricas globales + última ingesta, permiso plataforma) | ✅ — ver sección Sprint 48 |
 | Siguiente backlog doc 43 §5 | Simulador / verificación org, más ítems §5 |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
@@ -821,3 +822,17 @@
 - [x] 47.4 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
 
 **Criterios:** cada corrida de pipeline (cron o webhook) deja un hecho de ingest agregable; ranking documentado; smoke invocable contra local o URL canónica con `GOLDEN_SEARCH_BASE_URL`.
+
+---
+
+## Sprint 48 — Panel: métricas de plataforma y visibilidad de ingesta ✅
+
+**Objetivo:** que roles con **`analytics:platform`** vean agregados **globales** de `portal_stats_events` (incluye `ingest.run.completed`, que no tiene `organizationId` / `listingId`) y un resumen de la **última ingesta** en el dashboard del panel.
+
+### Tareas (agente / CI)
+
+- [x] 48.1 tRPC `stats.platformPortalActivityByTerminal` (ventana móvil, conteos por terminal, suma de vistas en fichas de todo el catálogo, último evento de ingest)
+- [x] 48.2 Dashboard panel: tarjeta condicionada a `auth.me.permissions` + `analytics:platform`
+- [x] 48.3 Docs `24` / `49`; `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** `platform_admin` / `support` obtienen lectura operativa sin filtrar por org; publicadores sin ese permiso no ven la tarjeta ni pueden llamar al procedimiento (403).

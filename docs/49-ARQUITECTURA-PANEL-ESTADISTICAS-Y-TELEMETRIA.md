@@ -95,7 +95,7 @@ Cada terminal es un **punto único** en código donde se registrará el hecho (a
 | **F0 (hecho)** | Doc 49 + `PORTAL_STATS_TERMINALS` en shared | Bajo |
 | **F1** | **Hecho:** `listing.recordPublicView` (mutación pública) + incremento `view_count` al cargar ficha; log JSON si `LOG_PORTAL_STATS=1` con `PORTAL_STATS_TERMINALS.LISTING_FICHA_VIEW` | Medio |
 | **F2** | **Hecho:** tabla Drizzle `portal_stats_events` (`packages/database/src/schema/portal-stats.ts`); helper `recordPortalStatsEvent` (`apps/web/src/lib/analytics/record-portal-stats-event.ts`); cableado en `listing.recordPublicView`. Aplicar esquema: **`pnpm db:push`** o `docs/sql/add-portal-stats-events.sql` en Neon. | Medio |
-| **F3** | **v0 hecho:** tRPC `stats.portalActivityByTerminal` (agregación directa sobre `portal_stats_events` + suma `view_count` por org o por publicador); tarjeta en dashboard del panel. **Siguiente:** cron de rollups / vista métricas dedicada / más KPIs. | Alto |
+| **F3** | **v0 hecho:** tRPC `stats.portalActivityByTerminal` (agregación directa sobre `portal_stats_events` + suma `view_count` por org o por publicador); tarjeta en dashboard del panel. **Sprint 48:** `stats.platformPortalActivityByTerminal` para permiso `analytics:platform` (agregados globales + última ingesta). **Siguiente:** cron de rollups / vista métricas dedicada / más KPIs. | Alto |
 | **F4** | Export externo, embudos multi-touch, experimentos A/B | Según negocio |
 
 ---
