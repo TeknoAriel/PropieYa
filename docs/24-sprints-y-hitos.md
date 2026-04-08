@@ -44,6 +44,7 @@
 | Sprint 44 (ritmo producción: logs búsqueda + flag asistente /buscar) | ✅ — ver sección Sprint 44 |
 | Sprint 45 (ritmo producción: telemetría búsqueda + asistente en panel) | ✅ — ver sección Sprint 45 |
 | Sprint 46 (ritmo producción: telemetría leads, comparador, demanda, alertas) | ✅ — ver sección Sprint 46 |
+| Sprint 47 (ritmo producción: ingest telemetría + F2 ranking + golden smoke) | ✅ — ver sección Sprint 47 |
 | Siguiente backlog doc 43 §5 | Simulador / verificación org, más ítems §5 |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
@@ -805,3 +806,18 @@
 - [x] 46.5 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
 
 **Criterios:** `stats.portalActivityByTerminal` y agregados futuros pueden cruzar volumen de contactos, comparaciones, demanda, alertas y funnel asistente sin texto libre en payload.
+
+---
+
+## Sprint 47 — Ritmo de producción: telemetría de ingesta, tuning F2 y golden smoke ✅
+
+**Objetivo:** cerrar el circuito **operativo de ingest** en `portal_stats_events`, un **primer ajuste de ranking** ES (F2) y un **script reproducible** para el apéndice A de doc 47.
+
+### Tareas (agente / CI)
+
+- [x] 47.1 `runYumblinImportPipeline` → `ingest.run.completed` (`PORTAL_STATS_TERMINALS.INGEST_RUN_COMPLETED`) con conteos y flags técnicos (sin PII)
+- [x] 47.2 ES `multi_match` (texto): `tie_breaker` + refinamiento de boosts en `apps/web/src/lib/search/query.ts`
+- [x] 47.3 Script `golden:search-smoke` en `@propieya/web` (`apps/web/scripts/golden-search-smoke.ts`); docs `47` / `49` / tabla estado
+- [x] 47.4 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** cada corrida de pipeline (cron o webhook) deja un hecho de ingest agregable; ranking documentado; smoke invocable contra local o URL canónica con `GOLDEN_SEARCH_BASE_URL`.

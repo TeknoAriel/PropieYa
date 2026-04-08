@@ -84,7 +84,7 @@ Cada terminal es un **punto único** en código donde se registrará el hecho (a
 | Asistente | `assistant.message.sent` / `assistant.search.triggered` | **`assistant.message.sent` (S46):** cada intento `searchConversational` tras rate limit; `lenBucket` s/m/l. **`assistant.search.triggered` (S45):** mutación exitosa |
 | Demanda / alertas | `demand.profile.updated`, `search_alert.created` | **Implementado (Sprint 46):** `demand.upsertFromSearchFilters` y `searchAlert.create` |
 | Auth | `auth.login.success` (opcional) | Tras login panel/portal |
-| Ingesta | Ya cubierto por respuestas cron; opcional `ingest.run.completed` con counts en payload | Pipeline import |
+| Ingesta | **`ingest.run.completed` (Sprint 47):** al cerrar `runYumblinImportPipeline`; payload: conteos de sync, `publishedCount`, `searchIndexDeferred`, `feedSources` (sin PII) | `apps/web/src/lib/cron/run-yumblin-import-pipeline.ts` |
 
 ---
 

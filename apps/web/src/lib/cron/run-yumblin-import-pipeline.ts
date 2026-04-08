@@ -6,8 +6,9 @@
 import { and, eq } from 'drizzle-orm'
 
 import { db, listings, runYumblinImportSyncAllSources } from '@propieya/database'
-import { LISTING_VALIDITY } from '@propieya/shared'
+import { LISTING_VALIDITY, PORTAL_STATS_TERMINALS } from '@propieya/shared'
 
+import { recordPortalStatsEvent } from '@/lib/analytics/record-portal-stats-event'
 import { removeListingFromSearch, syncListingToSearch } from '@/lib/search/sync'
 
 /** Por encima de esto, no indexamos ES ítem a ítem (evita timeout en Vercel); conviene cron `sync-search` o `pnpm reindex:es`. */
@@ -119,6 +120,22 @@ export async function runYumblinImportPipeline(options: {
       )
     }
   }
+
+  recordPortalStatsEvent(db, {
+    terminalId: PORTAL_STATS_TERMINALS.INGEST_RUN_COMPLETED,
+    userId: null,
+    payload: {
+      imported: totals.imported,
+      updated: totals.updated,
+      unchanged: totals.unchanged,
+      withdrawn: totals.withdrawn,
+      skippedInvalid: totals.skippedInvalid,
+      skippedUnchangedBySourceTime: totals.skippedUnchangedBySourceTime,
+      publishedCount,
+      searchIndexDeferred: Boolean(searchIndexDeferred),
+      feedSources: results.length,
+    },
+  })
 
   return {
     totals,

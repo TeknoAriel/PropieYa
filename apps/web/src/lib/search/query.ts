@@ -74,12 +74,13 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
         query: textQ,
         fields: [
           'title^3',
-          'description',
+          'description^0.85',
           'address.city^1.2',
-          'address.neighborhood^1.5',
+          'address.neighborhood^1.6',
         ],
         type: 'best_fields',
         fuzziness: 'AUTO',
+        tie_breaker: 0.12,
       },
     })
   }
