@@ -3,9 +3,11 @@ import { eq, desc } from 'drizzle-orm'
 import { demandProfiles } from '@propieya/database'
 import {
   completenessFromFilters,
+  PORTAL_STATS_TERMINALS,
   summarizeSearchFilters,
 } from '@propieya/shared'
 
+import { recordPortalStatsEvent } from '../../lib/analytics/record-portal-stats-event'
 import {
   createTRPCRouter,
   protectedProcedure,
@@ -109,6 +111,14 @@ export const demandRouter = createTRPCRouter({
         })
         .returning()
 
-      return inserted ?? null
+      const row = inserted ?? null
+      if (row) {
+        recordPortalStatsEvent(ctx.db, {
+          terminalId: PORTAL_STATS_TERMINALS.DEMAND_PROFILE_UPDATED,
+          userId: ctx.session.userId,
+          payload: { completeness },
+        })
+      }
+      return row
     }),
 })

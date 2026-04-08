@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -56,6 +56,8 @@ function CompararContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [ids, setIds] = useState<string[]>([])
+  const viewLoggedRef = useRef<string>('')
+  const { mutate: mutateCompareView } = trpc.listing.recordCompareView.useMutation()
 
   useEffect(() => {
     const fromUrl = parseIdsParam(searchParams.get('ids'))
@@ -66,6 +68,22 @@ function CompararContent() {
     }
     setIds(readCompareIds())
   }, [searchParams])
+
+  useEffect(() => {
+    if (ids.length < 2) return
+    const slice = ids.slice(0, 3)
+    const key = [...slice].sort().join(',')
+    if (viewLoggedRef.current === key) return
+    viewLoggedRef.current = key
+    mutateCompareView(
+      { listingIds: slice },
+      {
+        onError: () => {
+          /* telemetría best-effort */
+        },
+      }
+    )
+  }, [ids, mutateCompareView])
 
   const enabled = ids.length >= 2
   const { data = [], isLoading, isError } = trpc.listing.getComparePublic.useQuery(

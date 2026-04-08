@@ -43,6 +43,7 @@
 | Sprint 43 (ficha: ref import + búsquedas zona/precio) | ✅ — ver sección Sprint 43 |
 | Sprint 44 (ritmo producción: logs búsqueda + flag asistente /buscar) | ✅ — ver sección Sprint 44 |
 | Sprint 45 (ritmo producción: telemetría búsqueda + asistente en panel) | ✅ — ver sección Sprint 45 |
+| Sprint 46 (ritmo producción: telemetría leads, comparador, demanda, alertas) | ✅ — ver sección Sprint 46 |
 | Siguiente backlog doc 43 §5 | Simulador / verificación org, más ítems §5 |
 | Backlog grande | `docs/38` (facets, polígono mapa, MLS dedup), `docs/39–40`; orden sugerido también en doc 43 §5 |
 | Emprendimientos, multipaís, moneda, horizonte de entrega | `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` |
@@ -788,3 +789,19 @@
 - [x] 45.4 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
 
 **Criterios:** el panel puede agregar por `terminal_id` volumen de búsquedas de listado y de disparos del asistente sin duplicar PII; la paginación «cargar más» no multiplica el evento base.
+
+---
+
+## Sprint 46 — Ritmo de producción: telemetría leads, comparador, demanda y alertas ✅
+
+**Objetivo:** completar el cableado de **terminales ya definidos** en `PORTAL_STATS_TERMINALS` para embudos reales (contacto, comparar, demanda, alerta) y **mensaje al asistente** vs búsqueda exitosa.
+
+### Tareas (agente / CI)
+
+- [x] 46.1 `lead.create` → `lead.submitted` (`listingId`, `organizationId`)
+- [x] 46.2 `demand.upsertFromSearchFilters` → `demand.profile.updated` (`completeness`); `searchAlert.create` → `search.alert.created`
+- [x] 46.3 `listing.recordCompareAdd` + uso en `AddToCompareButton`; `listing.recordCompareView` + uso en `/comparar`
+- [x] 46.4 `searchConversational` → `assistant.message.sent` (`lenBucket`); docs `47` / `49` / tabla estado
+- [x] 46.5 `pnpm verify` + push `deploy/infra` + `pnpm verificar:deploy`
+
+**Criterios:** `stats.portalActivityByTerminal` y agregados futuros pueden cruzar volumen de contactos, comparaciones, demanda, alertas y funnel asistente sin texto libre en payload.

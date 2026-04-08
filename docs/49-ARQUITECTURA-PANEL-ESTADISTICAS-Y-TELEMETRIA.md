@@ -79,10 +79,10 @@ Cada terminal es un **punto único** en código donde se registrará el hecho (a
 |------|---------------------|---------------|
 | Búsqueda | `listing.search.executed` | **Implementado (Sprint 45):** primera página de `listing.search` (sin cursor, offset 0); `payload`: `total`, `source` (`es` \| `sql` \| `sql_underfill`), `tier` o `esEmpty` según camino |
 | Ficha | `listing.ficha.view` | **Implementado:** tRPC `listing.recordPublicView` tras `getById` OK en `/propiedad/[id]` |
-| Lead | `lead.submitted` | Creación de lead desde ficha |
-| Comparador | `listing.compare.add` / `listing.compare.view` | Storage + página `/comparar` |
-| Asistente | `assistant.message.sent` / `assistant.search.triggered` | **`assistant.search.triggered` implementado (Sprint 45):** `searchConversational` exitoso; `payload`: `total`, `fromEs`, `hasPrior`. `assistant.message.sent` pendiente si se separa envío de búsqueda |
-| Demanda / alertas | `demand.profile.updated`, `search_alert.created` | Routers existentes |
+| Lead | `lead.submitted` | **Implementado (Sprint 46):** `lead.create` exitoso; `listingId`, `organizationId`, `payload.source` |
+| Comparador | `listing.compare.add` / `listing.compare.view` | **Implementado (Sprint 46):** `listing.recordCompareAdd` (botón comparar) y `listing.recordCompareView` (`/comparar`, 2+ activos) |
+| Asistente | `assistant.message.sent` / `assistant.search.triggered` | **`assistant.message.sent` (S46):** cada intento `searchConversational` tras rate limit; `lenBucket` s/m/l. **`assistant.search.triggered` (S45):** mutación exitosa |
+| Demanda / alertas | `demand.profile.updated`, `search_alert.created` | **Implementado (Sprint 46):** `demand.upsertFromSearchFilters` y `searchAlert.create` |
 | Auth | `auth.login.success` (opcional) | Tras login panel/portal |
 | Ingesta | Ya cubierto por respuestas cron; opcional `ingest.run.completed` con counts en payload | Pipeline import |
 

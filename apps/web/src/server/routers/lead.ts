@@ -2,7 +2,9 @@ import { z } from 'zod'
 import { eq, and, desc, count } from 'drizzle-orm'
 
 import { leads, listings, users } from '@propieya/database'
+import { PORTAL_STATS_TERMINALS } from '@propieya/shared'
 
+import { recordPortalStatsEvent } from '../../lib/analytics/record-portal-stats-event'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
 import { sendNewLeadEmail } from '../../lib/email'
 
@@ -62,6 +64,14 @@ export const leadRouter = createTRPCRouter({
           console.warn('[lead.create] Email falló:', err)
         })
       }
+
+      recordPortalStatsEvent(ctx.db, {
+        terminalId: PORTAL_STATS_TERMINALS.LEAD_SUBMITTED,
+        listingId: input.listingId,
+        organizationId: row.organizationId,
+        userId: ctx.session?.userId ?? null,
+        payload: { source: 'listing_contact' },
+      })
 
       return created
     }),

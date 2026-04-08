@@ -908,6 +908,83 @@ export const listingRouter = createTRPCRouter({
       }))
     }),
 
+  /** Telemetría comparador (doc 49): usuario agrega un aviso a la lista local. */
+  recordCompareAdd: publicProcedure
+    .input(z.object({ listingId: z.string().uuid() }))
+    .mutation(async ({ input, ctx }) => {
+      const [row] = await ctx.db
+        .select({
+          id: listings.id,
+          organizationId: listings.organizationId,
+        })
+        .from(listings)
+        .where(
+          and(eq(listings.id, input.listingId), eq(listings.status, 'active'))
+        )
+        .limit(1)
+
+      if (!row) {
+        return { ok: false as const }
+      }
+
+      recordPortalStatsEvent(ctx.db, {
+        terminalId: PORTAL_STATS_TERMINALS.LISTING_COMPARE_ADD,
+        listingId: row.id,
+        organizationId: row.organizationId,
+        userId: ctx.session?.userId ?? null,
+        payload: {},
+      })
+      return { ok: true as const }
+    }),
+
+  /** Telemetría comparador: vista de `/comparar` con 2–3 avisos (solo activos en DB). */
+  recordCompareView: publicProcedure
+    .input(
+      z.object({
+        listingIds: z.array(z.string().uuid()).min(2).max(3),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const seen = new Set<string>()
+      const ordered: string[] = []
+      for (const id of input.listingIds) {
+        if (seen.has(id)) continue
+        seen.add(id)
+        ordered.push(id)
+        if (ordered.length >= 3) break
+      }
+      if (ordered.length < 2) {
+        return { ok: false as const }
+      }
+
+      const rows = await ctx.db
+        .select({
+          id: listings.id,
+          organizationId: listings.organizationId,
+        })
+        .from(listings)
+        .where(and(inArray(listings.id, ordered), eq(listings.status, 'active')))
+
+      if (rows.length < 2) {
+        return { ok: false as const }
+      }
+
+      const byId = new Map(rows.map((r) => [r.id, r]))
+      const first = byId.get(ordered[0]!)
+      if (!first) {
+        return { ok: false as const }
+      }
+
+      recordPortalStatsEvent(ctx.db, {
+        terminalId: PORTAL_STATS_TERMINALS.LISTING_COMPARE_VIEW,
+        listingId: first.id,
+        organizationId: first.organizationId,
+        userId: ctx.session?.userId ?? null,
+        payload: { count: ordered.length },
+      })
+      return { ok: true as const }
+    }),
+
   /** Avisos similares (misma operación y tipo, ciudad si existe, banda de precio ±30%). */
   similar: publicProcedure
     .input(
@@ -1377,6 +1454,20 @@ export const listingRouter = createTRPCRouter({
         const logSearchPerf = process.env.LOG_SEARCH_MS === '1'
         const convoPerfStart = Date.now()
         const prior = conversationPriorFromInput(input.previousContext)
+
+        recordPortalStatsEvent(ctx.db, {
+          terminalId: PORTAL_STATS_TERMINALS.ASSISTANT_MESSAGE_SENT,
+          userId: ctx.session?.userId ?? null,
+          payload: {
+            lenBucket:
+              input.message.length <= 60
+                ? 's'
+                : input.message.length <= 180
+                  ? 'm'
+                  : 'l',
+          },
+        })
+
         const localityCatalog = await getListingLocalityCatalog(ctx.db)
         const { intention, amenitiesMatchMode, pipelineDebug } =
           await runConversationalSearchOrchestrator(input.message, prior ?? undefined, {

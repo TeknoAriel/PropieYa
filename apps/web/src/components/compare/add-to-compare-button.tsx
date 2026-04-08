@@ -13,6 +13,7 @@ import {
   readCompareIds,
   toggleCompareId,
 } from '@/lib/compare-listings-storage'
+import { trpc } from '@/lib/trpc'
 
 type AddToCompareButtonProps = {
   listingId: string
@@ -29,6 +30,7 @@ export function AddToCompareButton({
 }: AddToCompareButtonProps) {
   const [ids, setIds] = useState<string[]>([])
   const [maxHint, setMaxHint] = useState(false)
+  const recordCompareAdd = trpc.listing.recordCompareAdd.useMutation()
 
   useEffect(() => {
     const sync = () => setIds(readCompareIds())
@@ -56,6 +58,14 @@ export function AddToCompareButton({
       return
     }
     setIds(readCompareIds())
+    recordCompareAdd.mutate(
+      { listingId },
+      {
+        onError: () => {
+          /* telemetría best-effort */
+        },
+      }
+    )
   }
 
   return (

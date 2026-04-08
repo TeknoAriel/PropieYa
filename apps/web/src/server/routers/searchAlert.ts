@@ -10,12 +10,16 @@ import {
 } from '@propieya/database'
 
 import { buildFiltersSummary } from '../../lib/search-filter-summary'
+import { recordPortalStatsEvent } from '../../lib/analytics/record-portal-stats-event'
 
 import { createTRPCRouter, protectedProcedure } from '../trpc'
 import {
   listingSearchFiltersBaseSchema,
 } from './listing-search-input'
-import { sanitizeListingSearchFacets } from '@propieya/shared'
+import {
+  PORTAL_STATS_TERMINALS,
+  sanitizeListingSearchFacets,
+} from '@propieya/shared'
 
 type FeedNotificationItem = {
   kind: 'notification'
@@ -74,6 +78,12 @@ export const searchAlertRouter = createTRPCRouter({
       if (!row) {
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'No se pudo crear la alerta' })
       }
+
+      recordPortalStatsEvent(ctx.db, {
+        terminalId: PORTAL_STATS_TERMINALS.SEARCH_ALERT_CREATED,
+        userId: ctx.session.userId,
+        payload: { hasCustomName: Boolean(name?.trim()) },
+      })
 
       return { id: row.id, filtersSummary }
     }),
