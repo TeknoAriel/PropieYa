@@ -252,12 +252,18 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarFieldCity: 'Ciudad',
   buscarFieldNeighborhood: 'Barrio',
   buscarLocalityCatalogButton: 'Elegir del catálogo',
-  buscarLocalityCatalogTitle: 'Localidades con avisos',
+  buscarLocalityCatalogTitle: 'Zonas del catálogo',
   buscarLocalityCatalogHint:
-    'Solo aparecen ciudad y barrio que ya figuran en avisos activos. Podés seguir escribiendo a mano en los campos si preferís.',
+    'Las que tienen número suman avisos activos con esa ciudad/barrio; «Sugerida» son zonas frecuentes que aún pueden no tener publicaciones. Siempre podés escribir a mano en los campos.',
   buscarLocalityCatalogPlaceholder: 'Filtrar por nombre…',
   buscarLocalityCatalogEmpty: 'No hay coincidencias. Probá otra palabra o escribí la zona a mano.',
   buscarLocalityCatalogLoading: 'Cargando catálogo…',
+  /** Modal localidades: badge cuando hay un solo aviso en el agregado. */
+  buscarLocalityCatalogBadgeOneListing: '1 aviso',
+  /** Modal localidades: badge cuando hay varios ({n} = número). */
+  buscarLocalityCatalogBadgeListings: '{n} avisos',
+  /** Modal localidades: fila solo sugerida (count 0), sin coincidencias en inventario. */
+  buscarLocalityCatalogBadgeSuggested: 'Sugerida',
   buscarFieldMinPrice: 'Precio mínimo',
   buscarFieldMaxPrice: 'Precio máximo',
   buscarFieldMinBedrooms: 'Dormitorios mínimos',

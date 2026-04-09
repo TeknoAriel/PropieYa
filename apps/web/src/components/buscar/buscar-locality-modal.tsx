@@ -26,6 +26,22 @@ function catalogEntryLabel(entry: {
   return c || '—'
 }
 
+function listingCountBadgeLabel(
+  count: number,
+  oneLabel: string,
+  manyTemplate: string
+): string {
+  const n = Math.max(0, Math.floor(count))
+  if (n === 1) return oneLabel
+  return manyTemplate.replace(/\{n\}/g, String(n))
+}
+
+type CatalogRow = {
+  city: string
+  neighborhood: string | null
+  count?: number
+}
+
 type BuscarLocalityModalProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -96,24 +112,42 @@ export function BuscarLocalityModal({
             </p>
           ) : (
             <ul className="max-h-[min(52vh,420px)] overflow-y-auto text-sm">
-              {filtered.map((e, i) => (
-                <li key={`${e.city}-${e.neighborhood ?? ''}-${i}`}>
-                  <button
-                    type="button"
-                    className="w-full border-b border-border/40 px-3 py-2.5 text-left last:border-b-0 hover:bg-surface-secondary focus:bg-surface-secondary focus:outline-none"
-                    onClick={() => {
-                      onPick({
-                        city: e.city === '—' ? '' : e.city,
-                        neighborhood: e.neighborhood?.trim() ?? '',
-                      })
-                      setNeedle('')
-                      onOpenChange(false)
-                    }}
-                  >
-                    {catalogEntryLabel(e)}
-                  </button>
-                </li>
-              ))}
+              {filtered.map((e: CatalogRow, i) => {
+                const fromFeed = (e.count ?? 0) > 0
+                return (
+                  <li key={`${e.city}-${e.neighborhood ?? ''}-${i}`}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-3 border-b border-border/40 px-3 py-2.5 text-left last:border-b-0 hover:bg-surface-secondary focus:bg-surface-secondary focus:outline-none"
+                      onClick={() => {
+                        onPick({
+                          city: e.city === '—' ? '' : e.city,
+                          neighborhood: e.neighborhood?.trim() ?? '',
+                        })
+                        setNeedle('')
+                        onOpenChange(false)
+                      }}
+                    >
+                      <span className="min-w-0 font-medium text-text-primary">
+                        {catalogEntryLabel(e)}
+                      </span>
+                      {fromFeed ? (
+                        <span className="shrink-0 rounded-full bg-brand-primary/12 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-brand-primary">
+                          {listingCountBadgeLabel(
+                            e.count!,
+                            S.buscarLocalityCatalogBadgeOneListing,
+                            S.buscarLocalityCatalogBadgeListings
+                          )}
+                        </span>
+                      ) : (
+                        <span className="shrink-0 rounded-full border border-border/80 bg-surface-secondary/80 px-2 py-0.5 text-[10px] font-medium text-text-tertiary">
+                          {S.buscarLocalityCatalogBadgeSuggested}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </div>
