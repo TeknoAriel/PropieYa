@@ -2,7 +2,7 @@
 
 ## Estado actual
 
-- El portal arma un **catálogo vivo** desde avisos activos: pares `city` / `neighborhood` en `address` (JSON), agregados en SQL, expuestos en `listing.localityCatalog` y usados en la validación del **pipeline conversacional** y en el **modal predictivo** del buscador.
+- El portal arma un **catálogo vivo** desde avisos activos: pares `city` / `neighborhood` en `address` (JSON), agregados en SQL, y los **fusiona** con una lista corta de ciudades y barrios frecuentes (`mergeLocalityCatalogWithStaticSupplements` en `@propieya/shared`) para que el modal y el asistente sigan siendo útiles aunque el feed aún no cargue esa zona. Expuesto en `listing.localityCatalog` y en el pipeline conversacional.
 
 ## Objetivo futuro
 

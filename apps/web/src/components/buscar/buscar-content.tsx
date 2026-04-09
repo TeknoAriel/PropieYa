@@ -1111,69 +1111,71 @@ export function BuscarContent({
               {S.moreRefineLayer}
             </Button>
           </div>
-          <div className="mt-4 space-y-3 border-t border-border/50 pt-4">
-            {contextualBlock ? (
-              <div className="space-y-1.5">
-                <h3 className="text-sm font-semibold text-text-primary">
-                  {contextualBlock.title}
-                </h3>
-                <p className="text-xs leading-relaxed text-text-secondary">
-                  {contextualBlock.body}
-                </p>
-              </div>
-            ) : null}
-            {showQuickAmenityChips ? (
-              <div className="space-y-2">
-                <div>
-                  <p className="text-sm font-semibold text-text-primary">
-                    {S.facetChipsTitle}
-                  </p>
-                  <p className="mt-0.5 text-xs text-text-secondary">
-                    {S.facetChipsHintRefine}
+          {!classicFiltersOpen ? (
+            <div className="mt-4 space-y-3 border-t border-border/50 pt-4">
+              {contextualBlock ? (
+                <div className="space-y-1.5">
+                  <h3 className="text-sm font-semibold text-text-primary">
+                    {contextualBlock.title}
+                  </h3>
+                  <p className="text-xs leading-relaxed text-text-secondary">
+                    {contextualBlock.body}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {quickFacetIds!.map((fid) => {
-                    const def = facetFlagCatalog.find((f) => f.id === fid)
-                    if (!def) return null
-                    const on = selectedAmenityFacets.includes(fid)
-                    return (
-                      <Button
-                        key={`asistente-facet-${fid}`}
-                        type="button"
-                        size="sm"
-                        variant={on ? 'default' : 'outline'}
-                        className="h-8 text-xs"
-                        onClick={() =>
-                          setSelectedAmenityFacets((prev) =>
-                            on ? prev.filter((x) => x !== fid) : [...prev, fid]
-                          )
-                        }
-                      >
-                        {def.label}
-                      </Button>
-                    )
-                  })}
-                </div>
-                <label className="flex cursor-pointer items-start gap-2 text-sm text-text-primary">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 rounded border-border"
-                    checked={amenitiesStrict}
-                    onChange={(e) => setAmenitiesStrict(e.target.checked)}
-                  />
-                  <span>
-                    <span className="font-medium">{S.strictAmenitiesLabel}</span>
-                    <span className="block text-xs text-text-secondary">
-                      {S.strictAmenitiesHint}
+              ) : null}
+              {showQuickAmenityChips ? (
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm font-semibold text-text-primary">
+                      {S.facetChipsTitle}
+                    </p>
+                    <p className="mt-0.5 text-xs text-text-secondary">
+                      {S.facetChipsHintRefine}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {quickFacetIds!.map((fid) => {
+                      const def = facetFlagCatalog.find((f) => f.id === fid)
+                      if (!def) return null
+                      const on = selectedAmenityFacets.includes(fid)
+                      return (
+                        <Button
+                          key={`asistente-facet-${fid}`}
+                          type="button"
+                          size="sm"
+                          variant={on ? 'default' : 'outline'}
+                          className="h-8 text-xs"
+                          onClick={() =>
+                            setSelectedAmenityFacets((prev) =>
+                              on ? prev.filter((x) => x !== fid) : [...prev, fid]
+                            )
+                          }
+                        >
+                          {def.label}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                  <label className="flex cursor-pointer items-start gap-2 text-sm text-text-primary">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 rounded border-border"
+                      checked={amenitiesStrict}
+                      onChange={(e) => setAmenitiesStrict(e.target.checked)}
+                    />
+                    <span>
+                      <span className="font-medium">{S.strictAmenitiesLabel}</span>
+                      <span className="block text-xs text-text-secondary">
+                        {S.strictAmenitiesHint}
+                      </span>
                     </span>
-                  </span>
-                </label>
-              </div>
-            ) : (
-              <InductiveSearchChips variant="embedded" showSubtitle={false} />
-            )}
-          </div>
+                  </label>
+                </div>
+              ) : (
+                <InductiveSearchChips variant="embedded" showSubtitle={false} />
+              )}
+            </div>
+          ) : null}
           </div>
         </div>
 
@@ -1383,6 +1385,12 @@ export function BuscarContent({
                   {S.contextualOpenAdvancedButton}
                 </Button>
               </div>
+            </div>
+          ) : null}
+
+          {!showQuickAmenityChips ? (
+            <div className="pt-1">
+              <InductiveSearchChips variant="embedded" showSubtitle={false} />
             </div>
           ) : null}
 

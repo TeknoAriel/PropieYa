@@ -1,7 +1,10 @@
 import { sql } from 'drizzle-orm'
 
 import type { Database } from '@propieya/database'
-import type { LocalityCatalogEntry } from '@propieya/shared'
+import {
+  mergeLocalityCatalogWithStaticSupplements,
+  type LocalityCatalogEntry,
+} from '@propieya/shared'
 
 type Cache = { atMs: number; entries: LocalityCatalogEntry[] }
 
@@ -10,10 +13,10 @@ let cache: Cache | null = null
 const TTL_MS = 12 * 60 * 1000
 
 /**
- * Pares ciudad/barrio distintos de avisos activos (conteo por par).
+ * Pares ciudad/barrio de avisos activos (conteo por par), más suplementos estáticos
+ * (CABA/Barrios, ciudades clave) que no se duplican si ya vienen del feed.
  * Cache en memoria por instancia serverless.
- * Si la DB falla o hace timeout: devuelve caché vencida si existe, si no `[]`
- * (el pipeline conversacional sigue con aliases estáticos, p. ej. Funes).
+ * Si la DB falla: caché previa si existe; si no, solo suplementos estáticos.
  */
 export async function getListingLocalityCatalog(
   db: Database
@@ -61,8 +64,9 @@ export async function getListingLocalityCatalog(
       })
     }
 
-    cache = { atMs: now, entries }
-    return entries
+    const merged = mergeLocalityCatalogWithStaticSupplements(entries)
+    cache = { atMs: now, entries: merged }
+    return merged
   } catch (err) {
     console.error('[getListingLocalityCatalog]', err)
     if (cache) {
@@ -71,6 +75,6 @@ export async function getListingLocalityCatalog(
       )
       return cache.entries
     }
-    return []
+    return mergeLocalityCatalogWithStaticSupplements([])
   }
 }

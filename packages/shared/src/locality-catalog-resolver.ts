@@ -25,6 +25,54 @@ export function foldLocalityKey(s: string): string {
     .replace(/\s+/g, ' ')
 }
 
+/**
+ * Zonas conocidas para el modal «Elegir del catálogo» cuando el feed aún no
+ * las refleja en avisos activos. Misma familia que STATIC_ALIAS_ENTRIES.
+ * Si la DB ya trae el par (misma clave normalizada), no se duplica al mergear.
+ */
+export const LOCALITY_CATALOG_STATIC_SUPPLEMENTS: readonly LocalityCatalogEntry[] =
+  [
+    { city: 'Rosario', neighborhood: null, count: 0 },
+    { city: 'Córdoba', neighborhood: null, count: 0 },
+    { city: 'Buenos Aires', neighborhood: null, count: 0 },
+    { city: 'CABA', neighborhood: null, count: 0 },
+    { city: 'Funes', neighborhood: null, count: 0 },
+    { city: 'Santa Fe', neighborhood: null, count: 0 },
+    { city: 'Mendoza', neighborhood: null, count: 0 },
+    { city: 'CABA', neighborhood: 'Palermo', count: 0 },
+    { city: 'CABA', neighborhood: 'Belgrano', count: 0 },
+    { city: 'Córdoba', neighborhood: 'Nueva Córdoba', count: 0 },
+    { city: 'CABA', neighborhood: 'Villa Crespo', count: 0 },
+    { city: 'CABA', neighborhood: 'Almagro', count: 0 },
+    { city: 'CABA', neighborhood: 'Caballito', count: 0 },
+    { city: 'CABA', neighborhood: 'Núñez', count: 0 },
+    { city: 'CABA', neighborhood: 'Recoleta', count: 0 },
+    { city: 'CABA', neighborhood: 'San Telmo', count: 0 },
+    { city: 'CABA', neighborhood: 'Puerto Madero', count: 0 },
+  ]
+
+function localityCatalogEntryMergeKey(e: LocalityCatalogEntry): string {
+  const rawCity = (e.city === '—' ? '' : e.city).trim()
+  const nb = e.neighborhood?.trim() ?? ''
+  return `${foldLocalityKey(rawCity)}\0${foldLocalityKey(nb)}`
+}
+
+/** Combina agregado de DB con zonas estáticas que falten (p. ej. Palermo sin avisos aún). */
+export function mergeLocalityCatalogWithStaticSupplements(
+  entries: readonly LocalityCatalogEntry[]
+): LocalityCatalogEntry[] {
+  const keys = new Set(entries.map(localityCatalogEntryMergeKey))
+  const out: LocalityCatalogEntry[] = [...entries]
+  for (const s of LOCALITY_CATALOG_STATIC_SUPPLEMENTS) {
+    const k = localityCatalogEntryMergeKey(s)
+    if (!keys.has(k)) {
+      keys.add(k)
+      out.push({ ...s })
+    }
+  }
+  return out
+}
+
 const STATIC_ALIAS_ENTRIES: ReadonlyArray<{
   aliases: readonly string[]
   kind: 'city' | 'neighborhood'
