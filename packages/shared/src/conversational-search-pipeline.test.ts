@@ -200,6 +200,23 @@ describe('validateConversationalPipeline', () => {
   })
 })
 
+describe('extractFiltersFromQuery / presupuesto coloquial', () => {
+  it('tengo 100k dolar → maxPrice', () => {
+    const f = extractFiltersFromQuery('tengo 100k dolar depto 2 dormitorios')
+    expect(f.maxPrice).toBe(100_000)
+    expect(f.minBedrooms).toBe(2)
+  })
+
+  it('presupuesto 80 mil usd → maxPrice', () => {
+    expect(extractFiltersFromQuery('presupuesto 80 mil usd').maxPrice).toBe(80_000)
+  })
+
+  it('no pisa hasta X si ya hay tope explícito', () => {
+    const f = extractFiltersFromQuery('hasta 150k tengo 100k')
+    expect(f.maxPrice).toBe(150_000)
+  })
+})
+
 describe('extractFiltersFromQuery / cochera', () => {
   it('con casa y cochera no fuerza propertyType parking (amenity vía otro canal)', () => {
     const f = extractFiltersFromQuery(

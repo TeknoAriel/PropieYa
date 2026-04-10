@@ -131,6 +131,7 @@ Reglas:
 - Frases como "casa en venta" → operationType sale; no inventes barrio "venta".
 - "Depto en alquiler en Nueva Córdoba" → rent, apartment, neighborhood si corresponde al texto.
 - Precios en pesos o USD según contexto; número entero.
+- «Tengo 100k», «tengo cien mil dólares», «presupuesto 80 mil», «puedo gastar 200k usd» → maxPrice (techo de presupuesto), no minPrice salvo que digan «desde» / «no menos de».
 - Menciones de expensas, contrato de alquiler, inquilino → suele ser rent. Compra, inversión, permuta → sale.
 - Si el mensaje es ambiguo en operación, devolvé operationType null (no inventes): el listado puede mostrar todas las operaciones.`
 

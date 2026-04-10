@@ -102,6 +102,9 @@ const NUMERIC_PATTERNS = {
   escalera: /\b(?:escalera|entrada)\s*([a-zA-Z])\b/i,
   priceMin: /\b(?:desde|m[íi]nimo|>\s*)\s*\$?\s*([\d.,]+)\s*(?:k|mil|mill[oó]n)?\b/i,
   priceMax: /\b(?:hasta|m[áa]ximo|<\s*)\s*\$?\s*([\d.,]+)\s*(?:k|mil|mill[oó]n)?\b/i,
+  /** Techo coloquial: «tengo 100k dólares», «presupuesto 80 mil usd». */
+  priceBudgetMax:
+    /\b(?:tengo|dispongo\s+de|presupuesto(?:\s+(?:de|máximo|maximo))?|puedo\s+(?:gastar|invertir)|me\s+alcanza(?:\s+para)?)\s*:?\s*\$?\s*([\d.,]+)\s*(?:k|mil|mill(?:ones|ón)?)?(?:\s*(?:usd|u\$s|u\$d|pesos?|d[óo]lar(?:es)?))?\b/i,
   sizeWord:
     /\b(grandes?|amplio|amplia|amplías|amplí[oa]s?|espacios[oa]s?)\b/i,
 }
@@ -255,6 +258,14 @@ export function extractFiltersFromQueryDetailed(q: string): ExtractFiltersFromQu
   if (pMax) {
     filters.maxPrice = parsePriceNum(pMax)
     consumedParts.push(pMax[0])
+  }
+
+  if (filters.maxPrice == null) {
+    const bud = q.match(NUMERIC_PATTERNS.priceBudgetMax)
+    if (bud) {
+      filters.maxPrice = parsePriceNum(bud)
+      consumedParts.push(bud[0])
+    }
   }
 
   return { filters, consumedParts }
