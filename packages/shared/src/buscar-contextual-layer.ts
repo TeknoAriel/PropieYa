@@ -27,7 +27,7 @@ export function getBuscarContextualBlock(
       return {
         title: 'Terrenos y lotes',
         body:
-          'La superficie del lote y la ubicación suelen ser lo más importante. Usá superficie mín./máx. en «Más filtros» y el mapa para acotar la zona.' +
+          'Priorizá superficie y zona en lo principal; el mapa ayuda a acotar. Si necesitás más detalle, abrí la capa 3.' +
           rentNote,
       }
     case 'apartment':
@@ -35,7 +35,8 @@ export function getBuscarContextualBlock(
       return {
         title: propertyType === 'ph' ? 'PH' : 'Departamentos',
         body:
-          'Piso, orientación y superficie cubierta suelen afinar mucho el listado. Están en «Más filtros».' + rentNote,
+          'Elegí 2–3 cosas que más te importen abajo; lo fino (piso, orientación, cubierta) está en la capa 3.' +
+          rentNote,
         quickFacetIds: [
           'balcony',
           'parking',
@@ -55,7 +56,8 @@ export function getBuscarContextualBlock(
       return {
         title: 'Casas',
         body:
-          'Jardín, parrilla, pileta y cochera suelen ser clave. Podés marcarlos acá o en «Afinar más».' + rentNote,
+          'Jardín, pileta y cochera suelen marcar la diferencia: tocá lo que te importe; el resto del catálogo está en la capa 3.' +
+          rentNote,
         quickFacetIds: [
           'garden',
           'bbq',
@@ -77,7 +79,7 @@ export function getBuscarContextualBlock(
       return {
         title: 'Espacios comerciales / trabajo',
         body:
-          'Superficie, zona y accesos definen buena parte del match. Refiná con mapa y filtros avanzados.' + rentNote,
+          'Zona y metros suelen bastar al inicio; afiná accesos y amenities con chips o la capa 3.' + rentNote,
         quickFacetIds: [
           'parking',
           'air_conditioning',

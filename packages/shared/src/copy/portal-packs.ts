@@ -287,9 +287,31 @@ export const PORTAL_SEARCH_UX_COPY = {
 
   advancedSectionLocation: 'Ubicación y superficie',
 
-  mainFiltersTitle: 'Filtros principales',
+  /** Encabezado del card de filtros (tres capas). */
+  mainFiltersTitle: 'Buscá en capas',
   mainFiltersSubtitle:
-    'Operación, tipo, ubicación y cifras clave. Las palabras clave refinan el texto sin sustituir el resto.',
+    'Empezá por lo principal; después afinamos con sugerencias. El catálogo completo de amenities queda al final, sin repetir lo mismo tres veces.',
+  buscarLayer1Kicker: '1 · Lo principal',
+  buscarPreferMapCta: 'Prefiero en mapa',
+  buscarLayer2Title: '2 · Afinado guiado',
+  buscarLayer2Subtitle:
+    'Pocas decisiones que ordenan mejor los resultados. Por defecto los amenities afinan sin bloquear opciones similares.',
+  buscarLayer2ExpandCta: 'Mostrar afinado guiado',
+  buscarLayer2CollapseCta: 'Ocultar afinado guiado',
+  buscarLayer2Teaser:
+    'Cuando ya tengas operación, tipo y zona, abrí esta capa: te sugerimos chips según el rubro y números clave.',
+  buscarLayer2QuickChipsHint:
+    'Sugerencias rápidas (máx. 6; el catálogo completo está en la capa 3).',
+  /** Capa 2 con tipo terreno: sin duplicar superficie ni números poco útiles. */
+  buscarLayer2LandHint:
+    'Para terrenos, la superficie va en lo principal. Refiná la zona con el mapa o abrí la capa 3 para preferencias puntuales.',
+  buscarLayer3Title: '3 · Más filtros y catálogo completo',
+  buscarLayer3Subtitle:
+    'Orientación, piso, superficie cubierta, escalera y la lista completa de amenities. Para búsquedas muy precisas.',
+  buscarOpenLayer3Cta: 'Más filtros y catálogo…',
+  buscarCloseLayer3Cta: 'Ocultar más filtros',
+  buscarLayer3TechnicalTitle: 'Medidas y orientación',
+  buscarLayer3AmenitiesTitle: 'Amenities y preferencias (lista única)',
   locationBlockTitle: 'Ubicación',
   mapIntegratedTitle: 'Mapa y zona',
   advancedFiltersTitle: 'Filtros avanzados',
@@ -303,7 +325,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   strictAmenitiesHint:
     'Si está marcado, cada amenity elegido debe figurar en el aviso; si no, actúan como preferencia (más arriba quien cumple más).',
   refineCatalogTitle: 'Más amenities',
-  moreRefineLayer: 'Afinar más',
+  moreRefineLayer: 'Afinado guiado',
   hideRefineLayer: 'Ocultar afinado',
 
   matchWhyTitle: 'Por qué encaja',
@@ -399,10 +421,10 @@ export const PORTAL_SEARCH_UX_COPY = {
   /** Bloque conversacional (home + /buscar): intención sin formulario. */
   conversationalBlockTitle: 'Contanos qué buscás',
   conversationalBlockSubtitle:
-    'Escribí o dictá: traducimos a criterios con el mismo motor que mapa y filtros.',
+    'Escribí o dictá: traducimos a criterios con el mismo motor que mapa y filtros. Después afinamos juntos por capas.',
   /** Versión más corta (bloque compacto en /buscar). */
   conversationalBlockSubtitleCompact:
-    'Escribí o dictá; después afinás con mapa o filtros.',
+    'Escribí o dictá; después afinamos juntos con mapa o las capas de abajo.',
   conversationalVoiceStart: 'Dictar',
   conversationalVoiceStop: 'Detener',
   conversationalVoiceListening: 'Escuchando…',
@@ -414,7 +436,7 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Incluye coincidencias ampliadas: el listado abajo respeta la misma lógica.',
   conversationalNextTitle: 'Siguiente paso',
   conversationalNextMap: 'Afinar en el mapa',
-  conversationalNextFilters: 'Abrir más filtros',
+  conversationalNextFilters: 'Filtros avanzados (capa 3)',
   conversationalNextAgain:
     'Si querés otra intención, usá de nuevo la búsqueda con frase o ajustá los filtros.',
   conversationalScrollResults: 'Ver resultados',

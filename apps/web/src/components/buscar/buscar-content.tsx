@@ -50,6 +50,7 @@ import {
   summarizeSearchFilters,
   type Currency,
   type ExplainMatchFilters,
+  type FacetFlagDefinition,
   type OperationType,
   type PortalSearchPage,
   type PropertyType,
@@ -348,8 +349,10 @@ export function BuscarContent({
   >('')
   const [selectedAmenityFacets, setSelectedAmenityFacets] = useState<string[]>([])
   const [amenitiesStrict, setAmenitiesStrict] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [showRefineLayer, setShowRefineLayer] = useState(false)
+  /** Capa 3: un solo panel con técnica + catálogo único de amenities (sin triplicar chips). */
+  const [showDeepFilters, setShowDeepFilters] = useState(false)
+  /** Capa 2: afinado guiado (chips contextuales + números medios). */
+  const [guidedLayerExpanded, setGuidedLayerExpanded] = useState(false)
   const [mapBbox, setMapBbox] = useState<BuscarMapBBox | null>(null)
   const [mapPolygonRing, setMapPolygonRing] = useState<BuscarMapPoint[]>([])
   const [polygonDrawMode, setPolygonDrawMode] = useState(false)
@@ -394,7 +397,17 @@ export function BuscarContent({
       (f): f is NonNullable<typeof f> => Boolean(f)
     )
   }, [facetFlagDefinitions])
-  const facetChips = useMemo(() => facetFlagDefinitions.slice(0, 12), [facetFlagDefinitions])
+  /** Lista única para capa 3: nicho + resto del catálogo, sin duplicar IDs. */
+  const deepFacetCheckboxList = useMemo(() => {
+    const seen = new Set<string>()
+    const out: FacetFlagDefinition[] = []
+    for (const f of [...advancedAmenityFields, ...refineFacetDefinitions]) {
+      if (seen.has(f.id)) continue
+      seen.add(f.id)
+      out.push(f)
+    }
+    return out
+  }, [advancedAmenityFields, refineFacetDefinitions])
 
   const toggleAmenityFacet = (key: string) => {
     setSelectedAmenityFacets((prev) =>
@@ -803,6 +816,10 @@ export function BuscarContent({
   const hasActiveSearchCriteria =
     activeSummaryRaw !== 'Perfil de búsqueda sin criterios guardados.'
 
+  useEffect(() => {
+    if (hasActiveSearchCriteria) setGuidedLayerExpanded(true)
+  }, [hasActiveSearchCriteria])
+
   const clearBuscarSearch = useCallback(() => {
     setShowMap(false)
     setMapLiveViewport(false)
@@ -920,8 +937,8 @@ export function BuscarContent({
 
   const openRefineFromAssistant = useCallback(() => {
     setClassicFiltersOpen(true)
-    setShowRefineLayer(true)
-    scrollToElementId('buscar-afinar-mas')
+    setGuidedLayerExpanded(true)
+    scrollToElementId('buscar-capa-2')
   }, [scrollToElementId])
 
   const quickFacetIds = contextualBlock?.quickFacetIds
@@ -1229,10 +1246,10 @@ export function BuscarContent({
                 size="sm"
                 onClick={() => {
                   setClassicFiltersOpen(true)
-                  setShowAdvanced(true)
+                  setShowDeepFilters(true)
                   window.requestAnimationFrame(() =>
                     document
-                      .getElementById('buscar-esenciales')
+                      .getElementById('buscar-capa-3')
                       ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                   )
                 }}
@@ -1259,6 +1276,9 @@ export function BuscarContent({
             </p>
           </div>
 
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-primary">
+            {S.buscarLayer1Kicker}
+          </p>
           <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
             {S.locationBlockTitle}
           </p>
@@ -1335,64 +1355,20 @@ export function BuscarContent({
               >
                 {S.buscarLocalityCatalogButton}
               </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="h-9"
+                onClick={() => {
+                  setShowMap(true)
+                  scrollToElementId('buscar-mapa')
+                }}
+              >
+                {S.buscarPreferMapCta}
+              </Button>
             </div>
           </div>
-
-          {contextualBlock ? (
-            <div
-              className="space-y-3 rounded-lg border border-brand-primary/20 bg-brand-primary/5 p-3"
-              role="region"
-              aria-label="Sugerencias según tipo de propiedad"
-            >
-              <h3 className="text-sm font-semibold text-text-primary">
-                {contextualBlock.title}
-              </h3>
-              <p className="text-xs leading-relaxed text-text-secondary">
-                {contextualBlock.body}
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                {contextualBlock.quickFacetIds?.map((fid) => {
-                  const def = facetFlagCatalog.find((f) => f.id === fid)
-                  if (!def) return null
-                  const on = selectedAmenityFacets.includes(fid)
-                  return (
-                    <Button
-                      key={fid}
-                      type="button"
-                      size="sm"
-                      variant={on ? 'default' : 'outline'}
-                      className="h-8 text-xs"
-                      onClick={() =>
-                        setSelectedAmenityFacets((prev) =>
-                          on ? prev.filter((x) => x !== fid) : [...prev, fid]
-                        )
-                      }
-                    >
-                      {def.label}
-                    </Button>
-                  )
-                })}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  className="h-8 text-xs"
-                  onClick={() => {
-                    setShowAdvanced(true)
-                    scrollToElementId('buscar-filtros-avanzados')
-                  }}
-                >
-                  {S.contextualOpenAdvancedButton}
-                </Button>
-              </div>
-            </div>
-          ) : null}
-
-          {!showQuickAmenityChips ? (
-            <div className="pt-1">
-              <InductiveSearchChips variant="embedded" showSubtitle={false} />
-            </div>
-          ) : null}
 
           <div
             id="buscar-mapa"
@@ -1579,27 +1555,54 @@ export function BuscarContent({
                 onChange={(e) => setMaxPrice(e.target.value)}
               />
             </BuscarLabeledField>
-            <BuscarLabeledField id="buscar-dorm" label={S.buscarFieldMinBedrooms}>
-              <Input
-                id="buscar-dorm"
-                type="number"
-                placeholder="Ej. 2"
-                value={minBedrooms}
-                onChange={(e) => setMinBedrooms(e.target.value)}
-                min={0}
-              />
-            </BuscarLabeledField>
-            <BuscarLabeledField id="buscar-ambientes" label={S.buscarFieldMinTotalRooms}>
-              <Input
-                id="buscar-ambientes"
-                type="number"
-                placeholder="Ej. 3"
-                value={minTotalRooms}
-                onChange={(e) => setMinTotalRooms(e.target.value)}
-                min={0}
-              />
-            </BuscarLabeledField>
-            <div className="md:col-span-2">
+            {propertyType === 'land' ? (
+              <>
+                <BuscarLabeledField id="buscar-sup-l1" label={S.buscarFieldMinSurface}>
+                  <Input
+                    id="buscar-sup-l1"
+                    type="number"
+                    placeholder="Ej. 300"
+                    value={minSurface}
+                    onChange={(e) => setMinSurface(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+                <BuscarLabeledField id="buscar-sup-max-l1" label={S.buscarFieldMaxSurface}>
+                  <Input
+                    id="buscar-sup-max-l1"
+                    type="number"
+                    placeholder="Ej. 2000"
+                    value={maxSurface}
+                    onChange={(e) => setMaxSurface(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+              </>
+            ) : (
+              <>
+                <BuscarLabeledField id="buscar-dorm" label={S.buscarFieldMinBedrooms}>
+                  <Input
+                    id="buscar-dorm"
+                    type="number"
+                    placeholder="Ej. 2"
+                    value={minBedrooms}
+                    onChange={(e) => setMinBedrooms(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+                <BuscarLabeledField id="buscar-ambientes" label={S.buscarFieldMinTotalRooms}>
+                  <Input
+                    id="buscar-ambientes"
+                    type="number"
+                    placeholder="Ej. 3"
+                    value={minTotalRooms}
+                    onChange={(e) => setMinTotalRooms(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+              </>
+            )}
+            <div className="md:col-span-2 lg:col-span-4">
               <BuscarLabeledField id="buscar-q" label={S.buscarFieldKeywords}>
                 <Input
                   id="buscar-q"
@@ -1611,7 +1614,169 @@ export function BuscarContent({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          {!showQuickAmenityChips ? (
+            <div className="pt-1">
+              <InductiveSearchChips variant="embedded" showSubtitle={false} />
+            </div>
+          ) : null}
+
+          <section
+            id="buscar-capa-2"
+            className="scroll-mt-24 rounded-xl border border-border/80 bg-surface-secondary/40 p-3 md:p-4"
+            aria-label={S.buscarLayer2Title}
+          >
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-3 text-left"
+              onClick={() => setGuidedLayerExpanded((v) => !v)}
+            >
+              <span className="text-sm font-semibold text-text-primary">
+                {S.buscarLayer2Title}
+              </span>
+              <span className="shrink-0 text-xs font-semibold text-brand-primary">
+                {guidedLayerExpanded
+                  ? S.buscarLayer2CollapseCta
+                  : S.buscarLayer2ExpandCta}
+              </span>
+            </button>
+            {!guidedLayerExpanded ? (
+              <p className="mt-2 text-xs leading-relaxed text-text-tertiary">
+                {S.buscarLayer2Teaser}
+              </p>
+            ) : (
+              <div className="mt-3 space-y-4 border-t border-border/60 pt-3">
+                <p className="text-xs leading-relaxed text-text-secondary">
+                  {S.buscarLayer2Subtitle}
+                </p>
+                {contextualBlock ? (
+                  <div
+                    className="space-y-3 rounded-lg border border-brand-primary/20 bg-brand-primary/5 p-3"
+                    role="region"
+                  >
+                    <h3 className="text-sm font-semibold text-text-primary">
+                      {contextualBlock.title}
+                    </h3>
+                    <p className="text-xs leading-relaxed text-text-secondary">
+                      {contextualBlock.body}
+                    </p>
+                    {(contextualBlock.quickFacetIds ?? []).length > 0 ? (
+                      <div>
+                        <p className="text-xs font-medium text-text-tertiary">
+                          {S.buscarLayer2QuickChipsHint}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {(contextualBlock.quickFacetIds ?? [])
+                            .slice(0, 6)
+                            .map((fid) => {
+                              const def = facetFlagCatalog.find((f) => f.id === fid)
+                              if (!def) return null
+                              const on = selectedAmenityFacets.includes(fid)
+                              return (
+                                <Button
+                                  key={`guided-facet-${fid}`}
+                                  type="button"
+                                  size="sm"
+                                  variant={on ? 'default' : 'outline'}
+                                  className="h-8 text-xs"
+                                  onClick={() =>
+                                    setSelectedAmenityFacets((prev) =>
+                                      on
+                                        ? prev.filter((x) => x !== fid)
+                                        : [...prev, fid]
+                                    )
+                                  }
+                                >
+                                  {def.label}
+                                </Button>
+                              )
+                            })}
+                        </div>
+                      </div>
+                    ) : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="h-8 text-xs"
+                      onClick={() => {
+                        setShowDeepFilters(true)
+                        scrollToElementId('buscar-capa-3')
+                      }}
+                    >
+                      {S.buscarOpenLayer3Cta}
+                    </Button>
+                  </div>
+                ) : null}
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+                  {S.essentialsFriendlyTitle}
+                </p>
+                {propertyType === 'land' ? (
+                  <p className="text-xs text-text-secondary">
+                    {S.buscarLayer2LandHint}
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <BuscarLabeledField id="buscar-banos" label={S.buscarFieldMinBathrooms}>
+                      <Input
+                        id="buscar-banos"
+                        type="number"
+                        placeholder="Ej. 1"
+                        value={minBathrooms}
+                        onChange={(e) => setMinBathrooms(e.target.value)}
+                        min={0}
+                      />
+                    </BuscarLabeledField>
+                    <BuscarLabeledField id="buscar-cocheras" label={S.buscarFieldMinGarages}>
+                      <Input
+                        id="buscar-cocheras"
+                        type="number"
+                        placeholder="Ej. 1"
+                        value={minGarages}
+                        onChange={(e) => setMinGarages(e.target.value)}
+                        min={0}
+                      />
+                    </BuscarLabeledField>
+                    <BuscarLabeledField id="buscar-sup-min" label={S.buscarFieldMinSurface}>
+                      <Input
+                        id="buscar-sup-min"
+                        type="number"
+                        placeholder="Ej. 40"
+                        value={minSurface}
+                        onChange={(e) => setMinSurface(e.target.value)}
+                        min={0}
+                      />
+                    </BuscarLabeledField>
+                    <BuscarLabeledField id="buscar-sup-max" label={S.buscarFieldMaxSurface}>
+                      <Input
+                        id="buscar-sup-max"
+                        type="number"
+                        placeholder="Ej. 120"
+                        value={maxSurface}
+                        onChange={(e) => setMaxSurface(e.target.value)}
+                        min={0}
+                      />
+                    </BuscarLabeledField>
+                  </div>
+                )}
+                <label className="flex cursor-pointer items-start gap-2 text-sm text-text-primary">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 rounded border-border"
+                    checked={amenitiesStrict}
+                    onChange={(e) => setAmenitiesStrict(e.target.checked)}
+                  />
+                  <span>
+                    <span className="font-medium">{S.strictAmenitiesLabel}</span>
+                    <span className="block text-xs text-text-secondary">
+                      {S.strictAmenitiesHint}
+                    </span>
+                  </span>
+                </label>
+              </div>
+            )}
+          </section>
+
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/60 pt-3">
             <Button
               type="button"
               variant="ghost"
@@ -1625,69 +1790,29 @@ export function BuscarContent({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setShowAdvanced((v) => !v)}
+              onClick={() => setShowDeepFilters((v) => !v)}
             >
-              {showAdvanced ? S.hideAdvanced : S.moreFilters}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowRefineLayer((v) => !v)}
-            >
-              {showRefineLayer ? S.hideRefineLayer : S.moreRefineLayer}
+              {showDeepFilters ? S.buscarCloseLayer3Cta : S.buscarOpenLayer3Cta}
             </Button>
           </div>
 
-          {showAdvanced ? (
+          {showDeepFilters ? (
             <div
-              id="buscar-filtros-avanzados"
-              className="mt-4 scroll-mt-24 space-y-4 border-t border-border pt-4"
+              id="buscar-capa-3"
+              className="scroll-mt-24 space-y-4 border-t border-border pt-4"
             >
+              <div>
+                <p className="text-sm font-semibold text-text-primary">
+                  {S.buscarLayer3Title}
+                </p>
+                <p className="mt-0.5 text-xs text-text-secondary">
+                  {S.buscarLayer3Subtitle}
+                </p>
+              </div>
               <p className="text-sm font-medium text-text-primary">
-                {S.advancedFiltersTitle}
+                {S.buscarLayer3TechnicalTitle}
               </p>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <BuscarLabeledField id="buscar-banos" label={S.buscarFieldMinBathrooms}>
-                  <Input
-                    id="buscar-banos"
-                    type="number"
-                    placeholder="Ej. 1"
-                    value={minBathrooms}
-                    onChange={(e) => setMinBathrooms(e.target.value)}
-                    min={0}
-                  />
-                </BuscarLabeledField>
-                <BuscarLabeledField id="buscar-cocheras" label={S.buscarFieldMinGarages}>
-                  <Input
-                    id="buscar-cocheras"
-                    type="number"
-                    placeholder="Ej. 1"
-                    value={minGarages}
-                    onChange={(e) => setMinGarages(e.target.value)}
-                    min={0}
-                  />
-                </BuscarLabeledField>
-                <BuscarLabeledField id="buscar-sup-min" label={S.buscarFieldMinSurface}>
-                  <Input
-                    id="buscar-sup-min"
-                    type="number"
-                    placeholder="Ej. 40"
-                    value={minSurface}
-                    onChange={(e) => setMinSurface(e.target.value)}
-                    min={0}
-                  />
-                </BuscarLabeledField>
-                <BuscarLabeledField id="buscar-sup-max" label={S.buscarFieldMaxSurface}>
-                  <Input
-                    id="buscar-sup-max"
-                    type="number"
-                    placeholder="Ej. 120"
-                    value={maxSurface}
-                    onChange={(e) => setMaxSurface(e.target.value)}
-                    min={0}
-                  />
-                </BuscarLabeledField>
                 <BuscarLabeledField
                   id="buscar-cub-min"
                   label={S.buscarFieldMinSurfaceCovered}
@@ -1754,29 +1879,6 @@ export function BuscarContent({
                     <option value="SW">Suroeste</option>
                   </select>
                 </BuscarLabeledField>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-text-primary mb-2">
-                  {S.advancedComfortTitle}
-                </p>
-                <div className="flex flex-wrap gap-x-4 gap-y-2">
-                  {advancedAmenityFields.map((facet) => (
-                    <label
-                      key={facet.id}
-                      className="flex cursor-pointer items-center gap-2 text-sm text-text-primary"
-                    >
-                      <input
-                        type="checkbox"
-                        className="rounded border-border"
-                        checked={selectedAmenityFacets.includes(facet.id)}
-                        onChange={() => toggleAmenityFacet(facet.id)}
-                      />
-                      {facet.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <BuscarLabeledField id="buscar-escalera" label={S.buscarFieldEscalera}>
                   <Input
                     id="buscar-escalera"
@@ -1787,67 +1889,15 @@ export function BuscarContent({
                   />
                 </BuscarLabeledField>
               </div>
-            </div>
-          ) : null}
-
-          {showRefineLayer ? (
-            <div
-              id="buscar-afinar-mas"
-              className="mt-4 scroll-mt-24 space-y-4 border-t border-border pt-4"
-            >
               <div>
                 <p className="text-sm font-medium text-text-primary">
-                  {S.refineLayerTitle}
+                  {S.buscarLayer3AmenitiesTitle}
                 </p>
-                <p className="text-xs text-text-secondary mt-0.5">
-                  {S.refineLayerSubtitle}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-text-primary">
-                  {S.facetChipsTitle}
-                </p>
-                <p className="text-xs text-text-secondary mt-0.5">
+                <p className="mt-0.5 text-xs text-text-tertiary">
                   {S.facetChipsHintRefine}
                 </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {facetChips.map((facet) => (
-                    <Button
-                      key={facet.id}
-                      type="button"
-                      size="sm"
-                      variant={
-                        selectedAmenityFacets.includes(facet.id)
-                          ? 'default'
-                          : 'outline'
-                      }
-                      onClick={() => toggleAmenityFacet(facet.id)}
-                    >
-                      {facet.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-              <label className="flex cursor-pointer items-start gap-2 text-sm text-text-primary">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 rounded border-border"
-                  checked={amenitiesStrict}
-                  onChange={(e) => setAmenitiesStrict(e.target.checked)}
-                />
-                <span>
-                  <span className="font-medium">{S.strictAmenitiesLabel}</span>
-                  <span className="block text-xs text-text-secondary">
-                    {S.strictAmenitiesHint}
-                  </span>
-                </span>
-              </label>
-              <div>
-                <p className="text-sm font-medium text-text-primary mb-2">
-                  {S.refineCatalogTitle}
-                </p>
-                <div className="flex flex-wrap gap-x-4 gap-y-2">
-                  {refineFacetDefinitions.map((facet) => (
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+                  {deepFacetCheckboxList.map((facet) => (
                     <label
                       key={facet.id}
                       className="flex cursor-pointer items-center gap-2 text-sm text-text-primary"
