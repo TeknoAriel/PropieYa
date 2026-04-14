@@ -1,6 +1,9 @@
 /**
  * Buscador v2 (MVP): sesión → tres buckets (strong / near / widened).
  * No usa `searchListingsLayered` ni la relajación legacy.
+ *
+ * Relajación incremental: near solo quita barrio; widened añade un solo paso
+ * (superficie → dormitorios → precio). Operación y tipo no cambian en widened.
  */
 
 import type {
@@ -22,6 +25,14 @@ import type { SearchFilters } from './types'
 import { searchListings, type SearchHit } from './search'
 
 const BUCKET_ORDER: SearchV2BucketId[] = ['strong', 'near', 'widened']
+
+function foldLatin(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim()
+}
 
 function geoSlice(s: SearchSessionMVP): Pick<SearchFilters, 'bbox' | 'polygon'> {
   if (!s.mapCommitted) return {}
@@ -82,22 +93,21 @@ function filtersStrong(s: SearchSessionMVP): SearchFilters {
   }
 }
 
+/** Paso 1: igual que strong pero sin barrio; amenities como preferencia. */
 function filtersNear(s: SearchSessionMVP): SearchFilters {
   const geo = geoSlice(s)
   const am = amenitySlice(s)
-  const { min, max } = stretchPrice(s.minPrice, s.maxPrice, s.fixedBudget, 1.1, 0.9)
   return {
     q: s.q ?? undefined,
     operationType: s.operationType ?? undefined,
-    propertyType: s.fixedPropertyType ? (s.propertyType ?? undefined) : undefined,
+    propertyType: s.propertyType ?? undefined,
     city: s.city ?? undefined,
     neighborhood: undefined,
-    minPrice: min,
-    maxPrice: max,
-    minBedrooms:
-      s.minBedrooms != null ? Math.max(0, s.minBedrooms - 1) : undefined,
-    minSurface: undefined,
-    maxSurface: undefined,
+    minPrice: s.minPrice ?? undefined,
+    maxPrice: s.maxPrice ?? undefined,
+    minBedrooms: s.minBedrooms ?? undefined,
+    minSurface: s.minSurface ?? undefined,
+    maxSurface: s.maxSurface ?? undefined,
     ...am,
     amenitiesMatchMode: 'preferred',
     matchProfile: 'catalog',
@@ -105,26 +115,43 @@ function filtersNear(s: SearchSessionMVP): SearchFilters {
   }
 }
 
+/**
+ * Paso 2: near + un solo relajamiento extra (superficie, dormitorio o precio).
+ * Nunca altera operación ni tipo.
+ */
 function filtersWidened(s: SearchSessionMVP): SearchFilters {
-  const geo = geoSlice(s)
-  const am = amenitySlice(s)
-  const { min, max } = stretchPrice(s.minPrice, s.maxPrice, s.fixedBudget, 1.22, 0.85)
-  return {
-    q: s.q ?? undefined,
-    operationType: undefined,
-    propertyType: undefined,
-    city: s.city ?? undefined,
-    neighborhood: undefined,
-    minPrice: min,
-    maxPrice: max,
-    minBedrooms: undefined,
-    minSurface: undefined,
-    maxSurface: undefined,
-    ...am,
-    amenitiesMatchMode: 'preferred',
-    matchProfile: 'intent',
-    ...geo,
+  const base = filtersNear(s)
+  const hadSurface = s.minSurface != null || s.maxSurface != null
+  if (hadSurface) {
+    return {
+      ...base,
+      minSurface: undefined,
+      maxSurface: undefined,
+    }
   }
+  if (s.minBedrooms != null && s.minBedrooms > 0) {
+    return {
+      ...base,
+      minBedrooms: Math.max(0, s.minBedrooms - 1),
+    }
+  }
+  if (!s.fixedBudget && (s.minPrice != null || s.maxPrice != null)) {
+    const { min, max } = stretchPrice(s.minPrice, s.maxPrice, false, 1.1, 0.9)
+    return {
+      ...base,
+      minPrice: min,
+      maxPrice: max,
+    }
+  }
+  return base
+}
+
+function widenedAddsRelaxation(s: SearchSessionMVP): boolean {
+  const hadSurface = s.minSurface != null || s.maxSurface != null
+  if (hadSurface) return true
+  if (s.minBedrooms != null && s.minBedrooms > 0) return true
+  if (!s.fixedBudget && (s.minPrice != null || s.maxPrice != null)) return true
+  return false
 }
 
 function explainStrong(s: SearchSessionMVP): ExplainMatchFilters {
@@ -147,16 +174,16 @@ function explainStrong(s: SearchSessionMVP): ExplainMatchFilters {
 }
 
 function explainNear(s: SearchSessionMVP): ExplainMatchFilters {
-  const { min, max } = stretchPrice(s.minPrice, s.maxPrice, s.fixedBudget, 1.1, 0.9)
   return {
     q: s.q ?? undefined,
     operationType: s.operationType ?? undefined,
-    propertyType: s.fixedPropertyType ? (s.propertyType ?? undefined) : undefined,
+    propertyType: s.propertyType ?? undefined,
     city: s.city ?? undefined,
-    minPrice: min,
-    maxPrice: max,
-    minBedrooms:
-      s.minBedrooms != null ? Math.max(0, s.minBedrooms - 1) : undefined,
+    minPrice: s.minPrice ?? undefined,
+    maxPrice: s.maxPrice ?? undefined,
+    minBedrooms: s.minBedrooms ?? undefined,
+    minSurface: s.minSurface ?? undefined,
+    maxSurface: s.maxSurface ?? undefined,
     amenities: s.amenityIds?.length ? s.amenityIds : undefined,
     bbox: s.mapMode === 'bbox' ? s.bbox ?? undefined : undefined,
     mapPolygonActive: s.mapMode === 'polygon',
@@ -165,16 +192,21 @@ function explainNear(s: SearchSessionMVP): ExplainMatchFilters {
 }
 
 function explainWidened(s: SearchSessionMVP): ExplainMatchFilters {
-  const { min, max } = stretchPrice(s.minPrice, s.maxPrice, s.fixedBudget, 1.22, 0.85)
+  const f = filtersWidened(s)
   return {
     q: s.q ?? undefined,
+    operationType: f.operationType,
+    propertyType: f.propertyType,
     city: s.city ?? undefined,
-    minPrice: min,
-    maxPrice: max,
+    minPrice: f.minPrice,
+    maxPrice: f.maxPrice,
+    minBedrooms: f.minBedrooms,
+    minSurface: f.minSurface,
+    maxSurface: f.maxSurface,
     amenities: s.amenityIds?.length ? s.amenityIds : undefined,
     bbox: s.mapMode === 'bbox' ? s.bbox ?? undefined : undefined,
     mapPolygonActive: s.mapMode === 'polygon',
-    matchProfile: 'intent',
+    matchProfile: 'catalog',
   }
 }
 
@@ -182,6 +214,83 @@ function explainForBucket(id: SearchV2BucketId, s: SearchSessionMVP): ExplainMat
   if (id === 'strong') return explainStrong(s)
   if (id === 'near') return explainNear(s)
   return explainWidened(s)
+}
+
+function hitTouchesPlace(h: SearchHit, place: string): boolean {
+  const p = foldLatin(place)
+  if (p.length < 2) return true
+  const addr = h.address
+  const city = typeof addr.city === 'string' ? foldLatin(addr.city) : ''
+  const nb = typeof addr.neighborhood === 'string' ? foldLatin(addr.neighborhood) : ''
+  const title = foldLatin(h.title)
+  const hay = `${city} ${nb} ${title}`
+  return (
+    hay.includes(p) ||
+    p.includes(city) ||
+    (nb.length > 2 && (hay.includes(nb) || p.includes(nb)))
+  )
+}
+
+function hitMatchesTextIntent(h: SearchHit, qRaw: string): boolean {
+  const q = foldLatin(qRaw)
+  const tokens = q
+    .split(/\s+/)
+    .map((t) => t.replace(/[^a-z0-9áéíóúñü]+/gi, ''))
+    .filter((t) => t.length >= 3)
+  if (tokens.length === 0) return true
+  const desc = typeof h.description === 'string' ? foldLatin(h.description) : ''
+  const addrStr = JSON.stringify(h.address ?? {})
+  const hay = `${foldLatin(h.title)} ${desc} ${foldLatin(addrStr)}`
+  return tokens.some((t) => hay.includes(t))
+}
+
+function hitInsideCommittedBbox(h: SearchHit, s: SearchSessionMVP): boolean {
+  if (!s.mapCommitted || s.mapMode !== 'bbox' || !s.bbox) return true
+  const lat = h.location?.lat
+  const lng = h.location?.lon
+  if (lat == null || lng == null) return false
+  const b = s.bbox
+  return lat >= b.south && lat <= b.north && lng >= b.west && lng <= b.east
+}
+
+function passesPriceSanity(h: SearchHit, s: SearchSessionMVP): boolean {
+  const price = h.priceAmount
+  if (!Number.isFinite(price) || price < 0) return false
+  if (s.maxPrice != null && s.maxPrice > 0 && price > s.maxPrice * 2) {
+    return false
+  }
+  if (s.minPrice != null && s.minPrice > 0 && price < s.minPrice * 0.45) {
+    return false
+  }
+  return true
+}
+
+function passesOperationType(h: SearchHit, s: SearchSessionMVP): boolean {
+  if (s.operationType && h.operationType !== s.operationType) return false
+  if (s.propertyType?.trim() && h.propertyType !== s.propertyType.trim()) {
+    return false
+  }
+  return true
+}
+
+function filterHitsSafety(
+  hits: SearchHit[],
+  s: SearchSessionMVP,
+  bucket: SearchV2BucketId
+): SearchHit[] {
+  return hits.filter((h) => {
+    if (!passesPriceSanity(h, s)) return false
+    if (!passesOperationType(h, s)) return false
+    if (!hitInsideCommittedBbox(h, s)) return false
+    if (s.city?.trim() && !hitTouchesPlace(h, s.city.trim())) return false
+    if (bucket === 'strong' && s.neighborhood?.trim()) {
+      if (!hitTouchesPlace(h, s.neighborhood.trim())) return false
+    }
+    if (s.q?.trim() && s.q.trim().length >= 4) {
+      if (!hitMatchesTextIntent(h, s.q.trim())) return false
+    }
+    return true
+  })
 }
 
 function buildActions(s: SearchSessionMVP): SearchV2Action[] {
@@ -233,6 +342,16 @@ function emptyBuckets(): ListingSearchV2Bucket[] {
   }))
 }
 
+function takeFiltered(
+  hits: SearchHit[],
+  s: SearchSessionMVP,
+  bucket: SearchV2BucketId,
+  limit: number
+): SearchHit[] {
+  const filtered = filterHitsSafety(hits, s, bucket)
+  return filtered.slice(0, limit)
+}
+
 export async function runListingSearchV2(opts: {
   session: SearchSessionMVP
   limitPerBucket: number
@@ -266,7 +385,7 @@ export async function runListingSearchV2(opts: {
   const fNear = filtersNear(normalized)
   const fWide = filtersWidened(normalized)
 
-  const resStrong = await searchListings({ ...fStrong, limit, offset: 0 })
+  const resStrong = await searchListings({ ...fStrong, limit: limit * 2, offset: 0 })
   if (!resStrong.fromEs) {
     return {
       sessionNormalized: normalized,
@@ -284,43 +403,87 @@ export async function runListingSearchV2(opts: {
   }
 
   const seen = new Set<string>()
-  const strongHits = resStrong.hits.slice(0, limit)
+  const strongHits = takeFiltered(resStrong.hits, normalized, 'strong', limit)
   for (const h of strongHits) seen.add(h.id)
 
-  const resNear = await searchListings({ ...fNear, limit: limit + seen.size, offset: 0 })
-  const nearHits =
-    resNear.fromEs && resNear.hits.length > 0
-      ? resNear.hits.filter((h) => !seen.has(h.id)).slice(0, limit)
-      : []
-  for (const h of nearHits) seen.add(h.id)
+  const nearAddsValue =
+    Boolean(normalized.neighborhood?.trim()) || normalized.strictAmenities
 
-  const resWide = await searchListings({
-    ...fWide,
-    limit: limit + seen.size,
-    offset: 0,
-  })
-  const wideHits =
-    resWide.fromEs && resWide.hits.length > 0
-      ? resWide.hits.filter((h) => !seen.has(h.id)).slice(0, limit)
-      : []
+  let nearHits: SearchHit[] = []
+  if (nearAddsValue) {
+    const resNear = await searchListings({
+      ...fNear,
+      limit: limit * 2 + seen.size,
+      offset: 0,
+    })
+    nearHits =
+      resNear.fromEs && resNear.hits.length > 0
+        ? takeFiltered(
+            resNear.hits.filter((h) => !seen.has(h.id)),
+            normalized,
+            'near',
+            limit
+          )
+        : []
+    for (const h of nearHits) seen.add(h.id)
+  }
+
+  let wideHits: SearchHit[] = []
+  if (widenedAddsRelaxation(normalized)) {
+    const sameAsNear =
+      fWide.operationType === fNear.operationType &&
+      fWide.propertyType === fNear.propertyType &&
+      fWide.minPrice === fNear.minPrice &&
+      fWide.maxPrice === fNear.maxPrice &&
+      fWide.minBedrooms === fNear.minBedrooms &&
+      fWide.minSurface === fNear.minSurface &&
+      fWide.maxSurface === fNear.maxSurface &&
+      fWide.q === fNear.q
+
+    if (!sameAsNear) {
+      const resWide = await searchListings({
+        ...fWide,
+        limit: limit * 2 + seen.size,
+        offset: 0,
+      })
+      wideHits =
+        resWide.fromEs && resWide.hits.length > 0
+          ? takeFiltered(
+              resWide.hits.filter((h) => !seen.has(h.id)),
+              normalized,
+              'widened',
+              limit
+            )
+          : []
+    }
+  }
 
   const buckets: ListingSearchV2Bucket[] = [
     {
       id: 'strong',
       label: SEARCH_V2_BUCKET_LABELS.strong,
-      items: withMatchReasons(explainForBucket('strong', normalized), strongHits) as unknown[],
+      items: withMatchReasons(
+        explainForBucket('strong', normalized),
+        strongHits
+      ) as unknown[],
       totalInBucket: strongHits.length,
     },
     {
       id: 'near',
       label: SEARCH_V2_BUCKET_LABELS.near,
-      items: withMatchReasons(explainForBucket('near', normalized), nearHits) as unknown[],
+      items: withMatchReasons(
+        explainForBucket('near', normalized),
+        nearHits
+      ) as unknown[],
       totalInBucket: nearHits.length,
     },
     {
       id: 'widened',
       label: SEARCH_V2_BUCKET_LABELS.widened,
-      items: withMatchReasons(explainForBucket('widened', normalized), wideHits) as unknown[],
+      items: withMatchReasons(
+        explainForBucket('widened', normalized),
+        wideHits
+      ) as unknown[],
       totalInBucket: wideHits.length,
     },
   ]
@@ -328,12 +491,12 @@ export async function runListingSearchV2(opts: {
   const messages = [...baseMessages]
   if (nearHits.length > 0) {
     messages.push(
-      'En «Muy parecidos» relajamos barrio, algunos números o tipo (según tu búsqueda); los amenities no excluyen salvo modo estricto en la primera sección.'
+      '«Muy parecidos» solo amplía a toda la ciudad: mismos números, operación y tipo; el barrio deja de ser obligatorio.'
     )
   }
   if (wideHits.length > 0) {
     messages.push(
-      'En «Opciones ampliadas» pueden aparecer otras operaciones y criterios más flexibles, siempre acotadas a tu ciudad o zona confirmada en el mapa.'
+      '«Opciones ampliadas» mantiene tu operación y tipo de propiedad y relaja un solo criterio extra (superficie, dormitorios o precio), sin mezclar avisos incoherentes.'
     )
   }
 

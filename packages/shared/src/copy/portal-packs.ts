@@ -321,6 +321,13 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarMapReleaseFilter: 'Dejar de filtrar por el mapa',
   searchV2SuggestedActions: 'Sugerencias para encontrar más',
   searchV2TotalSummary: '{n} propiedades (sumando los tres grupos)',
+  /** Buscador v2: texto bajo el título del bucket ampliado (colapsable). */
+  searchV2WidenedExplainer:
+    'Misma operación y tipo que pediste: acá relajamos un solo criterio extra (superficie, dormitorios o precio), sin mezclar resultados fuera de tu ciudad ni precios desorbitados.',
+  searchV2WidenedToggleShow: 'Ver opciones ampliadas',
+  searchV2WidenedToggleHide: 'Ocultar opciones ampliadas',
+  searchV2WidenedMapHint:
+    'Estas propiedades no aparecen en el mapa hasta que expandas este bloque.',
   advancedFiltersTitle: 'Filtros avanzados',
   advancedComfortTitle: 'Confort y condiciones',
   refineLayerTitle: 'Afinar más opciones',

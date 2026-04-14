@@ -383,6 +383,8 @@ export function BuscarContent({
   const [committedBbox, setCommittedBbox] = useState<BuscarMapBBox | null>(null)
   const [committedPolygon, setCommittedPolygon] = useState<BuscarMapPoint[]>([])
   const [mapCommitted, setMapCommitted] = useState(false)
+  /** Buscador v2: bucket «ampliadas» colapsado por defecto (pins = solo lo visible). */
+  const [searchV2WidenedOpen, setSearchV2WidenedOpen] = useState(false)
   const [polygonDrawMode, setPolygonDrawMode] = useState(false)
   /** Sprint 40 — rectángulo del mapa se aplica al listado al panear (debounce). */
   const [mapLiveViewport, setMapLiveViewport] = useState(false)
@@ -709,7 +711,7 @@ export function BuscarContent({
       }
     )
 
-  const listings = useMemo(() => {
+  const listingsAll = useMemo(() => {
     if (!dataV2?.buckets) return []
     const out: BuscarListingCardData[] = []
     for (const b of dataV2.buckets) {
@@ -720,6 +722,17 @@ export function BuscarContent({
     return out
   }, [dataV2])
 
+  const listingsForMap = useMemo(() => {
+    if (!dataV2?.buckets || searchV2WidenedOpen) return listingsAll
+    const widened = dataV2.buckets.find((b) => b.id === 'widened')
+    const widenedIds = new Set(
+      (widened?.items ?? []).map(
+        (row) => (row as BuscarListingCardData).id
+      )
+    )
+    return listingsAll.filter((l) => !widenedIds.has(l.id))
+  }, [dataV2, listingsAll, searchV2WidenedOpen])
+
   const data =
     dataV2 != null
       ? {
@@ -727,27 +740,34 @@ export function BuscarContent({
             dataV2.totalsByBucket.strong +
             dataV2.totalsByBucket.near +
             dataV2.totalsByBucket.widened,
-          items: listings,
+          items: listingsAll,
           searchUX: { messages: dataV2.messages as string[] },
           nextCursor: null as string | null,
         }
       : null
 
-  const mapPins = useMemo(() => pinsFromListings(listings), [listings])
+  const mapPins = useMemo(
+    () => pinsFromListings(listingsForMap),
+    [listingsForMap]
+  )
 
   useEffect(() => {
-    if (mapSyncSelectedId && !listings.some((l) => l.id === mapSyncSelectedId)) {
+    setSearchV2WidenedOpen(false)
+  }, [v2SessionFingerprint])
+
+  useEffect(() => {
+    if (mapSyncSelectedId && !listingsForMap.some((l) => l.id === mapSyncSelectedId)) {
       setMapSyncSelectedId(null)
     }
-  }, [listings, mapSyncSelectedId])
+  }, [listingsForMap, mapSyncSelectedId])
 
   const mapPinEmphasisId = mapSyncHoverId ?? mapSyncSelectedId
 
   const mapSyncFlyCoords = useMemo(() => {
     if (!mapSyncHoverId) return null
-    const l = listings.find((x) => x.id === mapSyncHoverId)
+    const l = listingsForMap.find((x) => x.id === mapSyncHoverId)
     return l ? getListingPinCoords(l) : null
-  }, [mapSyncHoverId, listings])
+  }, [mapSyncHoverId, listingsForMap])
 
   const onMapSyncHover = useCallback((id: string | null) => {
     setMapSyncHoverId(id)
@@ -2187,45 +2207,134 @@ export function BuscarContent({
               </div>
               {(() => {
                 let globalIndex = 0
-                return dataV2.buckets.map((bucket) => (
-                  <section key={bucket.id} className="space-y-3">
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-                      <h2 className="text-base font-semibold text-text-primary">
-                        {bucket.label}
-                      </h2>
-                      <span className="text-xs text-text-tertiary">
-                        {bucket.totalInBucket} en este grupo
-                      </span>
-                    </div>
-                    {bucket.items.length === 0 ? (
-                      <p className="text-sm text-text-secondary">
-                        Ningún aviso en este grupo.
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                        {bucket.items.map((row) => {
-                          const listing = row as BuscarListingCardData
-                          const index = globalIndex++
-                          return (
-                            <ListingCard
-                              key={`${bucket.id}-${listing.id}`}
-                              listing={listing}
-                              mapSelectedListingId={mapSyncSelectedId}
-                              onMapSyncHover={
-                                showMap && mapPins.length > 0
-                                  ? onMapSyncHover
-                                  : undefined
-                              }
-                              onResultLinkClick={(listingId) =>
-                                onSearchResultNavigate(listingId, 'list', index)
-                              }
-                            />
-                          )
-                        })}
-                      </div>
-                    )}
-                  </section>
-                ))
+                const widenedCount =
+                  dataV2.buckets.find((b) => b.id === 'widened')?.totalInBucket ??
+                  0
+
+                return (
+                  <>
+                    {dataV2.buckets.map((bucket) => {
+                      if (bucket.id === 'near' && bucket.items.length === 0) {
+                        return null
+                      }
+                      if (bucket.id === 'widened') {
+                        if (bucket.items.length === 0) return null
+                        return (
+                          <section
+                            key={bucket.id}
+                            className="space-y-3 rounded-xl border border-border/80 bg-surface-secondary/30 p-3 md:p-4"
+                          >
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="min-w-0 space-y-1">
+                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                  <h2 className="text-base font-semibold text-text-primary">
+                                    {bucket.label}
+                                  </h2>
+                                  <span className="text-xs text-text-tertiary">
+                                    {bucket.totalInBucket} en este grupo
+                                  </span>
+                                </div>
+                                <p className="text-xs leading-relaxed text-text-secondary">
+                                  {S.searchV2WidenedExplainer}
+                                </p>
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-9 shrink-0"
+                                aria-expanded={searchV2WidenedOpen}
+                                onClick={() =>
+                                  setSearchV2WidenedOpen((v) => !v)
+                                }
+                              >
+                                {searchV2WidenedOpen
+                                  ? S.searchV2WidenedToggleHide
+                                  : S.searchV2WidenedToggleShow}
+                              </Button>
+                            </div>
+                            {!searchV2WidenedOpen && widenedCount > 0 ? (
+                              <p className="text-xs text-text-tertiary" role="status">
+                                {S.searchV2WidenedMapHint}
+                              </p>
+                            ) : null}
+                            {searchV2WidenedOpen ? (
+                              <div className="grid grid-cols-1 gap-6 border-t border-border/60 pt-4 md:grid-cols-2 lg:grid-cols-3">
+                                {bucket.items.map((row) => {
+                                  const listing = row as BuscarListingCardData
+                                  const index = globalIndex++
+                                  return (
+                                    <ListingCard
+                                      key={`${bucket.id}-${listing.id}`}
+                                      listing={listing}
+                                      mapSelectedListingId={mapSyncSelectedId}
+                                      onMapSyncHover={
+                                        showMap && mapPins.length > 0
+                                          ? onMapSyncHover
+                                          : undefined
+                                      }
+                                      onResultLinkClick={(listingId) =>
+                                        onSearchResultNavigate(
+                                          listingId,
+                                          'list',
+                                          index
+                                        )
+                                      }
+                                    />
+                                  )
+                                })}
+                              </div>
+                            ) : null}
+                          </section>
+                        )
+                      }
+
+                      return (
+                        <section key={bucket.id} className="space-y-3">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+                            <h2 className="text-base font-semibold text-text-primary">
+                              {bucket.label}
+                            </h2>
+                            <span className="text-xs text-text-tertiary">
+                              {bucket.totalInBucket} en este grupo
+                            </span>
+                          </div>
+                          {bucket.items.length === 0 ? (
+                            <p className="text-sm text-text-secondary">
+                              Ningún aviso en este grupo.
+                            </p>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                              {bucket.items.map((row) => {
+                                const listing = row as BuscarListingCardData
+                                const index = globalIndex++
+                                return (
+                                  <ListingCard
+                                    key={`${bucket.id}-${listing.id}`}
+                                    listing={listing}
+                                    mapSelectedListingId={mapSyncSelectedId}
+                                    onMapSyncHover={
+                                      showMap && mapPins.length > 0
+                                        ? onMapSyncHover
+                                        : undefined
+                                    }
+                                    onResultLinkClick={(listingId) =>
+                                      onSearchResultNavigate(
+                                        listingId,
+                                        'list',
+                                        index
+                                      )
+                                    }
+                                  />
+                                )
+                              })}
+                            </div>
+                          )}
+                        </section>
+                      )
+                    })}
+                  </>
+                )
               })()}
               {data && data.total > 0 ? (
                 <p className="text-center text-sm text-text-secondary">
