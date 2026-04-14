@@ -79,6 +79,7 @@ Cada terminal es un **punto único** en código donde se registrará el hecho (a
 |------|---------------------|---------------|
 | Búsqueda | `listing.search.executed` | **Implementado (Sprint 45):** primera página de `listing.search` (sin cursor, offset 0); `payload`: `total`, `source` (`es` \| `sql` \| `sql_underfill`), `tier` o `esEmpty` según camino |
 | Ficha | `listing.ficha.view` | **Implementado:** tRPC `listing.recordPublicView` tras `getById` OK en `/propiedad/[id]` |
+| Embudo contacto | `listing.search.result_click`, `listing.contact.cta_click` | **IDs definidos (Sprint monetización base):** cablear en UI lista/mapa y CTA contactar — ver `docs/57-MONETIZACION-PORTAL-DISENO-BASE.md` |
 | Lead | `lead.submitted` | **Implementado (Sprint 46):** `lead.create` exitoso; `listingId`, `organizationId`, `payload.source` |
 | Comparador | `listing.compare.add` / `listing.compare.view` | **Implementado (Sprint 46):** `listing.recordCompareAdd` (botón comparar) y `listing.recordCompareView` (`/comparar`, 2+ activos) |
 | Asistente | `assistant.message.sent` / `assistant.search.triggered` | **`assistant.message.sent` (S46):** cada intento `searchConversational` tras rate limit; `lenBucket` s/m/l. **`assistant.search.triggered` (S45):** mutación exitosa |
@@ -106,6 +107,7 @@ Cada terminal es un **punto único** en código donde se registrará el hecho (a
 - Arquitectura general: `docs/01-arquitectura-tecnica.md`
 - Búsqueda medible: `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md`
 - Ingesta operativa: `docs/48-INGEST-PROPERSTAR-POLITICA-CRON-PUSH-Y-NEGOCIO.md`
+- Monetización (planes, boost, leads, métricas): `docs/57-MONETIZACION-PORTAL-DISENO-BASE.md`
 
 ---
 

@@ -14,6 +14,16 @@ export const PORTAL_STATS_TERMINALS = {
   LISTING_SEARCH_RELAXATION_USED: 'listing.search.relaxation_used',
   /** Vista de ficha pública (antes de incrementar view_count / ES). */
   LISTING_FICHA_VIEW: 'listing.ficha.view',
+  /**
+   * Clic desde resultado de búsqueda (lista o mapa) hacia la ficha.
+   * Payload sugerido: `{ from?: 'list' | 'map', position?: number }` — sin PII.
+   */
+  LISTING_SEARCH_RESULT_CLICK: 'listing.search.result_click',
+  /**
+   * Usuario abrió el flujo de contacto (CTA principal), antes de enviar lead.
+   * Embudo monetización / conversión; payload mínimo.
+   */
+  LISTING_CONTACT_CTA_CLICK: 'listing.contact.cta_click',
   /** Lead enviado desde ficha u otro CTA. */
   LEAD_SUBMITTED: 'lead.submitted',
   /** Aviso agregado al comparador. */
@@ -45,6 +55,10 @@ export const PORTAL_STATS_TERMINAL_LABELS: Record<PortalStatsTerminalId, string>
   [PORTAL_STATS_TERMINALS.LISTING_SEARCH_RELAXATION_USED]:
     'Búsqueda: relajación de filtros aplicada',
   [PORTAL_STATS_TERMINALS.LISTING_FICHA_VIEW]: 'Vista de ficha pública',
+  [PORTAL_STATS_TERMINALS.LISTING_SEARCH_RESULT_CLICK]:
+    'Clic en resultado hacia ficha',
+  [PORTAL_STATS_TERMINALS.LISTING_CONTACT_CTA_CLICK]:
+    'Clic en contactar (inicio flujo)',
   [PORTAL_STATS_TERMINALS.LEAD_SUBMITTED]: 'Lead enviado',
   [PORTAL_STATS_TERMINALS.LISTING_COMPARE_ADD]: 'Aviso al comparador',
   [PORTAL_STATS_TERMINALS.LISTING_COMPARE_VIEW]: 'Página comparar',
