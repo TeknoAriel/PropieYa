@@ -11,7 +11,6 @@ export const PORTAL_PRIMARY_NAV: PortalNavItem[] = [
   { href: '/buscar', label: 'Propiedades' },
   { href: '/emprendimientos', label: 'Emprendimientos' },
   { href: '/inversiones', label: 'Inversiones' },
-  { href: '/alquiler', label: 'Alquiler' },
   { href: '/oportunidades', label: 'Oportunidades' },
   { href: '/agentes', label: 'Inmobiliarias' },
 ]
