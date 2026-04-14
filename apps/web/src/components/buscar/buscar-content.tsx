@@ -55,6 +55,7 @@ import {
   normalizeSearchSessionMVP,
   OPERATION_TYPE_LABELS,
   PORTAL_SEARCH_UX_COPY as S,
+  PROPERTY_TYPE_LABELS,
   summarizeSearchFilters,
   type Currency,
   type ExplainMatchFilters,
@@ -142,12 +143,124 @@ function getListingPinCoords(
   return ok ? { lat: ok.lat, lng: ok.lng } : null
 }
 
+function appendAmenityToUrlParams(p: URLSearchParams, amenityId: string) {
+  const set = new Set(
+    (p.get('amenities') ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter((x) => x.length > 0)
+  )
+  set.add(amenityId)
+  p.set('amenities', [...set].sort().join(','))
+}
+
+function cardWhyLine(
+  listing: BuscarListingCardData,
+  bucketId: 'strong' | 'near' | 'widened'
+): string {
+  const tipo =
+    PROPERTY_TYPE_LABELS[listing.propertyType] ?? listing.propertyType
+  const op =
+    OPERATION_TYPE_LABELS[listing.operationType] ?? listing.operationType
+  const nb = listing.address?.neighborhood?.trim()
+  const cy = listing.address?.city?.trim()
+  const zona = nb && cy ? `${nb}, ${cy}` : cy || nb || 'esta zona'
+  const precio = formatPrice(
+    listing.priceAmount,
+    listing.priceCurrency as Currency
+  )
+  if (bucketId === 'strong') {
+    return `${tipo} en ${zona} por ${precio}: encaja con tu búsqueda (${op.toLowerCase()}).`
+  }
+  if (bucketId === 'near') {
+    return `${tipo} por ${precio} en ${zona}: ampliamos la zona para no perderte nada útil.`
+  }
+  return `${tipo} por ${precio} en ${zona}: mismo tipo y operación, con un criterio un poco más flexible.`
+}
+
+function buildBucketSessionDigestLine(
+  bucketId: 'strong' | 'near' | 'widened',
+  opts: {
+    forcedOperation?: 'sale' | 'rent'
+    operationType: OperationType | ''
+    city: string
+    neighborhood: string
+    propertyType: PropertyType | ''
+    minPrice: string
+    maxPrice: string
+  }
+): string {
+  const opRaw = opts.forcedOperation ?? opts.operationType
+  const opLabel = opRaw ? OPERATION_TYPE_LABELS[opRaw] : 'lo que buscás'
+  const tipo = opts.propertyType
+    ? PROPERTY_TYPE_LABELS[opts.propertyType]
+    : 'el tipo que elegiste'
+  const c = opts.city.trim()
+  const n = opts.neighborhood.trim()
+  const zona =
+    n && c ? `${n} (${c})` : c ? `en ${c}` : n ? `en ${n}` : 'la zona que marcaste'
+
+  const tMax = opts.maxPrice.trim()
+  const tMin = opts.minPrice.trim()
+  const nMax = Number(tMax)
+  const nMin = Number(tMin)
+  let precioBit = ''
+  if (tMax !== '' && Number.isFinite(nMax)) {
+    precioBit = `, hasta ${formatPrice(nMax, 'ARS')}`
+  } else if (tMin !== '' && Number.isFinite(nMin)) {
+    precioBit = `, desde ${formatPrice(nMin, 'ARS')}`
+  }
+
+  if (bucketId === 'strong') {
+    return `Buscamos ${opLabel.toLowerCase()} de ${tipo} ${zona}${precioBit}.`
+  }
+  if (bucketId === 'near') {
+    if (n) {
+      return `Abrimos la ciudad: seguís con ${tipo}${precioBit}, sin quedarte solo en un barrio.`
+    }
+    return `Más opciones en ${c || 'tu ciudad'} con ${tipo}${precioBit}.`
+  }
+  return `Si aflojás un detalle, aparecen avisos con el mismo tipo y operación${precioBit}.`
+}
+
+function displayBucketTitle(bucketId: string, serverLabel: string): string {
+  if (bucketId === 'strong') return S.searchV2BucketTitleStrong
+  if (bucketId === 'near') return S.searchV2BucketTitleNear
+  if (bucketId === 'widened') return S.searchV2BucketTitleWidened
+  return serverLabel
+}
+
+function bucketCountLabel(bucketId: string, n: number): string {
+  const s = String(n)
+  if (bucketId === 'strong') return S.searchV2BucketCountStrong.replace('{n}', s)
+  if (bucketId === 'near') return S.searchV2BucketCountNear.replace('{n}', s)
+  if (bucketId === 'widened') return S.searchV2BucketCountWidened.replace('{n}', s)
+  return `${s} en este grupo`
+}
+
+function bucketStrongNearSectionClass(bucketId: string): string {
+  if (bucketId === 'strong') {
+    return 'space-y-4 rounded-2xl border-2 border-brand-primary/35 bg-gradient-to-br from-brand-primary/[0.08] via-brand-primary/[0.03] to-transparent p-4 shadow-md ring-1 ring-brand-primary/15 md:p-6'
+  }
+  if (bucketId === 'near') {
+    return 'space-y-3 rounded-xl border border-border/80 bg-surface-secondary/40 p-4 md:p-5'
+  }
+  return 'space-y-3'
+}
+
+function bucketHeadingClass(bucketId: string): string {
+  if (bucketId === 'strong') return 'text-lg font-bold text-text-primary md:text-xl'
+  if (bucketId === 'near') return 'text-base font-semibold text-text-primary'
+  return 'text-base font-semibold text-text-primary'
+}
+
 function ListingCard({
   listing,
   mapSelectedListingId,
   onMapSyncHover,
   onResultLinkClick,
   compactMatchReason,
+  whyBucketId,
 }: {
   listing: BuscarListingCardData
   mapSelectedListingId: string | null
@@ -156,6 +269,7 @@ function ListingCard({
   onResultLinkClick?: (listingId: string) => void
   /** Buscador v2: una sola línea de encaje en lugar de lista larga. */
   compactMatchReason?: boolean
+  whyBucketId?: 'strong' | 'near' | 'widened'
 }) {
   const operationLabel = OPERATION_TYPE_LABELS[listing.operationType] ?? listing.operationType
   const neighborhood = listing.address?.neighborhood ?? '—'
@@ -168,6 +282,10 @@ function ListingCard({
     firstReason && firstReason.length > 140
       ? `${firstReason.slice(0, 137)}…`
       : (firstReason ?? '')
+  const compactWhyText =
+    compactMatchReason && whyBucketId
+      ? cardWhyLine(listing, whyBucketId)
+      : matchOneLine
 
   return (
     <div
@@ -237,7 +355,7 @@ function ListingCard({
             ) : null}
           </div>
 
-          {compactMatchReason && matchOneLine ? (
+          {compactMatchReason && compactWhyText ? (
             <div className="mt-3 rounded-md border border-border/60 bg-surface-secondary/80 px-3 py-2 text-xs text-text-secondary">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <p className="min-w-0 flex-1">
@@ -245,7 +363,7 @@ function ListingCard({
                     {S.searchV2WhySee}
                   </span>
                   <span className="mt-0.5 block text-text-secondary">
-                    {matchOneLine}
+                    {compactWhyText}
                   </span>
                 </p>
                 <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -322,13 +440,6 @@ function BuscarLabeledField({
 }
 
 const FLOW_GUIDE_STORAGE_KEY = 'propieya.buscar.flowGuide.dismissed'
-
-function searchV2BucketWhyLine(bucketId: string): string | null {
-  if (bucketId === 'strong') return S.searchV2BucketWhyStrong
-  if (bucketId === 'near') return S.searchV2BucketWhyNear
-  if (bucketId === 'widened') return S.searchV2BucketWhyWidened
-  return null
-}
 
 const ADVANCED_AMENITY_FLAG_ORDER = [
   'credit_approved',
@@ -1160,6 +1271,67 @@ export function BuscarContent({
     setClassicFiltersOpen(true)
     scrollToElementId('buscar-esenciales')
   }, [scrollToElementId])
+
+  const smartSuggestionIds = useMemo(() => {
+    if (!hasActiveSearchCriteria) return []
+    const ids: string[] = []
+    if (!selectedAmenityFacets.includes('pool')) ids.push('pool')
+    if (neighborhood.trim()) ids.push('widen-zone')
+    const tMax = maxPrice.trim()
+    const tMin = minPrice.trim()
+    const hasMax = tMax !== '' && Number.isFinite(Number(tMax))
+    const hasMin = tMin !== '' && Number.isFinite(Number(tMin))
+    if (hasMax) ids.push('price-more')
+    else if (hasMin) ids.push('price-less')
+    if (ids.length < 3 && !selectedAmenityFacets.includes('parking')) {
+      ids.push('parking')
+    }
+    return ids.slice(0, 3)
+  }, [
+    hasActiveSearchCriteria,
+    selectedAmenityFacets,
+    neighborhood,
+    maxPrice,
+    minPrice,
+  ])
+
+  const applySmartSuggestion = useCallback(
+    (id: string) => {
+      if (id === 'pool') {
+        pushBuscarQueryParams((p) => appendAmenityToUrlParams(p, 'pool'))
+        return
+      }
+      if (id === 'parking') {
+        pushBuscarQueryParams((p) => appendAmenityToUrlParams(p, 'parking'))
+        return
+      }
+      if (id === 'widen-zone') {
+        searchWholeCity()
+        return
+      }
+      if (id === 'price-more' || id === 'price-less') {
+        widenPriceRange()
+      }
+    },
+    [pushBuscarQueryParams, searchWholeCity, widenPriceRange]
+  )
+
+  function smartSuggestionLabel(id: string): string {
+    switch (id) {
+      case 'pool':
+        return S.searchV2SmartPool
+      case 'widen-zone':
+        return S.searchV2SmartWiderZone
+      case 'price-more':
+        return S.searchV2SmartPayMore
+      case 'price-less':
+        return S.searchV2SmartPayLess
+      case 'parking':
+        return S.searchV2SmartGarage
+      default:
+        return ''
+    }
+  }
 
   const onMapPinSelect = useCallback(
     (id: string) => {
@@ -2430,7 +2602,9 @@ export function BuscarContent({
           ) : dataV2?.buckets ? (
             <div className="space-y-10">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm font-medium text-text-primary">Resultados</p>
+                <p className="text-sm font-semibold text-text-primary">
+                  {S.searchV2ResultsHeading}
+                </p>
                 <div
                   className="inline-flex w-full max-w-xs rounded-lg border border-border/80 bg-surface-secondary/60 p-0.5 sm:w-auto"
                   role="group"
@@ -2440,7 +2614,7 @@ export function BuscarContent({
                     type="button"
                     variant={!showMap ? 'default' : 'ghost'}
                     size="sm"
-                    className="h-9 flex-1 rounded-md px-3 text-xs sm:flex-none sm:text-sm"
+                    className="h-9 flex-1 rounded-md px-3 text-xs transition-transform active:scale-[0.98] sm:flex-none sm:text-sm"
                     onClick={() => setShowMap(false)}
                   >
                     Lista
@@ -2449,7 +2623,7 @@ export function BuscarContent({
                     type="button"
                     variant={showMap ? 'default' : 'ghost'}
                     size="sm"
-                    className="h-9 flex-1 rounded-md px-3 text-xs sm:flex-none sm:text-sm"
+                    className="h-9 flex-1 rounded-md px-3 text-xs transition-transform active:scale-[0.98] sm:flex-none sm:text-sm"
                     onClick={() => {
                       setShowMap(true)
                       scrollToElementId('buscar-mapa')
@@ -2460,11 +2634,48 @@ export function BuscarContent({
                   </Button>
                 </div>
               </div>
+              {!isLoading &&
+              data &&
+              data.total > 0 &&
+              smartSuggestionIds.length > 0 ? (
+                <div className="rounded-xl border border-brand-primary/20 bg-brand-primary/[0.06] p-4 shadow-sm">
+                  <p className="text-sm font-semibold text-text-primary">
+                    {S.searchV2SmartSuggestionsTitle}
+                  </p>
+                  <p className="mt-0.5 text-xs text-text-secondary">
+                    {S.searchV2SmartSuggestionsHint}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {smartSuggestionIds.map((sid) => (
+                      <Button
+                        key={sid}
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="h-9 max-w-full whitespace-normal text-left text-xs leading-snug transition-transform active:scale-[0.98] sm:text-sm"
+                        onClick={() => applySmartSuggestion(sid)}
+                      >
+                        {smartSuggestionLabel(sid)}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               {(() => {
                 let globalIndex = 0
                 const widenedCount =
                   dataV2.buckets.find((b) => b.id === 'widened')?.totalInBucket ??
                   0
+
+                const digestOpts = {
+                  forcedOperation,
+                  operationType,
+                  city,
+                  neighborhood,
+                  propertyType,
+                  minPrice,
+                  maxPrice,
+                }
 
                 return (
                   <>
@@ -2477,27 +2688,48 @@ export function BuscarContent({
                         return (
                           <section
                             key={bucket.id}
-                            className="space-y-3 rounded-xl border border-border/80 bg-surface-secondary/30 p-3 md:p-4"
+                            className="space-y-3 rounded-xl border border-dashed border-border/50 bg-surface-secondary/15 p-3 md:p-4"
                           >
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                               <div className="min-w-0 space-y-1">
                                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                                  <h2 className="text-base font-semibold text-text-primary">
-                                    {bucket.label}
+                                  <h2 className="text-sm font-medium text-text-secondary">
+                                    {displayBucketTitle(bucket.id, bucket.label)}
                                   </h2>
                                   <span className="text-xs text-text-tertiary">
-                                    {bucket.totalInBucket} en este grupo
+                                    {bucketCountLabel(
+                                      bucket.id,
+                                      bucket.totalInBucket
+                                    )}
                                   </span>
                                 </div>
-                                <p className="text-xs text-text-secondary">
-                                  {S.searchV2BucketWhyWidened}
-                                </p>
+                                {!searchV2WidenedOpen && widenedCount > 0 ? (
+                                  <p
+                                    className="text-sm font-medium text-text-primary"
+                                    role="status"
+                                  >
+                                    {widenedCount === 1
+                                      ? S.searchV2WidenedTeaserOne
+                                      : S.searchV2WidenedTeaser.replace(
+                                          '{n}',
+                                          String(widenedCount)
+                                        )}
+                                  </p>
+                                ) : null}
+                                {searchV2WidenedOpen ? (
+                                  <p className="text-xs leading-snug text-text-tertiary">
+                                    {buildBucketSessionDigestLine(
+                                      'widened',
+                                      digestOpts
+                                    )}
+                                  </p>
+                                ) : null}
                               </div>
                               <Button
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                className="h-9 shrink-0"
+                                className="h-9 shrink-0 text-xs transition-transform active:scale-[0.98]"
                                 aria-expanded={searchV2WidenedOpen}
                                 onClick={() =>
                                   setSearchV2WidenedOpen((v) => !v)
@@ -2509,12 +2741,12 @@ export function BuscarContent({
                               </Button>
                             </div>
                             {!searchV2WidenedOpen && widenedCount > 0 ? (
-                              <p className="text-xs text-text-tertiary" role="status">
+                              <p className="text-xs text-text-tertiary/90" role="status">
                                 {S.searchV2WidenedMapHint}
                               </p>
                             ) : null}
                             {searchV2WidenedOpen ? (
-                              <div className="grid grid-cols-1 gap-6 border-t border-border/60 pt-4 md:grid-cols-2 lg:grid-cols-3">
+                              <div className="grid grid-cols-1 gap-6 border-t border-border/40 pt-4 md:grid-cols-2 lg:grid-cols-3">
                                 {bucket.items.map((row) => {
                                   const listing = row as BuscarListingCardData
                                   const index = globalIndex++
@@ -2524,6 +2756,7 @@ export function BuscarContent({
                                       listing={listing}
                                       mapSelectedListingId={mapSyncSelectedId}
                                       compactMatchReason
+                                      whyBucketId="widened"
                                       onMapSyncHover={
                                         showMap && mapPins.length > 0
                                           ? onMapSyncHover
@@ -2545,25 +2778,31 @@ export function BuscarContent({
                         )
                       }
 
-                      const whyLine = searchV2BucketWhyLine(bucket.id)
+                      const bid = bucket.id
+                      if (bid !== 'strong' && bid !== 'near') return null
+
                       return (
-                        <section key={bucket.id} className="space-y-3">
+                        <section
+                          key={bucket.id}
+                          className={bucketStrongNearSectionClass(bid)}
+                        >
                           <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-                            <h2 className="text-base font-semibold text-text-primary">
-                              {bucket.label}
+                            <h2 className={bucketHeadingClass(bid)}>
+                              {displayBucketTitle(bucket.id, bucket.label)}
                             </h2>
                             <span className="text-xs text-text-tertiary">
-                              {bucket.totalInBucket} en este grupo
+                              {bucketCountLabel(
+                                bucket.id,
+                                bucket.totalInBucket
+                              )}
                             </span>
                           </div>
-                          {whyLine ? (
-                            <p className="text-xs font-medium text-brand-primary">
-                              {whyLine}
-                            </p>
-                          ) : null}
+                          <p className="text-sm leading-snug text-text-secondary">
+                            {buildBucketSessionDigestLine(bid, digestOpts)}
+                          </p>
                           {bucket.items.length === 0 ? (
                             <p className="text-sm text-text-secondary">
-                              Ningún aviso en este grupo.
+                              {S.searchV2BucketEmpty}
                             </p>
                           ) : (
                             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -2576,6 +2815,7 @@ export function BuscarContent({
                                     listing={listing}
                                     mapSelectedListingId={mapSyncSelectedId}
                                     compactMatchReason
+                                    whyBucketId={bid}
                                     onMapSyncHover={
                                       showMap && mapPins.length > 0
                                         ? onMapSyncHover
