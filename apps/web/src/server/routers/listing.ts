@@ -1191,6 +1191,7 @@ export const listingRouter = createTRPCRouter({
         bbox: input.bbox,
         polygon: input.polygon,
         amenitiesMatchMode: input.amenitiesMatchMode,
+        matchProfile: input.matchProfile,
         limit,
         offset: esOffset,
         searchAfter,
@@ -1536,6 +1537,7 @@ export const listingRouter = createTRPCRouter({
         const filters = {
           ...explainFilters,
           amenitiesMatchMode,
+          matchProfile: 'intent' as const,
           limit: 24,
           offset: 0,
         } as SearchFilters
@@ -1584,6 +1586,7 @@ export const listingRouter = createTRPCRouter({
               ...explainFilters,
               operationType: effective.operationType,
               amenitiesMatchMode: effective.amenitiesMatchMode,
+              matchProfile: 'intent',
               limit: 24,
               offset: 0,
             },

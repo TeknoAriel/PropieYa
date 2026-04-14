@@ -34,6 +34,8 @@ export interface ExplainMatchFilters {
   bbox?: { south: number; north: number; west: number; east: number }
   /** Polígono dibujado en mapa (solo texto de resumen; no confundir con `polygon` de geo). */
   mapPolygonActive?: boolean
+  /** Alineado a `listing.search` / ES: búsqueda por intención (scoring) vs catálogo (AND). */
+  matchProfile?: 'catalog' | 'intent'
 }
 
 /** Datos mínimos del aviso (SQL o hit de ES). */

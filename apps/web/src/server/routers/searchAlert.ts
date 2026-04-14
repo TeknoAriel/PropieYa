@@ -13,10 +13,9 @@ import { buildFiltersSummary } from '../../lib/search-filter-summary'
 import { recordPortalStatsEvent } from '../../lib/analytics/record-portal-stats-event'
 
 import { createTRPCRouter, protectedProcedure } from '../trpc'
+import { listingSearchFiltersBaseSchema } from './listing-search-input'
 import {
-  listingSearchFiltersBaseSchema,
-} from './listing-search-input'
-import {
+  inferListingMatchProfile,
   PORTAL_STATS_TERMINALS,
   sanitizeListingSearchFacets,
 } from '@propieya/shared'
@@ -57,6 +56,10 @@ export const searchAlertRouter = createTRPCRouter({
         .transform((data) => ({
           ...data,
           facets: sanitizeListingSearchFacets(data.facets),
+          matchProfile: inferListingMatchProfile({
+            q: data.q,
+            explicit: data.matchProfile,
+          }),
         }))
     )
     .mutation(async ({ ctx, input }) => {

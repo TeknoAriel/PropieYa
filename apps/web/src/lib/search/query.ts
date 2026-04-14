@@ -1,11 +1,16 @@
 /**
  * Query builder para búsqueda de listings.
  * Extrae filtros del texto (q) vía mergePublicSearchFromQuery; full-text solo sobre texto residual.
+ *
+ * Perfiles:
+ * - `catalog`: restricciones duras (AND) en precio, localidad, dormitorios, etc.
+ * - `intent`: operación/tipo duros; el resto rankea vía `should` + `constant_score` (sin excluir).
  */
+
+import { inferListingMatchProfile, mergePublicSearchFromQuery } from '@propieya/shared'
 
 import type { SearchFilters } from './types'
 import { getListingsIndex } from './client'
-import { mergePublicSearchFromQuery } from '@propieya/shared'
 
 const INDEX = getListingsIndex()
 
@@ -33,6 +38,186 @@ function esLocalityMatchClause(placeRaw: string): Record<string, unknown> | null
   }
 }
 
+function appendPriceClauses(
+  must: Record<string, unknown>[],
+  should: Record<string, unknown>[],
+  intentSemi: boolean,
+  minP?: number,
+  maxP?: number
+): void {
+  if (minP === undefined && maxP === undefined) return
+  if (!intentSemi) {
+    if (minP !== undefined) {
+      must.push({ range: { priceAmount: { gte: minP } } })
+    }
+    if (maxP !== undefined) {
+      must.push({ range: { priceAmount: { lte: maxP } } })
+    }
+    return
+  }
+  if (minP !== undefined && maxP !== undefined) {
+    should.push({
+      constant_score: {
+        filter: { range: { priceAmount: { gte: minP, lte: maxP } } },
+        boost: 34,
+      },
+    })
+    const lo = Math.max(0, Math.floor(minP * 0.82))
+    const hi = Math.ceil(maxP * 1.22)
+    should.push({
+      constant_score: {
+        filter: { range: { priceAmount: { gte: lo, lte: hi } } },
+        boost: 16,
+      },
+    })
+    return
+  }
+  if (maxP !== undefined) {
+    should.push({
+      constant_score: {
+        filter: { range: { priceAmount: { lte: maxP } } },
+        boost: 32,
+      },
+    })
+    should.push({
+      constant_score: {
+        filter: { range: { priceAmount: { lte: Math.ceil(maxP * 1.22) } } },
+        boost: 14,
+      },
+    })
+  } else if (minP !== undefined) {
+    should.push({
+      constant_score: {
+        filter: { range: { priceAmount: { gte: minP } } },
+        boost: 32,
+      },
+    })
+    should.push({
+      constant_score: {
+        filter: { range: { priceAmount: { gte: Math.floor(minP * 0.85) } } },
+        boost: 14,
+      },
+    })
+  }
+}
+
+function appendSurfaceClauses(
+  must: Record<string, unknown>[],
+  should: Record<string, unknown>[],
+  intentSemi: boolean,
+  minS?: number,
+  maxS?: number
+): void {
+  if (minS === undefined && maxS === undefined) return
+  if (!intentSemi) {
+    if (minS !== undefined) must.push({ range: { surfaceTotal: { gte: minS } } })
+    if (maxS !== undefined) must.push({ range: { surfaceTotal: { lte: maxS } } })
+    return
+  }
+  if (minS !== undefined && maxS !== undefined) {
+    should.push({
+      constant_score: {
+        filter: { range: { surfaceTotal: { gte: minS, lte: maxS } } },
+        boost: 20,
+      },
+    })
+    should.push({
+      constant_score: {
+        filter: {
+          range: {
+            surfaceTotal: {
+              gte: Math.max(0, Math.floor(minS * 0.88)),
+              lte: Math.ceil(maxS * 1.15),
+            },
+          },
+        },
+        boost: 10,
+      },
+    })
+  } else if (minS !== undefined) {
+    should.push({
+      constant_score: {
+        filter: { range: { surfaceTotal: { gte: minS } } },
+        boost: 18,
+      },
+    })
+    should.push({
+      constant_score: {
+        filter: {
+          range: { surfaceTotal: { gte: Math.max(0, Math.floor(minS * 0.85)) } },
+        },
+        boost: 9,
+      },
+    })
+  } else if (maxS !== undefined) {
+    should.push({
+      constant_score: {
+        filter: { range: { surfaceTotal: { lte: maxS } } },
+        boost: 18,
+      },
+    })
+    should.push({
+      constant_score: {
+        filter: {
+          range: { surfaceTotal: { lte: Math.ceil(maxS * 1.15) } },
+        },
+        boost: 9,
+      },
+    })
+  }
+}
+
+function appendMinNumericBoost(
+  must: Record<string, unknown>[],
+  should: Record<string, unknown>[],
+  intentSemi: boolean,
+  field: 'bedrooms' | 'bathrooms' | 'garages',
+  minV: number | undefined,
+  boostExact: number,
+  boostLoose: number
+): void {
+  if (minV === undefined) return
+  if (!intentSemi) {
+    must.push({ range: { [field]: { gte: minV } } })
+    return
+  }
+  should.push({
+    constant_score: {
+      filter: { range: { [field]: { gte: minV } } },
+      boost: boostExact,
+    },
+  })
+  const loose = Math.max(0, minV - 1)
+  should.push({
+    constant_score: {
+      filter: { range: { [field]: { gte: loose } } },
+      boost: boostLoose,
+    },
+  })
+}
+
+function appendLocalityClauses(
+  must: Record<string, unknown>[],
+  should: Record<string, unknown>[],
+  intentSemi: boolean,
+  city?: string,
+  neighborhood?: string
+): void {
+  const cityClause = city?.trim() ? esLocalityMatchClause(city) : null
+  const nbClause = neighborhood?.trim() ? esLocalityMatchClause(neighborhood) : null
+  if (intentSemi) {
+    if (cityClause) {
+      should.push({ constant_score: { filter: cityClause, boost: 26 } })
+    }
+    if (nbClause) {
+      should.push({ constant_score: { filter: nbClause, boost: 26 } })
+    }
+  } else {
+    if (cityClause) must.push(cityClause)
+    if (nbClause) must.push(nbClause)
+  }
+}
+
 /** Orden por distancia solo con localidad explícita y ancla válida (no filtra). */
 export function shouldApplyLocalityProximitySort(
   rest: Pick<SearchFilters, 'city' | 'neighborhood' | 'sortNearLat' | 'sortNearLng'>
@@ -56,6 +241,12 @@ export function shouldApplyLocalityProximitySort(
 export function buildSearchBody(filters: SearchFilters): Record<string, unknown> {
   const merged = mergePublicSearchFromQuery(filters)
   const { residualTextQuery, ...rest } = merged
+  const intentSemi =
+    inferListingMatchProfile({
+      q: filters.q,
+      explicit: filters.matchProfile,
+    }) === 'intent'
+
   const must: Record<string, unknown>[] = [{ term: { status: 'active' } }]
   const mustNot: Record<string, unknown>[] = []
   const should: Record<string, unknown>[] = []
@@ -111,60 +302,101 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
   if (rest.propertyType) {
     must.push({ term: { propertyType: rest.propertyType } })
   }
-  if (rest.minPrice !== undefined) {
-    must.push({ range: { priceAmount: { gte: rest.minPrice } } })
+
+  appendPriceClauses(must, should, intentSemi, rest.minPrice, rest.maxPrice)
+  appendSurfaceClauses(must, should, intentSemi, rest.minSurface, rest.maxSurface)
+  appendMinNumericBoost(must, should, intentSemi, 'bedrooms', rest.minBedrooms, 18, 9)
+  appendMinNumericBoost(must, should, intentSemi, 'bathrooms', rest.minBathrooms, 12, 6)
+  appendMinNumericBoost(must, should, intentSemi, 'garages', rest.minGarages, 10, 5)
+
+  if (!intentSemi) {
+    if (rest.floorMin !== undefined) {
+      must.push({ range: { floor: { gte: rest.floorMin } } })
+    }
+    if (rest.floorMax !== undefined) {
+      must.push({ range: { floor: { lte: rest.floorMax } } })
+    }
+    if (rest.escalera?.trim()) {
+      must.push({ term: { escalera: rest.escalera.trim().toUpperCase() } })
+    }
+    if (rest.orientation?.trim()) {
+      must.push({ term: { orientation: rest.orientation.trim() } })
+    }
+    if (rest.minSurfaceCovered !== undefined) {
+      must.push({
+        range: { surfaceCovered: { gte: rest.minSurfaceCovered } },
+      })
+    }
+    if (rest.maxSurfaceCovered !== undefined) {
+      must.push({
+        range: { surfaceCovered: { lte: rest.maxSurfaceCovered } },
+      })
+    }
+    if (rest.minTotalRooms !== undefined) {
+      must.push({
+        range: { totalRooms: { gte: rest.minTotalRooms } },
+      })
+    }
+  } else {
+    if (rest.floorMin !== undefined) {
+      should.push({
+        constant_score: {
+          filter: { range: { floor: { gte: rest.floorMin } } },
+          boost: 8,
+        },
+      })
+    }
+    if (rest.floorMax !== undefined) {
+      should.push({
+        constant_score: {
+          filter: { range: { floor: { lte: rest.floorMax } } },
+          boost: 8,
+        },
+      })
+    }
+    if (rest.escalera?.trim()) {
+      should.push({
+        constant_score: {
+          filter: { term: { escalera: rest.escalera.trim().toUpperCase() } },
+          boost: 8,
+        },
+      })
+    }
+    if (rest.orientation?.trim()) {
+      should.push({
+        constant_score: {
+          filter: { term: { orientation: rest.orientation.trim() } },
+          boost: 8,
+        },
+      })
+    }
+    if (rest.minSurfaceCovered !== undefined) {
+      should.push({
+        constant_score: {
+          filter: { range: { surfaceCovered: { gte: rest.minSurfaceCovered } } },
+          boost: 8,
+        },
+      })
+    }
+    if (rest.maxSurfaceCovered !== undefined) {
+      should.push({
+        constant_score: {
+          filter: { range: { surfaceCovered: { lte: rest.maxSurfaceCovered } } },
+          boost: 8,
+        },
+      })
+    }
+    if (rest.minTotalRooms !== undefined) {
+      should.push({
+        constant_score: {
+          filter: { range: { totalRooms: { gte: rest.minTotalRooms } } },
+          boost: 10,
+        },
+      })
+    }
   }
-  if (rest.maxPrice !== undefined) {
-    must.push({ range: { priceAmount: { lte: rest.maxPrice } } })
-  }
-  if (rest.minSurface !== undefined) {
-    must.push({ range: { surfaceTotal: { gte: rest.minSurface } } })
-  }
-  if (rest.maxSurface !== undefined) {
-    must.push({ range: { surfaceTotal: { lte: rest.maxSurface } } })
-  }
-  if (rest.minBedrooms !== undefined) {
-    must.push({ range: { bedrooms: { gte: rest.minBedrooms } } })
-  }
-  if (rest.minBathrooms !== undefined) {
-    must.push({ range: { bathrooms: { gte: rest.minBathrooms } } })
-  }
-  if (rest.minGarages !== undefined) {
-    must.push({ range: { garages: { gte: rest.minGarages } } })
-  }
-  if (rest.floorMin !== undefined) {
-    must.push({ range: { floor: { gte: rest.floorMin } } })
-  }
-  if (rest.floorMax !== undefined) {
-    must.push({ range: { floor: { lte: rest.floorMax } } })
-  }
-  if (rest.escalera?.trim()) {
-    must.push({ term: { escalera: rest.escalera.trim().toUpperCase() } })
-  }
-  if (rest.orientation?.trim()) {
-    must.push({ term: { orientation: rest.orientation.trim() } })
-  }
-  if (rest.minSurfaceCovered !== undefined) {
-    must.push({
-      range: { surfaceCovered: { gte: rest.minSurfaceCovered } },
-    })
-  }
-  if (rest.maxSurfaceCovered !== undefined) {
-    must.push({
-      range: { surfaceCovered: { lte: rest.maxSurfaceCovered } },
-    })
-  }
-  if (rest.minTotalRooms !== undefined) {
-    must.push({
-      range: { totalRooms: { gte: rest.minTotalRooms } },
-    })
-  }
-  const cityClause = rest.city?.trim() ? esLocalityMatchClause(rest.city) : null
-  if (cityClause) must.push(cityClause)
-  const nbClause = rest.neighborhood?.trim()
-    ? esLocalityMatchClause(rest.neighborhood)
-    : null
-  if (nbClause) must.push(nbClause)
+
+  appendLocalityClauses(must, should, intentSemi, rest.city, rest.neighborhood)
 
   if (rest.bbox) {
     const { south, north, west, east } = rest.bbox
@@ -204,7 +436,6 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
       ? rest.searchAfter
       : null
 
-  /** Con texto residual, primero `_score` (relevancia) y luego recencia estable. */
   const dateSort: Record<string, unknown>[] = [
     {
       publishedAt: {
@@ -243,8 +474,10 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
         },
       }
     : null
+
+  const useScoreSort = textQ.length > 0 || intentSemi
   const sort: Record<string, unknown>[] =
-    textQ.length > 0
+    useScoreSort
       ? geoDistSort
         ? [{ _score: { order: 'desc' as const } }, geoDistSort, ...dateSort]
         : [{ _score: { order: 'desc' as const } }, ...dateSort]
@@ -296,12 +529,19 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
   return body
 }
 
-/** Longitud del array `sort` / `search_after` en ES (4–6 según texto y cercanía por localidad). */
+/** Longitud del array `sort` / `search_after` en ES (4–6 según texto, perfil intent o cercanía). */
 export function getListingSearchSortKeyCount(filters: SearchFilters): 4 | 5 | 6 {
   const merged = mergePublicSearchFromQuery(filters)
-  const { residualTextQuery, ...rest } = merged
-  const base = sanitize(residualTextQuery).length > 0 ? 5 : 4
-  return (base + (shouldApplyLocalityProximitySort(rest as SearchFilters) ? 1 : 0)) as 4 | 5 | 6
+  const textQ = sanitize(merged.residualTextQuery)
+  const profile = inferListingMatchProfile({
+    q: filters.q,
+    explicit: filters.matchProfile,
+  })
+  const useScore = textQ.length > 0 || profile === 'intent'
+  const base = useScore ? 5 : 4
+  const { residualTextQuery: _r, ...geoRest } = merged
+  return (base +
+    (shouldApplyLocalityProximitySort(geoRest as SearchFilters) ? 1 : 0)) as 4 | 5 | 6
 }
 
 export function getSearchParams(filters: SearchFilters) {

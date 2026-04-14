@@ -1,6 +1,9 @@
 import { z } from 'zod'
 
-import { sanitizeListingSearchFacets } from '@propieya/shared'
+import {
+  inferListingMatchProfile,
+  sanitizeListingSearchFacets,
+} from '@propieya/shared'
 
 /** Rectángulo geográfico (WGS84). Sur ≤ norte, oeste ≤ este (sin cruce de antimeridiano). */
 export const listingSearchBBoxSchema = z
@@ -85,6 +88,10 @@ export const listingSearchFiltersBaseSchema = z.object({
    * `strict`: exigen presencia en inventario.
    */
   amenitiesMatchMode: z.enum(['preferred', 'strict']).optional().default('preferred'),
+  /**
+   * Sin valor: `intent` si hay `q` (búsqueda en lenguaje natural / asistente), si no `catalog`.
+   */
+  matchProfile: z.enum(['catalog', 'intent']).optional(),
 })
 
 /** Filtros con `facets` saneados contra el catálogo (evita ids inyectados). */
@@ -92,6 +99,10 @@ export const listingSearchFiltersSchema = listingSearchFiltersBaseSchema.transfo
   (data) => ({
     ...data,
     facets: sanitizeListingSearchFacets(data.facets),
+    matchProfile: inferListingMatchProfile({
+      q: data.q,
+      explicit: data.matchProfile,
+    }),
   })
 )
 
@@ -110,6 +121,10 @@ export const listingSearchInputSchema = listingSearchFiltersBaseSchema
   .transform((data) => ({
     ...data,
     facets: sanitizeListingSearchFacets(data.facets),
+    matchProfile: inferListingMatchProfile({
+      q: data.q,
+      explicit: data.matchProfile,
+    }),
   }))
 
 export type ListingSearchFiltersInput = z.infer<typeof listingSearchFiltersSchema>

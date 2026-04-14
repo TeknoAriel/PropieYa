@@ -61,6 +61,12 @@ export interface SearchFilters {
    * `strict`: cada amenity/flag positivo exige coincidencia en índice.
    */
   amenitiesMatchMode?: 'preferred' | 'strict'
+  /**
+   * `catalog` (default sin `q`): filtros numéricos/localidad como AND en ES.
+   * `intent`: precio, ubicación y la mayoría de numéricos solo rankean (should), no excluyen.
+   * Si se omite, se infiere: con texto `q` → `intent`, si no → `catalog`.
+   */
+  matchProfile?: 'catalog' | 'intent'
   geoPoint?: { lat: number; lng: number }
   /** Radio en metros (requiere `geoPoint`). */
   geoRadius?: number
