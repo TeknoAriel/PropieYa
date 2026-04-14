@@ -22,6 +22,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Filter,
   Input,
   Map as MapIcon,
@@ -61,6 +67,7 @@ import {
 
 import { AddToCompareButton } from '@/components/compare/add-to-compare-button'
 import { BuscarLocalityModal } from '@/components/buscar/buscar-locality-modal'
+import { BuscarSessionBar } from '@/components/buscar/buscar-session-bar'
 import { BuscarRecentSearches } from '@/components/buscar/buscar-recent-searches'
 import { ConversationalSearchBlock } from '@/components/portal/conversational-search-block'
 import { InductiveSearchChips } from '@/components/portal/inductive-search-chips'
@@ -140,12 +147,15 @@ function ListingCard({
   mapSelectedListingId,
   onMapSyncHover,
   onResultLinkClick,
+  compactMatchReason,
 }: {
   listing: BuscarListingCardData
   mapSelectedListingId: string | null
   onMapSyncHover?: (listingId: string | null) => void
   /** Telemetría embudo: clic hacia ficha desde la lista (el padre suele capturar `position`). */
   onResultLinkClick?: (listingId: string) => void
+  /** Buscador v2: una sola línea de encaje en lugar de lista larga. */
+  compactMatchReason?: boolean
 }) {
   const operationLabel = OPERATION_TYPE_LABELS[listing.operationType] ?? listing.operationType
   const neighborhood = listing.address?.neighborhood ?? '—'
@@ -153,8 +163,17 @@ function ListingCard({
   const pinCoords = getListingPinCoords(listing)
   const emphasizeFromMap = mapSelectedListingId === listing.id
 
+  const firstReason = listing.matchReasons?.[0]
+  const matchOneLine =
+    firstReason && firstReason.length > 140
+      ? `${firstReason.slice(0, 137)}…`
+      : (firstReason ?? '')
+
   return (
-    <div id={`buscar-listing-${listing.id}`} className="scroll-mt-24 rounded-lg">
+    <div
+      id={`buscar-listing-${listing.id}`}
+      className="scroll-mt-24 rounded-lg transition-transform duration-200 hover:-translate-y-0.5"
+    >
       <Link
         href={`/propiedad/${listing.id}`}
         className="block"
@@ -169,7 +188,7 @@ function ListingCard({
         }}
       >
         <Card
-          className={`group cursor-pointer overflow-hidden rounded-xl border border-border/70 shadow-sm transition-shadow duration-200 hover:border-border hover:shadow-md ${
+          className={`group cursor-pointer overflow-hidden rounded-xl border border-border/70 shadow-sm transition-all duration-200 hover:border-brand-primary/30 hover:shadow-md ${
             emphasizeFromMap
               ? 'ring-2 ring-brand-primary ring-offset-2 ring-offset-surface-primary'
               : ''
@@ -218,7 +237,29 @@ function ListingCard({
             ) : null}
           </div>
 
-          {listing.matchReasons && listing.matchReasons.length > 0 ? (
+          {compactMatchReason && matchOneLine ? (
+            <div className="mt-3 rounded-md border border-border/60 bg-surface-secondary/80 px-3 py-2 text-xs text-text-secondary">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <p className="min-w-0 flex-1">
+                  <span className="font-medium text-brand-primary">
+                    {S.searchV2WhySee}
+                  </span>
+                  <span className="mt-0.5 block text-text-secondary">
+                    {matchOneLine}
+                  </span>
+                </p>
+                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <AddToCompareButton
+                    listingId={listing.id}
+                    compact
+                    stopNavigation
+                  />
+                </div>
+              </div>
+            </div>
+          ) : !compactMatchReason &&
+            listing.matchReasons &&
+            listing.matchReasons.length > 0 ? (
             <div className="mt-3 rounded-md border border-border/60 bg-surface-secondary/80 px-3 py-2 text-xs text-text-secondary">
               <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                 <p className="min-w-0 flex-1 font-medium text-text-primary">
@@ -281,6 +322,13 @@ function BuscarLabeledField({
 }
 
 const FLOW_GUIDE_STORAGE_KEY = 'propieya.buscar.flowGuide.dismissed'
+
+function searchV2BucketWhyLine(bucketId: string): string | null {
+  if (bucketId === 'strong') return S.searchV2BucketWhyStrong
+  if (bucketId === 'near') return S.searchV2BucketWhyNear
+  if (bucketId === 'widened') return S.searchV2BucketWhyWidened
+  return null
+}
 
 const ADVANCED_AMENITY_FLAG_ORDER = [
   'credit_approved',
@@ -733,6 +781,19 @@ export function BuscarContent({
     return listingsAll.filter((l) => !widenedIds.has(l.id))
   }, [dataV2, listingsAll, searchV2WidenedOpen])
 
+  const widenedListCount = useMemo(() => {
+    const b = dataV2?.buckets?.find((x) => x.id === 'widened')
+    return b?.items.length ?? 0
+  }, [dataV2])
+
+  const shortSearchUxMessages = useMemo(
+    () =>
+      (dataV2?.messages ?? []).filter(
+        (m) => typeof m === 'string' && m.length <= 220
+      ).slice(0, 1),
+    [dataV2?.messages]
+  )
+
   const data =
     dataV2 != null
       ? {
@@ -873,11 +934,6 @@ export function BuscarContent({
     () => summarizeSearchFilters(explainForSummary),
     [explainForSummary]
   )
-
-  const displayActiveSummary =
-    activeSummaryRaw === 'Perfil de búsqueda sin criterios guardados.'
-      ? S.buscarActiveSummaryEmpty
-      : activeSummaryRaw
 
   const hasActiveSearchCriteria =
     activeSummaryRaw !== 'Perfil de búsqueda sin criterios guardados.'
@@ -1075,6 +1131,36 @@ export function BuscarContent({
     })
   }, [])
 
+  const widenPriceRange = useCallback(() => {
+    const tMin = minPrice.trim()
+    const tMax = maxPrice.trim()
+    const nMax = Number(tMax)
+    const nMin = Number(tMin)
+    pushBuscarQueryParams((p) => {
+      if (tMax !== '' && Number.isFinite(nMax)) {
+        p.set('max', String(Math.max(0, Math.round(nMax * 1.2))))
+      } else if (tMin !== '' && Number.isFinite(nMin)) {
+        p.set('min', String(Math.max(0, Math.round(nMin * 0.85))))
+      }
+    })
+  }, [maxPrice, minPrice, pushBuscarQueryParams])
+
+  const searchWholeCity = useCallback(() => {
+    pushBuscarQueryParams((p) => {
+      p.delete('barrio')
+    })
+  }, [pushBuscarQueryParams])
+
+  const openWidenedBlock = useCallback(() => {
+    setSearchV2WidenedOpen(true)
+    scrollToElementId('buscar-resultados')
+  }, [scrollToElementId])
+
+  const openAllFilters = useCallback(() => {
+    setClassicFiltersOpen(true)
+    scrollToElementId('buscar-esenciales')
+  }, [scrollToElementId])
+
   const onMapPinSelect = useCallback(
     (id: string) => {
       setMapSyncSelectedId(id)
@@ -1201,29 +1287,146 @@ export function BuscarContent({
 
         {me ? <BuscarRecentSearches /> : null}
 
+        <BuscarSessionBar
+          opLocked={opLocked}
+          forcedOperation={forcedOperation}
+          operationType={operationType}
+          city={city}
+          neighborhood={neighborhood}
+          propertyType={propertyType}
+          propertyOptions={PROPERTY_OPTIONS}
+          minPrice={minPrice}
+          maxPrice={maxPrice}
+          minBedrooms={minBedrooms}
+          applyUrlParams={pushBuscarQueryParams}
+          onOpenLocalityModal={() => setLocalityModalOpen(true)}
+          onClearSearch={clearBuscarSearch}
+        />
+
         {hasActiveSearchCriteria ? (
-          <Card className="border-brand-primary/15 bg-gradient-to-r from-surface-elevated to-brand-primary/[0.06] p-2.5 shadow-sm sm:p-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-              <div className="min-w-0 flex-1 space-y-0.5">
-                <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-brand-primary/90">
-                  <Search className="h-3 w-3" aria-hidden />
-                  {S.buscarActiveSummaryLabel}
-                </p>
-                <p className="text-xs leading-snug text-text-primary md:text-sm">
-                  {displayActiveSummary}
-                </p>
-              </div>
+          <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-surface-secondary/35 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+              {S.searchV2GuidedActionsLabel}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {widenedListCount > 0 && !searchV2WidenedOpen ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  className="transition-transform active:scale-[0.98]"
+                  onClick={openWidenedBlock}
+                >
+                  {S.searchV2CtaMoreOptions}
+                </Button>
+              ) : null}
+              {((minPrice.trim() !== '' &&
+                Number.isFinite(Number(minPrice.trim()))) ||
+                (maxPrice.trim() !== '' &&
+                  Number.isFinite(Number(maxPrice.trim())))) ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="transition-transform active:scale-[0.98]"
+                  onClick={widenPriceRange}
+                >
+                  {S.searchV2CtaWiderPrice}
+                </Button>
+              ) : null}
+              {neighborhood.trim() !== '' ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="transition-transform active:scale-[0.98]"
+                  onClick={searchWholeCity}
+                >
+                  {S.searchV2CtaWholeCity}
+                </Button>
+              ) : null}
               <Button
                 type="button"
-                variant="outline"
                 size="sm"
-                className="h-8 shrink-0 self-start sm:self-center"
-                onClick={clearBuscarSearch}
+                variant="outline"
+                className="transition-transform active:scale-[0.98]"
+                onClick={openAllFilters}
               >
-                {S.buscarClearSearch}
+                {S.searchV2CtaOpenFilters}
               </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="transition-transform active:scale-[0.98]"
+                  >
+                    {S.searchV2CtaRemoveFilterMenu}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuLabel>{S.searchV2CtaRemoveFilterMenu}</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    disabled={
+                      minPrice.trim() === '' &&
+                      maxPrice.trim() === ''
+                    }
+                    onClick={() =>
+                      pushBuscarQueryParams((p) => {
+                        p.delete('min')
+                        p.delete('max')
+                      })
+                    }
+                  >
+                    {S.searchV2CtaRemovePrice}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={neighborhood.trim() === ''}
+                    onClick={() =>
+                      pushBuscarQueryParams((p) => {
+                        p.delete('barrio')
+                      })
+                    }
+                  >
+                    {S.searchV2CtaRemoveNeighborhood}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={propertyType === ''}
+                    onClick={() =>
+                      pushBuscarQueryParams((p) => {
+                        p.delete('tipo')
+                      })
+                    }
+                  >
+                    {S.searchV2CtaRemoveType}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={!mapCommitted}
+                    onClick={() => {
+                      releaseMapFilter()
+                    }}
+                  >
+                    {S.searchV2CtaReleaseMap}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={
+                      selectedAmenityFacets.length === 0 && !amenitiesStrict
+                    }
+                    onClick={() =>
+                      pushBuscarQueryParams((p) => {
+                        p.delete('amenities')
+                        p.delete('amenities_strict')
+                      })
+                    }
+                  >
+                    {S.searchV2CtaRemoveAmenities}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-          </Card>
+          </div>
         ) : null}
 
         <div
@@ -2112,12 +2315,64 @@ export function BuscarContent({
         </div>
 
         <div id="buscar-resultados" className="scroll-mt-24 space-y-6">
-          {data?.searchUX?.messages && data.searchUX.messages.length > 0 ? (
+          {!isLoading &&
+          dataV2 &&
+          data &&
+          data.total === 0 &&
+          hasActiveSearchCriteria ? (
+            <Card className="space-y-3 border-semantic-warning/20 bg-semantic-warning/5 p-4">
+              <p className="text-base font-semibold text-text-primary">
+                {S.searchV2EmptyTitle}
+              </p>
+              <ul className="list-disc space-y-1 pl-4 text-sm text-text-secondary">
+                <li>{S.searchV2EmptyLine1}</li>
+                <li>{S.searchV2EmptyLine2}</li>
+                <li>{S.searchV2EmptyLine3}</li>
+              </ul>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {((minPrice.trim() !== '' &&
+                  Number.isFinite(Number(minPrice.trim()))) ||
+                  (maxPrice.trim() !== '' &&
+                    Number.isFinite(Number(maxPrice.trim())))) ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="default"
+                    className="transition-transform active:scale-[0.98]"
+                    onClick={widenPriceRange}
+                  >
+                    {S.searchV2CtaWiderPrice}
+                  </Button>
+                ) : null}
+                {neighborhood.trim() !== '' ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="transition-transform active:scale-[0.98]"
+                    onClick={searchWholeCity}
+                  >
+                    {S.searchV2CtaWholeCity}
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="transition-transform active:scale-[0.98]"
+                  onClick={openAllFilters}
+                >
+                  {S.searchV2CtaOpenFilters}
+                </Button>
+              </div>
+            </Card>
+          ) : null}
+          {shortSearchUxMessages.length > 0 ? (
             <div className="space-y-2" role="status" aria-live="polite">
-              {data.searchUX.messages.map((msg, i) => (
+              {shortSearchUxMessages.map((msg, i) => (
                 <Card
                   key={`search-ux-${i}`}
-                  className="border-brand-primary/20 bg-brand-primary/5 p-3 text-sm leading-relaxed text-text-primary"
+                  className="border-brand-primary/20 bg-brand-primary/5 p-3 text-sm leading-snug text-text-primary"
                 >
                   {msg}
                 </Card>
@@ -2234,8 +2489,8 @@ export function BuscarContent({
                                     {bucket.totalInBucket} en este grupo
                                   </span>
                                 </div>
-                                <p className="text-xs leading-relaxed text-text-secondary">
-                                  {S.searchV2WidenedExplainer}
+                                <p className="text-xs text-text-secondary">
+                                  {S.searchV2BucketWhyWidened}
                                 </p>
                               </div>
                               <Button
@@ -2268,6 +2523,7 @@ export function BuscarContent({
                                       key={`${bucket.id}-${listing.id}`}
                                       listing={listing}
                                       mapSelectedListingId={mapSyncSelectedId}
+                                      compactMatchReason
                                       onMapSyncHover={
                                         showMap && mapPins.length > 0
                                           ? onMapSyncHover
@@ -2289,6 +2545,7 @@ export function BuscarContent({
                         )
                       }
 
+                      const whyLine = searchV2BucketWhyLine(bucket.id)
                       return (
                         <section key={bucket.id} className="space-y-3">
                           <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
@@ -2299,6 +2556,11 @@ export function BuscarContent({
                               {bucket.totalInBucket} en este grupo
                             </span>
                           </div>
+                          {whyLine ? (
+                            <p className="text-xs font-medium text-brand-primary">
+                              {whyLine}
+                            </p>
+                          ) : null}
                           {bucket.items.length === 0 ? (
                             <p className="text-sm text-text-secondary">
                               Ningún aviso en este grupo.
@@ -2313,6 +2575,7 @@ export function BuscarContent({
                                     key={`${bucket.id}-${listing.id}`}
                                     listing={listing}
                                     mapSelectedListingId={mapSyncSelectedId}
+                                    compactMatchReason
                                     onMapSyncHover={
                                       showMap && mapPins.length > 0
                                         ? onMapSyncHover

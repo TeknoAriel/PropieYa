@@ -1,8 +1,14 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { type FormEvent, useState } from 'react'
 
-import { Filter } from '@propieya/ui'
+import { Button, Filter, Input } from '@propieya/ui'
+import {
+  PORTAL_HERO_BUSCAR_QUICK_LINKS,
+  PORTAL_HERO_BUSCAR_UX,
+} from '@propieya/shared'
 
 import { ConversationalSearchBlock } from '@/components/portal/conversational-search-block'
 import { InductiveSearchChips } from '@/components/portal/inductive-search-chips'
@@ -10,6 +16,18 @@ import { getPortalPack } from '@/lib/portal-copy'
 
 export function HeroSearch() {
   const pack = getPortalPack()
+  const router = useRouter()
+  const [quickQuery, setQuickQuery] = useState('')
+
+  function onQuickSubmit(e: FormEvent) {
+    e.preventDefault()
+    const q = quickQuery.trim()
+    if (!q) {
+      router.push('/buscar')
+      return
+    }
+    router.push(`/buscar?q=${encodeURIComponent(q)}`)
+  }
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-surface-secondary/90 via-surface-primary to-surface-primary pb-8 pt-6 md:pb-12 md:pt-8">
@@ -31,13 +49,53 @@ export function HeroSearch() {
           </p>
 
           <div className="mx-auto mt-5 max-w-3xl rounded-2xl border border-border/50 bg-surface-primary/90 p-4 shadow-md shadow-black/5 backdrop-blur-sm md:mt-6 md:p-5">
-            <ConversationalSearchBlock
-              variant="hero"
-              routerMode="push"
-              searchPathPage="buscar"
-              compact={false}
-              className="w-full"
-            />
+            <form
+              onSubmit={onQuickSubmit}
+              className="space-y-2"
+              aria-label={PORTAL_HERO_BUSCAR_UX.quickSearchTitle}
+            >
+              <p className="text-left text-sm font-semibold text-text-primary">
+                {PORTAL_HERO_BUSCAR_UX.quickSearchTitle}
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                <Input
+                  className="h-11 flex-1 text-base"
+                  placeholder={PORTAL_HERO_BUSCAR_UX.quickSearchPlaceholder}
+                  value={quickQuery}
+                  onChange={(e) => setQuickQuery(e.target.value)}
+                  aria-label={PORTAL_HERO_BUSCAR_UX.quickSearchPlaceholder}
+                />
+                <Button
+                  type="submit"
+                  className="h-11 shrink-0 px-6 transition-transform active:scale-[0.98] sm:w-auto"
+                >
+                  {PORTAL_HERO_BUSCAR_UX.quickSearchSubmit}
+                </Button>
+              </div>
+              <p className="text-left text-xs text-text-secondary">
+                {PORTAL_HERO_BUSCAR_UX.quickSearchExamples}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {PORTAL_HERO_BUSCAR_QUICK_LINKS.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="rounded-full border border-border/70 bg-surface-secondary/80 px-3 py-1 text-xs font-medium text-text-primary transition-colors hover:border-brand-primary/40 hover:text-brand-primary"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </form>
+            <div className="mt-4 border-t border-border/35 pt-4">
+              <ConversationalSearchBlock
+                variant="hero"
+                routerMode="push"
+                searchPathPage="buscar"
+                compact={false}
+                className="w-full"
+              />
+            </div>
             <div className="mt-3 border-t border-border/35 pt-3">
               <InductiveSearchChips
                 variant="embedded"
