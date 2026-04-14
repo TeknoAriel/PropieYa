@@ -135,10 +135,13 @@ function ClusteredPins({
   pins,
   emphasisPinId,
   onPinClickListing,
+  onListingNavigateFromMap,
 }: {
   pins: BuscarMapPin[]
   emphasisPinId?: string | null
   onPinClickListing?: (listingId: string) => void
+  /** Clic en el enlace del popup hacia `/propiedad/[id]` (telemetría embudo). */
+  onListingNavigateFromMap?: (listingId: string) => void
 }) {
   const map = useMap()
 
@@ -170,6 +173,23 @@ function ClusteredPins({
           onPinClickListing(p.id)
         })
       }
+      if (onListingNavigateFromMap) {
+        cm.on('popupopen', () => {
+          const el = cm.getPopup()?.getElement()
+          if (!el) return
+          const handler = (ev: MouseEvent) => {
+            const a = (ev.target as HTMLElement | null)?.closest?.('a[href]')
+            const href = a?.getAttribute('href') ?? ''
+            const m = href.match(/\/propiedad\/([^/?#]+)/)
+            const id = m?.[1]
+            if (id) onListingNavigateFromMap(id)
+          }
+          el.addEventListener('click', handler)
+          cm.once('popupclose', () => {
+            el.removeEventListener('click', handler)
+          })
+        })
+      }
       mcg.addLayer(cm)
     }
 
@@ -178,7 +198,7 @@ function ClusteredPins({
       mcg.clearLayers()
       map.removeLayer(mcg)
     }
-  }, [map, pins, emphasisPinId, onPinClickListing])
+  }, [map, pins, emphasisPinId, onPinClickListing, onListingNavigateFromMap])
 
   return null
 }
@@ -270,6 +290,8 @@ type BuscarSearchMapProps = {
   /** Sprint 37 — hover lista / clic pin: mismo id resalta marcador y tarjeta. */
   mapPinEmphasisId?: string | null
   onPinClickListing?: (listingId: string) => void
+  /** Clic en enlace del popup del pin hacia la ficha. */
+  onListingNavigateFromMap?: (listingId: string) => void
   /** Centrar mapa (p. ej. hover en tarjeta con coordenadas). */
   flyToPinCoords?: { lat: number; lng: number } | null
 }
@@ -287,6 +309,7 @@ export function BuscarSearchMap({
   onPolygonVertex,
   mapPinEmphasisId = null,
   onPinClickListing,
+  onListingNavigateFromMap,
   flyToPinCoords = null,
 }: BuscarSearchMapProps) {
   const points = useMemo(
@@ -332,6 +355,7 @@ export function BuscarSearchMap({
           pins={pins}
           emphasisPinId={mapPinEmphasisId}
           onPinClickListing={onPinClickListing}
+          onListingNavigateFromMap={onListingNavigateFromMap}
         />
       </MapContainer>
     </div>

@@ -92,9 +92,16 @@ function ContactButton({
   listingTitle: string
 }) {
   const [open, setOpen] = useState(false)
+  const recordContactCta = trpc.listing.recordContactCtaClick.useMutation()
   return (
     <>
-      <Button onClick={() => setOpen(true)} className="w-full">
+      <Button
+        onClick={() => {
+          recordContactCta.mutate({ listingId })
+          setOpen(true)
+        }}
+        className="w-full"
+      >
         <MessageSquare className="h-4 w-4 mr-2" />
         {L.contactButton}
       </Button>

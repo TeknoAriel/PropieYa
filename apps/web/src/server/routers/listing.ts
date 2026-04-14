@@ -31,6 +31,7 @@ import {
   updateListingSchema,
   LISTING_VALIDITY,
   mergePublicSearchFromQuery,
+  inferListingMatchProfile,
   residualPublicSearchText,
   FACETS_CATALOG,
   SEARCH_FILTER_AMENITIES,
@@ -132,21 +133,38 @@ function sanitizeIlikeFragment(raw: string): string {
 }
 
 /** Ciudad/barrio: misma semántica amplia que ES (query.ts), para no quedar en 0 si el feed no llenó `address.city`. */
-function pushSqlLocalityPlaceConditions(
-  conditions: SQL[],
-  placeRaw: string | undefined
-): void {
+function buildSqlLocalityPlaceOrCondition(placeRaw: string | undefined): SQL | null {
   const frag = sanitizeIlikeFragment(placeRaw ?? '')
-  if (frag.length === 0) return
+  if (frag.length === 0) return null
   const pat = `%${frag}%`
-  conditions.push(
-    or(
-      sql`COALESCE(${listings.address}->>'city', '') ILIKE ${pat}`,
-      sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${pat}`,
-      ilike(listings.title, pat),
-      ilike(listings.description, pat)
-    )!
-  )
+  return or(
+    sql`COALESCE(${listings.address}->>'city', '') ILIKE ${pat}`,
+    sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${pat}`,
+    ilike(listings.title, pat),
+    ilike(listings.description, pat)
+  )!
+}
+
+/**
+ * - `catalog`: ciudad y barrio como AND (ambos bloques si vienen los dos).
+ * - `intent`: un solo OR entre ambos bloques, alineado a `should` en ES (no excluir por doble término).
+ */
+function appendSqlLocalityFilters(
+  conditions: SQL[],
+  city: string | undefined,
+  neighborhood: string | undefined,
+  mode: 'catalog' | 'intent'
+): void {
+  const citySql = buildSqlLocalityPlaceOrCondition(city)
+  const nbSql = buildSqlLocalityPlaceOrCondition(neighborhood)
+  if (mode === 'catalog') {
+    if (citySql) conditions.push(citySql)
+    if (nbSql) conditions.push(nbSql)
+    return
+  }
+  const parts = [citySql, nbSql].filter((x): x is SQL => x != null)
+  if (parts.length === 0) return
+  conditions.push(parts.length === 1 ? parts[0]! : or(...parts)!)
 }
 
 function searchFiltersToListingInputOverlay(
@@ -183,6 +201,7 @@ function searchFiltersToListingInputOverlay(
     bbox: f.bbox,
     polygon: f.polygon,
     amenitiesMatchMode: f.amenitiesMatchMode ?? 'preferred',
+    matchProfile: f.matchProfile ?? base.matchProfile,
   }
 }
 
@@ -225,6 +244,11 @@ function buildListingSearchSqlFromSeed(
     polygon: sqlInputSeed.polygon,
   }
   const amenityStrict = sqlInputSeed.amenitiesMatchMode === 'strict'
+  const intentSql =
+    inferListingMatchProfile({
+      q: sqlInputSeed.q,
+      explicit: sqlInputSeed.matchProfile,
+    }) === 'intent'
 
   const conditions = [eq(listings.status, 'active')]
   if (residualTextQuery.trim()) {
@@ -245,64 +269,115 @@ function buildListingSearchSqlFromSeed(
   if (sqlInput.propertyType) {
     conditions.push(eq(listings.propertyType, sqlInput.propertyType))
   }
-  if (sqlInput.minPrice !== undefined) {
-    conditions.push(gte(listings.priceAmount, sqlInput.minPrice))
+  const minP = sqlInput.minPrice
+  const maxP = sqlInput.maxPrice
+  if (intentSql) {
+    if (minP !== undefined && maxP !== undefined) {
+      const lo = Math.max(0, Math.floor(minP * 0.82))
+      const hi = Math.ceil(maxP * 1.22)
+      conditions.push(gte(listings.priceAmount, lo))
+      conditions.push(lte(listings.priceAmount, hi))
+    } else if (maxP !== undefined) {
+      conditions.push(lte(listings.priceAmount, Math.ceil(maxP * 1.22)))
+    } else if (minP !== undefined) {
+      conditions.push(gte(listings.priceAmount, Math.max(0, Math.floor(minP * 0.85))))
+    }
+  } else {
+    if (minP !== undefined) {
+      conditions.push(gte(listings.priceAmount, minP))
+    }
+    if (maxP !== undefined) {
+      conditions.push(lte(listings.priceAmount, maxP))
+    }
   }
-  if (sqlInput.maxPrice !== undefined) {
-    conditions.push(lte(listings.priceAmount, sqlInput.maxPrice))
+
+  const minS = sqlInput.minSurface
+  const maxS = sqlInput.maxSurface
+  if (intentSql) {
+    if (minS !== undefined && maxS !== undefined) {
+      const lo = Math.max(0, Math.floor(minS * 0.88))
+      const hi = Math.ceil(maxS * 1.15)
+      conditions.push(gte(listings.surfaceTotal, lo))
+      conditions.push(lte(listings.surfaceTotal, hi))
+    } else if (minS !== undefined) {
+      conditions.push(
+        gte(listings.surfaceTotal, Math.max(0, Math.floor(minS * 0.85)))
+      )
+    } else if (maxS !== undefined) {
+      conditions.push(lte(listings.surfaceTotal, Math.ceil(maxS * 1.15)))
+    }
+  } else {
+    if (minS !== undefined) {
+      conditions.push(gte(listings.surfaceTotal, minS))
+    }
+    if (maxS !== undefined) {
+      conditions.push(lte(listings.surfaceTotal, maxS))
+    }
   }
+
   if (sqlInput.minBedrooms !== undefined) {
-    conditions.push(gte(listings.bedrooms, sqlInput.minBedrooms))
+    const v = intentSql
+      ? Math.max(0, sqlInput.minBedrooms - 1)
+      : sqlInput.minBedrooms
+    conditions.push(gte(listings.bedrooms, v))
   }
   if (sqlInput.minBathrooms !== undefined) {
-    conditions.push(gte(listings.bathrooms, sqlInput.minBathrooms))
+    const v = intentSql
+      ? Math.max(0, sqlInput.minBathrooms - 1)
+      : sqlInput.minBathrooms
+    conditions.push(gte(listings.bathrooms, v))
   }
   if (sqlInput.minGarages !== undefined) {
-    conditions.push(gte(listings.garages, sqlInput.minGarages))
+    const v = intentSql
+      ? Math.max(0, sqlInput.minGarages - 1)
+      : sqlInput.minGarages
+    conditions.push(gte(listings.garages, v))
   }
-  if (sqlInput.minSurface !== undefined) {
-    conditions.push(gte(listings.surfaceTotal, sqlInput.minSurface))
+
+  if (!intentSql) {
+    if (sqlInput.floorMin !== undefined) {
+      conditions.push(
+        sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) >= ${sqlInput.floorMin}`
+      )
+    }
+    if (sqlInput.floorMax !== undefined) {
+      conditions.push(
+        sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) <= ${sqlInput.floorMax}`
+      )
+    }
+    if (sqlInput.escalera?.trim()) {
+      conditions.push(
+        sql`(${listings.features}->>'escalera') = ${sqlInput.escalera.trim().toUpperCase()}`
+      )
+    }
+    if (sqlInput.orientation) {
+      conditions.push(
+        sql`(${listings.features}->>'orientation') = ${sqlInput.orientation}`
+      )
+    }
+    if (sqlInput.minSurfaceCovered !== undefined) {
+      conditions.push(
+        sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} >= ${sqlInput.minSurfaceCovered}`
+      )
+    }
+    if (sqlInput.maxSurfaceCovered !== undefined) {
+      conditions.push(
+        sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} <= ${sqlInput.maxSurfaceCovered}`
+      )
+    }
+    if (sqlInput.minTotalRooms !== undefined) {
+      conditions.push(
+        sql`${listings.totalRooms} IS NOT NULL AND ${listings.totalRooms} >= ${sqlInput.minTotalRooms}`
+      )
+    }
   }
-  if (sqlInput.maxSurface !== undefined) {
-    conditions.push(lte(listings.surfaceTotal, sqlInput.maxSurface))
-  }
-  if (sqlInput.floorMin !== undefined) {
-    conditions.push(
-      sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) >= ${sqlInput.floorMin}`
-    )
-  }
-  if (sqlInput.floorMax !== undefined) {
-    conditions.push(
-      sql`(${listings.features}->>'floor') IS NULL OR ((${listings.features}->>'floor')::int) <= ${sqlInput.floorMax}`
-    )
-  }
-  if (sqlInput.escalera?.trim()) {
-    conditions.push(
-      sql`(${listings.features}->>'escalera') = ${sqlInput.escalera.trim().toUpperCase()}`
-    )
-  }
-  if (sqlInput.orientation) {
-    conditions.push(
-      sql`(${listings.features}->>'orientation') = ${sqlInput.orientation}`
-    )
-  }
-  if (sqlInput.minSurfaceCovered !== undefined) {
-    conditions.push(
-      sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} >= ${sqlInput.minSurfaceCovered}`
-    )
-  }
-  if (sqlInput.maxSurfaceCovered !== undefined) {
-    conditions.push(
-      sql`${listings.surfaceCovered} IS NOT NULL AND ${listings.surfaceCovered} <= ${sqlInput.maxSurfaceCovered}`
-    )
-  }
-  if (sqlInput.minTotalRooms !== undefined) {
-    conditions.push(
-      sql`${listings.totalRooms} IS NOT NULL AND ${listings.totalRooms} >= ${sqlInput.minTotalRooms}`
-    )
-  }
-  pushSqlLocalityPlaceConditions(conditions, sqlInput.city)
-  pushSqlLocalityPlaceConditions(conditions, sqlInput.neighborhood)
+
+  appendSqlLocalityFilters(
+    conditions,
+    sqlInput.city,
+    sqlInput.neighborhood,
+    intentSql ? 'intent' : 'catalog'
+  )
   if (amenityStrict && sqlInput.amenities && sqlInput.amenities.length > 0) {
     const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
     for (const a of sqlInput.amenities) {
@@ -863,6 +938,77 @@ export const listingRouter = createTRPCRouter({
         )
       }
 
+      return { ok: true as const }
+    }),
+
+  /**
+   * Clic desde resultado (lista o mapa) hacia la ficha (doc 49).
+   * No incrementa vistas; solo hecho agregable para embudo / panel.
+   */
+  recordSearchResultClick: publicProcedure
+    .input(
+      z.object({
+        listingId: z.string().uuid(),
+        from: z.enum(['list', 'map']).optional(),
+        position: z.number().int().min(0).max(500).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const [row] = await ctx.db
+        .select({
+          id: listings.id,
+          organizationId: listings.organizationId,
+        })
+        .from(listings)
+        .where(
+          and(eq(listings.id, input.listingId), eq(listings.status, 'active'))
+        )
+        .limit(1)
+
+      if (!row) {
+        return { ok: false as const }
+      }
+
+      const payload: Record<string, unknown> = {}
+      if (input.from !== undefined) payload.from = input.from
+      if (input.position !== undefined) payload.position = input.position
+
+      recordPortalStatsEvent(ctx.db, {
+        terminalId: PORTAL_STATS_TERMINALS.LISTING_SEARCH_RESULT_CLICK,
+        listingId: row.id,
+        organizationId: row.organizationId,
+        userId: ctx.session?.userId ?? null,
+        payload,
+      })
+      return { ok: true as const }
+    }),
+
+  /** Usuario abrió el CTA de contacto (antes de enviar lead). */
+  recordContactCtaClick: publicProcedure
+    .input(z.object({ listingId: z.string().uuid() }))
+    .mutation(async ({ input, ctx }) => {
+      const [row] = await ctx.db
+        .select({
+          id: listings.id,
+          organizationId: listings.organizationId,
+        })
+        .from(listings)
+        .where(
+          and(eq(listings.id, input.listingId), eq(listings.status, 'active'))
+        )
+        .limit(1)
+
+      if (!row) {
+        return { ok: false as const }
+      }
+
+      recordPortalStatsEvent(ctx.db, {
+        terminalId: PORTAL_STATS_TERMINALS.LISTING_CONTACT_CTA_CLICK,
+        listingId: row.id,
+        organizationId: row.organizationId,
+        userId: ctx.session?.userId ?? null,
+        payload: {},
+      })
       return { ok: true as const }
     }),
 
@@ -1604,59 +1750,19 @@ export const listingRouter = createTRPCRouter({
             ? { ...effective, ...layered.lastTriedFilters }
             : effective
 
-        const merged = mergePublicSearchFromQuery(sqlFilters)
-        const { residualTextQuery, ...restMerged } = merged
-        const qForSql = restMerged
-
-        const conditions = [eq(listings.status, 'active')]
-        if (residualTextQuery.trim()) {
-          const frag = sanitizeIlikeFragment(residualTextQuery)
-          if (frag.length > 0) {
-            const pat = `%${frag}%`
-            conditions.push(
-              or(
-                ilike(listings.title, pat),
-                ilike(listings.description, pat)
-              )!
-            )
-          }
-        }
-        if (qForSql.operationType) {
-          conditions.push(eq(listings.operationType, qForSql.operationType))
-        }
-        if (qForSql.propertyType) {
-          conditions.push(eq(listings.propertyType, qForSql.propertyType))
-        }
-        if (qForSql.minPrice !== undefined) {
-          conditions.push(gte(listings.priceAmount, qForSql.minPrice))
-        }
-        if (qForSql.maxPrice !== undefined) {
-          conditions.push(lte(listings.priceAmount, qForSql.maxPrice))
-        }
-        if (qForSql.minBedrooms !== undefined) {
-          conditions.push(gte(listings.bedrooms, qForSql.minBedrooms))
-        }
-        if (qForSql.minSurface !== undefined) {
-          conditions.push(gte(listings.surfaceTotal, qForSql.minSurface))
-        }
-        pushSqlLocalityPlaceConditions(conditions, qForSql.city)
-        pushSqlLocalityPlaceConditions(conditions, qForSql.neighborhood)
-        // `preferred`: no filtrar por amenities en SQL (misma regla que listing.search).
-
-        const [countResult] = await ctx.db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(listings)
-          .where(and(...conditions))
-
-        const total = countResult?.count ?? 0
-
-        const hits = await ctx.db
-          .select(listingsSelectPublic)
-          .from(listings)
-          .where(and(...conditions))
-          .orderBy(...ORDER_PUBLIC_RECENCY)
-          .limit(filters.limit ?? 24)
-          .offset(filters.offset ?? 0)
+        const convoSqlSeed = {
+          ...sqlFilters,
+          limit: filters.limit ?? 24,
+          offset: filters.offset ?? 0,
+        } as ListingSearchInput
+        const prepConvo = buildListingSearchSqlFromSeed(convoSqlSeed)
+        const total = await countListingSearchSql(ctx.db, prepConvo)
+        const hits = await selectListingSearchSqlPage(
+          ctx.db,
+          prepConvo,
+          filters.limit ?? 24,
+          filters.offset ?? 0
+        )
 
         const sqlUx: ListingSearchUX =
           layered.fromEs && layered.total === 0

@@ -136,10 +136,13 @@ function ListingCard({
   listing,
   mapSelectedListingId,
   onMapSyncHover,
+  onResultLinkClick,
 }: {
   listing: BuscarListingCardData
   mapSelectedListingId: string | null
   onMapSyncHover?: (listingId: string | null) => void
+  /** Telemetría embudo: clic hacia ficha desde la lista. */
+  onResultLinkClick?: (listingId: string) => void
 }) {
   const operationLabel = OPERATION_TYPE_LABELS[listing.operationType] ?? listing.operationType
   const neighborhood = listing.address?.neighborhood ?? '—'
@@ -152,6 +155,9 @@ function ListingCard({
       <Link
         href={`/propiedad/${listing.id}`}
         className="block"
+        onClick={() => {
+          onResultLinkClick?.(listing.id)
+        }}
         onMouseEnter={() => {
           if (pinCoords && onMapSyncHover) onMapSyncHover(listing.id)
         }}
@@ -303,6 +309,14 @@ export function BuscarContent({
   const router = useRouter()
 
   const utils = trpc.useUtils()
+  const recordSearchResultClick =
+    trpc.listing.recordSearchResultClick.useMutation()
+  const onSearchResultNavigate = useCallback(
+    (listingId: string, from: 'list' | 'map') => {
+      recordSearchResultClick.mutate({ listingId, from })
+    },
+    [recordSearchResultClick]
+  )
   const [canAuth, setCanAuth] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
   const [alertSaved, setAlertSaved] = useState(false)
@@ -1508,6 +1522,9 @@ export function BuscarContent({
                   onPolygonVertex={addPolygonVertexSafe}
                   mapPinEmphasisId={mapPinEmphasisId}
                   onPinClickListing={mapPins.length > 0 ? onMapPinSelect : undefined}
+                  onListingNavigateFromMap={(listingId) =>
+                    onSearchResultNavigate(listingId, 'map')
+                  }
                   flyToPinCoords={
                     mapPins.length > 0 ? mapSyncFlyCoords : null
                   }
@@ -1966,6 +1983,9 @@ export function BuscarContent({
                     mapSelectedListingId={mapSyncSelectedId}
                     onMapSyncHover={
                       showMap && mapPins.length > 0 ? onMapSyncHover : undefined
+                    }
+                    onResultLinkClick={(listingId) =>
+                      onSearchResultNavigate(listingId, 'list')
                     }
                   />
                 ))}
