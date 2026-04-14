@@ -44,7 +44,9 @@ import {
   getBuscarContextualBlock,
   getFacetFlagDefinitions,
   parseBuscarMapGeoFromParams,
+  serializeBuscarMapGeoToParams,
   getFacetFlagsForBuscarRefineLayer,
+  normalizeSearchSessionMVP,
   OPERATION_TYPE_LABELS,
   PORTAL_SEARCH_UX_COPY as S,
   summarizeSearchFilters,
@@ -54,6 +56,7 @@ import {
   type OperationType,
   type PortalSearchPage,
   type PropertyType,
+  type SearchSessionMVP,
 } from '@propieya/shared'
 
 import { AddToCompareButton } from '@/components/compare/add-to-compare-button'
@@ -278,7 +281,6 @@ function BuscarLabeledField({
 }
 
 const FLOW_GUIDE_STORAGE_KEY = 'propieya.buscar.flowGuide.dismissed'
-const SEARCH_PAGE_LIMIT = 24
 
 const ADVANCED_AMENITY_FLAG_ORDER = [
   'credit_approved',
@@ -377,6 +379,10 @@ export function BuscarContent({
   const [guidedLayerExpanded, setGuidedLayerExpanded] = useState(false)
   const [mapBbox, setMapBbox] = useState<BuscarMapBBox | null>(null)
   const [mapPolygonRing, setMapPolygonRing] = useState<BuscarMapPoint[]>([])
+  /** Buscador v2: geo congelada que filtra (solo si el usuario confirmó con «Buscar en esta zona»). */
+  const [committedBbox, setCommittedBbox] = useState<BuscarMapBBox | null>(null)
+  const [committedPolygon, setCommittedPolygon] = useState<BuscarMapPoint[]>([])
+  const [mapCommitted, setMapCommitted] = useState(false)
   const [polygonDrawMode, setPolygonDrawMode] = useState(false)
   /** Sprint 40 — rectángulo del mapa se aplica al listado al panear (debounce). */
   const [mapLiveViewport, setMapLiveViewport] = useState(false)
@@ -397,15 +403,7 @@ export function BuscarContent({
   const [polygonDrawHint, setPolygonDrawHint] = useState<string | null>(null)
   const [mapSyncHoverId, setMapSyncHoverId] = useState<string | null>(null)
   const [mapSyncSelectedId, setMapSyncSelectedId] = useState<string | null>(null)
-  const [searchPage, setSearchPage] = useState<{
-    cursor?: string
-    offset: number
-  }>({ offset: 0 })
-  const [accumulatedListings, setAccumulatedListings] = useState<
-    BuscarListingCardData[]
-  >([])
-  const appendNextPageRef = useRef(false)
-  /** Misma huella que `filterFingerprint`: si no cambió, permitimos placeholder entre páginas (cursor/offset). */
+  /** Huella de sesión v2 para placeholder estable en tRPC. */
   const searchFilterFpRef = useRef<string | null>(null)
 
   const facetFlagDefinitions = useMemo(() => getFacetFlagDefinitions(), [])
@@ -595,9 +593,15 @@ export function BuscarContent({
           : undefined,
       amenitiesMatchMode: amenitiesStrict ? ('strict' as const) : ('preferred' as const),
       bbox:
-        showMap && mapPolygonRing.length < 3 ? (mapBbox ?? undefined) : undefined,
+        mapCommitted &&
+        committedBbox != null &&
+        committedPolygon.length < 3
+          ? committedBbox
+          : undefined,
       polygon:
-        showMap && mapPolygonRing.length >= 3 ? mapPolygonRing : undefined,
+        mapCommitted && committedPolygon.length >= 3
+          ? committedPolygon
+          : undefined,
       ...((city.trim() || neighborhood.trim()) && localityGeocode
         ? {
             sortNearLat: localityGeocode.lat,
@@ -628,80 +632,106 @@ export function BuscarContent({
       minTotalRooms,
       selectedAmenityFacets,
       amenitiesStrict,
-      showMap,
-      mapBbox,
-      mapPolygonRing,
+      mapCommitted,
+      committedBbox,
+      committedPolygon,
       localityGeocode,
     ]
   )
 
-  const filterFingerprint = JSON.stringify(coreSearchFilters)
+  const searchSessionMVP = useMemo((): SearchSessionMVP => {
+    const num = (s: string) => {
+      const x = Number(s)
+      return s !== '' && Number.isFinite(x) ? x : undefined
+    }
+    const dormRaw = num(minBedrooms)
+    const op = (forcedOperation ?? operationType) || null
+    return {
+      operationType: op ? (op as NonNullable<SearchSessionMVP['operationType']>) : null,
+      propertyType: propertyType || null,
+      city: city.trim() || null,
+      neighborhood: neighborhood.trim() || null,
+      q: q.trim() || null,
+      minPrice: num(minPrice) ?? null,
+      maxPrice: num(maxPrice) ?? null,
+      minBedrooms: dormRaw !== undefined ? Math.floor(dormRaw) : null,
+      minSurface: num(minSurface) ?? null,
+      maxSurface: num(maxSurface) ?? null,
+      amenityIds: selectedAmenityFacets,
+      strictAmenities: amenitiesStrict,
+      fixedBudget: false,
+      fixedPropertyType: false,
+      mapMode:
+        mapCommitted && committedPolygon.length >= 3
+          ? 'polygon'
+          : mapCommitted && committedBbox
+            ? 'bbox'
+            : 'off',
+      bbox: mapCommitted ? committedBbox : null,
+      polygon: mapCommitted ? committedPolygon : null,
+      mapCommitted,
+    }
+  }, [
+    forcedOperation,
+    operationType,
+    propertyType,
+    city,
+    neighborhood,
+    q,
+    minPrice,
+    maxPrice,
+    minBedrooms,
+    minSurface,
+    maxSurface,
+    selectedAmenityFacets,
+    amenitiesStrict,
+    mapCommitted,
+    committedBbox,
+    committedPolygon,
+  ])
 
-  useEffect(() => {
-    setSearchPage({ offset: 0 })
-    setAccumulatedListings([])
-  }, [filterFingerprint])
+  const v2SessionFingerprint = JSON.stringify(searchSessionMVP)
 
-  const filters = useMemo(
-    () => ({
-      ...coreSearchFilters,
-      limit: SEARCH_PAGE_LIMIT,
-      offset: searchPage.cursor ? 0 : searchPage.offset,
-      cursor: searchPage.cursor,
-    }),
-    [coreSearchFilters, searchPage]
-  )
-
-  const { data, isLoading, isFetching, isError } = trpc.listing.search.useQuery(filters, {
-      placeholderData: (previousData) => {
-        if (searchFilterFpRef.current !== filterFingerprint) {
-          searchFilterFpRef.current = filterFingerprint
-          return undefined
-        }
-        return previousData
+  const { data: dataV2, isLoading, isError } =
+    trpc.listing.searchV2.useQuery(
+      {
+        session: normalizeSearchSessionMVP(searchSessionMVP),
+        limitPerBucket: 20,
       },
-    })
+      {
+        placeholderData: (previousData) => {
+          if (searchFilterFpRef.current !== v2SessionFingerprint) {
+            searchFilterFpRef.current = v2SessionFingerprint
+            return undefined
+          }
+          return previousData
+        },
+      }
+    )
 
-  useEffect(() => {
-    if (!data) return
-    const page = data.items as BuscarListingCardData[]
-    if (appendNextPageRef.current) {
-      setAccumulatedListings((prev) => [...prev, ...page])
-      appendNextPageRef.current = false
-    } else {
-      setAccumulatedListings(page)
+  const listings = useMemo(() => {
+    if (!dataV2?.buckets) return []
+    const out: BuscarListingCardData[] = []
+    for (const b of dataV2.buckets) {
+      for (const row of b.items) {
+        out.push(row as BuscarListingCardData)
+      }
     }
-  }, [data])
+    return out
+  }, [dataV2])
 
-  const listings = accumulatedListings
-
-  const loadMoreResults = useCallback(() => {
-    if (isFetching) return
-    if (!data) return
-    if (data.nextCursor) {
-      appendNextPageRef.current = true
-      setSearchPage({ offset: 0, cursor: data.nextCursor })
-      return
-    }
-    if (
-      data.items.length >= SEARCH_PAGE_LIMIT &&
-      accumulatedListings.length < data.total
-    ) {
-      appendNextPageRef.current = true
-      setSearchPage({
-        offset: accumulatedListings.length,
-        cursor: undefined,
-      })
-    }
-  }, [data, accumulatedListings.length, isFetching])
-
-  const canLoadMore =
-    !isFetching &&
-    data != null &&
-    data.total > 0 &&
-    (data.nextCursor != null ||
-      (accumulatedListings.length < data.total &&
-        data.items.length === SEARCH_PAGE_LIMIT))
+  const data =
+    dataV2 != null
+      ? {
+          total:
+            dataV2.totalsByBucket.strong +
+            dataV2.totalsByBucket.near +
+            dataV2.totalsByBucket.widened,
+          items: listings,
+          searchUX: { messages: dataV2.messages as string[] },
+          nextCursor: null as string | null,
+        }
+      : null
 
   const mapPins = useMemo(() => pinsFromListings(listings), [listings])
 
@@ -723,15 +753,9 @@ export function BuscarContent({
     setMapSyncHoverId(id)
   }, [])
 
-  const demandPayload = useMemo(() => {
-    const { limit: _l, offset: _o, cursor: _c, ...rest } = filters
-    return rest
-  }, [filters])
+  const demandPayload = useMemo(() => coreSearchFilters, [coreSearchFilters])
 
-  const alertPayload = useMemo(() => {
-    const { limit: _l, offset: _o, cursor: _c, ...rest } = filters
-    return rest
-  }, [filters])
+  const alertPayload = useMemo(() => coreSearchFilters, [coreSearchFilters])
 
   const saveProfile = trpc.demand.upsertFromSearchFilters.useMutation({
     onSuccess: () => {
@@ -846,10 +870,78 @@ export function BuscarContent({
     setShowMap(false)
     setMapLiveViewport(false)
     setAssistantHint(null)
+    setCommittedBbox(null)
+    setCommittedPolygon([])
+    setMapCommitted(false)
     router.replace(pathname)
   }, [router, pathname])
 
   const searchParamsKey = searchParams.toString()
+
+  const pushBuscarQueryParams = useCallback(
+    (mutate: (p: URLSearchParams) => void) => {
+      const p = new URLSearchParams(searchParams.toString())
+      mutate(p)
+      const qs = p.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [pathname, router, searchParams]
+  )
+
+  const commitMapSearchArea = useCallback(() => {
+    if (mapPolygonRing.length >= 3) {
+      setCommittedPolygon([...mapPolygonRing])
+      setCommittedBbox(null)
+      setMapCommitted(true)
+      pushBuscarQueryParams((p) => {
+        serializeBuscarMapGeoToParams(p, {
+          bbox: null,
+          polygon: mapPolygonRing,
+        })
+        p.set('mz', '1')
+      })
+      return
+    }
+    if (mapBbox) {
+      setCommittedBbox({ ...mapBbox })
+      setCommittedPolygon([])
+      setMapCommitted(true)
+      pushBuscarQueryParams((p) => {
+        serializeBuscarMapGeoToParams(p, {
+          bbox: mapBbox,
+          polygon: null,
+        })
+        p.set('mz', '1')
+      })
+    }
+  }, [mapPolygonRing, mapBbox, pushBuscarQueryParams])
+
+  const releaseMapFilter = useCallback(() => {
+    setMapCommitted(false)
+    setCommittedBbox(null)
+    setCommittedPolygon([])
+    pushBuscarQueryParams((p) => {
+      p.delete('mz')
+    })
+  }, [pushBuscarQueryParams])
+
+  const applySearchV2Action = useCallback(
+    (patch: Record<string, unknown> | undefined) => {
+      if (!patch) return
+      if (patch.neighborhood === null || patch.neighborhood === '') {
+        setNeighborhood('')
+      }
+      if (patch.strictAmenities === false) setAmenitiesStrict(false)
+      if (patch.mapCommitted === false) {
+        releaseMapFilter()
+      }
+      if (patch.minPrice === null && patch.maxPrice === null) {
+        setMinPrice('')
+        setMaxPrice('')
+      }
+    },
+    [releaseMapFilter]
+  )
 
   useEffect(() => {
     const sp = new URLSearchParams(searchParamsKey)
@@ -900,6 +992,26 @@ export function BuscarContent({
     } else {
       setMapBbox(null)
       setMapPolygonRing([])
+    }
+    const mz = sp.get('mz') === '1'
+    if (mz) {
+      if (geo.polygon.length >= 3) {
+        setCommittedPolygon(geo.polygon)
+        setCommittedBbox(null)
+        setMapCommitted(true)
+      } else if (geo.bbox) {
+        setCommittedBbox(geo.bbox)
+        setCommittedPolygon([])
+        setMapCommitted(true)
+      } else {
+        setCommittedBbox(null)
+        setCommittedPolygon([])
+        setMapCommitted(false)
+      }
+    } else {
+      setCommittedBbox(null)
+      setCommittedPolygon([])
+      setMapCommitted(false)
     }
     setPolygonDrawMode(false)
     setMapLiveViewport(false)
@@ -1408,7 +1520,10 @@ export function BuscarContent({
                       variant="outline"
                       size="sm"
                       className="h-8 text-xs"
-                      onClick={() => setMapBbox(null)}
+                      onClick={() => {
+                        setMapBbox(null)
+                        releaseMapFilter()
+                      }}
                     >
                       {S.clearBboxFilter}
                     </Button>
@@ -1422,6 +1537,7 @@ export function BuscarContent({
                       onClick={() => {
                         setMapPolygonRing([])
                         setPolygonDrawMode(false)
+                        releaseMapFilter()
                       }}
                     >
                       {S.polygonRemove}
@@ -1438,6 +1554,7 @@ export function BuscarContent({
                       setMapBbox(null)
                       setMapPolygonRing([])
                       setPolygonDrawMode(false)
+                      releaseMapFilter()
                     }}
                   >
                     {S.hideMap}
@@ -1511,6 +1628,36 @@ export function BuscarContent({
                     <p className="text-xs text-text-tertiary" role="status">
                       {S.mapLiveViewportDisabledHint}
                     </p>
+                  ) : null}
+                </div>
+                <div className="flex flex-col gap-2 border-t border-border pt-2">
+                  {(mapBbox != null || mapPolygonRing.length >= 3) &&
+                  !mapCommitted ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="default"
+                      className="h-9 w-fit"
+                      onClick={commitMapSearchArea}
+                    >
+                      {S.buscarMapCommitCta}
+                    </Button>
+                  ) : null}
+                  {mapCommitted ? (
+                    <p className="text-xs text-text-secondary">
+                      {S.buscarMapCommittedHint}
+                    </p>
+                  ) : null}
+                  {mapCommitted ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 w-fit"
+                      onClick={releaseMapFilter}
+                    >
+                      {S.buscarMapReleaseFilter}
+                    </Button>
                   ) : null}
                 </div>
                 <BuscarSearchMap
@@ -1957,12 +2104,42 @@ export function BuscarContent({
               ))}
             </div>
           ) : null}
+          {dataV2?.emptyExplanation ? (
+            <Card className="border-semantic-warning/25 bg-semantic-warning/5 p-4 text-sm leading-relaxed text-text-primary">
+              {dataV2.emptyExplanation}
+            </Card>
+          ) : null}
+          {dataV2?.actions && dataV2.actions.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+                {S.searchV2SuggestedActions}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {dataV2.actions.map((a) => (
+                  <Button
+                    key={a.id}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-9"
+                    onClick={() =>
+                      applySearchV2Action(
+                        a.patch as Record<string, unknown> | undefined
+                      )
+                    }
+                  >
+                    {a.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           {isError ? (
             <Card className="space-y-2 p-6">
               <p className="text-sm font-medium text-text-primary">{S.searchLoadErrorSoftTitle}</p>
               <p className="text-sm text-text-secondary">{S.searchLoadErrorSoftBody}</p>
             </Card>
-          ) : isLoading && !data && accumulatedListings.length === 0 ? (
+          ) : isLoading && !dataV2 ? (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
                 <Card key={i} className="overflow-hidden">
@@ -1975,14 +2152,8 @@ export function BuscarContent({
                 </Card>
               ))}
             </div>
-          ) : listings.length === 0 ? (
-            <Card className="p-6">
-              <p className="text-text-secondary">
-                {S.emptyResults}
-              </p>
-            </Card>
-          ) : (
-            <div className="space-y-6">
+          ) : dataV2?.buckets ? (
+            <div className="space-y-10">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm font-medium text-text-primary">Resultados</p>
                 <div
@@ -2014,42 +2185,55 @@ export function BuscarContent({
                   </Button>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {listings.map((listing, index) => (
-                  <ListingCard
-                    key={listing.id}
-                    listing={listing}
-                    mapSelectedListingId={mapSyncSelectedId}
-                    onMapSyncHover={
-                      showMap && mapPins.length > 0 ? onMapSyncHover : undefined
-                    }
-                    onResultLinkClick={(listingId) =>
-                      onSearchResultNavigate(listingId, 'list', index)
-                    }
-                  />
-                ))}
-              </div>
+              {(() => {
+                let globalIndex = 0
+                return dataV2.buckets.map((bucket) => (
+                  <section key={bucket.id} className="space-y-3">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+                      <h2 className="text-base font-semibold text-text-primary">
+                        {bucket.label}
+                      </h2>
+                      <span className="text-xs text-text-tertiary">
+                        {bucket.totalInBucket} en este grupo
+                      </span>
+                    </div>
+                    {bucket.items.length === 0 ? (
+                      <p className="text-sm text-text-secondary">
+                        Ningún aviso en este grupo.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {bucket.items.map((row) => {
+                          const listing = row as BuscarListingCardData
+                          const index = globalIndex++
+                          return (
+                            <ListingCard
+                              key={`${bucket.id}-${listing.id}`}
+                              listing={listing}
+                              mapSelectedListingId={mapSyncSelectedId}
+                              onMapSyncHover={
+                                showMap && mapPins.length > 0
+                                  ? onMapSyncHover
+                                  : undefined
+                              }
+                              onResultLinkClick={(listingId) =>
+                                onSearchResultNavigate(listingId, 'list', index)
+                              }
+                            />
+                          )
+                        })}
+                      </div>
+                    )}
+                  </section>
+                ))
+              })()}
               {data && data.total > 0 ? (
                 <p className="text-center text-sm text-text-secondary">
-                  {S.buscarShowingCount
-                    .replace('{shown}', String(listings.length))
-                    .replace('{total}', String(data.total))}
+                  {S.searchV2TotalSummary.replace('{n}', String(data.total))}
                 </p>
               ) : null}
-              {canLoadMore ? (
-                <div className="flex justify-center">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isFetching}
-                    onClick={loadMoreResults}
-                  >
-                    {isFetching ? S.buscarLoadingMore : S.buscarLoadMore}
-                  </Button>
-                </div>
-              ) : null}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 

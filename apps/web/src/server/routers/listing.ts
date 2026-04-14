@@ -38,6 +38,7 @@ import {
   withMatchReasons,
   PORTAL_SEARCH_UX_COPY,
   PORTAL_STATS_TERMINALS,
+  listingSearchV2InputSchema,
   type ExplainMatchFilters,
   type LocalityCatalogEntry,
 } from '@propieya/shared'
@@ -56,6 +57,7 @@ import {
   searchListingsLayered,
   type ListingSearchUX,
 } from '../../lib/search/search-layered'
+import { runListingSearchV2 } from '../../lib/search/search-v2-executor'
 import {
   getListingSearchSortKeyCount,
   shouldApplyLocalityProximitySort,
@@ -1593,6 +1595,43 @@ export const listingRouter = createTRPCRouter({
           },
         }
       }
+    }),
+
+  /**
+   * Búsqueda pública v2 (MVP): `SearchSession` → buckets strong / near / widened.
+   * No usa `searchListingsLayered` ni la relajación del listado legacy.
+   */
+  searchV2: publicProcedure
+    .input(listingSearchV2InputSchema)
+    .query(async ({ input, ctx }) => {
+      const perfStart = Date.now()
+      const out = await runListingSearchV2({
+        session: input.session,
+        limitPerBucket: input.limitPerBucket ?? 20,
+      })
+      if (process.env.LOG_SEARCH_MS === '1') {
+        console.info(
+          '[listing.searchV2]',
+          JSON.stringify({
+            ms: Date.now() - perfStart,
+            strong: out.totalsByBucket.strong,
+            near: out.totalsByBucket.near,
+            widened: out.totalsByBucket.widened,
+          })
+        )
+      }
+      recordPortalStatsEvent(ctx.db, {
+        terminalId: PORTAL_STATS_TERMINALS.LISTING_SEARCH_EXECUTED,
+        userId: ctx.session?.userId ?? null,
+        payload: {
+          total:
+            out.totalsByBucket.strong +
+            out.totalsByBucket.near +
+            out.totalsByBucket.widened,
+          source: 'search_v2',
+        },
+      })
+      return out
     }),
 
   /** Búsqueda conversacional: extrae intención del mensaje y devuelve filtros + resultados. */

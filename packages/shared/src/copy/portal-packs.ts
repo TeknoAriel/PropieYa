@@ -314,6 +314,13 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarLayer3AmenitiesTitle: 'Amenities y preferencias (lista única)',
   locationBlockTitle: 'Ubicación',
   mapIntegratedTitle: 'Mapa y zona',
+  /** Buscador v2: confirmar bbox/polígono como filtro de sesión. */
+  buscarMapCommitCta: 'Buscar en esta zona',
+  buscarMapCommittedHint:
+    'Zona confirmada: el listado y el mapa muestran las mismas propiedades. Mové el mapa y volvé a confirmar para actualizar.',
+  buscarMapReleaseFilter: 'Dejar de filtrar por el mapa',
+  searchV2SuggestedActions: 'Sugerencias para encontrar más',
+  searchV2TotalSummary: '{n} propiedades (sumando los tres grupos)',
   advancedFiltersTitle: 'Filtros avanzados',
   advancedComfortTitle: 'Confort y condiciones',
   refineLayerTitle: 'Afinar más opciones',
