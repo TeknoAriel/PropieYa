@@ -6,6 +6,7 @@ import { leads, listings, organizations, users } from '@propieya/database'
 import { PORTAL_STATS_TERMINALS } from '@propieya/shared'
 
 import { recordPortalStatsEvent } from '../../lib/analytics/record-portal-stats-event'
+import { buildListingPreviewForLead, isLeadRecent } from '../lib/listing-lead-preview'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
 import { sendNewLeadEmail } from '../../lib/email'
 
@@ -144,7 +145,7 @@ export const leadRouter = createTRPCRouter({
         }
 
         if (leadRow.accessStatus !== 'pending') {
-          return { ok: true as const, already: true }
+          return { kind: 'already' as const }
         }
 
         const now = new Date()
@@ -160,8 +161,7 @@ export const leadRouter = createTRPCRouter({
             })
             .where(eq(leads.id, input.id))
           return {
-            ok: true as const,
-            already: false,
+            kind: 'activated' as const,
             mode: 'plan' as const,
             listingId: leadRow.listingId,
             organizationId: leadRow.organizationId,
@@ -183,11 +183,11 @@ export const leadRouter = createTRPCRouter({
           .returning({ leadCreditsBalance: organizations.leadCreditsBalance })
 
         if (!debited) {
-          throw new TRPCError({
-            code: 'PAYMENT_REQUIRED',
-            message:
-              'Este lead está pendiente. Activá con un crédito de lead o pasá a un plan que incluya leads.',
-          })
+          return {
+            kind: 'no_credits' as const,
+            listingId: leadRow.listingId,
+            organizationId: leadRow.organizationId,
+          }
         }
 
         await tx
@@ -201,15 +201,29 @@ export const leadRouter = createTRPCRouter({
           .where(eq(leads.id, input.id))
 
         return {
-          ok: true as const,
-          already: false,
+          kind: 'activated' as const,
           mode: 'pay_per_lead' as const,
           listingId: leadRow.listingId,
           organizationId: leadRow.organizationId,
         }
       })
 
-      if (!result.already && result.listingId) {
+      if (result.kind === 'no_credits') {
+        recordPortalStatsEvent(ctx.db, {
+          terminalId: PORTAL_STATS_TERMINALS.LEAD_ACTIVATION_FAILED_NO_CREDITS,
+          listingId: result.listingId,
+          organizationId: result.organizationId,
+          userId: ctx.session.userId,
+          payload: { leadId: input.id },
+        })
+        throw new TRPCError({
+          code: 'PAYMENT_REQUIRED',
+          message:
+            'Este lead está pendiente. Activá con un crédito de lead o pasá a un plan que incluya leads.',
+        })
+      }
+
+      if (result.kind === 'activated') {
         recordPortalStatsEvent(ctx.db, {
           terminalId: PORTAL_STATS_TERMINALS.LEAD_ACCESS_ACTIVATED,
           listingId: result.listingId,
@@ -219,7 +233,11 @@ export const leadRouter = createTRPCRouter({
         })
       }
 
-      return result
+      return {
+        ok: true as const,
+        already: result.kind === 'already',
+        mode: result.kind === 'activated' ? result.mode : undefined,
+      }
     }),
 
   markManaged: protectedProcedure
@@ -312,9 +330,73 @@ export const leadRouter = createTRPCRouter({
         .where(and(...conditions, ...(input?.status ? [eq(leads.status, input.status)] : [])))
 
       return {
-        items: rows.map((r) => forPublisherView(r)),
+        items: rows.map((r) => ({
+          ...forPublisherView(r),
+          isRecentLead: isLeadRecent(r.createdAt),
+        })),
         total: Number(countResult?.total ?? 0),
       }
+    }),
+
+  /** Conteo de leads pendientes de activación (urgencia / embudo). */
+  publisherPendingSummary: protectedProcedure.query(async ({ ctx }) => {
+    const [row] = await ctx.db
+      .select({ pendingCount: count() })
+      .from(leads)
+      .innerJoin(listings, eq(leads.listingId, listings.id))
+      .where(
+        and(eq(listings.publisherId, ctx.session.userId), eq(leads.accessStatus, 'pending'))
+      )
+
+    return { pendingCount: Number(row?.pendingCount ?? 0) }
+  }),
+
+  /** Telemetría de embudo monetización (panel); sin PII en payload. */
+  trackMonetizationEvent: protectedProcedure
+    .input(
+      z.object({
+        leadId: z.string().uuid().optional(),
+        event: z.enum([
+          'pending_detail_viewed',
+          'activate_clicked',
+          'purchase_modal_open',
+          'purchase_modal_dismiss',
+          'plans_link_click',
+        ]),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      let listingId: string | null = null
+      if (input.leadId) {
+        const [owned] = await ctx.db
+          .select({ listingId: leads.listingId })
+          .from(leads)
+          .innerJoin(listings, eq(leads.listingId, listings.id))
+          .where(and(eq(leads.id, input.leadId), eq(listings.publisherId, ctx.session.userId)))
+          .limit(1)
+        if (!owned) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Lead no encontrado' })
+        }
+        listingId = owned.listingId
+      }
+
+      const terminalByEvent = {
+        pending_detail_viewed: PORTAL_STATS_TERMINALS.LEAD_MONETIZATION_DETAIL_VIEWED_PENDING,
+        activate_clicked: PORTAL_STATS_TERMINALS.LEAD_MONETIZATION_ACTIVATE_CLICKED,
+        purchase_modal_open: PORTAL_STATS_TERMINALS.LEAD_MONETIZATION_PURCHASE_MODAL_OPENED,
+        purchase_modal_dismiss: PORTAL_STATS_TERMINALS.LEAD_MONETIZATION_PURCHASE_MODAL_DISMISSED,
+        plans_link_click: PORTAL_STATS_TERMINALS.LEAD_MONETIZATION_PLANS_LINK_CLICKED,
+      } as const
+
+      recordPortalStatsEvent(ctx.db, {
+        terminalId: terminalByEvent[input.event],
+        organizationId: ctx.session.organizationId,
+        userId: ctx.session.userId,
+        listingId,
+        payload: input.leadId ? { leadId: input.leadId } : {},
+      })
+
+      return { ok: true as const }
     }),
 
   getById: protectedProcedure
@@ -336,6 +418,12 @@ export const leadRouter = createTRPCRouter({
           listingId: leads.listingId,
           listingTitle: listings.title,
           organizationId: leads.organizationId,
+          listingAddress: listings.address,
+          listingPropertyType: listings.propertyType,
+          listingOperationType: listings.operationType,
+          listingPriceAmount: listings.priceAmount,
+          listingPriceCurrency: listings.priceCurrency,
+          listingShowPrice: listings.showPrice,
         })
         .from(leads)
         .innerJoin(listings, eq(leads.listingId, listings.id))
@@ -343,6 +431,40 @@ export const leadRouter = createTRPCRouter({
         .limit(1)
 
       const first = row[0]
-      return first ? forPublisherView(first) : null
+      if (!first) return null
+
+      const listingPreview = buildListingPreviewForLead(
+        {
+          address: first.listingAddress,
+          propertyType: first.listingPropertyType,
+          operationType: first.listingOperationType,
+          priceAmount: first.listingPriceAmount,
+          priceCurrency: first.listingPriceCurrency,
+          showPrice: first.listingShowPrice,
+        },
+        first.createdAt
+      )
+
+      const leadRow = {
+        id: first.id,
+        contactName: first.contactName,
+        contactEmail: first.contactEmail,
+        contactPhone: first.contactPhone,
+        message: first.message,
+        status: first.status,
+        accessStatus: first.accessStatus,
+        activatedAt: first.activatedAt,
+        activationMode: first.activationMode,
+        source: first.source,
+        createdAt: first.createdAt,
+        listingId: first.listingId,
+        listingTitle: first.listingTitle,
+        organizationId: first.organizationId,
+      }
+
+      return {
+        ...forPublisherView(leadRow),
+        listingPreview,
+      }
     }),
 })

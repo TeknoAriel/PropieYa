@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto'
 
 import { TRPCError } from '@trpc/server'
-import { and, desc, eq, gt, isNull } from 'drizzle-orm'
+import { and, desc, eq, gt, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import {
@@ -11,7 +11,10 @@ import {
   users,
 } from '@propieya/database'
 import type { UserRole } from '@propieya/shared'
+import { PORTAL_STATS_TERMINALS } from '@propieya/shared'
 
+import { recordPortalStatsEvent } from '../../lib/analytics/record-portal-stats-event'
+import { isSimulatedLeadCreditPurchaseAllowed } from '../lib/lead-credit-purchase'
 import { createAccessToken } from '../auth'
 import {
   createTRPCRouter,
@@ -22,6 +25,12 @@ import {
 
 const INVITE_ROLE = z.enum(['agent', 'coordinator', 'org_admin'])
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
+const CREDIT_PACK_SIZES: Record<string, number> = {
+  p5: 5,
+  p15: 15,
+  p50: 50,
+}
 
 function normEmail(s: string) {
   return s.trim().toLowerCase()
@@ -41,8 +50,58 @@ export const organizationRouter = createTRPCRouter({
     if (!org) {
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Organización no encontrada' })
     }
-    return org
+    return {
+      ...org,
+      simulatedCreditPurchaseAllowed: isSimulatedLeadCreditPurchaseAllowed(),
+    }
   }),
+
+  /**
+   * Suma créditos sin cobro real (dev o `LEAD_CREDITS_SIMULATED_PURCHASE=1` en prod).
+   * Sustituir por checkout cuando la pasarela esté cableada.
+   */
+  purchaseLeadCreditsPack: orgProcedure
+    .input(z.object({ packId: z.enum(['p5', 'p15', 'p50']) }))
+    .mutation(async ({ ctx, input }) => {
+      if (!isSimulatedLeadCreditPurchaseAllowed()) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message:
+            'La compra simulada no está habilitada. En producción definí LEAD_CREDITS_SIMULATED_PURCHASE=1 o integrá el checkout.',
+        })
+      }
+      const credits = CREDIT_PACK_SIZES[input.packId]
+      if (!credits) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Pack inválido' })
+      }
+
+      const now = new Date()
+      const [updated] = await ctx.db
+        .update(organizations)
+        .set({
+          leadCreditsBalance: sql`${organizations.leadCreditsBalance} + ${credits}`,
+          updatedAt: now,
+        })
+        .where(eq(organizations.id, ctx.organizationId))
+        .returning({ leadCreditsBalance: organizations.leadCreditsBalance })
+
+      if (!updated) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Organización no encontrada' })
+      }
+
+      recordPortalStatsEvent(ctx.db, {
+        terminalId: PORTAL_STATS_TERMINALS.LEAD_CREDITS_PURCHASE_SIMULATED,
+        organizationId: ctx.organizationId,
+        userId: ctx.session.userId,
+        payload: { packId: input.packId, creditsAdded: credits },
+      })
+
+      return {
+        ok: true as const,
+        creditsAdded: credits,
+        leadCreditsBalance: updated.leadCreditsBalance,
+      }
+    }),
 
   listMembers: orgMembersProcedure.query(async ({ ctx }) => {
     const orgId = ctx.organizationId

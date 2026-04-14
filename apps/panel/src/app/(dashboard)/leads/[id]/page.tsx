@@ -1,12 +1,14 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 
-import { ArrowLeft, Building2, Calendar, Mail, MessageSquare, Phone } from 'lucide-react'
+import { ArrowLeft, Building2, Calendar, Mail, MessageSquare, Phone, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 
 import { Badge, Button, Card, Skeleton } from '@propieya/ui'
 
+import { LeadCreditsPurchaseDialog } from '@/components/lead-credits-purchase-dialog'
 import { trpc } from '@/lib/trpc'
 
 const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
@@ -33,21 +35,41 @@ function formatDate(iso: string | Date) {
   })
 }
 
+function portalWebBase() {
+  return (process.env.NEXT_PUBLIC_WEB_APP_URL || 'https://propieyaweb.vercel.app').replace(
+    /\/$/,
+    ''
+  )
+}
+
 export default function LeadDetailPage() {
   const params = useParams<{ id: string }>()
   const id = params?.id
+  const [purchaseOpen, setPurchaseOpen] = useState(false)
 
   const utils = trpc.useUtils()
   const { data: lead, isLoading } = trpc.lead.getById.useQuery(
     { id: id ?? '' },
     { enabled: !!id }
   )
+  const { data: monet } = trpc.organization.leadMonetizationSummary.useQuery(undefined, {
+    retry: false,
+  })
+  const { data: pendingSummary } = trpc.lead.publisherPendingSummary.useQuery()
+  const trackMonetization = trpc.lead.trackMonetizationEvent.useMutation()
 
   const activate = trpc.lead.activate.useMutation({
     onSuccess: () => {
       void utils.lead.getById.invalidate({ id: id ?? '' })
       void utils.lead.listByPublisher.invalidate()
+      void utils.lead.publisherPendingSummary.invalidate()
       void utils.organization.leadMonetizationSummary.invalidate()
+    },
+    onError: (err) => {
+      if (err.data?.code === 'PAYMENT_REQUIRED') {
+        void trackMonetization.mutate({ leadId: id, event: 'purchase_modal_open' })
+        setPurchaseOpen(true)
+      }
     },
   })
 
@@ -55,8 +77,22 @@ export default function LeadDetailPage() {
     onSuccess: () => {
       void utils.lead.getById.invalidate({ id: id ?? '' })
       void utils.lead.listByPublisher.invalidate()
+      void utils.lead.publisherPendingSummary.invalidate()
     },
   })
+
+  useEffect(() => {
+    if (!id || !lead || lead.accessStatus !== 'pending') return
+    const k = `lead_pending_view_${id}`
+    try {
+      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(k)) return
+      sessionStorage.setItem(k, '1')
+    } catch {
+      return
+    }
+    void trackMonetization.mutate({ leadId: id, event: 'pending_detail_viewed' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- una vez por lead/sesión
+  }, [id, lead?.id, lead?.accessStatus])
 
   if (isLoading) {
     return (
@@ -91,6 +127,9 @@ export default function LeadDetailPage() {
     activate.error?.message ??
     (activate.error?.data?.zodError ? 'Datos inválidos' : null)
 
+  const preview = lead.listingPreview
+  const simulatedAllowed = monet?.simulatedCreditPurchaseAllowed ?? false
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -108,6 +147,12 @@ export default function LeadDetailPage() {
           <p className="text-text-secondary mt-1">Consulta por {lead.listingTitle}</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {preview?.isRecentLead && lead.accessStatus === 'pending' ? (
+            <Badge variant="default" className="bg-amber-600 hover:bg-amber-600 gap-1">
+              <Sparkles className="h-3 w-3" />
+              Lead reciente
+            </Badge>
+          ) : null}
           <Badge variant={STATUS_MAP[lead.status]?.variant ?? 'secondary'}>
             {STATUS_MAP[lead.status]?.label ?? lead.status}
           </Badge>
@@ -117,22 +162,100 @@ export default function LeadDetailPage() {
         </div>
       </div>
 
+      {lead.accessStatus === 'pending' && (pendingSummary?.pendingCount ?? 0) >= 1 ? (
+        <p
+          className="text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2"
+          role="status"
+        >
+          Tenés {pendingSummary?.pendingCount}{' '}
+          {pendingSummary?.pendingCount === 1
+            ? 'lead esperando activación'
+            : 'leads esperando activación'}
+          .
+        </p>
+      ) : null}
+
+      {lead.accessStatus === 'pending' && preview ? (
+        <Card className="p-4 border-border">
+          <h2 className="text-sm font-semibold text-text-primary mb-3">
+            Resumen del aviso (sin revelar contacto)
+          </h2>
+          <dl className="grid gap-2 sm:grid-cols-2 text-sm">
+            <div>
+              <dt className="text-text-tertiary">Zona</dt>
+              <dd className="font-medium text-text-primary">{preview.zoneLabel}</dd>
+            </div>
+            <div>
+              <dt className="text-text-tertiary">Tipo</dt>
+              <dd className="font-medium text-text-primary">{preview.propertyTypeLabel}</dd>
+            </div>
+            <div>
+              <dt className="text-text-tertiary">Operación</dt>
+              <dd className="font-medium text-text-primary">{preview.operationLabel}</dd>
+            </div>
+            <div>
+              <dt className="text-text-tertiary">Presupuesto / precio publicado</dt>
+              <dd className="font-medium text-text-primary">{preview.budgetLabel}</dd>
+            </div>
+          </dl>
+        </Card>
+      ) : null}
+
       {lead.accessStatus === 'pending' ? (
-        <Card className="p-4 border-border bg-surface-secondary">
-          <p className="text-sm text-text-secondary mb-3">
-            Los datos de contacto y el mensaje están ocultos hasta que actives el lead. Con plan de
-            pago se activan automáticamente al ingresar; con plan gratuito podés usar un crédito de
-            activación.
+        <Card className="p-4 border-border bg-surface-secondary space-y-4">
+          <p className="text-sm text-text-secondary">
+            {monet && monet.planType !== 'free' ? (
+              <>
+                Tu plan debería activar los leads automáticamente. Si este sigue pendiente,
+                usá activar para sincronizar o contactá soporte.
+              </>
+            ) : (
+              <>
+                Los datos de contacto y el mensaje están ocultos hasta que actives el lead. Podés
+                usar un crédito o pasar a un plan que incluya activación automática.
+              </>
+            )}
           </p>
-          <Button
-            type="button"
-            disabled={activate.isPending || !id}
-            onClick={() => id && activate.mutate({ id })}
-          >
-            {activate.isPending ? 'Activando…' : 'Activar lead'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              disabled={activate.isPending || !id}
+              onClick={() => {
+                if (id) void trackMonetization.mutate({ leadId: id, event: 'activate_clicked' })
+                if (id) activate.mutate({ id })
+              }}
+            >
+              {activate.isPending ? 'Activando…' : 'Activar lead'}
+            </Button>
+            {monet?.planType === 'free' ? (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    void trackMonetization.mutate({ leadId: id, event: 'purchase_modal_open' })
+                    setPurchaseOpen(true)
+                  }}
+                >
+                  Comprar créditos
+                </Button>
+                <Button type="button" variant="outline" asChild>
+                  <a
+                    href={`${portalWebBase()}/planes`}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() =>
+                      void trackMonetization.mutate({ leadId: id, event: 'plans_link_click' })
+                    }
+                  >
+                    Ver planes
+                  </a>
+                </Button>
+              </>
+            ) : null}
+          </div>
           {activateError ? (
-            <p className="text-sm text-red-600 mt-2" role="alert">
+            <p className="text-sm text-red-600" role="alert">
               {activateError}
             </p>
           ) : null}
@@ -218,6 +341,19 @@ export default function LeadDetailPage() {
           </p>
         )}
       </Card>
+
+      <LeadCreditsPurchaseDialog
+        open={purchaseOpen}
+        onOpenChange={setPurchaseOpen}
+        simulatedAllowed={simulatedAllowed}
+        onPurchased={() => {
+          void utils.lead.getById.invalidate({ id: id ?? '' })
+          void utils.organization.leadMonetizationSummary.invalidate()
+        }}
+        onDismissTrack={() =>
+          void trackMonetization.mutate({ leadId: id, event: 'purchase_modal_dismiss' })
+        }
+      />
     </div>
   )
 }

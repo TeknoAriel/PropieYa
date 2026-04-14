@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 
-import { Card, Badge, Mail, Calendar, Building2, Skeleton } from '@propieya/ui'
+import { Card, Badge, Mail, Calendar, Building2, Skeleton, Button } from '@propieya/ui'
 
+import { LeadCreditsPurchaseDialog } from '@/components/lead-credits-purchase-dialog'
 import { trpc } from '@/lib/trpc'
 
 const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
@@ -29,11 +31,21 @@ function formatDate(iso: string | Date) {
   })
 }
 
+function portalWebBase() {
+  return (process.env.NEXT_PUBLIC_WEB_APP_URL || 'https://propieyaweb.vercel.app').replace(
+    /\/$/,
+    ''
+  )
+}
+
 export default function LeadsPage() {
+  const [purchaseOpen, setPurchaseOpen] = useState(false)
   const { data, isLoading } = trpc.lead.listByPublisher.useQuery()
+  const { data: pendingSummary } = trpc.lead.publisherPendingSummary.useQuery()
   const { data: monet } = trpc.organization.leadMonetizationSummary.useQuery(undefined, {
     retry: false,
   })
+  const trackMonetization = trpc.lead.trackMonetizationEvent.useMutation()
 
   if (isLoading) {
     return (
@@ -56,27 +68,100 @@ export default function LeadsPage() {
   }
 
   const items = data?.items ?? []
+  const pendingN = pendingSummary?.pendingCount ?? 0
+  const simulatedAllowed = monet?.simulatedCreditPurchaseAllowed ?? false
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">Leads</h1>
-        <p className="text-text-secondary">
-          Consultas recibidas por tus propiedades ({data?.total ?? 0} en total)
-        </p>
-        {monet ? (
-          <p className="text-sm text-text-tertiary mt-2">
-            Plan: <span className="font-medium text-text-secondary">{monet.planType}</span>
-            {monet.planType === 'free' ? (
-              <>
-                {' '}
-                · Créditos de activación:{' '}
-                <span className="font-medium text-text-secondary">{monet.leadCreditsBalance}</span>
-              </>
-            ) : null}
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">Leads</h1>
+          <p className="text-text-secondary">
+            Consultas recibidas por tus propiedades ({data?.total ?? 0} en total)
           </p>
+          {pendingN > 0 ? (
+            <p
+              className="text-sm font-medium text-amber-800 dark:text-amber-200 mt-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 inline-block"
+              role="status"
+            >
+              Tenés {pendingN} {pendingN === 1 ? 'lead esperando' : 'leads esperando'} activación.
+              Cada uno puede estar contactando otras propiedades: activalos pronto.
+            </p>
+          ) : null}
+          {monet ? (
+            <p className="text-sm text-text-tertiary mt-2">
+              Plan: <span className="font-medium text-text-secondary">{monet.planType}</span>
+              {monet.planType === 'free' ? (
+                <>
+                  {' '}
+                  · Créditos:{' '}
+                  <span className="font-medium text-text-secondary">
+                    {monet.leadCreditsBalance}
+                  </span>
+                </>
+              ) : null}
+            </p>
+          ) : null}
+        </div>
+        {monet?.planType === 'free' ? (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => {
+                void trackMonetization.mutate({ event: 'purchase_modal_open' })
+                setPurchaseOpen(true)
+              }}
+            >
+              Comprar créditos
+            </Button>
+            <Button type="button" variant="outline" asChild>
+              <a
+                href={`${portalWebBase()}/planes`}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() =>
+                  void trackMonetization.mutate({ event: 'plans_link_click' })
+                }
+              >
+                Ver planes
+              </a>
+            </Button>
+          </div>
         ) : null}
       </div>
+
+      {monet?.planType === 'free' ? (
+        <Card className="p-4 border-border">
+          <h2 className="font-semibold text-text-primary mb-3">Free vs planes de pago</h2>
+          <div className="grid gap-4 md:grid-cols-2 text-sm">
+            <div className="rounded-lg bg-surface-secondary p-3 space-y-2">
+              <div className="font-medium text-text-primary">Plan gratuito</div>
+              <ul className="list-disc list-inside text-text-secondary space-y-1">
+                <li>Leads nuevos quedan pendientes hasta que uses un crédito</li>
+                <li>Sin boost en el ranking del portal</li>
+                <li>Ideal para publicar pocos avisos y probar</li>
+              </ul>
+            </div>
+            <div className="rounded-lg bg-brand-primary/5 border border-brand-primary/20 p-3 space-y-2">
+              <div className="font-medium text-text-primary">Planes premium</div>
+              <ul className="list-disc list-inside text-text-secondary space-y-1">
+                <li>Activación automática de leads al ingresar</li>
+                <li>Contacto y mensaje al instante, sin fricción</li>
+                <li>Boost leve en búsqueda y prioridad de visibilidad</li>
+              </ul>
+              <a
+                href={`${portalWebBase()}/planes`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block text-brand-primary font-medium hover:underline"
+                onClick={() => void trackMonetization.mutate({ event: 'plans_link_click' })}
+              >
+                Pasarme a un plan →
+              </a>
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
       {items.length === 0 ? (
         <Card className="p-8 text-center text-text-secondary">
@@ -103,6 +188,11 @@ export default function LeadsPage() {
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-1.5 justify-end">
+                        {lead.isRecentLead && lead.accessStatus === 'pending' ? (
+                          <Badge variant="default" className="bg-amber-600 hover:bg-amber-600">
+                            Reciente
+                          </Badge>
+                        ) : null}
                         <Badge variant={STATUS_MAP[lead.status]?.variant ?? 'secondary'}>
                           {STATUS_MAP[lead.status]?.label ?? lead.status}
                         </Badge>
@@ -112,7 +202,9 @@ export default function LeadsPage() {
                       </div>
                     </div>
                     <p className="text-sm text-text-secondary bg-surface-secondary p-3 rounded-lg line-clamp-2">
-                      {lead.contactReveal ? `"${lead.message}"` : 'Activá el lead para ver el mensaje y el contacto.'}
+                      {lead.contactReveal
+                        ? `"${lead.message}"`
+                        : 'Activá el lead para ver el mensaje y el contacto.'}
                     </p>
                     <div className="flex flex-wrap items-center gap-4 text-sm">
                       {lead.contactReveal && lead.contactEmail ? (
@@ -142,6 +234,15 @@ export default function LeadsPage() {
           ))}
         </div>
       )}
+
+      <LeadCreditsPurchaseDialog
+        open={purchaseOpen}
+        onOpenChange={setPurchaseOpen}
+        simulatedAllowed={simulatedAllowed}
+        onDismissTrack={() =>
+          void trackMonetization.mutate({ event: 'purchase_modal_dismiss' })
+        }
+      />
     </div>
   )
 }

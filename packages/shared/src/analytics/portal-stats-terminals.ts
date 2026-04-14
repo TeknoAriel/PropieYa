@@ -37,6 +37,20 @@ export const PORTAL_STATS_TERMINALS = {
   LEAD_ACCESS_ACTIVATED: 'lead.access.activated',
   /** Lead marcado como gestionado tras contacto. */
   LEAD_ACCESS_MANAGED: 'lead.access.managed',
+  /** Vista de detalle de lead pendiente (embudo activación). */
+  LEAD_MONETIZATION_DETAIL_VIEWED_PENDING: 'lead.monetization.detail_viewed_pending',
+  /** Clic en activar lead (antes del resultado). */
+  LEAD_MONETIZATION_ACTIVATE_CLICKED: 'lead.monetization.activate_clicked',
+  /** Abrió modal / flujo compra créditos. */
+  LEAD_MONETIZATION_PURCHASE_MODAL_OPENED: 'lead.monetization.purchase_modal_opened',
+  /** Cerró flujo compra sin completar. */
+  LEAD_MONETIZATION_PURCHASE_MODAL_DISMISSED: 'lead.monetization.purchase_modal_dismissed',
+  /** Clic hacia planes del portal (upgrade). */
+  LEAD_MONETIZATION_PLANS_LINK_CLICKED: 'lead.monetization.plans_link_clicked',
+  /** Créditos sumados vía compra simulada (sin pasarela). */
+  LEAD_CREDITS_PURCHASE_SIMULATED: 'lead.credits.purchase_simulated',
+  /** Intento de activación sin saldo (plan free). */
+  LEAD_ACTIVATION_FAILED_NO_CREDITS: 'lead.activation.failed_no_credits',
   /** Aviso agregado al comparador. */
   LISTING_COMPARE_ADD: 'listing.compare.add',
   /** Usuario abrió la página de comparación. */
@@ -76,6 +90,20 @@ export const PORTAL_STATS_TERMINAL_LABELS: Record<PortalStatsTerminalId, string>
   [PORTAL_STATS_TERMINALS.LEAD_ACCESS_PENDING]: 'Lead: pendiente de activación',
   [PORTAL_STATS_TERMINALS.LEAD_ACCESS_ACTIVATED]: 'Lead: activado (datos visibles)',
   [PORTAL_STATS_TERMINALS.LEAD_ACCESS_MANAGED]: 'Lead: marcado gestionado',
+  [PORTAL_STATS_TERMINALS.LEAD_MONETIZATION_DETAIL_VIEWED_PENDING]:
+    'Monetización: vista detalle lead pendiente',
+  [PORTAL_STATS_TERMINALS.LEAD_MONETIZATION_ACTIVATE_CLICKED]:
+    'Monetización: clic activar lead',
+  [PORTAL_STATS_TERMINALS.LEAD_MONETIZATION_PURCHASE_MODAL_OPENED]:
+    'Monetización: abrió compra créditos',
+  [PORTAL_STATS_TERMINALS.LEAD_MONETIZATION_PURCHASE_MODAL_DISMISSED]:
+    'Monetización: abandonó compra créditos',
+  [PORTAL_STATS_TERMINALS.LEAD_MONETIZATION_PLANS_LINK_CLICKED]:
+    'Monetización: clic planes / upgrade',
+  [PORTAL_STATS_TERMINALS.LEAD_CREDITS_PURCHASE_SIMULATED]:
+    'Créditos: compra simulada aplicada',
+  [PORTAL_STATS_TERMINALS.LEAD_ACTIVATION_FAILED_NO_CREDITS]:
+    'Lead: activación fallida sin créditos',
   [PORTAL_STATS_TERMINALS.LISTING_COMPARE_ADD]: 'Aviso al comparador',
   [PORTAL_STATS_TERMINALS.LISTING_COMPARE_VIEW]: 'Página comparar',
   [PORTAL_STATS_TERMINALS.ASSISTANT_MESSAGE_SENT]: 'Mensaje al asistente',
