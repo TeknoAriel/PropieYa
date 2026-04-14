@@ -21,12 +21,15 @@ type AddToCompareButtonProps = {
   compact?: boolean
   /** Evitar navegación del padre (card dentro de Link) */
   stopNavigation?: boolean
+  /** Solo cuando el usuario agrega (no al quitar). Embudo / ficha. */
+  onCompareAdded?: () => void
 }
 
 export function AddToCompareButton({
   listingId,
   compact = false,
   stopNavigation = false,
+  onCompareAdded,
 }: AddToCompareButtonProps) {
   const [ids, setIds] = useState<string[]>([])
   const [maxHint, setMaxHint] = useState(false)
@@ -58,6 +61,7 @@ export function AddToCompareButton({
       return
     }
     setIds(readCompareIds())
+    onCompareAdded?.()
     recordCompareAdd.mutate(
       { listingId },
       {

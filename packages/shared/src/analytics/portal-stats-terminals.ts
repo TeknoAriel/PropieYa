@@ -24,6 +24,11 @@ export const PORTAL_STATS_TERMINALS = {
    * Embudo monetización / conversión; payload mínimo.
    */
   LISTING_CONTACT_CTA_CLICK: 'listing.contact.cta_click',
+  /**
+   * Se mostró el bloque de sugerencia / CTA inteligente en ficha (sin abrir modal aún).
+   * Payload sugerido: `{ reason?: string }` — sin PII.
+   */
+  LISTING_CONTACT_PROMPT_SHOWN: 'listing.contact.prompt_shown',
   /** Lead enviado desde ficha u otro CTA. */
   LEAD_SUBMITTED: 'lead.submitted',
   /** Aviso agregado al comparador. */
@@ -59,6 +64,8 @@ export const PORTAL_STATS_TERMINAL_LABELS: Record<PortalStatsTerminalId, string>
     'Clic en resultado hacia ficha',
   [PORTAL_STATS_TERMINALS.LISTING_CONTACT_CTA_CLICK]:
     'Clic en contactar (inicio flujo)',
+  [PORTAL_STATS_TERMINALS.LISTING_CONTACT_PROMPT_SHOWN]:
+    'Ficha: sugerencia de contacto mostrada',
   [PORTAL_STATS_TERMINALS.LEAD_SUBMITTED]: 'Lead enviado',
   [PORTAL_STATS_TERMINALS.LISTING_COMPARE_ADD]: 'Aviso al comparador',
   [PORTAL_STATS_TERMINALS.LISTING_COMPARE_VIEW]: 'Página comparar',

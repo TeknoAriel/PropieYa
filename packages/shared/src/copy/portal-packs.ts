@@ -583,15 +583,26 @@ export const PORTAL_SEARCH_UX_COPY = {
 
 /** Ficha de propiedad: contacto y confianza (Sprint 28.8, voseo). */
 export const PORTAL_LISTING_UX_COPY = {
-  contactButton: 'Escribinos',
-  sidebarTitle: '¿Te interesa?',
+  contactButton: 'Quiero que me contacten',
+  contactPrimaryCta: 'Quiero que me contacten',
+  contactScheduleCta: 'Pedir visita',
+  sidebarTitle: '¿Te interesa esta propiedad?',
   sidebarLead:
-    'Escribinos: el publicador te responde por el canal habitual. No compartimos tu email con terceros.',
+    'Dejanos tus datos: el equipo te contacta por este canal. No publicamos teléfono ni email del publicador en la ficha.',
   trustNote:
     'Los avisos pasan por el mismo motor de búsqueda que el resto del portal; si ves algo raro, avisanos.',
-  modalTitle: 'Consultá por esta propiedad',
+  contactSmartTitle: '¿Te llevamos un paso más cerca?',
+  contactSmartBodyViews:
+    'Esta propiedad encaja con lo que estás mirando. ¿Querés que te contacten por esta opción?',
+  contactSmartBodyReturn:
+    'Volviste a ver este aviso: suele ser señal de interés. ¿Querés que te escriban?',
+  contactSmartBodyCompare:
+    'La guardaste para comparar: es buen momento para pedir info sin compromiso.',
+  modalTitle: 'Te contactamos por esta propiedad',
   modalDescriptionIdle:
-    'Completá el formulario: te responden a la brevedad. Referencia del aviso:',
+    'Completá el formulario: es el canal interno de Propieya; el publicador recibe tu consulta sin exponer su mail acá. Referencia del aviso:',
+  contactModalInternalNote:
+    'No mostramos teléfono ni email del publicador en la web: la respuesta llega por el equipo o por mail a vos.',
   modalSuccessTitle: 'Listo',
   modalSuccessBody: 'Gracias. Si no ves respuesta en tu casilla, revisá spam o la carpeta de promociones.',
   modalNameLabel: 'Nombre',
@@ -609,7 +620,7 @@ export const PORTAL_LISTING_UX_COPY = {
   trustCardTitle: 'Transparencia del aviso',
   completenessLabel: 'Completitud del aviso',
   completenessHint:
-    'Indica qué tan completos están texto, fotos y datos. Si falta algo, podés preguntarle al publicador.',
+    'Indica qué tan completos están texto, fotos y datos. Si falta algo, pedí más detalle con el botón de contacto.',
   sourceImport:
     'Origen: sincronizado desde el feed de socios (mismo inventario que usa la inmobiliaria).',
   sourceManual: 'Origen: publicación gestionada en Propieya.',

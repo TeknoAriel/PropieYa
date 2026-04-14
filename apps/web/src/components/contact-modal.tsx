@@ -67,6 +67,9 @@ export function ContactModal({
           <p className="py-4 text-center text-text-secondary">✓ {L.modalSentOk}</p>
         ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
+          <p className="text-xs leading-relaxed text-text-tertiary">
+            {L.contactModalInternalNote}
+          </p>
           <div>
             <Label htmlFor="contact-name">{L.modalNameLabel}</Label>
             <Input

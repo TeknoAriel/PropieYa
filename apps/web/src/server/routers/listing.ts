@@ -979,7 +979,58 @@ export const listingRouter = createTRPCRouter({
 
   /** Usuario abrió el CTA de contacto (antes de enviar lead). */
   recordContactCtaClick: publicProcedure
-    .input(z.object({ listingId: z.string().uuid() }))
+    .input(
+      z.object({
+        listingId: z.string().uuid(),
+        /** Superficie del CTA (embudo; sin PII). */
+        surface: z
+          .enum([
+            'sidebar_primary',
+            'sidebar_secondary',
+            'sticky_primary',
+            'sticky_secondary',
+            'smart_suggestion',
+          ])
+          .optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const [row] = await ctx.db
+        .select({
+          id: listings.id,
+          organizationId: listings.organizationId,
+        })
+        .from(listings)
+        .where(
+          and(eq(listings.id, input.listingId), eq(listings.status, 'active'))
+        )
+        .limit(1)
+
+      if (!row) {
+        return { ok: false as const }
+      }
+
+      const payload: Record<string, unknown> = {}
+      if (input.surface !== undefined) payload.surface = input.surface
+
+      recordPortalStatsEvent(ctx.db, {
+        terminalId: PORTAL_STATS_TERMINALS.LISTING_CONTACT_CTA_CLICK,
+        listingId: row.id,
+        organizationId: row.organizationId,
+        userId: ctx.session?.userId ?? null,
+        payload,
+      })
+      return { ok: true as const }
+    }),
+
+  /** Ficha: se mostró el bloque de sugerencia de contacto (embudo). */
+  recordContactPromptShown: publicProcedure
+    .input(
+      z.object({
+        listingId: z.string().uuid(),
+        reason: z.enum(['views', 'return_visit', 'compare_saved']),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const [row] = await ctx.db
         .select({
@@ -997,11 +1048,11 @@ export const listingRouter = createTRPCRouter({
       }
 
       recordPortalStatsEvent(ctx.db, {
-        terminalId: PORTAL_STATS_TERMINALS.LISTING_CONTACT_CTA_CLICK,
+        terminalId: PORTAL_STATS_TERMINALS.LISTING_CONTACT_PROMPT_SHOWN,
         listingId: row.id,
         organizationId: row.organizationId,
         userId: ctx.session?.userId ?? null,
-        payload: {},
+        payload: { reason: input.reason },
       })
       return { ok: true as const }
     }),

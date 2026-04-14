@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -30,6 +30,7 @@ import type {
   PropertyType,
 } from '@propieya/shared'
 
+import { bumpListingFichaEngagement } from '@/lib/listing-ficha-engagement'
 import { trpc } from '@/lib/trpc'
 
 function FieldSummary({ field }: { field: ListingField | null | undefined }) {
@@ -167,6 +168,48 @@ function SimilarSection({ listingId }: { listingId: string }) {
   )
 }
 
+type ContactSurface =
+  | 'sidebar_primary'
+  | 'sidebar_secondary'
+  | 'sticky_primary'
+  | 'sticky_secondary'
+  | 'smart_suggestion'
+
+function ContactConversionBanner({
+  reason,
+  onContact,
+}: {
+  reason: 'views' | 'return_visit' | 'compare_saved'
+  onContact: () => void
+}) {
+  const body =
+    reason === 'compare_saved'
+      ? L.contactSmartBodyCompare
+      : reason === 'return_visit'
+        ? L.contactSmartBodyReturn
+        : L.contactSmartBodyViews
+
+  return (
+    <Card className="rounded-xl border-2 border-brand-primary/35 bg-gradient-to-br from-brand-primary/[0.09] via-brand-primary/[0.04] to-transparent p-5 shadow-md md:p-6">
+      <h2 className="text-lg font-semibold text-text-primary md:text-xl">
+        {L.contactSmartTitle}
+      </h2>
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-secondary md:text-base">
+        {body}
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button
+          type="button"
+          className="transition-transform active:scale-[0.98]"
+          onClick={onContact}
+        >
+          {L.contactPrimaryCta}
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
 function CommercialSubSummary({
   commercialSub,
 }: {
@@ -187,7 +230,14 @@ export default function PropiedadPage() {
   const params = useParams<{ id: string }>()
   const id = params?.id
   const viewRecordedRef = useRef(false)
+  const engagementBumpRef = useRef(false)
+  const contactPromptLoggedKeyRef = useRef<string | null>(null)
   const [contactOpen, setContactOpen] = useState(false)
+  const [fichaEngagement, setFichaEngagement] = useState<{
+    visitCount: number
+    isReturnVisit: boolean
+  } | null>(null)
+  const [compareJustAdded, setCompareJustAdded] = useState(false)
 
   const { data, isLoading } = trpc.listing.getById.useQuery(
     { id: typeof id === 'string' ? id : ('' as string) },
@@ -198,15 +248,21 @@ export default function PropiedadPage() {
     trpc.listing.recordPublicView.useMutation()
   const { mutate: recordContactCtaMutate } =
     trpc.listing.recordContactCtaClick.useMutation()
+  const { mutate: recordContactPromptShownMutate } =
+    trpc.listing.recordContactPromptShown.useMutation()
 
-  const openContactFlow = () => {
+  const openContactFlow = (surface: ContactSurface) => {
     if (typeof id !== 'string' || !id) return
-    recordContactCtaMutate({ listingId: id })
+    recordContactCtaMutate({ listingId: id, surface })
     setContactOpen(true)
   }
 
   useEffect(() => {
     viewRecordedRef.current = false
+    engagementBumpRef.current = false
+    contactPromptLoggedKeyRef.current = null
+    setCompareJustAdded(false)
+    setFichaEngagement(null)
   }, [id])
 
   useEffect(() => {
@@ -217,6 +273,31 @@ export default function PropiedadPage() {
     recordPublicViewMutate({ listingId: id })
   }, [id, data?.id, recordPublicViewMutate])
 
+  useEffect(() => {
+    if (typeof id !== 'string' || !id || !data?.id || engagementBumpRef.current) {
+      return
+    }
+    engagementBumpRef.current = true
+    setFichaEngagement(bumpListingFichaEngagement(id))
+  }, [id, data?.id])
+
+  const suggestionReason = useMemo(() => {
+    if (compareJustAdded) return 'compare_saved' as const
+    if (!fichaEngagement) return null
+    if (fichaEngagement.isReturnVisit) return 'return_visit' as const
+    if (fichaEngagement.visitCount >= 2) return 'views' as const
+    return null
+  }, [compareJustAdded, fichaEngagement])
+
+  const showContactSuggestion = suggestionReason !== null
+
+  useEffect(() => {
+    if (typeof id !== 'string' || !id || !suggestionReason) return
+    const key = `${id}:${suggestionReason}`
+    if (contactPromptLoggedKeyRef.current === key) return
+    contactPromptLoggedKeyRef.current = key
+    recordContactPromptShownMutate({ listingId: id, reason: suggestionReason })
+  }, [id, suggestionReason, recordContactPromptShownMutate])
 
   if (isLoading) {
     return (
@@ -364,6 +445,12 @@ export default function PropiedadPage() {
         </section>
 
         <div className="container mx-auto space-y-8 px-4 py-8">
+          {showContactSuggestion && suggestionReason ? (
+            <ContactConversionBanner
+              reason={suggestionReason}
+              onContact={() => openContactFlow('smart_suggestion')}
+            />
+          ) : null}
           <Card className="rounded-xl border border-border/70 p-5 shadow-sm md:p-6">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0 space-y-2">
@@ -473,20 +560,26 @@ export default function PropiedadPage() {
                 <p className="mt-2 text-sm text-text-secondary">{L.sidebarLead}</p>
                 <p className="mt-2 text-xs leading-relaxed text-text-tertiary">{L.trustNote}</p>
                 <div className="mt-4 space-y-2">
-                  <Button className="w-full" onClick={openContactFlow}>
+                  <Button
+                    className="w-full transition-transform active:scale-[0.98]"
+                    onClick={() => openContactFlow('sidebar_primary')}
+                  >
                     <MessageSquare className="mr-2 h-4 w-4" />
-                    {L.contactButton}
+                    {L.contactPrimaryCta}
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full"
+                    className="w-full transition-transform active:scale-[0.98]"
                     type="button"
-                    onClick={openContactFlow}
+                    onClick={() => openContactFlow('sidebar_secondary')}
                   >
                     <Calendar className="mr-2 h-4 w-4" />
-                    Agendar visita
+                    {L.contactScheduleCta}
                   </Button>
-                  <AddToCompareButton listingId={listing.id} />
+                  <AddToCompareButton
+                    listingId={listing.id}
+                    onCompareAdded={() => setCompareJustAdded(true)}
+                  />
                 </div>
               </Card>
 
@@ -546,16 +639,20 @@ export default function PropiedadPage() {
       </main>
 
       <div className="fixed inset-x-0 bottom-0 z-30 flex gap-2 border-t border-border bg-surface-primary/95 p-3 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md lg:hidden">
-        <Button className="min-h-11 flex-1" type="button" onClick={openContactFlow}>
-          {L.contactButton}
+        <Button
+          className="min-h-11 flex-1 transition-transform active:scale-[0.98]"
+          type="button"
+          onClick={() => openContactFlow('sticky_primary')}
+        >
+          {L.contactPrimaryCta}
         </Button>
         <Button
           variant="outline"
-          className="min-h-11 flex-1"
+          className="min-h-11 flex-1 transition-transform active:scale-[0.98]"
           type="button"
-          onClick={openContactFlow}
+          onClick={() => openContactFlow('sticky_secondary')}
         >
-          Visita
+          {L.contactScheduleCta}
         </Button>
       </div>
 
