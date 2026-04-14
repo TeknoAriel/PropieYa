@@ -74,6 +74,7 @@ export {
   LogOut,
   Mail,
   Map,
+  MapPin,
   Mic,
   Menu,
   MessageSquare,

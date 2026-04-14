@@ -16,9 +16,30 @@ import {
 } from '@propieya/ui'
 import { useTheme } from '@/lib/theme-provider'
 import { getPortalPack } from '@/lib/portal-copy'
+import { PORTAL_ACCOUNT, PORTAL_PRIMARY_NAV } from '@/lib/portal-nav'
 
 const mobileNavClass =
   'rounded-md px-3 py-2.5 text-sm font-medium text-text-primary hover:bg-surface-secondary'
+
+function NavLink({
+  href,
+  label,
+  onNavigate,
+}: {
+  href: string
+  label: string
+  onNavigate?: () => void
+}) {
+  return (
+    <Link
+      href={href}
+      className="whitespace-nowrap text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary lg:text-sm"
+      onClick={onNavigate}
+    >
+      {label}
+    </Link>
+  )
+}
 
 export function Header() {
   const pack = getPortalPack()
@@ -29,73 +50,72 @@ export function Header() {
     setTheme(resolvedTheme === 'light' ? 'dark' : 'light')
   }
 
+  const closeMobile = () => setMobileOpen(false)
+
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border bg-surface-primary/95 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/80">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-2xl font-bold text-brand-primary">Propieya</span>
-        </Link>
-
-        {/* Nav - Desktop */}
-        <nav className="hidden md:flex items-center gap-6">
+    <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-surface-primary/95 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-surface-primary/90">
+      <div className="container mx-auto px-4">
+        <div className="flex h-14 items-center justify-between gap-3 md:h-16 md:gap-4">
           <Link
-            href="/buscar"
-            className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+            href="/"
+            className="shrink-0 text-xl font-bold tracking-tight text-brand-primary md:text-2xl"
           >
-            {pack.nav.buscar}
+            Propieya
           </Link>
-          <Link
-            href="/venta"
-            className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
-          >
-            {pack.nav.venta}
-          </Link>
-          <Link
-            href="/alquiler"
-            className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
-          >
-            {pack.nav.alquiler}
-          </Link>
-        </nav>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          {/* Theme toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            aria-label="Cambiar tema"
+          <nav
+            className="hidden min-w-0 flex-1 justify-center overflow-x-auto px-2 md:flex md:px-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            aria-label="Principal"
           >
-            {resolvedTheme === 'light' ? (
-              <Moon className="h-5 w-5" />
-            ) : (
-              <Sun className="h-5 w-5" />
-            )}
-          </Button>
+            <div className="flex items-center gap-x-4 gap-y-1 lg:gap-x-5">
+              {PORTAL_PRIMARY_NAV.map((item) => (
+                <NavLink key={item.href} href={item.href} label={item.label} />
+              ))}
+            </div>
+          </nav>
 
-          {/* Auth buttons - Desktop */}
-          <div className="hidden md:flex items-center gap-2">
-            <Button variant="ghost" asChild>
-              <Link href="/login">{pack.cta.login}</Link>
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              aria-label="Cambiar tema"
+              className="hidden sm:inline-flex"
+            >
+              {resolvedTheme === 'light' ? (
+                <Moon className="h-5 w-5" />
+              ) : (
+                <Sun className="h-5 w-5" />
+              )}
             </Button>
-            <Button asChild>
+
+            <div className="hidden items-center gap-1 lg:flex">
+              <Button variant="ghost" size="sm" asChild className="text-sm">
+                <Link href={PORTAL_ACCOUNT.compare.href}>{PORTAL_ACCOUNT.compare.label}</Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild className="text-sm">
+                <Link href={PORTAL_ACCOUNT.alerts.href}>{PORTAL_ACCOUNT.alerts.label}</Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild className="text-sm">
+                <Link href={PORTAL_ACCOUNT.login.href}>{PORTAL_ACCOUNT.login.label}</Link>
+              </Button>
+            </div>
+
+            <Button size="sm" className="hidden sm:inline-flex md:px-4" asChild>
               <Link href="/publicar">{pack.cta.publish}</Link>
             </Button>
-          </div>
 
-          {/* Mobile menu (Sprint 28) */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            aria-label="Abrir menú"
-            onClick={() => setMobileOpen(true)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              aria-label="Abrir menú"
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -104,52 +124,41 @@ export function Header() {
           <DialogHeader>
             <DialogTitle>Menú</DialogTitle>
           </DialogHeader>
-          <nav className="flex flex-col gap-1" aria-label="Navegación principal">
-            <Link
-              href="/buscar"
-              className={mobileNavClass}
-              onClick={() => setMobileOpen(false)}
-            >
-              {pack.nav.buscar}
+          <nav className="flex max-h-[min(70vh,520px)] flex-col gap-1 overflow-y-auto pr-1" aria-label="Navegación principal">
+            {PORTAL_PRIMARY_NAV.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={mobileNavClass}
+                onClick={closeMobile}
+              >
+                {item.label}
+              </Link>
+            ))}
+            <Separator className="my-2" />
+            <Link href={PORTAL_ACCOUNT.compare.href} className={mobileNavClass} onClick={closeMobile}>
+              {PORTAL_ACCOUNT.compare.label}
             </Link>
-            <Link
-              href="/venta"
-              className={mobileNavClass}
-              onClick={() => setMobileOpen(false)}
-            >
-              {pack.nav.venta}
+            <Link href={PORTAL_ACCOUNT.alerts.href} className={mobileNavClass} onClick={closeMobile}>
+              {PORTAL_ACCOUNT.alerts.label}
             </Link>
-            <Link
-              href="/alquiler"
-              className={mobileNavClass}
-              onClick={() => setMobileOpen(false)}
-            >
-              {pack.nav.alquiler}
+            <Link href={PORTAL_ACCOUNT.login.href} className={mobileNavClass} onClick={closeMobile}>
+              {PORTAL_ACCOUNT.login.label}
             </Link>
-            <Link
-              href="/nosotros"
-              className={mobileNavClass}
-              onClick={() => setMobileOpen(false)}
-            >
+            <Link href="/nosotros" className={mobileNavClass} onClick={closeMobile}>
               Sobre nosotros
             </Link>
-            <Link
-              href="/contacto"
-              className={mobileNavClass}
-              onClick={() => setMobileOpen(false)}
-            >
+            <Link href="/contacto" className={mobileNavClass} onClick={closeMobile}>
               Contacto
             </Link>
             <Separator className="my-2" />
-            <Link
-              href="/login"
-              className={mobileNavClass}
-              onClick={() => setMobileOpen(false)}
-            >
-              {pack.cta.login}
-            </Link>
-            <Button asChild className="mt-1 w-full">
-              <Link href="/publicar" onClick={() => setMobileOpen(false)}>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" type="button" onClick={toggleTheme}>
+                Tema
+              </Button>
+            </div>
+            <Button asChild className="mt-2 w-full">
+              <Link href="/publicar" onClick={closeMobile}>
                 {pack.cta.publish}
               </Link>
             </Button>

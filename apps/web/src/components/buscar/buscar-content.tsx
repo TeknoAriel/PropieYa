@@ -166,13 +166,13 @@ function ListingCard({
         }}
       >
         <Card
-          className={`overflow-hidden group cursor-pointer transition-shadow hover:shadow-lg ${
+          className={`group cursor-pointer overflow-hidden rounded-xl border border-border/70 shadow-sm transition-shadow duration-200 hover:border-border hover:shadow-md ${
             emphasizeFromMap
               ? 'ring-2 ring-brand-primary ring-offset-2 ring-offset-surface-primary'
               : ''
           }`}
         >
-        <div className="relative h-48 overflow-hidden bg-surface-secondary">
+        <div className="relative h-52 overflow-hidden bg-surface-secondary md:h-56">
           <Image
             src={
               listing.primaryImageUrl ||
@@ -1983,6 +1983,37 @@ export function BuscarContent({
             </Card>
           ) : (
             <div className="space-y-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-medium text-text-primary">Resultados</p>
+                <div
+                  className="inline-flex w-full max-w-xs rounded-lg border border-border/80 bg-surface-secondary/60 p-0.5 sm:w-auto"
+                  role="group"
+                  aria-label="Vista de resultados"
+                >
+                  <Button
+                    type="button"
+                    variant={!showMap ? 'default' : 'ghost'}
+                    size="sm"
+                    className="h-9 flex-1 rounded-md px-3 text-xs sm:flex-none sm:text-sm"
+                    onClick={() => setShowMap(false)}
+                  >
+                    Lista
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={showMap ? 'default' : 'ghost'}
+                    size="sm"
+                    className="h-9 flex-1 rounded-md px-3 text-xs sm:flex-none sm:text-sm"
+                    onClick={() => {
+                      setShowMap(true)
+                      scrollToElementId('buscar-mapa')
+                    }}
+                  >
+                    <MapIcon className="mr-1.5 hidden h-3.5 w-3.5 sm:inline" aria-hidden />
+                    Mapa
+                  </Button>
+                </div>
+              </div>
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {listings.map((listing, index) => (
                   <ListingCard

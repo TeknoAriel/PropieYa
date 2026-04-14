@@ -12,30 +12,30 @@ export function HeroSearch() {
   const pack = getPortalPack()
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-surface-secondary to-surface-primary pb-6 pt-5 md:pb-8 md:pt-6">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-brand-secondary/20 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-brand-primary/10 blur-3xl" />
+    <section className="relative overflow-hidden bg-gradient-to-b from-surface-secondary/90 via-surface-primary to-surface-primary pb-8 pt-6 md:pb-12 md:pt-8">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-32 right-0 h-72 w-72 rounded-full bg-brand-secondary/15 blur-3xl" />
+        <div className="absolute -bottom-32 -left-20 h-72 w-72 rounded-full bg-brand-primary/8 blur-3xl" />
       </div>
 
       <div className="container relative mx-auto px-4">
-        <div className="mx-auto max-w-3xl text-center">
+        <div className="mx-auto max-w-4xl text-center">
           <h1 className="text-3xl font-bold tracking-tight text-text-primary sm:text-[1.75rem] md:text-4xl lg:text-[2.35rem] lg:leading-tight">
             {pack.hero.line1}
             <br />
             <span className="text-brand-primary">{pack.hero.line2Accent}</span>
           </h1>
 
-          <p className="mt-1.5 text-sm leading-snug text-text-secondary md:mt-2 md:text-base md:leading-relaxed">
+          <p className="mt-2 max-w-2xl mx-auto text-sm leading-relaxed text-text-secondary md:mt-3 md:text-base">
             {pack.hero.subtitle}
           </p>
 
-          <div className="mx-auto mt-3 max-w-3xl rounded-2xl border border-border/35 bg-surface-primary/40 p-3 shadow-sm backdrop-blur-sm md:mt-4 md:p-4">
+          <div className="mx-auto mt-5 max-w-3xl rounded-2xl border border-border/50 bg-surface-primary/90 p-4 shadow-md shadow-black/5 backdrop-blur-sm md:mt-6 md:p-5">
             <ConversationalSearchBlock
               variant="hero"
               routerMode="push"
               searchPathPage="buscar"
-              compact
+              compact={false}
               className="w-full"
             />
             <div className="mt-3 border-t border-border/35 pt-3">

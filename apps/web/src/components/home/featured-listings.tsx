@@ -31,14 +31,16 @@ export function FeaturedListings() {
   const listings = listingsRaw as unknown as FeaturedListingCardData[]
 
   return (
-    <section className="bg-surface-primary pt-3 pb-12 md:pt-4 md:pb-20">
+    <section className="bg-surface-primary pt-6 pb-14 md:pt-8 md:pb-20">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between gap-4 mb-5 md:mb-6">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between md:mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-text-primary md:text-3xl">
+            <h2 className="text-2xl font-bold tracking-tight text-text-primary md:text-3xl">
               {pack.featured.title}
             </h2>
-            <p className="mt-2 text-text-secondary">{pack.featured.subtitle}</p>
+            <p className="mt-2 max-w-xl text-sm text-text-secondary md:text-base">
+              {pack.featured.subtitle}
+            </p>
           </div>
           <Button variant="outline" asChild className="hidden md:flex">
             <Link href="/buscar">
@@ -95,10 +97,10 @@ function ListingCard({ listing }: { listing: FeaturedListingCardData }) {
   const city = listing.address?.city ?? '—'
 
   return (
-    <Link href={`/propiedad/${listing.id}`}>
-      <Card className="overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow">
+    <Link href={`/propiedad/${listing.id}`} className="block h-full">
+      <Card className="group h-full cursor-pointer overflow-hidden rounded-xl border border-border/70 shadow-sm transition-shadow duration-200 hover:border-border hover:shadow-md">
         {/* Image */}
-        <div className="relative h-48 overflow-hidden bg-surface-secondary">
+        <div className="relative h-52 overflow-hidden bg-surface-secondary md:h-56">
           <Image
             src={
               listing.primaryImageUrl ||
