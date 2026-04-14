@@ -124,6 +124,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
 }
 
+export type PortalMonetizationTier = 'free' | 'premium'
+
 export interface User {
   id: UUID
   email: string
@@ -134,6 +136,8 @@ export interface User {
   avatarUrl: string | null
   locale: string
   timezone: string
+  /** Tier portal (priorización / contacto; evolución producto). */
+  portalMonetizationTier: PortalMonetizationTier
   createdAt: Timestamp
   updatedAt: Timestamp
   lastLoginAt: Timestamp | null

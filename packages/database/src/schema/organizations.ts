@@ -55,6 +55,10 @@ export const organizations = pgTable(
 
     // Plan
     planType: varchar('plan_type', { length: 20 }).notNull().default('free'),
+    /** Créditos para activar leads (plan free + pago por lead). */
+    leadCreditsBalance: integer('lead_credits_balance').notNull().default(0),
+    /** Puntos de boost en ranking (búsqueda); reservado para cablear a ES. */
+    searchBoostPoints: integer('search_boost_points').notNull().default(0),
     listingLimit: integer('listing_limit'),
     userLimit: integer('user_limit'),
 

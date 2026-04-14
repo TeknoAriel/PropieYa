@@ -7,6 +7,7 @@ import { z } from 'zod'
 import {
   organizationInvites,
   organizationMemberships,
+  organizations,
   users,
 } from '@propieya/database'
 import type { UserRole } from '@propieya/shared'
@@ -15,6 +16,7 @@ import { createAccessToken } from '../auth'
 import {
   createTRPCRouter,
   protectedProcedure,
+  orgProcedure,
   orgMembersProcedure,
 } from '../trpc'
 
@@ -26,6 +28,22 @@ function normEmail(s: string) {
 }
 
 export const organizationRouter = createTRPCRouter({
+  /** Plan, créditos de lead y boost (panel / monetización). */
+  leadMonetizationSummary: orgProcedure.query(async ({ ctx }) => {
+    const org = await ctx.db.query.organizations.findFirst({
+      where: eq(organizations.id, ctx.organizationId),
+      columns: {
+        planType: true,
+        leadCreditsBalance: true,
+        searchBoostPoints: true,
+      },
+    })
+    if (!org) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Organización no encontrada' })
+    }
+    return org
+  }),
+
   listMembers: orgMembersProcedure.query(async ({ ctx }) => {
     const orgId = ctx.organizationId
     const rows = await ctx.db.query.organizationMemberships.findMany({

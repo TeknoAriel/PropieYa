@@ -26,6 +26,10 @@ export const users = pgTable(
     accountIntent: varchar('account_intent', { length: 32 })
       .notNull()
       .default('seeker'),
+    /** Portal: tier de monetización / priorización (contacto, visibilidad). */
+    portalMonetizationTier: varchar('portal_monetization_tier', { length: 20 })
+      .notNull()
+      .default('free'),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

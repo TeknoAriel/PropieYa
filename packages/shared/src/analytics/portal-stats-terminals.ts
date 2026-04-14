@@ -31,6 +31,12 @@ export const PORTAL_STATS_TERMINALS = {
   LISTING_CONTACT_PROMPT_SHOWN: 'listing.contact.prompt_shown',
   /** Lead enviado desde ficha u otro CTA. */
   LEAD_SUBMITTED: 'lead.submitted',
+  /** Lead creado en estado pendiente de activación (plan free sin auto-activación). */
+  LEAD_ACCESS_PENDING: 'lead.access.pending',
+  /** Lead activado en panel (plan o consumo de crédito). */
+  LEAD_ACCESS_ACTIVATED: 'lead.access.activated',
+  /** Lead marcado como gestionado tras contacto. */
+  LEAD_ACCESS_MANAGED: 'lead.access.managed',
   /** Aviso agregado al comparador. */
   LISTING_COMPARE_ADD: 'listing.compare.add',
   /** Usuario abrió la página de comparación. */
@@ -67,6 +73,9 @@ export const PORTAL_STATS_TERMINAL_LABELS: Record<PortalStatsTerminalId, string>
   [PORTAL_STATS_TERMINALS.LISTING_CONTACT_PROMPT_SHOWN]:
     'Ficha: sugerencia de contacto mostrada',
   [PORTAL_STATS_TERMINALS.LEAD_SUBMITTED]: 'Lead enviado',
+  [PORTAL_STATS_TERMINALS.LEAD_ACCESS_PENDING]: 'Lead: pendiente de activación',
+  [PORTAL_STATS_TERMINALS.LEAD_ACCESS_ACTIVATED]: 'Lead: activado (datos visibles)',
+  [PORTAL_STATS_TERMINALS.LEAD_ACCESS_MANAGED]: 'Lead: marcado gestionado',
   [PORTAL_STATS_TERMINALS.LISTING_COMPARE_ADD]: 'Aviso al comparador',
   [PORTAL_STATS_TERMINALS.LISTING_COMPARE_VIEW]: 'Página comparar',
   [PORTAL_STATS_TERMINALS.ASSISTANT_MESSAGE_SENT]: 'Mensaje al asistente',

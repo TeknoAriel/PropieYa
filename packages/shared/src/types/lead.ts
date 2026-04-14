@@ -3,6 +3,14 @@ import { type DemandProfile } from './demand-profile'
 import { type MatchingResult } from './matching'
 
 /**
+ * Visibilidad de datos / monetización en panel (independiente de `LeadStatus` CRM).
+ */
+export type LeadAccessStatus = 'pending' | 'activated' | 'managed'
+
+/** Cómo se desbloqueó el contacto del lead */
+export type LeadActivationMode = 'plan' | 'pay_per_lead'
+
+/**
  * Estado del lead
  */
 export type LeadStatus =

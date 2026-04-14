@@ -49,6 +49,10 @@ export interface Organization {
 
   // Plan (simplificado para MVP)
   planType: PlanType
+  /** Créditos para activar leads (pago por lead). */
+  leadCreditsBalance: number
+  /** Reservado para boost leve en ranking. */
+  searchBoostPoints: number
   listingLimit: number | null // null = ilimitado
   userLimit: number | null
 

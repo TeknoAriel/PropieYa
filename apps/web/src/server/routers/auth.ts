@@ -393,6 +393,7 @@ export const authRouter = createTRPCRouter({
       avatarUrl: user.avatarUrl,
       locale: user.locale,
       timezone: user.timezone,
+      portalMonetizationTier: user.portalMonetizationTier,
       lastLoginAt: user.lastLoginAt,
       role: ctx.session.role,
       organizationId: ctx.session.organizationId,

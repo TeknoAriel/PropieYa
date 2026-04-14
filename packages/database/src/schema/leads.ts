@@ -55,6 +55,13 @@ export const leads = pgTable(
 
     // Estado
     status: varchar('status', { length: 50 }).notNull().default('new'),
+    /**
+     * Monetización / control de datos: pendiente hasta activación (plan o crédito),
+     * luego activado o marcado como gestionado. Independiente del flujo CRM (`status`).
+     */
+    accessStatus: varchar('access_status', { length: 20 }).notNull().default('activated'),
+    activatedAt: timestamp('activated_at', { withTimezone: true }),
+    activationMode: varchar('activation_mode', { length: 30 }),
     intentLevel: varchar('intent_level', { length: 20 }).notNull().default('medium'),
     source: varchar('source', { length: 50 }).notNull().default('listing_contact'),
 
@@ -73,6 +80,7 @@ export const leads = pgTable(
     orgIdx: index('leads_org_idx').on(table.organizationId),
     listingIdx: index('leads_listing_idx').on(table.listingId),
     statusIdx: index('leads_status_idx').on(table.status),
+    accessStatusIdx: index('leads_access_status_idx').on(table.accessStatus),
     assignedIdx: index('leads_assigned_idx').on(table.assignedTo),
     createdIdx: index('leads_created_idx').on(table.createdAt),
   })

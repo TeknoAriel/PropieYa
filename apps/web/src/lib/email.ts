@@ -65,12 +65,28 @@ export async function sendNewLeadEmail(params: {
   contactEmail: string
   message: string
   panelLeadsUrl: string
+  /** Si true, no se incluyen email ni mensaje en el cuerpo (lead pendiente de activación). */
+  accessPending?: boolean
 }): Promise<{ ok: boolean; error?: string }> {
   if (!resend) {
     return { ok: false, error: 'Resend no configurado' }
   }
 
-  const subject = `Nuevo lead: ${params.listingTitle}`
+  const subject = params.accessPending
+    ? `Nuevo lead pendiente de activación: ${params.listingTitle}`
+    : `Nuevo lead: ${params.listingTitle}`
+
+  const pendingBlock = params.accessPending
+    ? `<p style="background: #fef3c7; border: 1px solid #fcd34d; padding: 16px; border-radius: 8px;">
+  Tenés una nueva consulta por <strong>${escapeHtml(params.listingTitle)}</strong>.
+  <strong>Los datos de contacto y el mensaje completo están en el panel</strong> una vez que actives el lead (plan o crédito).
+</p>
+<p><strong>Consultante:</strong> ${escapeHtml(params.contactName)}</p>`
+    : `<p>Recibiste un mensaje por tu aviso <strong>${escapeHtml(params.listingTitle)}</strong>.</p>
+  <p><strong>De:</strong> ${escapeHtml(params.contactName)} (${escapeHtml(params.contactEmail)})</p>
+  <p><strong>Mensaje:</strong></p>
+  <p style="background: #f3f4f6; padding: 16px; border-radius: 8px; white-space: pre-wrap;">${escapeHtml(params.message)}</p>`
+
   const html = `
 <!DOCTYPE html>
 <html>
@@ -79,11 +95,8 @@ export async function sendNewLeadEmail(params: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 560px; margin: 0 auto; padding: 24px;">
-  <h1 style="font-size: 1.25rem; margin-bottom: 16px;">Nuevo lead</h1>
-  <p>Recibiste un mensaje por tu aviso <strong>${escapeHtml(params.listingTitle)}</strong>.</p>
-  <p><strong>De:</strong> ${escapeHtml(params.contactName)} (${escapeHtml(params.contactEmail)})</p>
-  <p><strong>Mensaje:</strong></p>
-  <p style="background: #f3f4f6; padding: 16px; border-radius: 8px; white-space: pre-wrap;">${escapeHtml(params.message)}</p>
+  <h1 style="font-size: 1.25rem; margin-bottom: 16px;">${params.accessPending ? 'Nuevo lead (pendiente)' : 'Nuevo lead'}</h1>
+  ${pendingBlock}
   <p style="margin: 24px 0;">
     <a href="${escapeHtml(params.panelLeadsUrl)}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">Ver leads en el panel</a>
   </p>

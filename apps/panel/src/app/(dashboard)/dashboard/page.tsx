@@ -329,6 +329,7 @@ export default function DashboardPage() {
                       </p>
                       <p className="text-xs text-text-tertiary truncate">
                         {lead.listingTitle} · {relativeTime(lead.createdAt)}
+                        {lead.accessStatus === 'pending' ? ' · pendiente de activación' : ''}
                       </p>
                 </div>
                     <ArrowRight className="h-4 w-4 text-text-tertiary shrink-0" />
