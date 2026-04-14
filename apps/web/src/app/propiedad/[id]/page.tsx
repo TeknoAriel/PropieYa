@@ -117,6 +117,8 @@ function ContactButton({
 
 function SimilarSection({ listingId }: { listingId: string }) {
   const { data = [], isLoading } = trpc.listing.similar.useQuery({ id: listingId })
+  const recordSearchResultClick =
+    trpc.listing.recordSearchResultClick.useMutation()
 
   if (isLoading) {
     return (
@@ -141,7 +143,7 @@ function SimilarSection({ listingId }: { listingId: string }) {
         Propiedades similares
       </h2>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {data.map((item) => {
+        {data.map((item, index) => {
           const addr = item.address as { neighborhood?: string; city?: string } | null
           const op =
             OPERATION_TYPE_LABELS[item.operationType as OperationType] ??
@@ -152,6 +154,13 @@ function SimilarSection({ listingId }: { listingId: string }) {
               key={item.id}
               href={`/propiedad/${item.id}`}
               className="flex gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-surface-secondary"
+              onClick={() => {
+                recordSearchResultClick.mutate({
+                  listingId: item.id,
+                  from: 'similar',
+                  position: index,
+                })
+              }}
             >
               <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-md bg-surface-secondary">
                 <Image

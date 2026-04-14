@@ -141,7 +141,7 @@ function ListingCard({
   listing: BuscarListingCardData
   mapSelectedListingId: string | null
   onMapSyncHover?: (listingId: string | null) => void
-  /** Telemetría embudo: clic hacia ficha desde la lista. */
+  /** Telemetría embudo: clic hacia ficha desde la lista (el padre suele capturar `position`). */
   onResultLinkClick?: (listingId: string) => void
 }) {
   const operationLabel = OPERATION_TYPE_LABELS[listing.operationType] ?? listing.operationType
@@ -312,8 +312,16 @@ export function BuscarContent({
   const recordSearchResultClick =
     trpc.listing.recordSearchResultClick.useMutation()
   const onSearchResultNavigate = useCallback(
-    (listingId: string, from: 'list' | 'map') => {
-      recordSearchResultClick.mutate({ listingId, from })
+    (
+      listingId: string,
+      from: 'list' | 'map' | 'similar',
+      position?: number
+    ) => {
+      recordSearchResultClick.mutate({
+        listingId,
+        from,
+        ...(position !== undefined ? { position } : {}),
+      })
     },
     [recordSearchResultClick]
   )
@@ -1976,7 +1984,7 @@ export function BuscarContent({
           ) : (
             <div className="space-y-6">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {listings.map((listing) => (
+                {listings.map((listing, index) => (
                   <ListingCard
                     key={listing.id}
                     listing={listing}
@@ -1985,7 +1993,7 @@ export function BuscarContent({
                       showMap && mapPins.length > 0 ? onMapSyncHover : undefined
                     }
                     onResultLinkClick={(listingId) =>
-                      onSearchResultNavigate(listingId, 'list')
+                      onSearchResultNavigate(listingId, 'list', index)
                     }
                   />
                 ))}

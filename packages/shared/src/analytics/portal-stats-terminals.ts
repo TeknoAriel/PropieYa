@@ -16,7 +16,7 @@ export const PORTAL_STATS_TERMINALS = {
   LISTING_FICHA_VIEW: 'listing.ficha.view',
   /**
    * Clic desde resultado de búsqueda (lista o mapa) hacia la ficha.
-   * Payload sugerido: `{ from?: 'list' | 'map', position?: number }` — sin PII.
+   * Payload sugerido: `{ from?: 'list' | 'map' | 'similar', position?: number }` — sin PII.
    */
   LISTING_SEARCH_RESULT_CLICK: 'listing.search.result_click',
   /**

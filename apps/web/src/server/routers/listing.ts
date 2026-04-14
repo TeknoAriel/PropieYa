@@ -145,26 +145,16 @@ function buildSqlLocalityPlaceOrCondition(placeRaw: string | undefined): SQL | n
   )!
 }
 
-/**
- * - `catalog`: ciudad y barrio como AND (ambos bloques si vienen los dos).
- * - `intent`: un solo OR entre ambos bloques, alineado a `should` en ES (no excluir por doble término).
- */
-function appendSqlLocalityFilters(
+/** Catálogo SQL: ciudad y barrio como AND (un bloque ILIKE por dimensión). */
+function appendSqlLocalityFiltersCatalog(
   conditions: SQL[],
   city: string | undefined,
-  neighborhood: string | undefined,
-  mode: 'catalog' | 'intent'
+  neighborhood: string | undefined
 ): void {
   const citySql = buildSqlLocalityPlaceOrCondition(city)
   const nbSql = buildSqlLocalityPlaceOrCondition(neighborhood)
-  if (mode === 'catalog') {
-    if (citySql) conditions.push(citySql)
-    if (nbSql) conditions.push(nbSql)
-    return
-  }
-  const parts = [citySql, nbSql].filter((x): x is SQL => x != null)
-  if (parts.length === 0) return
-  conditions.push(parts.length === 1 ? parts[0]! : or(...parts)!)
+  if (citySql) conditions.push(citySql)
+  if (nbSql) conditions.push(nbSql)
 }
 
 function searchFiltersToListingInputOverlay(
@@ -372,12 +362,14 @@ function buildListingSearchSqlFromSeed(
     }
   }
 
-  appendSqlLocalityFilters(
-    conditions,
-    sqlInput.city,
-    sqlInput.neighborhood,
-    intentSql ? 'intent' : 'catalog'
-  )
+  // `intent`: localidad solo rankea en ES (`should`); no filtrar en SQL fallback.
+  if (!intentSql) {
+    appendSqlLocalityFiltersCatalog(
+      conditions,
+      sqlInput.city,
+      sqlInput.neighborhood
+    )
+  }
   if (amenityStrict && sqlInput.amenities && sqlInput.amenities.length > 0) {
     const allowed = SEARCH_FILTER_AMENITIES as readonly string[]
     for (const a of sqlInput.amenities) {
@@ -949,7 +941,7 @@ export const listingRouter = createTRPCRouter({
     .input(
       z.object({
         listingId: z.string().uuid(),
-        from: z.enum(['list', 'map']).optional(),
+        from: z.enum(['list', 'map', 'similar']).optional(),
         position: z.number().int().min(0).max(500).optional(),
       })
     )
