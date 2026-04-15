@@ -248,18 +248,18 @@ function bucketCountLabel(bucketId: string, n: number): string {
 
 function bucketStrongNearSectionClass(bucketId: string): string {
   if (bucketId === 'strong') {
-    return 'space-y-4 rounded-2xl border-2 border-brand-primary/35 bg-gradient-to-br from-brand-primary/[0.08] via-brand-primary/[0.03] to-transparent p-4 shadow-md ring-1 ring-brand-primary/15 md:p-6'
+    return 'space-y-3 rounded-xl border border-brand-primary/18 bg-brand-primary/[0.035] p-3 md:space-y-4 md:p-5'
   }
   if (bucketId === 'near') {
-    return 'space-y-3 rounded-xl border border-border/80 bg-surface-secondary/40 p-4 md:p-5'
+    return 'space-y-3 rounded-lg border border-border/50 bg-surface-secondary/30 p-3 md:p-4'
   }
   return 'space-y-3'
 }
 
 function bucketHeadingClass(bucketId: string): string {
-  if (bucketId === 'strong') return 'text-lg font-bold text-text-primary md:text-xl'
-  if (bucketId === 'near') return 'text-base font-semibold text-text-primary'
-  return 'text-base font-semibold text-text-primary'
+  if (bucketId === 'strong') return 'text-base font-semibold text-text-primary md:text-lg'
+  if (bucketId === 'near') return 'text-sm font-semibold text-text-primary md:text-base'
+  return 'text-sm font-semibold text-text-primary md:text-base'
 }
 
 function ListingCard({
@@ -298,7 +298,7 @@ function ListingCard({
   return (
     <div
       id={`buscar-listing-${listing.id}`}
-      className="scroll-mt-24 rounded-lg transition-transform duration-200 hover:-translate-y-0.5"
+      className="scroll-mt-16 rounded-lg transition-transform duration-200 hover:-translate-y-0.5"
     >
       <Link
         href={`/propiedad/${listing.id}`}
@@ -1367,15 +1367,17 @@ export function BuscarContent({
   }, [q, pushBuscarQueryParams])
 
   return (
-    <div className="container mx-auto space-y-3 px-4 py-4 md:py-6">
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-2 border-b border-border/40 pb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-          <div className="min-w-0 space-y-0.5">
-            <h1 className="text-lg font-semibold tracking-tight text-text-primary md:text-xl">
+    <div className="container mx-auto px-4 py-3 md:py-4">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5 border-b border-border/30 pb-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
+          <div className="min-w-0 space-y-0">
+            <h1 className="text-base font-medium tracking-tight text-text-primary md:text-lg">
               {pageTitle}
             </h1>
             {pageSubtitle.trim() ? (
-              <p className="text-xs text-text-secondary md:text-sm">{pageSubtitle}</p>
+              <p className="text-[11px] leading-snug text-text-tertiary md:text-xs md:text-text-secondary">
+                {pageSubtitle}
+              </p>
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -1455,7 +1457,7 @@ export function BuscarContent({
         />
 
         <form
-          className="flex flex-col gap-2 sm:flex-row sm:items-stretch"
+          className="flex flex-col gap-1.5 sm:flex-row sm:items-stretch"
           onSubmit={(e) => {
             e.preventDefault()
             commitRefineToUrl()
@@ -1463,59 +1465,59 @@ export function BuscarContent({
         >
           <div className="relative min-w-0 flex-1">
             <Input
-              className="h-11 pr-[7rem] text-base"
+              className="h-10 pr-[6.25rem] text-[15px] md:pr-[6.5rem]"
               placeholder={S.buscarRefinePlaceholder}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               aria-label={S.buscarRefinePlaceholder}
             />
-            <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-1">
+            <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
               {voiceSupported ? (
                 <Button
                   type="button"
                   size="icon"
                   variant={listening ? 'default' : 'outline'}
-                  className="h-9 w-9 shrink-0"
+                  className="h-8 w-8 shrink-0"
                   onClick={() => (listening ? stopListening() : startListening())}
                   aria-label={listening ? 'Detener dictado' : 'Dictar'}
                   title={listening ? 'Detener' : 'Dictar'}
                 >
-                  <Mic className="h-4 w-4" />
+                  <Mic className="h-3.5 w-3.5" />
                 </Button>
               ) : null}
-              <Button type="submit" size="sm" className="h-9 shrink-0 px-3">
+              <Button type="submit" size="sm" className="h-8 shrink-0 px-2.5 text-xs">
                 Buscar
               </Button>
             </div>
           </div>
         </form>
         {listening ? (
-          <p className="text-xs text-text-secondary">Escuchando…</p>
+          <p className="text-[11px] text-text-tertiary">Escuchando…</p>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-2 border-b border-border/40 pb-3">
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border/25 pb-2">
           <Button
             type="button"
             variant={classicFiltersOpen ? 'secondary' : 'outline'}
             size="sm"
-            className="h-9 gap-1.5"
+            className="h-8 gap-1 text-xs"
             onClick={() => setClassicFiltersOpen((v) => !v)}
           >
-            <Filter className="h-3.5 w-3.5" aria-hidden />
+            <Filter className="h-3 w-3" aria-hidden />
             {classicFiltersOpen ? S.filtersOptionalCollapse : S.filtersOptionalExpand}
           </Button>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="h-9 gap-1.5"
+            className="h-8 gap-1 text-xs"
             onClick={openMapFromAssistant}
           >
-            <MapIcon className="h-3.5 w-3.5" aria-hidden />
+            <MapIcon className="h-3 w-3" aria-hidden />
             {S.buscarOpenMapCta}
           </Button>
           <div
-            className="ml-auto inline-flex rounded-lg border border-border/60 bg-surface-secondary/50 p-0.5"
+            className="ml-auto inline-flex rounded-md border border-border/40 bg-surface-secondary/30 p-px"
             role="group"
             aria-label="Vista de resultados"
           >
@@ -1523,7 +1525,7 @@ export function BuscarContent({
               type="button"
               variant={!showMap ? 'default' : 'ghost'}
               size="sm"
-              className="h-9 rounded-md px-3 text-xs"
+              className="h-8 rounded-[5px] px-2.5 text-[11px]"
               onClick={() => setShowMap(false)}
             >
               Lista
@@ -1532,20 +1534,20 @@ export function BuscarContent({
               type="button"
               variant={showMap ? 'default' : 'ghost'}
               size="sm"
-              className="h-9 rounded-md px-3 text-xs"
+              className="h-8 rounded-[5px] px-2.5 text-[11px]"
               onClick={() => {
                 setClassicFiltersOpen(true)
                 setShowMap(true)
                 scrollToElementId('buscar-mapa')
               }}
             >
-              <MapIcon className="mr-1 hidden h-3.5 w-3.5 sm:inline" aria-hidden />
+              <MapIcon className="mr-1 hidden h-3 w-3 sm:inline" aria-hidden />
               Mapa
             </Button>
           </div>
         </div>
 
-        <div id="buscar-resultados" className="scroll-mt-24 space-y-6">
+        <div id="buscar-resultados" className="scroll-mt-14 space-y-4">
           {!isLoading &&
           dataV2 &&
           data &&
@@ -1868,25 +1870,25 @@ export function BuscarContent({
           ) : null}
         </div>
 
-        <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
+        <div id="buscar-esenciales" className="scroll-mt-16 space-y-3 border-t border-border/20 pt-3">
           {classicFiltersOpen ? (
-            <Card className="space-y-4 p-4 md:p-6">
-          <div>
-            <h2 className="text-lg font-semibold text-text-primary">
+            <Card className="space-y-3 rounded-lg border border-dashed border-border/35 bg-surface-secondary/[0.12] p-3 shadow-none md:space-y-3.5 md:p-4">
+          <div className="border-b border-border/25 pb-2">
+            <h2 className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
               {S.mainFiltersTitle}
             </h2>
-            <p className="mt-1 text-sm text-text-secondary">
+            <p className="mt-0.5 text-[11px] leading-relaxed text-text-tertiary">
               {S.mainFiltersSubtitle}
             </p>
           </div>
 
-          <p className="text-xs font-semibold uppercase tracking-wide text-brand-primary">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary/90">
             {S.buscarLayer1Kicker}
           </p>
-          <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">
             {S.locationBlockTitle}
           </p>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
             {opLocked ? (
               <BuscarLabeledField id="buscar-op-locked" label={S.buscarFieldOperation}>
                 <div
@@ -1976,10 +1978,10 @@ export function BuscarContent({
 
           <div
             id="buscar-mapa"
-            className="scroll-mt-24 space-y-2 rounded-lg border border-border/60 bg-surface-primary/80 p-3"
+            className="scroll-mt-16 space-y-2 rounded-md border border-border/35 bg-surface-primary/55 p-2.5"
           >
             <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-              <p className="text-xs font-semibold text-text-primary">
+              <p className="text-[11px] font-medium text-text-secondary">
                 {S.mapIntegratedTitle}
               </p>
               {showMap ? (
@@ -2248,18 +2250,18 @@ export function BuscarContent({
 
           <section
             id="buscar-capa-2"
-            className="scroll-mt-24 rounded-xl border border-border/80 bg-surface-secondary/40 p-3 md:p-4"
+            className="scroll-mt-16 rounded-lg border border-border/40 bg-surface-secondary/20 p-2.5 md:p-3"
             aria-label={S.buscarLayer2Title}
           >
             <button
               type="button"
-              className="flex w-full items-center justify-between gap-3 text-left"
+              className="flex w-full items-center justify-between gap-2 text-left"
               onClick={() => setGuidedLayerExpanded((v) => !v)}
             >
-              <span className="text-sm font-semibold text-text-primary">
+              <span className="text-xs font-medium text-text-secondary md:text-sm">
                 {S.buscarLayer2Title}
               </span>
-              <span className="shrink-0 text-xs font-semibold text-brand-primary">
+              <span className="shrink-0 text-[11px] font-medium text-text-tertiary">
                 {guidedLayerExpanded
                   ? S.buscarLayer2CollapseCta
                   : S.buscarLayer2ExpandCta}
@@ -2340,12 +2342,12 @@ export function BuscarContent({
             )}
           </section>
 
-          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/60 pt-3">
+          <div className="flex flex-wrap items-center justify-end gap-1.5 border-t border-border/25 pt-2">
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="mr-auto text-text-secondary hover:text-text-primary"
+              className="mr-auto h-8 text-xs text-text-tertiary hover:text-text-primary"
               onClick={() => setClassicFiltersOpen(false)}
             >
               {S.filtersOptionalCollapse}
@@ -2354,6 +2356,7 @@ export function BuscarContent({
               type="button"
               variant="outline"
               size="sm"
+              className="h-8 text-xs"
               onClick={() => setShowDeepFilters((v) => !v)}
             >
               {showDeepFilters ? S.buscarCloseLayer3Cta : S.buscarOpenLayer3Cta}
@@ -2363,17 +2366,17 @@ export function BuscarContent({
           {showDeepFilters ? (
             <div
               id="buscar-capa-3"
-              className="scroll-mt-24 space-y-4 border-t border-border pt-4"
+              className="scroll-mt-16 space-y-3 border-t border-border/25 pt-3"
             >
               <div>
-                <p className="text-sm font-semibold text-text-primary">
+                <p className="text-xs font-medium text-text-secondary">
                   {S.buscarLayer3Title}
                 </p>
-                <p className="mt-0.5 text-xs text-text-secondary">
+                <p className="mt-0.5 text-[11px] text-text-tertiary">
                   {S.buscarLayer3Subtitle}
                 </p>
               </div>
-              <p className="text-sm font-medium text-text-primary">
+              <p className="text-xs font-medium text-text-secondary">
                 {S.buscarLayer3TechnicalTitle}
               </p>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">

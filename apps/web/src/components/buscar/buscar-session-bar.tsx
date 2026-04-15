@@ -106,12 +106,12 @@ const ChipTrigger = forwardRef<
       type="button"
       variant="outline"
       size="sm"
-      className="h-auto max-w-[min(100%,14rem)] flex-col items-start gap-0 rounded-full border-border/90 px-3 py-1.5 text-left transition-transform active:scale-[0.98]"
+      className="h-auto max-w-[min(100%,14rem)] flex-col items-start gap-0 rounded-full border-border/50 px-2.5 py-1 text-left transition-transform active:scale-[0.98]"
     >
-      <span className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">
+      <span className="text-[9px] font-medium uppercase tracking-wide text-text-tertiary">
         {kicker}
       </span>
-      <span className="w-full truncate text-sm font-semibold text-text-primary">
+      <span className="w-full truncate text-xs font-medium text-text-primary">
         {value}
       </span>
     </Button>
@@ -139,30 +139,30 @@ export function BuscarSessionBar({
   const [draftMax, setDraftMax] = useState(maxPrice)
 
   return (
-    <Card className="border-border/50 bg-surface-primary p-3 sm:p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">
-            <Search className="h-3 w-3 shrink-0" aria-hidden />
+    <Card className="border-border/30 bg-transparent p-2.5 shadow-none sm:p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <p className="flex items-center gap-1 text-[9px] font-medium uppercase tracking-wide text-text-tertiary">
+            <Search className="h-2.5 w-2.5 shrink-0 opacity-70" aria-hidden />
             {S.searchV2SessionBarTitle}
           </p>
-          <p className="text-xs text-text-secondary">{S.searchV2SessionBarHint}</p>
+          <p className="text-[11px] leading-snug text-text-tertiary">{S.searchV2SessionBarHint}</p>
         </div>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-8 shrink-0 self-start transition-transform active:scale-[0.98] sm:self-center"
+          className="h-7 shrink-0 self-start px-2 text-[11px] transition-transform active:scale-[0.98] sm:self-center"
           onClick={onClearSearch}
         >
           {S.buscarClearSearch}
         </Button>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-2 flex flex-wrap gap-1.5">
         {opLocked ? (
-          <Badge variant="secondary" className="h-auto rounded-full px-3 py-1.5 text-sm">
-            <span className="mr-1.5 text-[10px] uppercase text-text-tertiary">
+          <Badge variant="secondary" className="h-auto rounded-full px-2.5 py-1 text-xs font-normal">
+            <span className="mr-1 text-[9px] uppercase text-text-tertiary">
               {S.searchV2ChipOperation}
             </span>
             {opLabel(true, forcedOperation, operationType)}

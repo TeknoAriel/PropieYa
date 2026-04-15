@@ -115,51 +115,48 @@ export function HeroSearch() {
   }
 
   return (
-    <section className="border-b border-border/40 bg-surface-primary py-10 md:py-14">
+    <section className="border-b border-border/35 bg-surface-primary pb-6 pt-7 md:pb-7 md:pt-8">
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-2xl text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-text-primary md:text-4xl">
+          <h1 className="text-[1.65rem] font-semibold leading-snug tracking-tight text-text-primary md:text-3xl md:leading-tight">
             {pack.hero.line1}{' '}
             <span className="text-brand-primary">{pack.hero.line2Accent}</span>
           </h1>
 
           <form
             onSubmit={onSubmit}
-            className="mx-auto mt-8 max-w-xl"
+            className="mx-auto mt-5 max-w-xl md:mt-6"
             aria-label="Buscar propiedades"
           >
             <div className="relative">
               <Input
-                className="h-12 border-border/70 bg-surface-primary pl-4 pr-[6.25rem] text-base md:h-14 md:pr-[6.75rem] md:text-lg"
+                className="h-11 border-border/60 bg-surface-primary pl-3.5 pr-[5.75rem] text-[15px] md:h-11 md:pr-[6rem] md:text-base"
                 placeholder={placeholder}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 aria-label={placeholder}
               />
-              <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
+              <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-1">
                 {voiceSupported ? (
                   <Button
                     type="button"
                     size="icon"
                     variant={listening ? 'default' : 'outline'}
-                    className="h-9 w-9 shrink-0 rounded-md md:h-10 md:w-10"
+                    className="h-8 w-8 shrink-0 rounded-md"
                     onClick={() => (listening ? stopListening() : startListening())}
                     aria-label={listening ? 'Detener dictado' : 'Dictar'}
                     title={listening ? 'Detener' : 'Dictar'}
                   >
-                    <Mic className="h-5 w-5" />
+                    <Mic className="h-4 w-4" />
                   </Button>
                 ) : null}
-                <Button
-                  type="submit"
-                  className="h-9 shrink-0 rounded-md px-5 text-sm md:h-10"
-                >
+                <Button type="submit" className="h-8 shrink-0 rounded-md px-4 text-sm">
                   Buscar
                 </Button>
               </div>
             </div>
             {listening ? (
-              <p className="mt-2 text-center text-xs text-text-secondary">Escuchando…</p>
+              <p className="mt-1.5 text-center text-xs text-text-tertiary">Escuchando…</p>
             ) : null}
           </form>
         </div>

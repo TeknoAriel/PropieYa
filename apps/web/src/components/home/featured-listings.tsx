@@ -31,18 +31,18 @@ export function FeaturedListings() {
   const listings = listingsRaw as unknown as FeaturedListingCardData[]
 
   return (
-    <section className="bg-surface-primary pt-6 pb-14 md:pt-8 md:pb-20">
+    <section className="border-t border-border/25 bg-surface-secondary/25 pb-12 pt-5 md:pb-16 md:pt-6">
       <div className="container mx-auto px-4">
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between md:mb-8">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between md:mb-5">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-text-primary md:text-3xl">
+            <h2 className="text-xl font-semibold tracking-tight text-text-primary md:text-2xl">
               {pack.featured.title}
             </h2>
-            <p className="mt-2 max-w-xl text-sm text-text-secondary md:text-base">
+            <p className="mt-1 max-w-lg text-xs leading-relaxed text-text-tertiary md:text-sm md:text-text-secondary">
               {pack.featured.subtitle}
             </p>
           </div>
-          <Button variant="outline" asChild className="hidden md:flex">
+          <Button variant="outline" asChild size="sm" className="hidden md:inline-flex">
             <Link href="/buscar">
               Ver todas
               <ArrowRight className="ml-2 h-4 w-4" />
@@ -58,7 +58,7 @@ export function FeaturedListings() {
               : (error?.message ?? 'Intentá de nuevo más tarde.')}
           </p>
         ) : isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
             {[...Array(3)].map((_, i) => (
               <Card key={i} className="overflow-hidden">
                 <Skeleton className="h-48 w-full" />
@@ -78,8 +78,8 @@ export function FeaturedListings() {
           </div>
         )}
 
-        <div className="mt-8 text-center md:hidden">
-          <Button variant="outline" asChild>
+        <div className="mt-6 text-center md:hidden">
+          <Button variant="outline" size="sm" asChild>
             <Link href="/buscar">
               {pack.featured.viewAllMobile}
               <ArrowRight className="ml-2 h-4 w-4" />
