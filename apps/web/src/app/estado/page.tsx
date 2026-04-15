@@ -183,7 +183,7 @@ export default async function EstadoPage() {
           Backlog de producto (sprints)
         </h2>
         <p className="text-sm text-text-secondary">
-          Completados hasta Sprint 9 (perfil de demanda + matching explicado).
+          Completados hasta Sprint 9 (perfil de demanda + resultados explicados).
           Pendientes documentados en{' '}
           <code className="text-xs">docs/24-sprints-y-hitos.md</code>:
         </p>

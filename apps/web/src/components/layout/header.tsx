@@ -89,14 +89,24 @@ export function Header() {
               )}
             </Button>
 
-            <div className="hidden items-center gap-1 lg:flex">
-              <Button variant="ghost" size="sm" asChild className="text-sm">
+            <div className="hidden items-center gap-0.5 lg:flex">
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="text-xs font-normal text-text-tertiary hover:text-text-secondary"
+              >
                 <Link href={PORTAL_ACCOUNT.compare.href}>{PORTAL_ACCOUNT.compare.label}</Link>
               </Button>
-              <Button variant="ghost" size="sm" asChild className="text-sm">
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="text-xs font-normal text-text-tertiary hover:text-text-secondary"
+              >
                 <Link href={PORTAL_ACCOUNT.alerts.href}>{PORTAL_ACCOUNT.alerts.label}</Link>
               </Button>
-              <Button variant="ghost" size="sm" asChild className="text-sm">
+              <Button variant="ghost" size="sm" asChild className="text-sm font-medium">
                 <Link href={PORTAL_ACCOUNT.login.href}>{PORTAL_ACCOUNT.login.label}</Link>
               </Button>
             </div>

@@ -8,7 +8,7 @@ import { MarketingShell } from '@/components/marketing/marketing-shell'
 export const metadata: Metadata = {
   title: 'Inversiones',
   description:
-    'Propiedades en venta para inversión o vivienda en Propieya: buscador con mapa, filtros y matching claro.',
+    'Propiedades en venta para inversión o vivienda en Propieya: buscador con mapa, filtros y resultados claros.',
 }
 
 export default function InversionesPage() {

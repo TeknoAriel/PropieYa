@@ -17,6 +17,11 @@ import {
   Badge,
   Button,
   Card,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -27,7 +32,6 @@ import {
   Input,
   Map as MapIcon,
   Menu,
-  Mic,
   Skeleton,
 } from '@propieya/ui'
 import type { BuscarMapBBox, BuscarMapPoint } from '@/components/buscar/buscar-search-map'
@@ -42,11 +46,13 @@ const BuscarSearchMap = dynamic(
 )
 import {
   formatPrice,
+  getBuscarContextualBlock,
   getFacetFlagDefinitions,
   parseBuscarMapGeoFromParams,
   serializeBuscarMapGeoToParams,
   getFacetFlagsForBuscarRefineLayer,
   normalizeSearchSessionMVP,
+  searchSessionHasAnchor,
   OPERATION_TYPE_LABELS,
   PORTAL_SEARCH_UX_COPY as S,
   PROPERTY_TYPE_LABELS,
@@ -55,6 +61,7 @@ import {
   type ExplainMatchFilters,
   type FacetFlagDefinition,
   type OperationType,
+  type PortalSearchPage,
   type PropertyType,
   type SearchSessionMVP,
 } from '@propieya/shared'
@@ -62,28 +69,13 @@ import {
 import { AddToCompareButton } from '@/components/compare/add-to-compare-button'
 import { BuscarLocalityModal } from '@/components/buscar/buscar-locality-modal'
 import { BuscarSessionBar } from '@/components/buscar/buscar-session-bar'
+import { BuscarRecentSearches } from '@/components/buscar/buscar-recent-searches'
+import { ConversationalSearchBlock } from '@/components/portal/conversational-search-block'
+import { InductiveSearchChips } from '@/components/portal/inductive-search-chips'
 import { getAccessToken } from '@/lib/auth-storage'
 import { sanitizeListingCoordinates } from '@/lib/map-geo'
 import { canAppendPolygonVertex } from '@/lib/map-polygon'
 import { trpc } from '@/lib/trpc'
-
-function getSpeechRecognitionCtor(): (new () => {
-  lang: string
-  continuous: boolean
-  interimResults: boolean
-  start: () => void
-  stop: () => void
-  onresult: ((ev: Event) => void) | null
-  onerror: ((ev: Event) => void) | null
-  onend: (() => void) | null
-}) | null {
-  if (typeof window === 'undefined') return null
-  const w = window as unknown as {
-    SpeechRecognition?: new () => never
-    webkitSpeechRecognition?: new () => never
-  }
-  return (w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null) as never
-}
 
 export type BuscarContentProps = {
   /** Si se define, la búsqueda queda filtrada a esa operación (páginas /venta y /alquiler). */
@@ -178,7 +170,7 @@ function cardWhyLine(
     listing.priceCurrency as Currency
   )
   if (bucketId === 'strong') {
-    return `${tipo} en ${zona} por ${precio}: encaja con tu búsqueda (${op.toLowerCase()}).`
+    return `${tipo} en ${zona} por ${precio}: coincide con tu búsqueda (${op.toLowerCase()}).`
   }
   if (bucketId === 'near') {
     return `${tipo} por ${precio} en ${zona}: ampliamos la zona para no perderte nada útil.`
@@ -248,18 +240,18 @@ function bucketCountLabel(bucketId: string, n: number): string {
 
 function bucketStrongNearSectionClass(bucketId: string): string {
   if (bucketId === 'strong') {
-    return 'space-y-3 rounded-xl border border-brand-primary/18 bg-brand-primary/[0.035] p-3 md:space-y-4 md:p-5'
+    return 'space-y-4 rounded-2xl border-2 border-brand-primary/35 bg-gradient-to-br from-brand-primary/[0.08] via-brand-primary/[0.03] to-transparent p-4 shadow-md ring-1 ring-brand-primary/15 md:p-6'
   }
   if (bucketId === 'near') {
-    return 'space-y-3 rounded-lg border border-border/50 bg-surface-secondary/30 p-3 md:p-4'
+    return 'space-y-3 rounded-xl border border-border/80 bg-surface-secondary/40 p-4 md:p-5'
   }
   return 'space-y-3'
 }
 
 function bucketHeadingClass(bucketId: string): string {
-  if (bucketId === 'strong') return 'text-base font-semibold text-text-primary md:text-lg'
-  if (bucketId === 'near') return 'text-sm font-semibold text-text-primary md:text-base'
-  return 'text-sm font-semibold text-text-primary md:text-base'
+  if (bucketId === 'strong') return 'text-lg font-bold text-text-primary md:text-xl'
+  if (bucketId === 'near') return 'text-base font-semibold text-text-primary'
+  return 'text-base font-semibold text-text-primary'
 }
 
 function ListingCard({
@@ -298,7 +290,7 @@ function ListingCard({
   return (
     <div
       id={`buscar-listing-${listing.id}`}
-      className="scroll-mt-16 rounded-lg transition-transform duration-200 hover:-translate-y-0.5"
+      className="scroll-mt-24 rounded-lg transition-transform duration-200 hover:-translate-y-0.5"
     >
       <Link
         href={`/propiedad/${listing.id}`}
@@ -447,6 +439,8 @@ function BuscarLabeledField({
   )
 }
 
+const FLOW_GUIDE_STORAGE_KEY = 'propieya.buscar.flowGuide.dismissed'
+
 const ADVANCED_AMENITY_FLAG_ORDER = [
   'credit_approved',
   'front_facing',
@@ -550,6 +544,7 @@ export function BuscarContent({
   const [mapCommitted, setMapCommitted] = useState(false)
   /** Buscador v2: bucket «ampliadas» colapsado por defecto (pins = solo lo visible). */
   const [searchV2WidenedOpen, setSearchV2WidenedOpen] = useState(false)
+  const [searchV2NearOpen, setSearchV2NearOpen] = useState(false)
   const [polygonDrawMode, setPolygonDrawMode] = useState(false)
   /** Sprint 40 — rectángulo del mapa se aplica al listado al panear (debounce). */
   const [mapLiveViewport, setMapLiveViewport] = useState(false)
@@ -564,13 +559,9 @@ export function BuscarContent({
   const userGeoRequestRef = useRef(false)
   /** Filtros clásicos colapsados por defecto; solo se abren si el usuario toca «Mostrar filtros». */
   const [classicFiltersOpen, setClassicFiltersOpen] = useState(false)
+  const [flowDialogOpen, setFlowDialogOpen] = useState(false)
   const [localityModalOpen, setLocalityModalOpen] = useState(false)
-  const [voiceSupported, setVoiceSupported] = useState(false)
-  const [listening, setListening] = useState(false)
-  const recognitionRef = useRef<{ stop: () => void } | null>(null)
-  const queryBeforeVoiceRef = useRef('')
-  const qRef = useRef(q)
-  qRef.current = q
+  const [flowGuideDontShowAgain, setFlowGuideDontShowAgain] = useState(false)
   const [polygonDrawHint, setPolygonDrawHint] = useState<string | null>(null)
   const [mapSyncHoverId, setMapSyncHoverId] = useState<string | null>(null)
   const [mapSyncSelectedId, setMapSyncSelectedId] = useState<string | null>(null)
@@ -720,6 +711,17 @@ export function BuscarContent({
     !polygonDrawMode &&
     mapPolygonRing.length === 0
 
+  const contextualBlock = useMemo(
+    () =>
+      getBuscarContextualBlock(
+        propertyType,
+        (forcedOperation ?? operationType) || ''
+      ),
+    [propertyType, forcedOperation, operationType]
+  )
+
+  const facetFlagCatalog = useMemo(() => getFacetFlagDefinitions(), [])
+
   const coreSearchFilters = useMemo(
     () => ({
       q: q.trim() || undefined,
@@ -850,6 +852,12 @@ export function BuscarContent({
     committedPolygon,
   ])
 
+  const normalizedSessionForAnchor = useMemo(
+    () => normalizeSearchSessionMVP(searchSessionMVP),
+    [searchSessionMVP]
+  )
+  const hasSearchAnchor = searchSessionHasAnchor(normalizedSessionForAnchor)
+
   const v2SessionFingerprint = JSON.stringify(searchSessionMVP)
 
   const { data: dataV2, isLoading, isError } =
@@ -859,6 +867,7 @@ export function BuscarContent({
         limitPerBucket: 20,
       },
       {
+        enabled: hasSearchAnchor,
         placeholderData: (previousData) => {
           if (searchFilterFpRef.current !== v2SessionFingerprint) {
             searchFilterFpRef.current = v2SessionFingerprint
@@ -891,6 +900,11 @@ export function BuscarContent({
     return listingsAll.filter((l) => !widenedIds.has(l.id))
   }, [dataV2, listingsAll, searchV2WidenedOpen])
 
+  const widenedListCount = useMemo(() => {
+    const b = dataV2?.buckets?.find((x) => x.id === 'widened')
+    return b?.items.length ?? 0
+  }, [dataV2])
+
   const shortSearchUxMessages = useMemo(
     () =>
       (dataV2?.messages ?? []).filter(
@@ -919,6 +933,7 @@ export function BuscarContent({
 
   useEffect(() => {
     setSearchV2WidenedOpen(false)
+    setSearchV2NearOpen(false)
   }, [v2SessionFingerprint])
 
   useEffect(() => {
@@ -960,6 +975,23 @@ export function BuscarContent({
   })
 
   const opLocked = Boolean(forcedOperation)
+
+  const searchPathPage: PortalSearchPage = useMemo(
+    () =>
+      forcedOperation === 'sale'
+        ? 'venta'
+        : forcedOperation === 'rent'
+          ? 'alquiler'
+          : 'buscar',
+    [forcedOperation]
+  )
+
+  const [assistantHint, setAssistantHint] = useState<{
+    summary: string
+    total: number
+    messages?: string[]
+    primaryTotal?: number
+  } | null>(null)
 
   const explainForSummary = useMemo((): ExplainMatchFilters => {
     const n = (s: string) => {
@@ -1029,6 +1061,7 @@ export function BuscarContent({
   const clearBuscarSearch = useCallback(() => {
     setShowMap(false)
     setMapLiveViewport(false)
+    setAssistantHint(null)
     setCommittedBbox(null)
     setCommittedPolygon([])
     setMapCommitted(false)
@@ -1176,6 +1209,21 @@ export function BuscarContent({
     setMapLiveViewport(false)
   }, [searchParamsKey, forcedOperation])
 
+  useEffect(() => {
+    if (flowDialogOpen) setFlowGuideDontShowAgain(false)
+  }, [flowDialogOpen])
+
+  const confirmFlowGuideDialog = useCallback(() => {
+    if (flowGuideDontShowAgain) {
+      try {
+        localStorage.setItem(FLOW_GUIDE_STORAGE_KEY, '1')
+      } catch {
+        /* ignore */
+      }
+    }
+    setFlowDialogOpen(false)
+  }, [flowGuideDontShowAgain])
+
   const addPolygonVertexSafe = useCallback((p: BuscarMapPoint) => {
     setMapPolygonRing((prev) => {
       if (!canAppendPolygonVertex(prev, p)) {
@@ -1218,6 +1266,11 @@ export function BuscarContent({
       p.delete('barrio')
     })
   }, [pushBuscarQueryParams])
+
+  const openWidenedBlock = useCallback(() => {
+    setSearchV2WidenedOpen(true)
+    scrollToElementId('buscar-resultados')
+  }, [scrollToElementId])
 
   const openAllFilters = useCallback(() => {
     setClassicFiltersOpen(true)
@@ -1299,88 +1352,29 @@ export function BuscarContent({
     scrollToElementId('buscar-mapa')
   }, [scrollToElementId])
 
-  const stopListening = useCallback(() => {
-    try {
-      recognitionRef.current?.stop()
-    } catch {
-      /* ignore */
-    }
-    recognitionRef.current = null
-    setListening(false)
-  }, [])
-
-  const startListening = useCallback(() => {
-    const Ctor = getSpeechRecognitionCtor()
-    if (!Ctor || listening) return
-    queryBeforeVoiceRef.current = qRef.current.trimEnd()
-    const rec = new Ctor()
-    rec.lang = 'es-AR'
-    rec.continuous = true
-    rec.interimResults = true
-    rec.onresult = (ev: Event) => {
-      const e = ev as unknown as {
-        results: Array<{ 0: { transcript: string }; isFinal: boolean }>
-      }
-      let piece = ''
-      for (let i = 0; i < e.results.length; i++) {
-        piece += e.results[i]?.[0]?.transcript ?? ''
-      }
-      const spoken = piece.replace(/\s+/g, ' ').trim()
-      const prefix = queryBeforeVoiceRef.current
-      const combined =
-        prefix && spoken
-          ? `${prefix} ${spoken}`.trim()
-          : spoken || prefix
-      setQ(combined)
-    }
-    rec.onerror = () => {
-      stopListening()
-    }
-    rec.onend = () => {
-      setListening(false)
-      recognitionRef.current = null
-    }
-    recognitionRef.current = rec
-    try {
-      rec.start()
-      setListening(true)
-    } catch {
-      setListening(false)
-      recognitionRef.current = null
-    }
-  }, [listening, stopListening, setQ])
-
-  useEffect(() => {
-    setVoiceSupported(getSpeechRecognitionCtor() != null)
-  }, [])
-
-  useEffect(() => {
-    return () => stopListening()
-  }, [stopListening])
-
-  const commitRefineToUrl = useCallback(() => {
-    pushBuscarQueryParams((p) => {
-      const t = q.trim()
-      if (t) p.set('q', t)
-      else p.delete('q')
-    })
-  }, [q, pushBuscarQueryParams])
+  const quickFacetIds = contextualBlock?.quickFacetIds
+  const showQuickAmenityChips = (quickFacetIds?.length ?? 0) > 0
 
   return (
-    <div className="container mx-auto px-4 py-3 md:py-4">
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-col gap-1.5 border-b border-border/30 pb-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
-          <div className="min-w-0 space-y-0">
-            <h1 className="text-base font-medium tracking-tight text-text-primary md:text-lg">
+    <div className="container mx-auto space-y-4 px-4 py-6 md:py-8">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2 border-b border-border/40 pb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+          <div className="min-w-0 space-y-0.5">
+            <h1 className="text-lg font-semibold tracking-tight text-text-primary md:text-xl">
               {pageTitle}
             </h1>
-            {pageSubtitle.trim() ? (
-              <p className="text-[11px] leading-snug text-text-tertiary md:text-xs md:text-text-secondary">
-                {pageSubtitle}
-              </p>
-            ) : null}
+            <p className="text-xs text-text-secondary md:text-sm">{pageSubtitle}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-text-secondary"
+              onClick={() => setFlowDialogOpen(true)}
+            >
+              {S.buscarFlowLinkInline}
+            </Button>
             {opLocked ? (
               <Button asChild variant="outline" size="sm" className="h-8">
                 <Link href="/buscar">{S.allOperations}</Link>
@@ -1440,6 +1434,20 @@ export function BuscarContent({
           </p>
         ) : null}
 
+        {me ? (
+          <details className="group rounded-lg border border-border/50 bg-surface-primary/60">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden">
+              <span>{S.recentSearchesTitle}</span>
+              <span className="text-xs font-normal text-text-tertiary group-open:hidden">
+                Mostrar
+              </span>
+            </summary>
+            <div className="border-t border-border/40 px-3 pb-3 pt-1">
+              <BuscarRecentSearches />
+            </div>
+          </details>
+        ) : null}
+
         <BuscarSessionBar
           opLocked={opLocked}
           forcedOperation={forcedOperation}
@@ -1456,68 +1464,205 @@ export function BuscarContent({
           onClearSearch={clearBuscarSearch}
         />
 
-        <form
-          className="flex flex-col gap-1.5 sm:flex-row sm:items-stretch"
-          onSubmit={(e) => {
-            e.preventDefault()
-            commitRefineToUrl()
-          }}
-        >
-          <div className="relative min-w-0 flex-1">
-            <Input
-              className="h-10 pr-[6.25rem] text-[15px] md:pr-[6.5rem]"
-              placeholder={S.buscarRefinePlaceholder}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              aria-label={S.buscarRefinePlaceholder}
-            />
-            <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
-              {voiceSupported ? (
+        {!hasSearchAnchor ? (
+          <div className="space-y-4">
+            <Card className="border-border/60 p-5 text-center shadow-sm">
+              <p className="text-sm font-medium text-text-primary md:text-base">
+                {S.buscarNoAnchorMessage}
+              </p>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
                 <Button
                   type="button"
-                  size="icon"
-                  variant={listening ? 'default' : 'outline'}
-                  className="h-8 w-8 shrink-0"
-                  onClick={() => (listening ? stopListening() : startListening())}
-                  aria-label={listening ? 'Detener dictado' : 'Dictar'}
-                  title={listening ? 'Detener' : 'Dictar'}
+                  variant="default"
+                  size="sm"
+                  className="h-10"
+                  onClick={() => {
+                    openMapFromAssistant()
+                  }}
                 >
-                  <Mic className="h-3.5 w-3.5" />
+                  {S.buscarNoAnchorMapCta}
                 </Button>
-              ) : null}
-              <Button type="submit" size="sm" className="h-8 shrink-0 px-2.5 text-xs">
-                Buscar
-              </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-10"
+                  onClick={() => {
+                    document.getElementById('buscar-conversational-input')?.focus()
+                  }}
+                >
+                  {S.buscarNoAnchorFocusInput}
+                </Button>
+              </div>
+            </Card>
+            <div className="border-b border-border/40 pb-5">
+              <ConversationalSearchBlock
+                variant="buscar"
+                routerMode="replace"
+                searchPathPage={searchPathPage}
+                forcedOperation={forcedOperation}
+                onAfterNavigate={setAssistantHint}
+                compact
+                hideTitle
+                buscarSearchParamsKey={searchParamsKey}
+              />
             </div>
           </div>
-        </form>
-        {listening ? (
-          <p className="text-[11px] text-text-tertiary">Escuchando…</p>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-border/25 pb-2">
+        {hasSearchAnchor && hasActiveSearchCriteria ? (
+          <details className="rounded-lg border border-border/50 bg-surface-secondary/25">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-semibold uppercase tracking-wide text-text-tertiary marker:content-none [&::-webkit-details-marker]:hidden">
+              {S.searchV2GuidedActionsLabel}
+            </summary>
+            <div className="flex flex-col gap-2 border-t border-border/40 px-3 py-3">
+            <div className="flex flex-wrap gap-2">
+              {widenedListCount > 0 && !searchV2WidenedOpen ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  className="transition-transform active:scale-[0.98]"
+                  onClick={openWidenedBlock}
+                >
+                  {S.searchV2CtaMoreOptions}
+                </Button>
+              ) : null}
+              {((minPrice.trim() !== '' &&
+                Number.isFinite(Number(minPrice.trim()))) ||
+                (maxPrice.trim() !== '' &&
+                  Number.isFinite(Number(maxPrice.trim())))) ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="transition-transform active:scale-[0.98]"
+                  onClick={widenPriceRange}
+                >
+                  {S.searchV2CtaWiderPrice}
+                </Button>
+              ) : null}
+              {neighborhood.trim() !== '' ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="transition-transform active:scale-[0.98]"
+                  onClick={searchWholeCity}
+                >
+                  {S.searchV2CtaWholeCity}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="transition-transform active:scale-[0.98]"
+                onClick={openAllFilters}
+              >
+                {S.searchV2CtaOpenFilters}
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="transition-transform active:scale-[0.98]"
+                  >
+                    {S.searchV2CtaRemoveFilterMenu}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuLabel>{S.searchV2CtaRemoveFilterMenu}</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    disabled={
+                      minPrice.trim() === '' &&
+                      maxPrice.trim() === ''
+                    }
+                    onClick={() =>
+                      pushBuscarQueryParams((p) => {
+                        p.delete('min')
+                        p.delete('max')
+                      })
+                    }
+                  >
+                    {S.searchV2CtaRemovePrice}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={neighborhood.trim() === ''}
+                    onClick={() =>
+                      pushBuscarQueryParams((p) => {
+                        p.delete('barrio')
+                      })
+                    }
+                  >
+                    {S.searchV2CtaRemoveNeighborhood}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={propertyType === ''}
+                    onClick={() =>
+                      pushBuscarQueryParams((p) => {
+                        p.delete('tipo')
+                      })
+                    }
+                  >
+                    {S.searchV2CtaRemoveType}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={!mapCommitted}
+                    onClick={() => {
+                      releaseMapFilter()
+                    }}
+                  >
+                    {S.searchV2CtaReleaseMap}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={
+                      selectedAmenityFacets.length === 0 && !amenitiesStrict
+                    }
+                    onClick={() =>
+                      pushBuscarQueryParams((p) => {
+                        p.delete('amenities')
+                        p.delete('amenities_strict')
+                      })
+                    }
+                  >
+                    {S.searchV2CtaRemoveAmenities}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            </div>
+          </details>
+        ) : null}
+
+        {hasSearchAnchor ? (
+        <>
+        <div className="flex flex-wrap items-center gap-2 border-b border-border/40 pb-4">
           <Button
             type="button"
             variant={classicFiltersOpen ? 'secondary' : 'outline'}
             size="sm"
-            className="h-8 gap-1 text-xs"
+            className="h-9 gap-1.5"
             onClick={() => setClassicFiltersOpen((v) => !v)}
           >
-            <Filter className="h-3 w-3" aria-hidden />
+            <Filter className="h-3.5 w-3.5" aria-hidden />
             {classicFiltersOpen ? S.filtersOptionalCollapse : S.filtersOptionalExpand}
           </Button>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="h-8 gap-1 text-xs"
+            className="h-9 gap-1.5"
             onClick={openMapFromAssistant}
           >
-            <MapIcon className="h-3 w-3" aria-hidden />
+            <MapIcon className="h-3.5 w-3.5" aria-hidden />
             {S.buscarOpenMapCta}
           </Button>
           <div
-            className="ml-auto inline-flex rounded-md border border-border/40 bg-surface-secondary/30 p-px"
+            className="ml-auto inline-flex rounded-lg border border-border/60 bg-surface-secondary/50 p-0.5"
             role="group"
             aria-label="Vista de resultados"
           >
@@ -1525,7 +1670,7 @@ export function BuscarContent({
               type="button"
               variant={!showMap ? 'default' : 'ghost'}
               size="sm"
-              className="h-8 rounded-[5px] px-2.5 text-[11px]"
+              className="h-9 rounded-md px-3 text-xs"
               onClick={() => setShowMap(false)}
             >
               Lista
@@ -1534,31 +1679,35 @@ export function BuscarContent({
               type="button"
               variant={showMap ? 'default' : 'ghost'}
               size="sm"
-              className="h-8 rounded-[5px] px-2.5 text-[11px]"
+              className="h-9 rounded-md px-3 text-xs"
               onClick={() => {
                 setClassicFiltersOpen(true)
                 setShowMap(true)
                 scrollToElementId('buscar-mapa')
               }}
             >
-              <MapIcon className="mr-1 hidden h-3 w-3 sm:inline" aria-hidden />
+              <MapIcon className="mr-1 hidden h-3.5 w-3.5 sm:inline" aria-hidden />
               Mapa
             </Button>
           </div>
         </div>
 
-        <div id="buscar-resultados" className="scroll-mt-14 space-y-4">
+        <div id="buscar-resultados" className="scroll-mt-24 space-y-6">
           {!isLoading &&
           dataV2 &&
           data &&
           data.total === 0 &&
           hasActiveSearchCriteria ? (
-            <div className="rounded-md border border-border/60 px-4 py-3">
-              <p className="text-sm font-medium text-text-primary">
+            <Card className="space-y-3 border-semantic-warning/20 bg-semantic-warning/5 p-4">
+              <p className="text-base font-semibold text-text-primary">
                 {S.searchV2EmptyTitle}
               </p>
-              <p className="mt-1 text-xs text-text-secondary">{S.searchV2EmptyLine1}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <ul className="list-disc space-y-1 pl-4 text-sm text-text-secondary">
+                <li>{S.searchV2EmptyLine1}</li>
+                <li>{S.searchV2EmptyLine2}</li>
+                <li>{S.searchV2EmptyLine3}</li>
+              </ul>
+              <div className="flex flex-wrap gap-2 pt-1">
                 {((minPrice.trim() !== '' &&
                   Number.isFinite(Number(minPrice.trim()))) ||
                   (maxPrice.trim() !== '' &&
@@ -1594,22 +1743,24 @@ export function BuscarContent({
                   {S.searchV2CtaOpenFilters}
                 </Button>
               </div>
-            </div>
+            </Card>
           ) : null}
           {shortSearchUxMessages.length > 0 ? (
-            <div className="space-y-1" role="status" aria-live="polite">
+            <div className="space-y-2" role="status" aria-live="polite">
               {shortSearchUxMessages.map((msg, i) => (
-                <p
+                <Card
                   key={`search-ux-${i}`}
-                  className="text-sm leading-snug text-text-secondary"
+                  className="border-brand-primary/20 bg-brand-primary/5 p-3 text-sm leading-snug text-text-primary"
                 >
                   {msg}
-                </p>
+                </Card>
               ))}
             </div>
           ) : null}
           {dataV2?.emptyExplanation ? (
-            <p className="text-sm text-text-secondary">{dataV2.emptyExplanation}</p>
+            <Card className="border-semantic-warning/25 bg-semantic-warning/5 p-4 text-sm leading-relaxed text-text-primary">
+              {dataV2.emptyExplanation}
+            </Card>
           ) : null}
           {dataV2?.actions && dataV2.actions.length > 0 ? (
             <div className="space-y-2">
@@ -1637,13 +1788,13 @@ export function BuscarContent({
             </div>
           ) : null}
           {isError ? (
-            <div className="rounded-md border border-border/60 px-4 py-3">
+            <Card className="space-y-2 p-6">
               <p className="text-sm font-medium text-text-primary">{S.searchLoadErrorSoftTitle}</p>
-              <p className="mt-1 text-xs text-text-secondary">{S.searchLoadErrorSoftBody}</p>
-            </div>
-          ) : isLoading && !dataV2 ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {[...Array(3)].map((_, i) => (
+              <p className="text-sm text-text-secondary">{S.searchLoadErrorSoftBody}</p>
+            </Card>
+          ) : isLoading && hasSearchAnchor && !dataV2 ? (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
                 <Card key={i} className="overflow-hidden">
                   <Skeleton className="h-48 w-full" />
                   <div className="space-y-3 p-4">
@@ -1655,25 +1806,25 @@ export function BuscarContent({
               ))}
             </div>
           ) : dataV2?.buckets ? (
-            <div className="space-y-6">
-              <p className="text-sm font-semibold text-text-primary">
-                {S.searchV2ResultsHeading}
-              </p>
+            <div className="space-y-10">
               {!isLoading &&
               data &&
               data.total > 0 &&
               smartSuggestionIds.length > 0 ? (
-                <div className="rounded-md border border-border/50 bg-surface-secondary/25 px-3 py-2">
-                  <p className="text-xs font-medium text-text-secondary">
+                <div className="rounded-xl border border-brand-primary/20 bg-brand-primary/[0.06] p-4 shadow-sm">
+                  <p className="text-sm font-semibold text-text-primary">
                     {S.searchV2SmartSuggestionsTitle}
                   </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <p className="mt-0.5 text-xs text-text-secondary">
+                    {S.searchV2SmartSuggestionsHint}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
                     {smartSuggestionIds.map((sid) => (
                       <Button
                         key={sid}
                         type="button"
                         size="sm"
-                        variant="outline"
+                        variant="secondary"
                         className="h-9 max-w-full whitespace-normal text-left text-xs leading-snug transition-transform active:scale-[0.98] sm:text-sm"
                         onClick={() => applySmartSuggestion(sid)}
                       >
@@ -1702,8 +1853,93 @@ export function BuscarContent({
                 return (
                   <>
                     {dataV2.buckets.map((bucket) => {
-                      if (bucket.id === 'near' && bucket.items.length === 0) {
-                        return null
+                      if (bucket.id === 'near') {
+                        if (bucket.items.length === 0) return null
+                        const nearCount = bucket.totalInBucket
+                        return (
+                          <section
+                            key={bucket.id}
+                            className="space-y-3 rounded-xl border border-dashed border-border/50 bg-surface-secondary/15 p-3 md:p-4"
+                          >
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="min-w-0 space-y-1">
+                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                  <h2 className="text-sm font-medium text-text-secondary">
+                                    {displayBucketTitle(bucket.id, bucket.label)}
+                                  </h2>
+                                  <span className="text-xs text-text-tertiary">
+                                    {bucketCountLabel(
+                                      bucket.id,
+                                      bucket.totalInBucket
+                                    )}
+                                  </span>
+                                </div>
+                                {!searchV2NearOpen && nearCount > 0 ? (
+                                  <p
+                                    className="text-sm font-medium text-text-primary"
+                                    role="status"
+                                  >
+                                    {nearCount === 1
+                                      ? S.searchV2NearTeaserOne
+                                      : S.searchV2NearTeaser.replace(
+                                          '{n}',
+                                          String(nearCount)
+                                        )}
+                                  </p>
+                                ) : null}
+                                {searchV2NearOpen ? (
+                                  <p className="text-xs leading-snug text-text-tertiary">
+                                    {buildBucketSessionDigestLine(
+                                      'near',
+                                      digestOpts
+                                    )}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-9 shrink-0 text-xs transition-transform active:scale-[0.98]"
+                                aria-expanded={searchV2NearOpen}
+                                onClick={() => setSearchV2NearOpen((v) => !v)}
+                              >
+                                {searchV2NearOpen
+                                  ? S.searchV2NearToggleHide
+                                  : S.searchV2NearToggleShow}
+                              </Button>
+                            </div>
+                            {searchV2NearOpen ? (
+                              <div className="grid grid-cols-1 gap-6 border-t border-border/40 pt-4 md:grid-cols-2 lg:grid-cols-3">
+                                {bucket.items.map((row) => {
+                                  const listing = row as BuscarListingCardData
+                                  const index = globalIndex++
+                                  return (
+                                    <ListingCard
+                                      key={`${bucket.id}-${listing.id}`}
+                                      listing={listing}
+                                      mapSelectedListingId={mapSyncSelectedId}
+                                      compactMatchReason
+                                      whyBucketId="near"
+                                      onMapSyncHover={
+                                        showMap && mapPins.length > 0
+                                          ? onMapSyncHover
+                                          : undefined
+                                      }
+                                      onResultLinkClick={(listingId) =>
+                                        onSearchResultNavigate(
+                                          listingId,
+                                          'list',
+                                          index
+                                        )
+                                      }
+                                    />
+                                  )
+                                })}
+                              </div>
+                            ) : null}
+                          </section>
+                        )
                       }
                       if (bucket.id === 'widened') {
                         if (bucket.items.length === 0) return null
@@ -1800,16 +2036,15 @@ export function BuscarContent({
                         )
                       }
 
-                      const bid = bucket.id
-                      if (bid !== 'strong' && bid !== 'near') return null
+                      if (bucket.id !== 'strong') return null
 
                       return (
                         <section
                           key={bucket.id}
-                          className={bucketStrongNearSectionClass(bid)}
+                          className={bucketStrongNearSectionClass('strong')}
                         >
                           <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-                            <h2 className={bucketHeadingClass(bid)}>
+                            <h2 className={bucketHeadingClass('strong')}>
                               {displayBucketTitle(bucket.id, bucket.label)}
                             </h2>
                             <span className="text-xs text-text-tertiary">
@@ -1820,7 +2055,7 @@ export function BuscarContent({
                             </span>
                           </div>
                           <p className="text-sm leading-snug text-text-secondary">
-                            {buildBucketSessionDigestLine(bid, digestOpts)}
+                            {buildBucketSessionDigestLine('strong', digestOpts)}
                           </p>
                           {bucket.items.length === 0 ? (
                             <p className="text-sm text-text-secondary">
@@ -1837,7 +2072,7 @@ export function BuscarContent({
                                     listing={listing}
                                     mapSelectedListingId={mapSyncSelectedId}
                                     compactMatchReason
-                                    whyBucketId={bid}
+                                    whyBucketId="strong"
                                     onMapSyncHover={
                                       showMap && mapPins.length > 0
                                         ? onMapSyncHover
@@ -1870,25 +2105,182 @@ export function BuscarContent({
           ) : null}
         </div>
 
-        <div id="buscar-esenciales" className="scroll-mt-16 space-y-3 border-t border-border/20 pt-3">
+        {assistantHint ? (
+          <div className="rounded-lg border border-border/50 bg-surface-secondary/40 px-3 py-2.5 text-sm text-text-secondary">
+            <p className="font-medium text-text-primary">
+              {S.conversationalInterpretedTitle}
+            </p>
+            <p className="mt-1 text-sm leading-snug">{assistantHint.summary}</p>
+            {assistantHint.messages && assistantHint.messages.length > 0 ? (
+              <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs text-text-tertiary">
+                {assistantHint.messages.map((m, i) => (
+                  <li key={`hint-msg-${i}`}>{m}</li>
+                ))}
+              </ul>
+            ) : null}
+            <p className="mt-2 text-sm text-text-primary">
+              {assistantHint.total > 0 ? (
+                <>
+                  {S.conversationalResultsPrefix}:{' '}
+                  <strong>{assistantHint.total}</strong>
+                  {assistantHint.primaryTotal !== undefined &&
+                  assistantHint.primaryTotal === 0 &&
+                  assistantHint.total > 0 ? (
+                    <span className="mt-1 block text-xs font-normal text-text-secondary">
+                      {S.conversationalRelaxedCountNote}
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                <span className="text-text-secondary">{S.conversationalResultsZero}</span>
+              )}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={openMapFromAssistant}
+              >
+                {S.conversationalNextMap}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => {
+                  setClassicFiltersOpen(true)
+                  setShowDeepFilters(true)
+                  window.requestAnimationFrame(() =>
+                    document
+                      .getElementById('buscar-capa-3')
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  )
+                }}
+              >
+                {S.conversationalNextFilters}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" asChild>
+                <a href="#buscar-resultados">{S.conversationalScrollResults}</a>
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        <details
+          id="buscar-asistente"
+          className="scroll-mt-24 rounded-lg border border-border/40 bg-surface-secondary/15"
+        >
+          <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden">
+            {S.buscarAssistantCollapseTitle}
+          </summary>
+          <div className="space-y-3 border-t border-border/40 px-3 pb-4 pt-3">
+            <ConversationalSearchBlock
+              variant="buscar"
+              routerMode="replace"
+              searchPathPage={searchPathPage}
+              forcedOperation={forcedOperation}
+              onAfterNavigate={setAssistantHint}
+              compact
+              hideTitle
+              buscarSearchParamsKey={searchParamsKey}
+            />
+            {!classicFiltersOpen ? (
+              <details className="rounded-lg border border-border/40 bg-surface-secondary/20">
+                <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden">
+                  {S.inductiveExploreTitle}
+                </summary>
+                <div className="space-y-3 border-t border-border/50 px-3 py-3">
+                  {contextualBlock ? (
+                    <div className="space-y-1.5">
+                      <h3 className="text-sm font-semibold text-text-primary">
+                        {contextualBlock.title}
+                      </h3>
+                      <p className="text-xs leading-relaxed text-text-secondary">
+                        {contextualBlock.body}
+                      </p>
+                    </div>
+                  ) : null}
+                  {showQuickAmenityChips ? (
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-sm font-semibold text-text-primary">
+                          {S.facetChipsTitle}
+                        </p>
+                        <p className="mt-0.5 text-xs text-text-secondary">
+                          {S.facetChipsHintRefine}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {quickFacetIds!.map((fid) => {
+                          const def = facetFlagCatalog.find((f) => f.id === fid)
+                          if (!def) return null
+                          const on = selectedAmenityFacets.includes(fid)
+                          return (
+                            <Button
+                              key={`asistente-facet-${fid}`}
+                              type="button"
+                              size="sm"
+                              variant={on ? 'default' : 'outline'}
+                              className="h-8 text-xs"
+                              onClick={() =>
+                                setSelectedAmenityFacets((prev) =>
+                                  on ? prev.filter((x) => x !== fid) : [...prev, fid]
+                                )
+                              }
+                            >
+                              {def.label}
+                            </Button>
+                          )
+                        })}
+                      </div>
+                      <label className="flex cursor-pointer items-start gap-2 text-sm text-text-primary">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 rounded border-border"
+                          checked={amenitiesStrict}
+                          onChange={(e) => setAmenitiesStrict(e.target.checked)}
+                        />
+                        <span>
+                          <span className="font-medium">{S.strictAmenitiesLabel}</span>
+                          <span className="block text-xs text-text-secondary">
+                            {S.strictAmenitiesHint}
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  ) : (
+                    <InductiveSearchChips variant="embedded" showSubtitle={false} />
+                  )}
+                </div>
+              </details>
+            ) : null}
+          </div>
+        </details>
+        </>
+        ) : null}
+
+        <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
           {classicFiltersOpen ? (
-            <Card className="space-y-3 rounded-lg border border-dashed border-border/35 bg-surface-secondary/[0.12] p-3 shadow-none md:space-y-3.5 md:p-4">
-          <div className="border-b border-border/25 pb-2">
-            <h2 className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
+            <Card className="space-y-4 p-4 md:p-6">
+          <div>
+            <h2 className="text-lg font-semibold text-text-primary">
               {S.mainFiltersTitle}
             </h2>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-text-tertiary">
+            <p className="mt-1 text-sm text-text-secondary">
               {S.mainFiltersSubtitle}
             </p>
           </div>
 
-          <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary/90">
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-primary">
             {S.buscarLayer1Kicker}
           </p>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-text-tertiary">
+          <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
             {S.locationBlockTitle}
           </p>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             {opLocked ? (
               <BuscarLabeledField id="buscar-op-locked" label={S.buscarFieldOperation}>
                 <div
@@ -1978,10 +2370,10 @@ export function BuscarContent({
 
           <div
             id="buscar-mapa"
-            className="scroll-mt-16 space-y-2 rounded-md border border-border/35 bg-surface-primary/55 p-2.5"
+            className="scroll-mt-24 space-y-2 rounded-lg border border-border/60 bg-surface-primary/80 p-3"
           >
             <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-              <p className="text-[11px] font-medium text-text-secondary">
+              <p className="text-xs font-semibold text-text-primary">
                 {S.mapIntegratedTitle}
               </p>
               {showMap ? (
@@ -2246,22 +2638,38 @@ export function BuscarContent({
                 </BuscarLabeledField>
               </>
             )}
+            <div className="md:col-span-2 lg:col-span-4">
+              <BuscarLabeledField id="buscar-q" label={S.buscarFieldKeywords}>
+                <Input
+                  id="buscar-q"
+                  placeholder={S.keywordPlaceholder}
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                />
+              </BuscarLabeledField>
+            </div>
           </div>
+
+          {!showQuickAmenityChips ? (
+            <div className="pt-1">
+              <InductiveSearchChips variant="embedded" showSubtitle={false} />
+            </div>
+          ) : null}
 
           <section
             id="buscar-capa-2"
-            className="scroll-mt-16 rounded-lg border border-border/40 bg-surface-secondary/20 p-2.5 md:p-3"
+            className="scroll-mt-24 rounded-xl border border-border/80 bg-surface-secondary/40 p-3 md:p-4"
             aria-label={S.buscarLayer2Title}
           >
             <button
               type="button"
-              className="flex w-full items-center justify-between gap-2 text-left"
+              className="flex w-full items-center justify-between gap-3 text-left"
               onClick={() => setGuidedLayerExpanded((v) => !v)}
             >
-              <span className="text-xs font-medium text-text-secondary md:text-sm">
+              <span className="text-sm font-semibold text-text-primary">
                 {S.buscarLayer2Title}
               </span>
-              <span className="shrink-0 text-[11px] font-medium text-text-tertiary">
+              <span className="shrink-0 text-xs font-semibold text-brand-primary">
                 {guidedLayerExpanded
                   ? S.buscarLayer2CollapseCta
                   : S.buscarLayer2ExpandCta}
@@ -2273,6 +2681,68 @@ export function BuscarContent({
               </p>
             ) : (
               <div className="mt-3 space-y-4 border-t border-border/60 pt-3">
+                <p className="text-xs leading-relaxed text-text-secondary">
+                  {S.buscarLayer2Subtitle}
+                </p>
+                {contextualBlock ? (
+                  <div
+                    className="space-y-3 rounded-lg border border-brand-primary/20 bg-brand-primary/5 p-3"
+                    role="region"
+                  >
+                    <h3 className="text-sm font-semibold text-text-primary">
+                      {contextualBlock.title}
+                    </h3>
+                    <p className="text-xs leading-relaxed text-text-secondary">
+                      {contextualBlock.body}
+                    </p>
+                    {(contextualBlock.quickFacetIds ?? []).length > 0 ? (
+                      <div>
+                        <p className="text-xs font-medium text-text-tertiary">
+                          {S.buscarLayer2QuickChipsHint}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {(contextualBlock.quickFacetIds ?? [])
+                            .slice(0, 6)
+                            .map((fid) => {
+                              const def = facetFlagCatalog.find((f) => f.id === fid)
+                              if (!def) return null
+                              const on = selectedAmenityFacets.includes(fid)
+                              return (
+                                <Button
+                                  key={`guided-facet-${fid}`}
+                                  type="button"
+                                  size="sm"
+                                  variant={on ? 'default' : 'outline'}
+                                  className="h-8 text-xs"
+                                  onClick={() =>
+                                    setSelectedAmenityFacets((prev) =>
+                                      on
+                                        ? prev.filter((x) => x !== fid)
+                                        : [...prev, fid]
+                                    )
+                                  }
+                                >
+                                  {def.label}
+                                </Button>
+                              )
+                            })}
+                        </div>
+                      </div>
+                    ) : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="h-8 text-xs"
+                      onClick={() => {
+                        setShowDeepFilters(true)
+                        scrollToElementId('buscar-capa-3')
+                      }}
+                    >
+                      {S.buscarOpenLayer3Cta}
+                    </Button>
+                  </div>
+                ) : null}
                 <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
                   {S.essentialsFriendlyTitle}
                 </p>
@@ -2342,12 +2812,12 @@ export function BuscarContent({
             )}
           </section>
 
-          <div className="flex flex-wrap items-center justify-end gap-1.5 border-t border-border/25 pt-2">
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/60 pt-3">
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="mr-auto h-8 text-xs text-text-tertiary hover:text-text-primary"
+              className="mr-auto text-text-secondary hover:text-text-primary"
               onClick={() => setClassicFiltersOpen(false)}
             >
               {S.filtersOptionalCollapse}
@@ -2356,7 +2826,6 @@ export function BuscarContent({
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 text-xs"
               onClick={() => setShowDeepFilters((v) => !v)}
             >
               {showDeepFilters ? S.buscarCloseLayer3Cta : S.buscarOpenLayer3Cta}
@@ -2366,17 +2835,17 @@ export function BuscarContent({
           {showDeepFilters ? (
             <div
               id="buscar-capa-3"
-              className="scroll-mt-16 space-y-3 border-t border-border/25 pt-3"
+              className="scroll-mt-24 space-y-4 border-t border-border pt-4"
             >
               <div>
-                <p className="text-xs font-medium text-text-secondary">
+                <p className="text-sm font-semibold text-text-primary">
                   {S.buscarLayer3Title}
                 </p>
-                <p className="mt-0.5 text-[11px] text-text-tertiary">
+                <p className="mt-0.5 text-xs text-text-secondary">
                   {S.buscarLayer3Subtitle}
                 </p>
               </div>
-              <p className="text-xs font-medium text-text-secondary">
+              <p className="text-sm font-medium text-text-primary">
                 {S.buscarLayer3TechnicalTitle}
               </p>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -2498,6 +2967,41 @@ export function BuscarContent({
         }}
       />
 
+      <Dialog open={flowDialogOpen} onOpenChange={setFlowDialogOpen}>
+        <DialogContent className="max-w-md gap-4 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{S.buscarFlowDialogOpen}</DialogTitle>
+          </DialogHeader>
+          <ol className="list-decimal space-y-3 pl-5 text-sm text-text-secondary">
+            <li>{S.buscarFlowStep1}</li>
+            <li>{S.buscarFlowStep2}</li>
+            <li>{S.buscarFlowStep3}</li>
+            <li>{S.buscarFlowStep4}</li>
+          </ol>
+          <DialogFooter className="flex flex-col gap-3 sm:flex-col sm:justify-stretch sm:space-x-0">
+            <label
+              htmlFor="propieya-flow-guide-dismiss"
+              className="flex cursor-pointer items-start gap-2 text-left text-sm text-text-secondary"
+            >
+              <input
+                id="propieya-flow-guide-dismiss"
+                type="checkbox"
+                className="mt-0.5 shrink-0 rounded border-border"
+                checked={flowGuideDontShowAgain}
+                onChange={(e) => setFlowGuideDontShowAgain(e.target.checked)}
+              />
+              <span>{S.buscarFlowDialogDontShowAgain}</span>
+            </label>
+            <Button
+              type="button"
+              className="w-full"
+              onClick={confirmFlowGuideDialog}
+            >
+              {S.buscarFlowDialogConfirm}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
