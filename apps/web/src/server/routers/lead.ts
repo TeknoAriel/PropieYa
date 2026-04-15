@@ -6,6 +6,7 @@ import { leads, listings, organizations, users } from '@propieya/database'
 import { PORTAL_STATS_TERMINALS } from '@propieya/shared'
 
 import { recordPortalStatsEvent } from '../../lib/analytics/record-portal-stats-event'
+import { scheduleKitepropLeadSync } from '../../lib/integrations/kiteprop-lead-sync'
 import { buildListingPreviewForLead, isLeadRecent } from '../lib/listing-lead-preview'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
 import { sendNewLeadEmail } from '../../lib/email'
@@ -115,6 +116,10 @@ export const leadRouter = createTRPCRouter({
           userId: ctx.session?.userId ?? null,
           payload: {},
         })
+      }
+
+      if (paid && created?.id) {
+        scheduleKitepropLeadSync(ctx.db, created.id)
       }
 
       return created
@@ -231,6 +236,7 @@ export const leadRouter = createTRPCRouter({
           userId: ctx.session.userId,
           payload: { mode: result.mode },
         })
+        scheduleKitepropLeadSync(ctx.db, input.id)
       }
 
       return {
