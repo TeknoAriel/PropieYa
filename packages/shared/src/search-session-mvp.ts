@@ -1,5 +1,8 @@
 import { z } from 'zod'
 
+import { inferLocalityFromUserMessage } from './locality-catalog-resolver'
+import { mergePublicSearchWithResidual } from './search-query-merge'
+
 /** Punto WGS84 (mapa / polígono). */
 export const searchSessionGeoPointSchema = z.object({
   lat: z.number().gte(-90).lte(90),
@@ -64,6 +67,83 @@ export const listingSearchV2InputSchema = z.object({
 
 export type ListingSearchV2Input = z.infer<typeof listingSearchV2InputSchema>
 
+const NEIGHBORHOOD_TO_PARENT_CITY: Readonly<Record<string, string>> = {
+  Palermo: 'CABA',
+  Belgrano: 'CABA',
+  'Nueva Córdoba': 'Córdoba',
+  'Villa Crespo': 'CABA',
+  Almagro: 'CABA',
+  Caballito: 'CABA',
+  Núñez: 'CABA',
+  Recoleta: 'CABA',
+  'San Telmo': 'CABA',
+  'Puerto Madero': 'CABA',
+}
+
+/**
+ * Fusiona lo detectado en `q` (operación, tipo, amenities, localidad) en la sesión
+ * y recorta `q` al texto residual. Los campos ya fijados en sesión no se pisan.
+ */
+export function enrichSearchSessionMVPFromParsedQuery(
+  s: SearchSessionMVP
+): SearchSessionMVP {
+  const rawQ = s.q?.trim()
+  if (!rawQ) return s
+
+  let city = s.city?.trim() ? s.city.trim() : null
+  let neighborhood = s.neighborhood?.trim() ? s.neighborhood.trim() : null
+
+  if (!city && !neighborhood) {
+    const loc = inferLocalityFromUserMessage(rawQ)
+    if (loc) {
+      if (loc.kind === 'city') {
+        city = loc.canonical
+      } else {
+        neighborhood = loc.canonical
+        city = NEIGHBORHOOD_TO_PARENT_CITY[loc.canonical] ?? city
+      }
+    }
+  }
+
+  const merged = mergePublicSearchWithResidual({
+    q: rawQ,
+    city: city ?? undefined,
+    neighborhood: neighborhood ?? undefined,
+    operationType: s.operationType ?? undefined,
+    propertyType: s.propertyType ?? undefined,
+    amenities: s.amenityIds?.length ? [...s.amenityIds] : undefined,
+    minPrice: s.minPrice ?? undefined,
+    maxPrice: s.maxPrice ?? undefined,
+    minBedrooms: s.minBedrooms ?? undefined,
+    minSurface: s.minSurface ?? undefined,
+    maxSurface: s.maxSurface ?? undefined,
+  })
+
+  const amenityIds = [...new Set(merged.amenities ?? [])].slice(0, 40)
+  const residual = merged.residualTextQuery.replace(/\s+/g, ' ').trim()
+  const qOut = residual.length > 0 ? residual.slice(0, 200) : null
+
+  const op =
+    (merged.operationType ?? s.operationType) as SearchSessionMVP['operationType']
+  const ptRaw = merged.propertyType ?? s.propertyType
+  const pt = ptRaw?.trim() ? ptRaw.trim().slice(0, 50) : null
+
+  return {
+    ...s,
+    operationType: op ?? null,
+    propertyType: pt,
+    city,
+    neighborhood,
+    amenityIds,
+    q: qOut,
+    minPrice: merged.minPrice ?? s.minPrice,
+    maxPrice: merged.maxPrice ?? s.maxPrice,
+    minBedrooms: merged.minBedrooms ?? s.minBedrooms,
+    minSurface: merged.minSurface ?? s.minSurface,
+    maxSurface: merged.maxSurface ?? s.maxSurface,
+  }
+}
+
 /**
  * Normaliza sesión (orden de precio, strings, flags de mapa coherentes).
  */
@@ -114,7 +194,7 @@ export function normalizeSearchSessionMVP(raw: unknown): SearchSessionMVP {
     mapMode = 'bbox'
   }
 
-  return {
+  const base: SearchSessionMVP = {
     ...s,
     city,
     neighborhood,
@@ -128,6 +208,7 @@ export function normalizeSearchSessionMVP(raw: unknown): SearchSessionMVP {
     mapCommitted,
     amenityIds: s.amenityIds ?? [],
   }
+  return enrichSearchSessionMVPFromParsedQuery(base)
 }
 
 /** ¿Hay al menos un ancla para evitar un “widened” mundial absurdo? */
