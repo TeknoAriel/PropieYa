@@ -54,6 +54,7 @@ import {
   normalizeSearchSessionMVP,
   OPERATION_TYPE_LABELS,
   PORTAL_SEARCH_UX_COPY as S,
+  searchSessionHasAnchor,
   PROPERTY_TYPE_LABELS,
   summarizeSearchFilters,
   type Currency,
@@ -869,53 +870,86 @@ export function BuscarContent({
       }
     )
 
+  /** Evita listados y avisos con datos viejos si la query falló (p. ej. con placeholderData). */
+  const dataV2Safe = isError ? undefined : dataV2
+
   const listingsAll = useMemo(() => {
-    if (!dataV2?.buckets) return []
+    if (!dataV2Safe?.buckets) return []
     const out: BuscarListingCardData[] = []
-    for (const b of dataV2.buckets) {
+    for (const b of dataV2Safe.buckets) {
       for (const row of b.items) {
         out.push(row as BuscarListingCardData)
       }
     }
     return out
-  }, [dataV2])
+  }, [dataV2Safe])
 
   const listingsForMap = useMemo(() => {
-    if (!dataV2?.buckets || searchV2WidenedOpen) return listingsAll
-    const widened = dataV2.buckets.find((b) => b.id === 'widened')
+    if (!dataV2Safe?.buckets || searchV2WidenedOpen) return listingsAll
+    const widened = dataV2Safe.buckets.find((b) => b.id === 'widened')
     const widenedIds = new Set(
       (widened?.items ?? []).map(
         (row) => (row as BuscarListingCardData).id
       )
     )
     return listingsAll.filter((l) => !widenedIds.has(l.id))
-  }, [dataV2, listingsAll, searchV2WidenedOpen])
+  }, [dataV2Safe, listingsAll, searchV2WidenedOpen])
 
   const widenedListCount = useMemo(() => {
-    const b = dataV2?.buckets?.find((x) => x.id === 'widened')
+    const b = dataV2Safe?.buckets?.find((x) => x.id === 'widened')
     return b?.items.length ?? 0
-  }, [dataV2])
+  }, [dataV2Safe])
 
   const shortSearchUxMessages = useMemo(
     () =>
-      (dataV2?.messages ?? []).filter(
+      (dataV2Safe?.messages ?? []).filter(
         (m) => typeof m === 'string' && m.length <= 220
       ).slice(0, 1),
-    [dataV2?.messages]
+    [dataV2Safe?.messages]
   )
 
   const data =
-    dataV2 != null
+    dataV2Safe != null
       ? {
           total:
-            dataV2.totalsByBucket.strong +
-            dataV2.totalsByBucket.near +
-            dataV2.totalsByBucket.widened,
+            dataV2Safe.totalsByBucket.strong +
+            dataV2Safe.totalsByBucket.near +
+            dataV2Safe.totalsByBucket.widened,
           items: listingsAll,
-          searchUX: { messages: dataV2.messages as string[] },
+          searchUX: { messages: dataV2Safe.messages as string[] },
           nextCursor: null as string | null,
         }
       : null
+
+  const sessionHasAnchor = useMemo(
+    () =>
+      searchSessionHasAnchor(
+        normalizeSearchSessionMVP(searchSessionMVP)
+      ),
+    [searchSessionMVP]
+  )
+
+  const searchIndexDown = useMemo(() => {
+    const msgs = dataV2Safe?.messages
+    if (!msgs?.length) return false
+    return msgs.some(
+      (m) =>
+        typeof m === 'string' &&
+        m.includes('no está disponible') &&
+        m.includes('índice')
+    )
+  }, [dataV2Safe?.messages])
+
+  const indexDownUserMessage = useMemo(() => {
+    if (!searchIndexDown || !dataV2Safe?.messages?.length) return ''
+    const hit = dataV2Safe.messages.find(
+      (m) =>
+        typeof m === 'string' &&
+        m.includes('no está disponible') &&
+        m.includes('índice')
+    )
+    return typeof hit === 'string' ? hit : ''
+  }, [searchIndexDown, dataV2Safe?.messages])
 
   const mapPins = useMemo(
     () => pinsFromListings(listingsForMap),
@@ -1051,6 +1085,34 @@ export function BuscarContent({
   useEffect(() => {
     if (hasActiveSearchCriteria) setGuidedLayerExpanded(true)
   }, [hasActiveSearchCriteria])
+
+  const showEducationalEmpty =
+    !isLoading &&
+    !isError &&
+    !searchIndexDown &&
+    Boolean(dataV2Safe && data && data.total === 0) &&
+    hasActiveSearchCriteria &&
+    sessionHasAnchor
+
+  const showExecutorEmptyCopy =
+    Boolean(dataV2Safe?.emptyExplanation) &&
+    !searchIndexDown &&
+    !showEducationalEmpty
+
+  const showSuggestedActions =
+    Boolean(dataV2Safe?.actions?.length) &&
+    !searchIndexDown &&
+    !showEducationalEmpty
+
+  const showShortUx =
+    !isError &&
+    !searchIndexDown &&
+    !showEducationalEmpty &&
+    shortSearchUxMessages.length > 0
+
+  const showResultsBuckets = Boolean(
+    dataV2Safe?.buckets && data && data.total > 0
+  )
 
   const clearBuscarSearch = useCallback(() => {
     setShowMap(false)
@@ -1786,11 +1848,21 @@ export function BuscarContent({
         </div>
 
         <div id="buscar-resultados" className="scroll-mt-24 space-y-6">
-          {!isLoading &&
-          dataV2 &&
-          data &&
-          data.total === 0 &&
-          hasActiveSearchCriteria ? (
+          {isError ? (
+            <Card className="space-y-2 p-6">
+              <p className="text-sm font-medium text-text-primary">{S.searchLoadErrorSoftTitle}</p>
+              <p className="text-sm text-text-secondary">{S.searchLoadErrorSoftBody}</p>
+            </Card>
+          ) : null}
+          {!isError && searchIndexDown ? (
+            <Card className="space-y-2 border-semantic-warning/25 bg-semantic-warning/5 p-6" role="alert">
+              <p className="text-sm font-medium text-text-primary">{S.searchLoadErrorSoftTitle}</p>
+              <p className="text-sm text-text-secondary">
+                {indexDownUserMessage || S.searchLoadErrorSoftBody}
+              </p>
+            </Card>
+          ) : null}
+          {showEducationalEmpty ? (
             <Card className="space-y-3 border-semantic-warning/20 bg-semantic-warning/5 p-4">
               <p className="text-base font-semibold text-text-primary">
                 {S.searchV2EmptyTitle}
@@ -1838,7 +1910,7 @@ export function BuscarContent({
               </div>
             </Card>
           ) : null}
-          {shortSearchUxMessages.length > 0 ? (
+          {showShortUx ? (
             <div className="space-y-2" role="status" aria-live="polite">
               {shortSearchUxMessages.map((msg, i) => (
                 <Card
@@ -1850,18 +1922,18 @@ export function BuscarContent({
               ))}
             </div>
           ) : null}
-          {dataV2?.emptyExplanation ? (
+          {showExecutorEmptyCopy && dataV2Safe?.emptyExplanation ? (
             <Card className="border-semantic-warning/25 bg-semantic-warning/5 p-4 text-sm leading-relaxed text-text-primary">
-              {dataV2.emptyExplanation}
+              {dataV2Safe.emptyExplanation}
             </Card>
           ) : null}
-          {dataV2?.actions && dataV2.actions.length > 0 ? (
+          {showSuggestedActions && dataV2Safe?.actions && dataV2Safe.actions.length > 0 ? (
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
                 {S.searchV2SuggestedActions}
               </p>
               <div className="flex flex-wrap gap-2">
-                {dataV2.actions.map((a) => (
+                {dataV2Safe.actions.map((a) => (
                   <Button
                     key={a.id}
                     type="button"
@@ -1880,12 +1952,7 @@ export function BuscarContent({
               </div>
             </div>
           ) : null}
-          {isError ? (
-            <Card className="space-y-2 p-6">
-              <p className="text-sm font-medium text-text-primary">{S.searchLoadErrorSoftTitle}</p>
-              <p className="text-sm text-text-secondary">{S.searchLoadErrorSoftBody}</p>
-            </Card>
-          ) : isLoading && !dataV2 ? (
+          {!isError && isLoading && !dataV2Safe ? (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
                 <Card key={i} className="overflow-hidden">
@@ -1898,7 +1965,7 @@ export function BuscarContent({
                 </Card>
               ))}
             </div>
-          ) : dataV2?.buckets ? (
+          ) : showResultsBuckets && dataV2Safe?.buckets ? (
             <div className="space-y-10">
               <p className="text-sm font-semibold text-text-primary">
                 {S.searchV2ResultsHeading}
@@ -1933,7 +2000,7 @@ export function BuscarContent({
               {(() => {
                 let globalIndex = 0
                 const widenedCount =
-                  dataV2.buckets.find((b) => b.id === 'widened')?.totalInBucket ??
+                  dataV2Safe.buckets.find((b) => b.id === 'widened')?.totalInBucket ??
                   0
 
                 const digestOpts = {
@@ -1948,7 +2015,7 @@ export function BuscarContent({
 
                 return (
                   <>
-                    {dataV2.buckets.map((bucket) => {
+                    {dataV2Safe.buckets.map((bucket) => {
                       if (bucket.id === 'near' && bucket.items.length === 0) {
                         return null
                       }
