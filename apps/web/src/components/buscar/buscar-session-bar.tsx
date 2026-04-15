@@ -139,10 +139,10 @@ export function BuscarSessionBar({
   const [draftMax, setDraftMax] = useState(maxPrice)
 
   return (
-    <Card className="border-brand-primary/15 bg-gradient-to-r from-surface-elevated to-brand-primary/[0.06] p-3 shadow-sm sm:p-4">
+    <Card className="border-border/50 bg-surface-primary p-3 sm:p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-1">
-          <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-brand-primary/90">
+          <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">
             <Search className="h-3 w-3 shrink-0" aria-hidden />
             {S.searchV2SessionBarTitle}
           </p>

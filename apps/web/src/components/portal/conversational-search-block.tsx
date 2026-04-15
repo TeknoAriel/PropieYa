@@ -91,6 +91,8 @@ type ConversationalSearchBlockProps = {
   className?: string
   /** Menos padding tipográfico y campo más bajo (p. ej. /buscar en un solo card). */
   compact?: boolean
+  /** Oculta título y párrafo introductorios (UX /buscar: una sola caja de refinamiento). */
+  hideTitle?: boolean
   /**
    * Solo en `/buscar`: si la URL incluye `q`, copia su valor al campo al cambiar la query (chips, etc.).
    * No pisa el texto si `q` no está en la URL (p. ej. solo cambió `op` o filtros clásicos).
@@ -124,6 +126,7 @@ export function ConversationalSearchBlock({
   onAfterNavigate,
   className = '',
   compact = false,
+  hideTitle = false,
   buscarSearchParamsKey,
 }: ConversationalSearchBlockProps) {
   const router = useRouter()
@@ -386,7 +389,7 @@ export function ConversationalSearchBlock({
 
   return (
     <div className={className}>
-      {variant === 'buscar' ? (
+      {variant === 'buscar' && !hideTitle ? (
         <div className={compact ? 'mb-3' : 'mb-4'}>
           <h2
             className={

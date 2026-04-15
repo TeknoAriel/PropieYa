@@ -141,16 +141,13 @@ const conversacionPrimero: PortalCopyPack = {
   ruleSummary:
     'Hero conversacional-first; “Cómo funciona” y CTAs compartidos con el resto de packs (misma propuesta de 4 pasos y voseo).',
   hero: {
-    line1: 'No es solo un buscador de filtros.',
-    line2Accent: 'Expresá tu intención. Propieya interpreta.',
+    line1: 'Encontrá propiedades',
+    line2Accent: 'con la claridad de un portal serio',
     subtitle:
-      'Una conversación clara traduce lo que buscás en criterios precisos — la misma potencia que los filtros avanzados, con otro punto de partida.',
+      'Buscá en una frase o explorá por tipo y zona. Refiná después con mapa y filtros, sin perder el hilo.',
     placeholder:
-      'Describí en una frase: operación, zona, tipología y prioridades…',
-    filterLink: 'Modo clásico: mapa y filtros',
-    assistantBadge: 'Asistente Propieya',
-    assistantPitch:
-      'Analizamos tu consulta (con IA si está disponible, o con reglas locales) y te orientamos a resultados con el mismo motor que /buscar.',
+      'Zona, ambientes, presupuesto… Escribí lo que buscás y seguí en el buscador.',
+    filterLink: 'Ir al buscador con mapa y filtros',
   },
   heroExamples: [
     'Casa en venta, 2 dormitorios, grande, con pileta y quincho',
@@ -212,10 +209,9 @@ const varianteBCercano: PortalCopyPack = {
  * (descubrimiento, decisión, confianza; mismo motor).
  */
 export const PORTAL_SEARCH_UX_COPY = {
-  buscarTitle: 'Buscá propiedades',
-  /** Una línea; el detalle vive en «Cómo funciona» y en el asistente. */
-  buscarSubtitle:
-    'Frase, mapa o filtros: mismo motor; en cada aviso te decimos por qué encaja.',
+  buscarTitle: 'Buscador',
+  /** Una línea; sin explicar el motor en la cabecera. */
+  buscarSubtitle: 'Ajustá criterios y compará resultados.',
   /** Chip sobre el bloque conversacional en /buscar */
   buscarAssistantBadge: 'Asistente activo',
   ventaTitle: 'Propiedades en venta',
@@ -487,7 +483,7 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Escribí o dictá: traducimos a criterios con el mismo motor que mapa y filtros. Después afinamos juntos por capas.',
   /** Versión más corta (bloque compacto en /buscar). */
   conversationalBlockSubtitleCompact:
-    'Escribí o dictá; después afinamos juntos con mapa o las capas de abajo.',
+    'Escribí o dictá; refiná con filtros o mapa cuando quieras.',
   conversationalVoiceStart: 'Dictar',
   conversationalVoiceStop: 'Detener',
   conversationalVoiceListening: 'Escuchando…',
