@@ -141,7 +141,7 @@ export function AlertFeedCard({
           <Link href={hrefFicha}>Ver ficha</Link>
         </Button>
         <Button size="sm" variant="outline" className="w-full" asChild>
-          <Link href="/buscar">Mis match</Link>
+          <Link href="/buscar">Ver coincidencias</Link>
         </Button>
       </div>
     </Card>

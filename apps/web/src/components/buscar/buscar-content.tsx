@@ -52,6 +52,7 @@ import {
   serializeBuscarMapGeoToParams,
   getFacetFlagsForBuscarRefineLayer,
   normalizeSearchSessionMVP,
+  searchSessionHasAnchor,
   OPERATION_TYPE_LABELS,
   PORTAL_SEARCH_UX_COPY as S,
   PROPERTY_TYPE_LABELS,
@@ -169,7 +170,7 @@ function cardWhyLine(
     listing.priceCurrency as Currency
   )
   if (bucketId === 'strong') {
-    return `${tipo} en ${zona} por ${precio}: encaja con tu búsqueda (${op.toLowerCase()}).`
+    return `${tipo} en ${zona} por ${precio}: coincide con tu búsqueda (${op.toLowerCase()}).`
   }
   if (bucketId === 'near') {
     return `${tipo} por ${precio} en ${zona}: ampliamos la zona para no perderte nada útil.`
@@ -543,6 +544,7 @@ export function BuscarContent({
   const [mapCommitted, setMapCommitted] = useState(false)
   /** Buscador v2: bucket «ampliadas» colapsado por defecto (pins = solo lo visible). */
   const [searchV2WidenedOpen, setSearchV2WidenedOpen] = useState(false)
+  const [searchV2NearOpen, setSearchV2NearOpen] = useState(false)
   const [polygonDrawMode, setPolygonDrawMode] = useState(false)
   /** Sprint 40 — rectángulo del mapa se aplica al listado al panear (debounce). */
   const [mapLiveViewport, setMapLiveViewport] = useState(false)
@@ -850,6 +852,12 @@ export function BuscarContent({
     committedPolygon,
   ])
 
+  const normalizedSessionForAnchor = useMemo(
+    () => normalizeSearchSessionMVP(searchSessionMVP),
+    [searchSessionMVP]
+  )
+  const hasSearchAnchor = searchSessionHasAnchor(normalizedSessionForAnchor)
+
   const v2SessionFingerprint = JSON.stringify(searchSessionMVP)
 
   const { data: dataV2, isLoading, isError } =
@@ -859,6 +867,7 @@ export function BuscarContent({
         limitPerBucket: 20,
       },
       {
+        enabled: hasSearchAnchor,
         placeholderData: (previousData) => {
           if (searchFilterFpRef.current !== v2SessionFingerprint) {
             searchFilterFpRef.current = v2SessionFingerprint
@@ -924,6 +933,7 @@ export function BuscarContent({
 
   useEffect(() => {
     setSearchV2WidenedOpen(false)
+    setSearchV2NearOpen(false)
   }, [v2SessionFingerprint])
 
   useEffect(() => {
@@ -1047,10 +1057,6 @@ export function BuscarContent({
 
   const hasActiveSearchCriteria =
     activeSummaryRaw !== 'Perfil de búsqueda sin criterios guardados.'
-
-  useEffect(() => {
-    if (hasActiveSearchCriteria) setGuidedLayerExpanded(true)
-  }, [hasActiveSearchCriteria])
 
   const clearBuscarSearch = useCallback(() => {
     setShowMap(false)
@@ -1458,7 +1464,53 @@ export function BuscarContent({
           onClearSearch={clearBuscarSearch}
         />
 
-        {hasActiveSearchCriteria ? (
+        {!hasSearchAnchor ? (
+          <div className="space-y-4">
+            <Card className="border-border/60 p-5 text-center shadow-sm">
+              <p className="text-sm font-medium text-text-primary md:text-base">
+                {S.buscarNoAnchorMessage}
+              </p>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  className="h-10"
+                  onClick={() => {
+                    openMapFromAssistant()
+                  }}
+                >
+                  {S.buscarNoAnchorMapCta}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-10"
+                  onClick={() => {
+                    document.getElementById('buscar-conversational-input')?.focus()
+                  }}
+                >
+                  {S.buscarNoAnchorFocusInput}
+                </Button>
+              </div>
+            </Card>
+            <div className="border-b border-border/40 pb-5">
+              <ConversationalSearchBlock
+                variant="buscar"
+                routerMode="replace"
+                searchPathPage={searchPathPage}
+                forcedOperation={forcedOperation}
+                onAfterNavigate={setAssistantHint}
+                compact
+                hideTitle
+                buscarSearchParamsKey={searchParamsKey}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {hasSearchAnchor && hasActiveSearchCriteria ? (
           <details className="rounded-lg border border-border/50 bg-surface-secondary/25">
             <summary className="cursor-pointer px-3 py-2 text-xs font-semibold uppercase tracking-wide text-text-tertiary marker:content-none [&::-webkit-details-marker]:hidden">
               {S.searchV2GuidedActionsLabel}
@@ -1586,153 +1638,8 @@ export function BuscarContent({
           </details>
         ) : null}
 
-        <div id="buscar-asistente" className="scroll-mt-24 space-y-3 border-b border-border/40 pb-5">
-          <ConversationalSearchBlock
-            variant="buscar"
-            routerMode="replace"
-            searchPathPage={searchPathPage}
-            forcedOperation={forcedOperation}
-            onAfterNavigate={setAssistantHint}
-            compact
-            hideTitle
-            buscarSearchParamsKey={searchParamsKey}
-          />
-          {!classicFiltersOpen ? (
-            <details className="rounded-lg border border-border/40 bg-surface-secondary/20">
-              <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden">
-                {S.inductiveExploreTitle}
-              </summary>
-            <div className="space-y-3 border-t border-border/50 px-3 py-3">
-              {contextualBlock ? (
-                <div className="space-y-1.5">
-                  <h3 className="text-sm font-semibold text-text-primary">
-                    {contextualBlock.title}
-                  </h3>
-                  <p className="text-xs leading-relaxed text-text-secondary">
-                    {contextualBlock.body}
-                  </p>
-                </div>
-              ) : null}
-              {showQuickAmenityChips ? (
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-sm font-semibold text-text-primary">
-                      {S.facetChipsTitle}
-                    </p>
-                    <p className="mt-0.5 text-xs text-text-secondary">
-                      {S.facetChipsHintRefine}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {quickFacetIds!.map((fid) => {
-                      const def = facetFlagCatalog.find((f) => f.id === fid)
-                      if (!def) return null
-                      const on = selectedAmenityFacets.includes(fid)
-                      return (
-                        <Button
-                          key={`asistente-facet-${fid}`}
-                          type="button"
-                          size="sm"
-                          variant={on ? 'default' : 'outline'}
-                          className="h-8 text-xs"
-                          onClick={() =>
-                            setSelectedAmenityFacets((prev) =>
-                              on ? prev.filter((x) => x !== fid) : [...prev, fid]
-                            )
-                          }
-                        >
-                          {def.label}
-                        </Button>
-                      )
-                    })}
-                  </div>
-                  <label className="flex cursor-pointer items-start gap-2 text-sm text-text-primary">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 rounded border-border"
-                      checked={amenitiesStrict}
-                      onChange={(e) => setAmenitiesStrict(e.target.checked)}
-                    />
-                    <span>
-                      <span className="font-medium">{S.strictAmenitiesLabel}</span>
-                      <span className="block text-xs text-text-secondary">
-                        {S.strictAmenitiesHint}
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              ) : (
-                <InductiveSearchChips variant="embedded" showSubtitle={false} />
-              )}
-            </div>
-            </details>
-          ) : null}
-        </div>
-
-        {assistantHint ? (
-          <div className="rounded-lg border border-border/50 bg-surface-secondary/40 px-3 py-2.5 text-sm text-text-secondary">
-            <p className="font-medium text-text-primary">
-              {S.conversationalInterpretedTitle}
-            </p>
-            <p className="mt-1 text-sm leading-snug">{assistantHint.summary}</p>
-            {assistantHint.messages && assistantHint.messages.length > 0 ? (
-              <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs text-text-tertiary">
-                {assistantHint.messages.map((m, i) => (
-                  <li key={`hint-msg-${i}`}>{m}</li>
-                ))}
-              </ul>
-            ) : null}
-            <p className="mt-2 text-sm text-text-primary">
-              {assistantHint.total > 0 ? (
-                <>
-                  {S.conversationalResultsPrefix}:{' '}
-                  <strong>{assistantHint.total}</strong>
-                  {assistantHint.primaryTotal !== undefined &&
-                  assistantHint.primaryTotal === 0 &&
-                  assistantHint.total > 0 ? (
-                    <span className="mt-1 block text-xs font-normal text-text-secondary">
-                      {S.conversationalRelaxedCountNote}
-                    </span>
-                  ) : null}
-                </>
-              ) : (
-                <span className="text-text-secondary">{S.conversationalResultsZero}</span>
-              )}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={openMapFromAssistant}
-              >
-                {S.conversationalNextMap}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() => {
-                  setClassicFiltersOpen(true)
-                  setShowDeepFilters(true)
-                  window.requestAnimationFrame(() =>
-                    document
-                      .getElementById('buscar-capa-3')
-                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  )
-                }}
-              >
-                {S.conversationalNextFilters}
-              </Button>
-              <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" asChild>
-                <a href="#buscar-resultados">{S.conversationalScrollResults}</a>
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
+        {hasSearchAnchor ? (
+        <>
         <div className="flex flex-wrap items-center gap-2 border-b border-border/40 pb-4">
           <Button
             type="button"
@@ -1885,7 +1792,7 @@ export function BuscarContent({
               <p className="text-sm font-medium text-text-primary">{S.searchLoadErrorSoftTitle}</p>
               <p className="text-sm text-text-secondary">{S.searchLoadErrorSoftBody}</p>
             </Card>
-          ) : isLoading && !dataV2 ? (
+          ) : isLoading && hasSearchAnchor && !dataV2 ? (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
                 <Card key={i} className="overflow-hidden">
@@ -1900,9 +1807,6 @@ export function BuscarContent({
             </div>
           ) : dataV2?.buckets ? (
             <div className="space-y-10">
-              <p className="text-sm font-semibold text-text-primary">
-                {S.searchV2ResultsHeading}
-              </p>
               {!isLoading &&
               data &&
               data.total > 0 &&
@@ -1949,8 +1853,93 @@ export function BuscarContent({
                 return (
                   <>
                     {dataV2.buckets.map((bucket) => {
-                      if (bucket.id === 'near' && bucket.items.length === 0) {
-                        return null
+                      if (bucket.id === 'near') {
+                        if (bucket.items.length === 0) return null
+                        const nearCount = bucket.totalInBucket
+                        return (
+                          <section
+                            key={bucket.id}
+                            className="space-y-3 rounded-xl border border-dashed border-border/50 bg-surface-secondary/15 p-3 md:p-4"
+                          >
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="min-w-0 space-y-1">
+                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                  <h2 className="text-sm font-medium text-text-secondary">
+                                    {displayBucketTitle(bucket.id, bucket.label)}
+                                  </h2>
+                                  <span className="text-xs text-text-tertiary">
+                                    {bucketCountLabel(
+                                      bucket.id,
+                                      bucket.totalInBucket
+                                    )}
+                                  </span>
+                                </div>
+                                {!searchV2NearOpen && nearCount > 0 ? (
+                                  <p
+                                    className="text-sm font-medium text-text-primary"
+                                    role="status"
+                                  >
+                                    {nearCount === 1
+                                      ? S.searchV2NearTeaserOne
+                                      : S.searchV2NearTeaser.replace(
+                                          '{n}',
+                                          String(nearCount)
+                                        )}
+                                  </p>
+                                ) : null}
+                                {searchV2NearOpen ? (
+                                  <p className="text-xs leading-snug text-text-tertiary">
+                                    {buildBucketSessionDigestLine(
+                                      'near',
+                                      digestOpts
+                                    )}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-9 shrink-0 text-xs transition-transform active:scale-[0.98]"
+                                aria-expanded={searchV2NearOpen}
+                                onClick={() => setSearchV2NearOpen((v) => !v)}
+                              >
+                                {searchV2NearOpen
+                                  ? S.searchV2NearToggleHide
+                                  : S.searchV2NearToggleShow}
+                              </Button>
+                            </div>
+                            {searchV2NearOpen ? (
+                              <div className="grid grid-cols-1 gap-6 border-t border-border/40 pt-4 md:grid-cols-2 lg:grid-cols-3">
+                                {bucket.items.map((row) => {
+                                  const listing = row as BuscarListingCardData
+                                  const index = globalIndex++
+                                  return (
+                                    <ListingCard
+                                      key={`${bucket.id}-${listing.id}`}
+                                      listing={listing}
+                                      mapSelectedListingId={mapSyncSelectedId}
+                                      compactMatchReason
+                                      whyBucketId="near"
+                                      onMapSyncHover={
+                                        showMap && mapPins.length > 0
+                                          ? onMapSyncHover
+                                          : undefined
+                                      }
+                                      onResultLinkClick={(listingId) =>
+                                        onSearchResultNavigate(
+                                          listingId,
+                                          'list',
+                                          index
+                                        )
+                                      }
+                                    />
+                                  )
+                                })}
+                              </div>
+                            ) : null}
+                          </section>
+                        )
                       }
                       if (bucket.id === 'widened') {
                         if (bucket.items.length === 0) return null
@@ -2047,16 +2036,15 @@ export function BuscarContent({
                         )
                       }
 
-                      const bid = bucket.id
-                      if (bid !== 'strong' && bid !== 'near') return null
+                      if (bucket.id !== 'strong') return null
 
                       return (
                         <section
                           key={bucket.id}
-                          className={bucketStrongNearSectionClass(bid)}
+                          className={bucketStrongNearSectionClass('strong')}
                         >
                           <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-                            <h2 className={bucketHeadingClass(bid)}>
+                            <h2 className={bucketHeadingClass('strong')}>
                               {displayBucketTitle(bucket.id, bucket.label)}
                             </h2>
                             <span className="text-xs text-text-tertiary">
@@ -2067,7 +2055,7 @@ export function BuscarContent({
                             </span>
                           </div>
                           <p className="text-sm leading-snug text-text-secondary">
-                            {buildBucketSessionDigestLine(bid, digestOpts)}
+                            {buildBucketSessionDigestLine('strong', digestOpts)}
                           </p>
                           {bucket.items.length === 0 ? (
                             <p className="text-sm text-text-secondary">
@@ -2084,7 +2072,7 @@ export function BuscarContent({
                                     listing={listing}
                                     mapSelectedListingId={mapSyncSelectedId}
                                     compactMatchReason
-                                    whyBucketId={bid}
+                                    whyBucketId="strong"
                                     onMapSyncHover={
                                       showMap && mapPins.length > 0
                                         ? onMapSyncHover
@@ -2116,6 +2104,163 @@ export function BuscarContent({
             </div>
           ) : null}
         </div>
+
+        {assistantHint ? (
+          <div className="rounded-lg border border-border/50 bg-surface-secondary/40 px-3 py-2.5 text-sm text-text-secondary">
+            <p className="font-medium text-text-primary">
+              {S.conversationalInterpretedTitle}
+            </p>
+            <p className="mt-1 text-sm leading-snug">{assistantHint.summary}</p>
+            {assistantHint.messages && assistantHint.messages.length > 0 ? (
+              <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs text-text-tertiary">
+                {assistantHint.messages.map((m, i) => (
+                  <li key={`hint-msg-${i}`}>{m}</li>
+                ))}
+              </ul>
+            ) : null}
+            <p className="mt-2 text-sm text-text-primary">
+              {assistantHint.total > 0 ? (
+                <>
+                  {S.conversationalResultsPrefix}:{' '}
+                  <strong>{assistantHint.total}</strong>
+                  {assistantHint.primaryTotal !== undefined &&
+                  assistantHint.primaryTotal === 0 &&
+                  assistantHint.total > 0 ? (
+                    <span className="mt-1 block text-xs font-normal text-text-secondary">
+                      {S.conversationalRelaxedCountNote}
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                <span className="text-text-secondary">{S.conversationalResultsZero}</span>
+              )}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={openMapFromAssistant}
+              >
+                {S.conversationalNextMap}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => {
+                  setClassicFiltersOpen(true)
+                  setShowDeepFilters(true)
+                  window.requestAnimationFrame(() =>
+                    document
+                      .getElementById('buscar-capa-3')
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  )
+                }}
+              >
+                {S.conversationalNextFilters}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" asChild>
+                <a href="#buscar-resultados">{S.conversationalScrollResults}</a>
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        <details
+          id="buscar-asistente"
+          className="scroll-mt-24 rounded-lg border border-border/40 bg-surface-secondary/15"
+        >
+          <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden">
+            {S.buscarAssistantCollapseTitle}
+          </summary>
+          <div className="space-y-3 border-t border-border/40 px-3 pb-4 pt-3">
+            <ConversationalSearchBlock
+              variant="buscar"
+              routerMode="replace"
+              searchPathPage={searchPathPage}
+              forcedOperation={forcedOperation}
+              onAfterNavigate={setAssistantHint}
+              compact
+              hideTitle
+              buscarSearchParamsKey={searchParamsKey}
+            />
+            {!classicFiltersOpen ? (
+              <details className="rounded-lg border border-border/40 bg-surface-secondary/20">
+                <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden">
+                  {S.inductiveExploreTitle}
+                </summary>
+                <div className="space-y-3 border-t border-border/50 px-3 py-3">
+                  {contextualBlock ? (
+                    <div className="space-y-1.5">
+                      <h3 className="text-sm font-semibold text-text-primary">
+                        {contextualBlock.title}
+                      </h3>
+                      <p className="text-xs leading-relaxed text-text-secondary">
+                        {contextualBlock.body}
+                      </p>
+                    </div>
+                  ) : null}
+                  {showQuickAmenityChips ? (
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-sm font-semibold text-text-primary">
+                          {S.facetChipsTitle}
+                        </p>
+                        <p className="mt-0.5 text-xs text-text-secondary">
+                          {S.facetChipsHintRefine}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {quickFacetIds!.map((fid) => {
+                          const def = facetFlagCatalog.find((f) => f.id === fid)
+                          if (!def) return null
+                          const on = selectedAmenityFacets.includes(fid)
+                          return (
+                            <Button
+                              key={`asistente-facet-${fid}`}
+                              type="button"
+                              size="sm"
+                              variant={on ? 'default' : 'outline'}
+                              className="h-8 text-xs"
+                              onClick={() =>
+                                setSelectedAmenityFacets((prev) =>
+                                  on ? prev.filter((x) => x !== fid) : [...prev, fid]
+                                )
+                              }
+                            >
+                              {def.label}
+                            </Button>
+                          )
+                        })}
+                      </div>
+                      <label className="flex cursor-pointer items-start gap-2 text-sm text-text-primary">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 rounded border-border"
+                          checked={amenitiesStrict}
+                          onChange={(e) => setAmenitiesStrict(e.target.checked)}
+                        />
+                        <span>
+                          <span className="font-medium">{S.strictAmenitiesLabel}</span>
+                          <span className="block text-xs text-text-secondary">
+                            {S.strictAmenitiesHint}
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  ) : (
+                    <InductiveSearchChips variant="embedded" showSubtitle={false} />
+                  )}
+                </div>
+              </details>
+            ) : null}
+          </div>
+        </details>
+        </>
+        ) : null}
 
         <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
           {classicFiltersOpen ? (

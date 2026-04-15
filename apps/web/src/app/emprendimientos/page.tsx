@@ -17,8 +17,8 @@ export default function EmprendimientosPage() {
       <article className="container mx-auto max-w-3xl space-y-6 px-4 py-12">
         <h1 className="text-3xl font-bold text-text-primary">Emprendimientos</h1>
         <p className="leading-relaxed text-text-secondary">
-          Hoy el foco del portal está en propiedades en venta y alquiler con mapa, filtros y matching
-          explicado. La sección de emprendimientos la sumamos cuando el inventario y las fichas
+          Hoy el foco del portal está en propiedades en venta y alquiler con mapa, filtros y
+          resultados explicados. La sección de emprendimientos la sumamos cuando el inventario y las fichas
           estén listos para ofrecer la misma claridad y confianza.
         </p>
         <div className="flex flex-wrap gap-3">

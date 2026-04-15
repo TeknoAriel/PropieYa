@@ -462,6 +462,7 @@ export function ConversationalSearchBlock({
       <form onSubmit={handleSubmit}>
         <div className="relative">
           <Input
+            id={variant === 'buscar' ? 'buscar-conversational-input' : undefined}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
