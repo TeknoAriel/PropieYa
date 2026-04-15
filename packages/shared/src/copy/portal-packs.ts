@@ -210,8 +210,8 @@ const varianteBCercano: PortalCopyPack = {
  */
 export const PORTAL_SEARCH_UX_COPY = {
   buscarTitle: 'Buscador',
-  /** Una línea; sin explicar el motor en la cabecera. */
-  buscarSubtitle: 'Ajustá criterios y compará resultados.',
+  /** Cabecera mínima: sin subtítulo en UI. */
+  buscarSubtitle: '',
   /** Chip sobre el bloque conversacional en /buscar */
   buscarAssistantBadge: 'Asistente activo',
   ventaTitle: 'Propiedades en venta',
@@ -240,6 +240,9 @@ export const PORTAL_SEARCH_UX_COPY = {
   alertSaved: 'Alerta creada. Podés verla en Mis alertas.',
 
   keywordPlaceholder: 'Palabras clave (título, descripción)',
+  /** Campo único de refinamiento en /buscar (placeholder con ejemplos). */
+  buscarRefinePlaceholder:
+    'Ej.: 3 ambientes Palermo · casa con jardín · local comercial · hasta 200 mil',
 
   /** Etiquetas fijas encima de cada control (el placeholder solo ayuda vacío). */
   buscarFieldKeywords: 'Palabras clave',
