@@ -146,6 +146,65 @@ function filtersWidened(s: SearchSessionMVP): SearchFilters {
   return base
 }
 
+/** Relajación extra: misma ciudad/tipo/op que «near», sin `multi_match` de texto libre. */
+function filtersWidenedDropFreeText(s: SearchSessionMVP): SearchFilters {
+  const geo = geoSlice(s)
+  const am = amenitySlice(s)
+  return {
+    operationType: s.operationType ?? undefined,
+    propertyType: s.propertyType ?? undefined,
+    city: s.city ?? undefined,
+    neighborhood: undefined,
+    minPrice: s.minPrice ?? undefined,
+    maxPrice: s.maxPrice ?? undefined,
+    minBedrooms: s.minBedrooms ?? undefined,
+    minSurface: s.minSurface ?? undefined,
+    maxSurface: s.maxSurface ?? undefined,
+    ...am,
+    amenitiesMatchMode: 'preferred',
+    matchProfile: 'catalog',
+    ...geo,
+  }
+}
+
+function searchFiltersEqual(a: SearchFilters, b: SearchFilters): boolean {
+  return (
+    a.operationType === b.operationType &&
+    a.propertyType === b.propertyType &&
+    a.minPrice === b.minPrice &&
+    a.maxPrice === b.maxPrice &&
+    a.minBedrooms === b.minBedrooms &&
+    a.minSurface === b.minSurface &&
+    a.maxSurface === b.maxSurface &&
+    a.q === b.q &&
+    (a.city ?? '') === (b.city ?? '') &&
+    (a.neighborhood ?? '') === (b.neighborhood ?? '') &&
+    (a.amenitiesMatchMode ?? 'preferred') === (b.amenitiesMatchMode ?? 'preferred')
+  )
+}
+
+function explainFromSearchFilters(
+  f: SearchFilters,
+  s: SearchSessionMVP
+): ExplainMatchFilters {
+  return {
+    q: f.q,
+    operationType: f.operationType,
+    propertyType: f.propertyType,
+    city: f.city,
+    neighborhood: f.neighborhood,
+    minPrice: f.minPrice,
+    maxPrice: f.maxPrice,
+    minBedrooms: f.minBedrooms,
+    minSurface: f.minSurface,
+    maxSurface: f.maxSurface,
+    amenities: f.amenities,
+    bbox: s.mapMode === 'bbox' ? s.bbox ?? undefined : undefined,
+    mapPolygonActive: s.mapMode === 'polygon',
+    matchProfile: f.matchProfile,
+  }
+}
+
 function widenedAddsRelaxation(s: SearchSessionMVP): boolean {
   const hadSurface = s.minSurface != null || s.maxSurface != null
   if (hadSurface) return true
@@ -276,7 +335,8 @@ function passesOperationType(h: SearchHit, s: SearchSessionMVP): boolean {
 function filterHitsSafety(
   hits: SearchHit[],
   s: SearchSessionMVP,
-  bucket: SearchV2BucketId
+  bucket: SearchV2BucketId,
+  opts?: { skipFreeTextPostFilter?: boolean }
 ): SearchHit[] {
   return hits.filter((h) => {
     if (!passesPriceSanity(h, s)) return false
@@ -286,7 +346,11 @@ function filterHitsSafety(
     if (bucket === 'strong' && s.neighborhood?.trim()) {
       if (!hitTouchesPlace(h, s.neighborhood.trim())) return false
     }
-    if (s.q?.trim() && s.q.trim().length >= 4) {
+    if (
+      !opts?.skipFreeTextPostFilter &&
+      s.q?.trim() &&
+      s.q.trim().length >= 4
+    ) {
       if (!hitMatchesTextIntent(h, s.q.trim())) return false
     }
     return true
@@ -346,9 +410,10 @@ function takeFiltered(
   hits: SearchHit[],
   s: SearchSessionMVP,
   bucket: SearchV2BucketId,
-  limit: number
+  limit: number,
+  opts?: { skipFreeTextPostFilter?: boolean }
 ): SearchHit[] {
-  const filtered = filterHitsSafety(hits, s, bucket)
+  const filtered = filterHitsSafety(hits, s, bucket, opts)
   return filtered.slice(0, limit)
 }
 
@@ -383,7 +448,6 @@ export async function runListingSearchV2(opts: {
 
   const fStrong = filtersStrong(normalized)
   const fNear = filtersNear(normalized)
-  const fWide = filtersWidened(normalized)
 
   const resStrong = await searchListings({ ...fStrong, limit: limit * 2, offset: 0 })
   if (!resStrong.fromEs) {
@@ -406,11 +470,14 @@ export async function runListingSearchV2(opts: {
   const strongHits = takeFiltered(resStrong.hits, normalized, 'strong', limit)
   for (const h of strongHits) seen.add(h.id)
 
-  const nearAddsValue =
-    Boolean(normalized.neighborhood?.trim()) || normalized.strictAmenities
+  const nearAddsValue = Boolean(
+    normalized.city?.trim() ||
+      normalized.neighborhood?.trim() ||
+      normalized.strictAmenities
+  )
 
   let nearHits: SearchHit[] = []
-  if (nearAddsValue) {
+  if (nearAddsValue && !searchFiltersEqual(fNear, fStrong)) {
     const resNear = await searchListings({
       ...fNear,
       limit: limit * 2 + seen.size,
@@ -428,33 +495,55 @@ export async function runListingSearchV2(opts: {
     for (const h of nearHits) seen.add(h.id)
   }
 
-  let wideHits: SearchHit[] = []
-  if (widenedAddsRelaxation(normalized)) {
-    const sameAsNear =
-      fWide.operationType === fNear.operationType &&
-      fWide.propertyType === fNear.propertyType &&
-      fWide.minPrice === fNear.minPrice &&
-      fWide.maxPrice === fNear.maxPrice &&
-      fWide.minBedrooms === fNear.minBedrooms &&
-      fWide.minSurface === fNear.minSurface &&
-      fWide.maxSurface === fNear.maxSurface &&
-      fWide.q === fNear.q
+  const wideHits: SearchHit[] = []
+  let widenedExplainUsed: ExplainMatchFilters = explainWidened(normalized)
 
-    if (!sameAsNear) {
+  const appendWideHits = (
+    hits: SearchHit[],
+    filtersUsed: SearchFilters,
+    skipQ: boolean
+  ) => {
+    const slice = takeFiltered(
+      hits.filter((h) => !seen.has(h.id)),
+      normalized,
+      'widened',
+      Math.max(0, limit - wideHits.length),
+      skipQ ? { skipFreeTextPostFilter: true } : undefined
+    )
+    if (slice.length > 0) {
+      widenedExplainUsed = explainFromSearchFilters(filtersUsed, normalized)
+    }
+    for (const h of slice) {
+      wideHits.push(h)
+      seen.add(h.id)
+    }
+  }
+
+  if (widenedAddsRelaxation(normalized)) {
+    const fWideNum = filtersWidened(normalized)
+    if (!searchFiltersEqual(fWideNum, fNear)) {
       const resWide = await searchListings({
-        ...fWide,
+        ...fWideNum,
         limit: limit * 2 + seen.size,
         offset: 0,
       })
-      wideHits =
-        resWide.fromEs && resWide.hits.length > 0
-          ? takeFiltered(
-              resWide.hits.filter((h) => !seen.has(h.id)),
-              normalized,
-              'widened',
-              limit
-            )
-          : []
+      if (resWide.fromEs && resWide.hits.length > 0) {
+        appendWideHits(resWide.hits, fWideNum, false)
+      }
+    }
+  }
+
+  if (wideHits.length < limit && normalized.q?.trim()) {
+    const fWideText = filtersWidenedDropFreeText(normalized)
+    if (!searchFiltersEqual(fWideText, fNear)) {
+      const resWideText = await searchListings({
+        ...fWideText,
+        limit: limit * 2 + seen.size,
+        offset: 0,
+      })
+      if (resWideText.fromEs && resWideText.hits.length > 0) {
+        appendWideHits(resWideText.hits, fWideText, true)
+      }
     }
   }
 
@@ -480,10 +569,7 @@ export async function runListingSearchV2(opts: {
     {
       id: 'widened',
       label: SEARCH_V2_BUCKET_LABELS.widened,
-      items: withMatchReasons(
-        explainForBucket('widened', normalized),
-        wideHits
-      ) as unknown[],
+      items: withMatchReasons(widenedExplainUsed, wideHits) as unknown[],
       totalInBucket: wideHits.length,
     },
   ]
@@ -496,7 +582,7 @@ export async function runListingSearchV2(opts: {
   }
   if (wideHits.length > 0) {
     messages.push(
-      '«Opciones ampliadas» mantiene tu operación y tipo de propiedad y relaja un solo criterio extra (superficie, dormitorios o precio), sin mezclar avisos incoherentes.'
+      '«Opciones ampliadas» mantiene operación y tipo; relaja un criterio numérico o, si hace falta, deja de exigir el texto libre en el índice (sigue el filtro por ciudad y amenities como preferencia).'
     )
   }
 
