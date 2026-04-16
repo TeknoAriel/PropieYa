@@ -433,19 +433,6 @@ export async function runListingSearchV2(opts: {
     )
   }
 
-  if (!searchSessionHasAnchor(normalized)) {
-    return {
-      sessionNormalized: normalized,
-      buckets: emptyBuckets(),
-      messages: baseMessages,
-      emptyExplanation:
-        'Elegí al menos una ciudad, un barrio, una zona en el mapa (y confirmala con «Buscar en esta zona») o escribí palabras clave.',
-      actions: [],
-      totalsByBucket: { strong: 0, near: 0, widened: 0 },
-      orderedListingIds: [],
-    }
-  }
-
   const fStrong = filtersStrong(normalized)
   const fNear = filtersNear(normalized)
 
@@ -588,7 +575,7 @@ export async function runListingSearchV2(opts: {
 
   const totalCount = strongHits.length + nearHits.length + wideHits.length
   let emptyExplanation: string | null = null
-  if (totalCount === 0) {
+  if (totalCount === 0 && searchSessionHasAnchor(normalized)) {
     emptyExplanation =
       'No hay avisos que encajen aún con estos criterios. Probá las acciones de abajo o flexibilizá un requisito.'
   }

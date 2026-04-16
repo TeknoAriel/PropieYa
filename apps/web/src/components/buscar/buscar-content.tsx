@@ -52,7 +52,6 @@ import {
   serializeBuscarMapGeoToParams,
   getFacetFlagsForBuscarRefineLayer,
   normalizeSearchSessionMVP,
-  searchSessionHasAnchor,
   OPERATION_TYPE_LABELS,
   PORTAL_SEARCH_UX_COPY as S,
   PROPERTY_TYPE_LABELS,
@@ -852,12 +851,6 @@ export function BuscarContent({
     committedPolygon,
   ])
 
-  const normalizedSessionForAnchor = useMemo(
-    () => normalizeSearchSessionMVP(searchSessionMVP),
-    [searchSessionMVP]
-  )
-  const hasSearchAnchor = searchSessionHasAnchor(normalizedSessionForAnchor)
-
   const v2SessionFingerprint = JSON.stringify(searchSessionMVP)
 
   const { data: dataV2, isLoading, isError } =
@@ -867,7 +860,6 @@ export function BuscarContent({
         limitPerBucket: 20,
       },
       {
-        enabled: hasSearchAnchor,
         placeholderData: (previousData) => {
           if (searchFilterFpRef.current !== v2SessionFingerprint) {
             searchFilterFpRef.current = v2SessionFingerprint
@@ -1464,55 +1456,7 @@ export function BuscarContent({
           onClearSearch={clearBuscarSearch}
         />
 
-        {!hasSearchAnchor ? (
-          <Card className="border-border/60 p-4 shadow-sm">
-            <div className="flex flex-col gap-3 md:flex-row md:items-stretch md:gap-4">
-              <div className="flex min-w-0 flex-1 flex-col justify-center gap-3 text-center md:text-left">
-                <p className="text-sm font-medium leading-snug text-text-primary">
-                  {S.buscarNoAnchorMessage}
-                </p>
-                <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="sm"
-                    className="h-9"
-                    onClick={() => {
-                      openMapFromAssistant()
-                    }}
-                  >
-                    {S.buscarNoAnchorMapCta}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-9"
-                    onClick={() => {
-                      document.getElementById('buscar-conversational-input')?.focus()
-                    }}
-                  >
-                    {S.buscarNoAnchorFocusInput}
-                  </Button>
-                </div>
-              </div>
-              <div className="min-w-0 flex-1 border-t border-border/40 pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0">
-                <ConversationalSearchBlock
-                  variant="buscar"
-                  routerMode="replace"
-                  searchPathPage={searchPathPage}
-                  forcedOperation={forcedOperation}
-                  onAfterNavigate={setAssistantHint}
-                  compact
-                  hideTitle
-                  buscarSearchParamsKey={searchParamsKey}
-                />
-              </div>
-            </div>
-          </Card>
-        ) : null}
-
-        {hasSearchAnchor && hasActiveSearchCriteria ? (
+        {hasActiveSearchCriteria ? (
           <details className="rounded-lg border border-border/50 bg-surface-secondary/25">
             <summary className="cursor-pointer px-3 py-2 text-xs font-semibold uppercase tracking-wide text-text-tertiary marker:content-none [&::-webkit-details-marker]:hidden">
               {S.searchV2GuidedActionsLabel}
@@ -1640,7 +1584,6 @@ export function BuscarContent({
           </details>
         ) : null}
 
-        {hasSearchAnchor ? (
         <>
         <div className="flex flex-wrap items-center gap-2 border-b border-border/40 pb-4">
           <Button
@@ -1794,7 +1737,7 @@ export function BuscarContent({
               <p className="text-sm font-medium text-text-primary">{S.searchLoadErrorSoftTitle}</p>
               <p className="text-sm text-text-secondary">{S.searchLoadErrorSoftBody}</p>
             </Card>
-          ) : isLoading && hasSearchAnchor && !dataV2 ? (
+          ) : isLoading && !dataV2 ? (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
                 <Card key={i} className="overflow-hidden">
@@ -2262,7 +2205,6 @@ export function BuscarContent({
           </div>
         </details>
         </>
-        ) : null}
 
         <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
           {classicFiltersOpen ? (

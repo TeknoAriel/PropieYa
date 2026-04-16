@@ -40,8 +40,6 @@ import {
   PORTAL_STATS_TERMINALS,
   listingSearchV2InputSchema,
   SEARCH_V2_BUCKET_LABELS,
-  normalizeSearchSessionMVP,
-  searchSessionHasAnchor,
   type ExplainMatchFilters,
   type ExplainMatchListing,
   type ListingSearchV2Result,
@@ -539,8 +537,8 @@ function isSearchV2ElasticsearchUnreachable(out: ListingSearchV2Result): boolean
 }
 
 /**
- * Si ES no responde pero hay ancla de búsqueda, alineamos v2 con `listing.search`:
- * listado «strong» desde SQL (near/widened quedan vacíos en este fallback).
+ * Si ES no responde, alineamos v2 con `listing.search`: listado «strong» desde SQL
+ * (near/widened quedan vacíos en este fallback). Sesión vacía = catálogo activo.
  */
 async function trySearchV2SqlFallback(
   db: Database,
@@ -548,7 +546,6 @@ async function trySearchV2SqlFallback(
   limitPerBucket: number,
   esOut: ListingSearchV2Result
 ): Promise<ListingSearchV2Result | null> {
-  if (!searchSessionHasAnchor(normalizeSearchSessionMVP(session))) return null
   if (!isSearchV2ElasticsearchUnreachable(esOut)) return null
 
   const f = searchV2StrongListingSearchFilters(session)

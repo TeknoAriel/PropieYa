@@ -212,12 +212,11 @@ export function normalizeSearchSessionMVP(raw: unknown): SearchSessionMVP {
 }
 
 /**
- * ¿Hay al menos un ancla para disparar búsqueda v2 sin un “widened” mundial absurdo?
+ * ¿La sesión tiene señales de intención acotada? (p. ej. asistente que no debe
+ * disparar búsqueda masiva ante un prompt vago.)
  *
- * Incluye **operación explícita** (`sale` | `rent` | `temporary_rent`): las rutas
- * `/venta` y `/alquiler` fijan operación sin localidad; sin esto `searchV2` nunca
- * se habilitaba y el listado quedaba vacío pese a que la home sí muestra avisos
- * vía SQL (`getFeatured`).
+ * El listado público (`listing.searchV2`) **no** depende de esto: con sesión vacía
+ * se muestra el catálogo activo y se refina al agregar criterios.
  */
 export function searchSessionHasAnchor(s: SearchSessionMVP): boolean {
   const n = normalizeSearchSessionMVP(s)
