@@ -613,3 +613,12 @@ export async function runListingSearchV2(opts: {
     orderedListingIds,
   }
 }
+
+/**
+ * Mismos filtros que la pasada «strong» de v2 (p. ej. fallback SQL en `listing.searchV2`).
+ */
+export function searchV2StrongListingSearchFilters(
+  session: SearchSessionMVP
+): SearchFilters {
+  return filtersStrong(normalizeSearchSessionMVP(session))
+}
