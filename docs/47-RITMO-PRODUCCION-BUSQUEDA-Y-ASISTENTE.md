@@ -90,6 +90,7 @@ Usar en producción o staging con ES activo; anotar **total**, **latencia**, **�
 
 ## 5. Enlaces
 
+- **Estabilidad listado / fallback SQL / no regresiones buscador:** `docs/50-BUSCADOR-PORTAL-ESTABILIDAD-Y-FALLBACK.md`
 - Importación e inventario: `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md`  
 - Criterios MLS / facets / mapa: `docs/38-CRITERIOS-MLS-FILTROS-MAPA-SEMANTICA.md`  
 - Emprendimientos / multipaís: `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md`  

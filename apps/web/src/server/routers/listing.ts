@@ -40,6 +40,7 @@ import {
   PORTAL_STATS_TERMINALS,
   listingSearchV2InputSchema,
   SEARCH_V2_BUCKET_LABELS,
+  isSearchV2ElasticsearchUnreachable,
   type ExplainMatchFilters,
   type ExplainMatchListing,
   type ListingSearchV2Result,
@@ -523,22 +524,6 @@ const ORDER_PANEL_RECENCY = [
   desc(listings.updatedAt),
   desc(listings.createdAt),
 ]
-
-function isSearchV2ElasticsearchUnreachable(out: ListingSearchV2Result): boolean {
-  const sum =
-    out.totalsByBucket.strong +
-    out.totalsByBucket.near +
-    out.totalsByBucket.widened
-  if (sum > 0) return false
-  /** `runListingSearchV2` pone el aviso de índice en `emptyExplanation`, no en `messages`. */
-  const blob = [...out.messages, out.emptyExplanation ?? '']
-    .join('\n')
-    .toLowerCase()
-  return (
-    blob.includes('no pudimos consultar el índice') ||
-    blob.includes('el buscador no está disponible')
-  )
-}
 
 /**
  * Si ES no responde, alineamos v2 con `listing.search`: listado «strong» desde SQL

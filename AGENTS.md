@@ -16,6 +16,8 @@
 
 **Ritmo producción (búsqueda a escala, asistente, medición, mandato anti-retraso):** `docs/47-RITMO-PRODUCCION-BUSQUEDA-Y-ASISTENTE.md` — el agente prioriza entregas medibles y máximo ritmo autónomo dentro de `pnpm verify` y deploy documentado.
 
+**Estabilidad buscador / listado público (ES + fallback SQL, regresiones):** `docs/50-BUSCADOR-PORTAL-ESTABILIDAD-Y-FALLBACK.md` — reglas para no romper `/buscar`, `/venta`, `/alquiler`; regla Cursor `.cursor/rules/buscador-portal-estable.mdc`.
+
 **Ingesta Properstar/Kiteprop (cron, webhook, bajas, tipo de aviso):** `docs/48-INGEST-PROPERSTAR-POLITICA-CRON-PUSH-Y-NEGOCIO.md` — resumen operativo en `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md` §3.
 
 **Panel de estadísticas / telemetría:** `docs/49-ARQUITECTURA-PANEL-ESTADISTICAS-Y-TELEMETRIA.md` — capas hechos → agregados → API; terminales canónicos `PORTAL_STATS_TERMINALS` en `@propieya/shared`.

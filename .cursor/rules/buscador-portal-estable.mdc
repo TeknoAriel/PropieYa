@@ -1,0 +1,24 @@
+---
+description: Estabilidad del buscador/listado público (/buscar, venta, alquiler) y fallback SQL
+globs: apps/web/src/components/buscar/**/*,apps/web/src/lib/search/**/*,apps/web/src/server/routers/listing.ts,packages/shared/src/search-session-mvp.ts,packages/shared/src/listing-search-v2-es-unreachable.ts
+alwaysApply: false
+---
+
+# Buscador portal — no romper el listado
+
+## Fuente de verdad
+
+- **`docs/50-BUSCADOR-PORTAL-ESTABILIDAD-Y-FALLBACK.md`** — arquitectura, regresión ES/SQL, checklist.
+
+## Reglas duras
+
+1. **`listing.searchV2`** debe seguir pudiendo mostrar resultados **sin Elasticsearch**: el fallback SQL (`trySearchV2SqlFallback`) depende de **`isSearchV2ElasticsearchUnreachable`** en `@propieya/shared`. Si cambiás textos de error en `runListingSearchV2`, **actualizá el detector y los tests** en `listing-search-v2-es-unreachable.*`.
+2. No reintroducir gates del estilo `enabled: !hasAnchor` en el cliente para `searchV2` sin actualizar el doc §4 y sin alternativa que liste catálogo activo.
+3. No asumir que “solo `messages`” lleva el copy del fallo: **`emptyExplanation`** también participa en UX y en detección de fallback.
+4. Cambios en **`packages/shared`** que afecten sesión v2 o el detector: **`pnpm --filter @propieya/shared test`** además de `pnpm verify`.
+5. Preferir **cambios pequeños** y reversibles; evitar refactors masivos en la misma PR que un fix de listado.
+
+## Qué sí hacer
+
+- Ajustes de UI compacta en `buscar-*` si no ocultan el listado ni deshabilitan la query sin criterio.
+- Mejoras de relevancia en ES **después** de mantener verde el fallback SQL y los tests compartidos.
