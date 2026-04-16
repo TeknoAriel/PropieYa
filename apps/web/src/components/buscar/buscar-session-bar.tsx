@@ -139,8 +139,8 @@ export function BuscarSessionBar({
   const [draftMax, setDraftMax] = useState(maxPrice)
 
   return (
-    <Card className="border-border/30 bg-transparent p-2.5 shadow-none sm:p-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+    <Card className="border-border/30 bg-transparent p-2 shadow-none sm:p-2.5">
+      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-0.5">
           <p className="flex items-center gap-1 text-[9px] font-medium uppercase tracking-wide text-text-tertiary">
             <Search className="h-2.5 w-2.5 shrink-0 opacity-70" aria-hidden />
@@ -159,7 +159,7 @@ export function BuscarSessionBar({
         </Button>
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-1.5">
+      <div className="mt-1.5 flex flex-wrap gap-1 sm:gap-1.5">
         {opLocked ? (
           <Badge variant="secondary" className="h-auto rounded-full px-2.5 py-1 text-xs font-normal">
             <span className="mr-1 text-[9px] uppercase text-text-tertiary">

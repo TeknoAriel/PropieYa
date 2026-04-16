@@ -108,7 +108,7 @@ jobs:
             "projectId": "${VERCEL_PROJECT_ID}"
           }
           JSON
-          npx --yes vercel@41 pull --yes --environment=production --token "${VERCEL_TOKEN}"
+          npx --yes vercel@47.2.2 pull --yes --environment=production --token "${VERCEL_TOKEN}"
 
       - name: Deploy producción (Vercel remoto, raíz monorepo)
         env:
@@ -117,7 +117,7 @@ jobs:
           set -euo pipefail
           TOKEN="${VERCEL_TOKEN}"
           META=( --meta "githubSha=${GITHUB_SHA}" --meta "githubRepo=${GITHUB_REPOSITORY}" )
-          if ! out=$(npx --yes vercel@41 deploy --prod --yes --token "${TOKEN}" \
+          if ! out=$(npx --yes vercel@47.2.2 deploy --prod --yes --token "${TOKEN}" \
             --build-env "BUILD_COMMIT_SHA=${GITHUB_SHA}" \
             --build-env "BUILD_GIT_REF=${GITHUB_REF_NAME}" \
             --env "BUILD_COMMIT_SHA=${GITHUB_SHA}" \
@@ -160,13 +160,13 @@ jobs:
             exit 0
           fi
           echo "Promoviendo (best effort) ${DEPLOY_URL}"
-          npx --yes vercel@41 promote "${DEPLOY_URL}" --yes --token "${TOKEN}" --timeout=5m
+          npx --yes vercel@47.2.2 promote "${DEPLOY_URL}" --yes --token "${TOKEN}" --timeout=5m
           pr=$?
           if [ "$pr" -ne 0 ]; then
             echo "::warning::vercel promote falló o timeout (código $pr); el deploy --prod igual puede estar publicado."
           fi
           echo "Alias propieyaweb.vercel.app (best effort)"
-          npx --yes vercel@41 alias set "${DEPLOY_URL}" propieyaweb.vercel.app --yes --token "${TOKEN}" 2>/dev/null
+          npx --yes vercel@47.2.2 alias set "${DEPLOY_URL}" propieyaweb.vercel.app --yes --token "${TOKEN}" 2>/dev/null
           exit 0
 
       - name: Esperar propagación

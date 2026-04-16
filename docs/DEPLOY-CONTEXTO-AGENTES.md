@@ -1,6 +1,6 @@
 # Contexto y reglas duras — Deploy (para agentes y humanos)
 
-**Última actualización:** 2026-03-31 (repo operativo Tekno + copia kiteprop). Este archivo es la **hoja de contexto** cuando haya dudas sobre Vercel, dominios o CI. No duplicar reglas contradictorias en otros docs: enlazar aquí.
+**Última actualización:** 2026-04-16 (repo operativo Tekno + copia kiteprop). Este archivo es la **hoja de contexto** cuando haya dudas sobre Vercel, dominios o CI. No duplicar reglas contradictorias en otros docs: enlazar aquí.
 
 ---
 
@@ -65,6 +65,8 @@
 - **`vercel.json` (raíz):** usado por flujos que ejecutan Vercel CLI desde la **raíz del repositorio**; no debe contradecir el build del paquete `@propieya/web`. Cualquier cambio debe revisarse impacto en `.github/workflows/promote-deploy-infra.yml`.
 
 **Excepción documentada (propietario, 2026-03-31):** en ambos archivos, el cron `GET /api/cron/import-yumblin` pasó a **`*/30 * * * *`** (ingesta Properstar/Kiteprop cada 30 min en Production). Contexto y variables: `docs/48-INGEST-PROPERSTAR-POLITICA-CRON-PUSH-Y-NEGOCIO.md`.
+
+**Excepción documentada (bloqueo deploy, 2026-04-16):** la API de Vercel exige **CLI 47.2.2 o superior**; el workflow Promote pasó de **`npx vercel@41`** a **`vercel@47.2.2`** en `pull` / `deploy --prod` / `promote` / `alias`. Sin esto el job fallaba con *"This endpoint requires version 47.2.2 or later"* y el portal no actualizaba `/api/version`.
 
 ---
 

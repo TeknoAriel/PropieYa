@@ -1356,9 +1356,9 @@ export function BuscarContent({
   const showQuickAmenityChips = (quickFacetIds?.length ?? 0) > 0
 
   return (
-    <div className="container mx-auto space-y-4 px-4 py-6 md:py-8">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2 border-b border-border/40 pb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+    <div className="container mx-auto space-y-3 px-4 py-4 md:py-6">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2 border-b border-border/40 pb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
           <div className="min-w-0 space-y-0.5">
             <h1 className="text-lg font-semibold tracking-tight text-text-primary md:text-xl">
               {pageTitle}
@@ -1465,49 +1465,51 @@ export function BuscarContent({
         />
 
         {!hasSearchAnchor ? (
-          <div className="space-y-4">
-            <Card className="border-border/60 p-5 text-center shadow-sm">
-              <p className="text-sm font-medium text-text-primary md:text-base">
-                {S.buscarNoAnchorMessage}
-              </p>
-              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-                <Button
-                  type="button"
-                  variant="default"
-                  size="sm"
-                  className="h-10"
-                  onClick={() => {
-                    openMapFromAssistant()
-                  }}
-                >
-                  {S.buscarNoAnchorMapCta}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-10"
-                  onClick={() => {
-                    document.getElementById('buscar-conversational-input')?.focus()
-                  }}
-                >
-                  {S.buscarNoAnchorFocusInput}
-                </Button>
+          <Card className="border-border/60 p-4 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-stretch md:gap-4">
+              <div className="flex min-w-0 flex-1 flex-col justify-center gap-3 text-center md:text-left">
+                <p className="text-sm font-medium leading-snug text-text-primary">
+                  {S.buscarNoAnchorMessage}
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    className="h-9"
+                    onClick={() => {
+                      openMapFromAssistant()
+                    }}
+                  >
+                    {S.buscarNoAnchorMapCta}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9"
+                    onClick={() => {
+                      document.getElementById('buscar-conversational-input')?.focus()
+                    }}
+                  >
+                    {S.buscarNoAnchorFocusInput}
+                  </Button>
+                </div>
               </div>
-            </Card>
-            <div className="border-b border-border/40 pb-5">
-              <ConversationalSearchBlock
-                variant="buscar"
-                routerMode="replace"
-                searchPathPage={searchPathPage}
-                forcedOperation={forcedOperation}
-                onAfterNavigate={setAssistantHint}
-                compact
-                hideTitle
-                buscarSearchParamsKey={searchParamsKey}
-              />
+              <div className="min-w-0 flex-1 border-t border-border/40 pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0">
+                <ConversationalSearchBlock
+                  variant="buscar"
+                  routerMode="replace"
+                  searchPathPage={searchPathPage}
+                  forcedOperation={forcedOperation}
+                  onAfterNavigate={setAssistantHint}
+                  compact
+                  hideTitle
+                  buscarSearchParamsKey={searchParamsKey}
+                />
+              </div>
             </div>
-          </div>
+          </Card>
         ) : null}
 
         {hasSearchAnchor && hasActiveSearchCriteria ? (
