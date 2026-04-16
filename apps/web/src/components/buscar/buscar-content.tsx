@@ -1545,547 +1545,6 @@ export function BuscarContent({
           </div>
         </section>
 
-        {hasActiveSearchCriteria ? (
-          <details className="rounded-lg border border-border/50 bg-surface-secondary/25">
-            <summary className="cursor-pointer px-3 py-2 text-xs font-semibold uppercase tracking-wide text-text-tertiary marker:content-none [&::-webkit-details-marker]:hidden">
-              {S.searchV2GuidedActionsLabel}
-            </summary>
-            <div className="flex flex-col gap-2 border-t border-border/40 px-3 py-3">
-            <div className="flex flex-wrap gap-2">
-              {widenedListCount > 0 && !searchV2WidenedOpen ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="default"
-                  className="transition-transform active:scale-[0.98]"
-                  onClick={openWidenedBlock}
-                >
-                  {S.searchV2CtaMoreOptions}
-                </Button>
-              ) : null}
-              {((minPrice.trim() !== '' &&
-                Number.isFinite(Number(minPrice.trim()))) ||
-                (maxPrice.trim() !== '' &&
-                  Number.isFinite(Number(maxPrice.trim())))) ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="transition-transform active:scale-[0.98]"
-                  onClick={widenPriceRange}
-                >
-                  {S.searchV2CtaWiderPrice}
-                </Button>
-              ) : null}
-              {neighborhood.trim() !== '' ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="transition-transform active:scale-[0.98]"
-                  onClick={searchWholeCity}
-                >
-                  {S.searchV2CtaWholeCity}
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="transition-transform active:scale-[0.98]"
-                onClick={openAllFilters}
-              >
-                {S.searchV2CtaOpenFilters}
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="transition-transform active:scale-[0.98]"
-                  >
-                    {S.searchV2CtaRemoveFilterMenu}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-56">
-                  <DropdownMenuLabel>{S.searchV2CtaRemoveFilterMenu}</DropdownMenuLabel>
-                  <DropdownMenuItem
-                    disabled={
-                      minPrice.trim() === '' &&
-                      maxPrice.trim() === ''
-                    }
-                    onClick={() =>
-                      pushBuscarQueryParams((p) => {
-                        p.delete('min')
-                        p.delete('max')
-                      })
-                    }
-                  >
-                    {S.searchV2CtaRemovePrice}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={neighborhood.trim() === ''}
-                    onClick={() =>
-                      pushBuscarQueryParams((p) => {
-                        p.delete('barrio')
-                      })
-                    }
-                  >
-                    {S.searchV2CtaRemoveNeighborhood}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={propertyType === ''}
-                    onClick={() =>
-                      pushBuscarQueryParams((p) => {
-                        p.delete('tipo')
-                      })
-                    }
-                  >
-                    {S.searchV2CtaRemoveType}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    disabled={!mapCommitted}
-                    onClick={() => {
-                      releaseMapFilter()
-                    }}
-                  >
-                    {S.searchV2CtaReleaseMap}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={
-                      selectedAmenityFacets.length === 0 && !amenitiesStrict
-                    }
-                    onClick={() =>
-                      pushBuscarQueryParams((p) => {
-                        p.delete('amenities')
-                        p.delete('amenities_strict')
-                      })
-                    }
-                  >
-                    {S.searchV2CtaRemoveAmenities}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            </div>
-          </details>
-        ) : null}
-
-        <>
-        <div id="buscar-resultados" className="scroll-mt-20 space-y-4">
-          {!isLoading &&
-          dataV2 &&
-          data &&
-          data.total === 0 &&
-          hasActiveSearchCriteria ? (
-            <Card className="space-y-3 border-semantic-warning/20 bg-semantic-warning/5 p-4">
-              <p className="text-base font-semibold text-text-primary">
-                {S.searchV2EmptyTitle}
-              </p>
-              <ul className="list-disc space-y-1 pl-4 text-sm text-text-secondary">
-                <li>{S.searchV2EmptyLine1}</li>
-                <li>{S.searchV2EmptyLine2}</li>
-                <li>{S.searchV2EmptyLine3}</li>
-              </ul>
-              <div className="flex flex-wrap gap-2 pt-1">
-                {((minPrice.trim() !== '' &&
-                  Number.isFinite(Number(minPrice.trim()))) ||
-                  (maxPrice.trim() !== '' &&
-                    Number.isFinite(Number(maxPrice.trim())))) ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="default"
-                    className="transition-transform active:scale-[0.98]"
-                    onClick={widenPriceRange}
-                  >
-                    {S.searchV2CtaWiderPrice}
-                  </Button>
-                ) : null}
-                {neighborhood.trim() !== '' ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="transition-transform active:scale-[0.98]"
-                    onClick={searchWholeCity}
-                  >
-                    {S.searchV2CtaWholeCity}
-                  </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="transition-transform active:scale-[0.98]"
-                  onClick={openAllFilters}
-                >
-                  {S.searchV2CtaOpenFilters}
-                </Button>
-              </div>
-            </Card>
-          ) : null}
-          {shortSearchUxMessages.length > 0 ? (
-            <div className="space-y-2" role="status" aria-live="polite">
-              {shortSearchUxMessages.map((msg, i) => (
-                <Card
-                  key={`search-ux-${i}`}
-                  className="border-brand-primary/20 bg-brand-primary/5 p-3 text-sm leading-snug text-text-primary"
-                >
-                  {msg}
-                </Card>
-              ))}
-            </div>
-          ) : null}
-          {dataV2?.emptyExplanation && (data?.total ?? 0) === 0 ? (
-            <Card className="border-semantic-warning/25 bg-semantic-warning/5 p-3 text-sm leading-relaxed text-text-primary">
-              {dataV2.emptyExplanation}
-            </Card>
-          ) : null}
-          {dataV2?.actions && dataV2.actions.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
-                {S.searchV2SuggestedActions}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {dataV2.actions.map((a) => (
-                  <Button
-                    key={a.id}
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-9"
-                    onClick={() =>
-                      applySearchV2Action(
-                        a.patch as Record<string, unknown> | undefined
-                      )
-                    }
-                  >
-                    {a.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          {isError ? (
-            <Card className="space-y-2 p-6">
-              <p className="text-sm font-medium text-text-primary">{S.searchLoadErrorSoftTitle}</p>
-              <p className="text-sm text-text-secondary">{S.searchLoadErrorSoftBody}</p>
-            </Card>
-          ) : isLoading && !dataV2 ? (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {[...Array(6)].map((_, i) => (
-                <Card key={i} className="overflow-hidden">
-                  <Skeleton className="h-48 w-full" />
-                  <div className="space-y-3 p-4">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-6 w-1/2" />
-                    <Skeleton className="h-4 w-full" />
-                  </div>
-                </Card>
-              ))}
-            </div>
-          ) : dataV2?.buckets ? (
-            <div className="space-y-6">
-              {!isLoading &&
-              data &&
-              data.total > 0 &&
-              smartSuggestionIds.length > 0 ? (
-                <div className="rounded-xl border border-brand-primary/20 bg-brand-primary/[0.06] p-4 shadow-sm">
-                  <p className="text-sm font-semibold text-text-primary">
-                    {S.searchV2SmartSuggestionsTitle}
-                  </p>
-                  <p className="mt-0.5 text-xs text-text-secondary">
-                    {S.searchV2SmartSuggestionsHint}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {smartSuggestionIds.map((sid) => (
-                      <Button
-                        key={sid}
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        className="h-9 max-w-full whitespace-normal text-left text-xs leading-snug transition-transform active:scale-[0.98] sm:text-sm"
-                        onClick={() => applySmartSuggestion(sid)}
-                      >
-                        {smartSuggestionLabel(sid)}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {(() => {
-                let globalIndex = 0
-                const widenedCount =
-                  dataV2.buckets.find((b) => b.id === 'widened')?.totalInBucket ??
-                  0
-
-                const digestOpts = {
-                  forcedOperation,
-                  operationType,
-                  city,
-                  neighborhood,
-                  propertyType,
-                  minPrice,
-                  maxPrice,
-                }
-
-                return (
-                  <>
-                    {dataV2.buckets.map((bucket) => {
-                      if (bucket.id === 'near') {
-                        if (bucket.items.length === 0) return null
-                        const nearCount = bucket.totalInBucket
-                        return (
-                          <section
-                            key={bucket.id}
-                            className="space-y-3 rounded-xl border border-dashed border-border/50 bg-surface-secondary/15 p-3 md:p-4"
-                          >
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                              <div className="min-w-0 space-y-1">
-                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                                  <h2 className="text-sm font-medium text-text-secondary">
-                                    {displayBucketTitle(bucket.id, bucket.label)}
-                                  </h2>
-                                  <span className="text-xs text-text-tertiary">
-                                    {bucketCountLabel(
-                                      bucket.id,
-                                      bucket.totalInBucket
-                                    )}
-                                  </span>
-                                </div>
-                                {!searchV2NearOpen && nearCount > 0 ? (
-                                  <p
-                                    className="text-sm font-medium text-text-primary"
-                                    role="status"
-                                  >
-                                    {nearCount === 1
-                                      ? S.searchV2NearTeaserOne
-                                      : S.searchV2NearTeaser.replace(
-                                          '{n}',
-                                          String(nearCount)
-                                        )}
-                                  </p>
-                                ) : null}
-                                {searchV2NearOpen ? (
-                                  <p className="text-xs leading-snug text-text-tertiary">
-                                    {buildBucketSessionDigestLine(
-                                      'near',
-                                      digestOpts
-                                    )}
-                                  </p>
-                                ) : null}
-                              </div>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="h-9 shrink-0 text-xs transition-transform active:scale-[0.98]"
-                                aria-expanded={searchV2NearOpen}
-                                onClick={() => setSearchV2NearOpen((v) => !v)}
-                              >
-                                {searchV2NearOpen
-                                  ? S.searchV2NearToggleHide
-                                  : S.searchV2NearToggleShow}
-                              </Button>
-                            </div>
-                            {searchV2NearOpen ? (
-                              <div className="grid grid-cols-1 gap-6 border-t border-border/40 pt-4 md:grid-cols-2 lg:grid-cols-3">
-                                {bucket.items.map((row) => {
-                                  const listing = row as BuscarListingCardData
-                                  const index = globalIndex++
-                                  return (
-                                    <ListingCard
-                                      key={`${bucket.id}-${listing.id}`}
-                                      listing={listing}
-                                      mapSelectedListingId={mapSyncSelectedId}
-                                      compactMatchReason
-                                      whyBucketId="near"
-                                      onMapSyncHover={
-                                        showMap && mapPins.length > 0
-                                          ? onMapSyncHover
-                                          : undefined
-                                      }
-                                      onResultLinkClick={(listingId) =>
-                                        onSearchResultNavigate(
-                                          listingId,
-                                          'list',
-                                          index
-                                        )
-                                      }
-                                    />
-                                  )
-                                })}
-                              </div>
-                            ) : null}
-                          </section>
-                        )
-                      }
-                      if (bucket.id === 'widened') {
-                        if (bucket.items.length === 0) return null
-                        return (
-                          <section
-                            key={bucket.id}
-                            className="space-y-3 rounded-xl border border-dashed border-border/50 bg-surface-secondary/15 p-3 md:p-4"
-                          >
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                              <div className="min-w-0 space-y-1">
-                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                                  <h2 className="text-sm font-medium text-text-secondary">
-                                    {displayBucketTitle(bucket.id, bucket.label)}
-                                  </h2>
-                                  <span className="text-xs text-text-tertiary">
-                                    {bucketCountLabel(
-                                      bucket.id,
-                                      bucket.totalInBucket
-                                    )}
-                                  </span>
-                                </div>
-                                {!searchV2WidenedOpen && widenedCount > 0 ? (
-                                  <p
-                                    className="text-sm font-medium text-text-primary"
-                                    role="status"
-                                  >
-                                    {widenedCount === 1
-                                      ? S.searchV2WidenedTeaserOne
-                                      : S.searchV2WidenedTeaser.replace(
-                                          '{n}',
-                                          String(widenedCount)
-                                        )}
-                                  </p>
-                                ) : null}
-                                {searchV2WidenedOpen ? (
-                                  <p className="text-xs leading-snug text-text-tertiary">
-                                    {buildBucketSessionDigestLine(
-                                      'widened',
-                                      digestOpts
-                                    )}
-                                  </p>
-                                ) : null}
-                              </div>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="h-9 shrink-0 text-xs transition-transform active:scale-[0.98]"
-                                aria-expanded={searchV2WidenedOpen}
-                                onClick={() =>
-                                  setSearchV2WidenedOpen((v) => !v)
-                                }
-                              >
-                                {searchV2WidenedOpen
-                                  ? S.searchV2WidenedToggleHide
-                                  : S.searchV2WidenedToggleShow}
-                              </Button>
-                            </div>
-                            {!searchV2WidenedOpen && widenedCount > 0 ? (
-                              <p className="text-xs text-text-tertiary/90" role="status">
-                                {S.searchV2WidenedMapHint}
-                              </p>
-                            ) : null}
-                            {searchV2WidenedOpen ? (
-                              <div className="grid grid-cols-1 gap-6 border-t border-border/40 pt-4 md:grid-cols-2 lg:grid-cols-3">
-                                {bucket.items.map((row) => {
-                                  const listing = row as BuscarListingCardData
-                                  const index = globalIndex++
-                                  return (
-                                    <ListingCard
-                                      key={`${bucket.id}-${listing.id}`}
-                                      listing={listing}
-                                      mapSelectedListingId={mapSyncSelectedId}
-                                      compactMatchReason
-                                      whyBucketId="widened"
-                                      onMapSyncHover={
-                                        showMap && mapPins.length > 0
-                                          ? onMapSyncHover
-                                          : undefined
-                                      }
-                                      onResultLinkClick={(listingId) =>
-                                        onSearchResultNavigate(
-                                          listingId,
-                                          'list',
-                                          index
-                                        )
-                                      }
-                                    />
-                                  )
-                                })}
-                              </div>
-                            ) : null}
-                          </section>
-                        )
-                      }
-
-                      if (bucket.id !== 'strong') return null
-
-                      return (
-                        <section
-                          key={bucket.id}
-                          className={bucketStrongNearSectionClass('strong')}
-                        >
-                          <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-                            <h2 className={bucketHeadingClass('strong')}>
-                              {displayBucketTitle(bucket.id, bucket.label)}
-                            </h2>
-                            <span className="text-xs text-text-tertiary">
-                              {bucketCountLabel(
-                                bucket.id,
-                                bucket.totalInBucket
-                              )}
-                            </span>
-                          </div>
-                          <p className="text-sm leading-snug text-text-secondary">
-                            {buildBucketSessionDigestLine('strong', digestOpts)}
-                          </p>
-                          {bucket.items.length === 0 ? (
-                            <p className="text-sm text-text-secondary">
-                              {S.searchV2BucketEmpty}
-                            </p>
-                          ) : (
-                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                              {bucket.items.map((row) => {
-                                const listing = row as BuscarListingCardData
-                                const index = globalIndex++
-                                return (
-                                  <ListingCard
-                                    key={`${bucket.id}-${listing.id}`}
-                                    listing={listing}
-                                    mapSelectedListingId={mapSyncSelectedId}
-                                    compactMatchReason
-                                    whyBucketId="strong"
-                                    onMapSyncHover={
-                                      showMap && mapPins.length > 0
-                                        ? onMapSyncHover
-                                        : undefined
-                                    }
-                                    onResultLinkClick={(listingId) =>
-                                      onSearchResultNavigate(
-                                        listingId,
-                                        'list',
-                                        index
-                                      )
-                                    }
-                                  />
-                                )
-                              })}
-                            </div>
-                          )}
-                        </section>
-                      )
-                    })}
-                  </>
-                )
-              })()}
-              {data && data.total > 0 ? (
-                <p className="text-center text-sm text-text-secondary">
-                  {S.searchV2TotalSummary.replace('{n}', String(data.total))}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
 
         {assistantHint ? (
           <div className="rounded-lg border border-border/50 bg-surface-secondary/40 px-3 py-2.5 text-sm text-text-secondary">
@@ -2151,7 +1610,7 @@ export function BuscarContent({
           </div>
         ) : null}
 
-        <details
+        <details open
           id="buscar-asistente"
           className="scroll-mt-24 rounded-lg border border-border/40 bg-surface-secondary/15"
         >
@@ -2241,7 +1700,6 @@ export function BuscarContent({
             ) : null}
           </div>
         </details>
-        </>
 
         <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
           {classicFiltersOpen ? (
@@ -2935,6 +2393,552 @@ export function BuscarContent({
           </Card>
           ) : null}
         </div>
+
+        {hasActiveSearchCriteria ? (
+          <details className="rounded-lg border border-border/50 bg-surface-secondary/25">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-semibold uppercase tracking-wide text-text-tertiary marker:content-none [&::-webkit-details-marker]:hidden">
+              {S.searchV2GuidedActionsLabel}
+            </summary>
+            <div className="flex flex-col gap-2 border-t border-border/40 px-3 py-3">
+            <div className="flex flex-wrap gap-2">
+              {widenedListCount > 0 && !searchV2WidenedOpen ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  className="transition-transform active:scale-[0.98]"
+                  onClick={openWidenedBlock}
+                >
+                  {S.searchV2CtaMoreOptions}
+                </Button>
+              ) : null}
+              {((minPrice.trim() !== '' &&
+                Number.isFinite(Number(minPrice.trim()))) ||
+                (maxPrice.trim() !== '' &&
+                  Number.isFinite(Number(maxPrice.trim())))) ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="transition-transform active:scale-[0.98]"
+                  onClick={widenPriceRange}
+                >
+                  {S.searchV2CtaWiderPrice}
+                </Button>
+              ) : null}
+              {neighborhood.trim() !== '' ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="transition-transform active:scale-[0.98]"
+                  onClick={searchWholeCity}
+                >
+                  {S.searchV2CtaWholeCity}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="transition-transform active:scale-[0.98]"
+                onClick={openAllFilters}
+              >
+                {S.searchV2CtaOpenFilters}
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="transition-transform active:scale-[0.98]"
+                  >
+                    {S.searchV2CtaRemoveFilterMenu}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuLabel>{S.searchV2CtaRemoveFilterMenu}</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    disabled={
+                      minPrice.trim() === '' &&
+                      maxPrice.trim() === ''
+                    }
+                    onClick={() =>
+                      pushBuscarQueryParams((p) => {
+                        p.delete('min')
+                        p.delete('max')
+                      })
+                    }
+                  >
+                    {S.searchV2CtaRemovePrice}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={neighborhood.trim() === ''}
+                    onClick={() =>
+                      pushBuscarQueryParams((p) => {
+                        p.delete('barrio')
+                      })
+                    }
+                  >
+                    {S.searchV2CtaRemoveNeighborhood}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={propertyType === ''}
+                    onClick={() =>
+                      pushBuscarQueryParams((p) => {
+                        p.delete('tipo')
+                      })
+                    }
+                  >
+                    {S.searchV2CtaRemoveType}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={!mapCommitted}
+                    onClick={() => {
+                      releaseMapFilter()
+                    }}
+                  >
+                    {S.searchV2CtaReleaseMap}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={
+                      selectedAmenityFacets.length === 0 && !amenitiesStrict
+                    }
+                    onClick={() =>
+                      pushBuscarQueryParams((p) => {
+                        p.delete('amenities')
+                        p.delete('amenities_strict')
+                      })
+                    }
+                  >
+                    {S.searchV2CtaRemoveAmenities}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            </div>
+          </details>
+        ) : null}
+
+        <div id="buscar-resultados" className="scroll-mt-20 space-y-4">
+          {!isLoading &&
+          dataV2 &&
+          data &&
+          data.total === 0 &&
+          hasActiveSearchCriteria ? (
+            <Card className="space-y-3 border-semantic-warning/20 bg-semantic-warning/5 p-4">
+              <p className="text-base font-semibold text-text-primary">
+                {S.searchV2EmptyTitle}
+              </p>
+              <ul className="list-disc space-y-1 pl-4 text-sm text-text-secondary">
+                <li>{S.searchV2EmptyLine1}</li>
+                <li>{S.searchV2EmptyLine2}</li>
+                <li>{S.searchV2EmptyLine3}</li>
+              </ul>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {((minPrice.trim() !== '' &&
+                  Number.isFinite(Number(minPrice.trim()))) ||
+                  (maxPrice.trim() !== '' &&
+                    Number.isFinite(Number(maxPrice.trim())))) ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="default"
+                    className="transition-transform active:scale-[0.98]"
+                    onClick={widenPriceRange}
+                  >
+                    {S.searchV2CtaWiderPrice}
+                  </Button>
+                ) : null}
+                {neighborhood.trim() !== '' ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="transition-transform active:scale-[0.98]"
+                    onClick={searchWholeCity}
+                  >
+                    {S.searchV2CtaWholeCity}
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="transition-transform active:scale-[0.98]"
+                  onClick={openAllFilters}
+                >
+                  {S.searchV2CtaOpenFilters}
+                </Button>
+              </div>
+            </Card>
+          ) : null}
+          {shortSearchUxMessages.length > 0 ? (
+            <div className="space-y-2" role="status" aria-live="polite">
+              {shortSearchUxMessages.map((msg, i) => (
+                <Card
+                  key={`search-ux-${i}`}
+                  className="border-brand-primary/20 bg-brand-primary/5 p-3 text-sm leading-snug text-text-primary"
+                >
+                  {msg}
+                </Card>
+              ))}
+            </div>
+          ) : null}
+          {dataV2?.emptyExplanation && (data?.total ?? 0) === 0 ? (
+            <Card className="border-semantic-warning/25 bg-semantic-warning/5 p-3 text-sm leading-relaxed text-text-primary">
+              {dataV2.emptyExplanation}
+            </Card>
+          ) : null}
+          {dataV2?.actions && dataV2.actions.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+                {S.searchV2SuggestedActions}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {dataV2.actions.map((a) => (
+                  <Button
+                    key={a.id}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-9"
+                    onClick={() =>
+                      applySearchV2Action(
+                        a.patch as Record<string, unknown> | undefined
+                      )
+                    }
+                  >
+                    {a.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {isError ? (
+            <Card className="space-y-2 p-6">
+              <p className="text-sm font-medium text-text-primary">{S.searchLoadErrorSoftTitle}</p>
+              <p className="text-sm text-text-secondary">{S.searchLoadErrorSoftBody}</p>
+            </Card>
+          ) : isLoading && !dataV2 ? (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="overflow-hidden">
+                  <Skeleton className="h-48 w-full" />
+                  <div className="space-y-3 p-4">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-6 w-1/2" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : dataV2?.buckets ? (
+            <div className="space-y-6">
+              {!isLoading &&
+              data &&
+              data.total > 0 &&
+              smartSuggestionIds.length > 0 ? (
+                <div className="rounded-xl border border-brand-primary/20 bg-brand-primary/[0.06] p-4 shadow-sm">
+                  <p className="text-sm font-semibold text-text-primary">
+                    {S.searchV2SmartSuggestionsTitle}
+                  </p>
+                  <p className="mt-0.5 text-xs text-text-secondary">
+                    {S.searchV2SmartSuggestionsHint}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {smartSuggestionIds.map((sid) => (
+                      <Button
+                        key={sid}
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="h-9 max-w-full whitespace-normal text-left text-xs leading-snug transition-transform active:scale-[0.98] sm:text-sm"
+                        onClick={() => applySmartSuggestion(sid)}
+                      >
+                        {smartSuggestionLabel(sid)}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {(() => {
+                let globalIndex = 0
+                const widenedCount =
+                  dataV2.buckets.find((b) => b.id === 'widened')?.totalInBucket ??
+                  0
+
+                const digestOpts = {
+                  forcedOperation,
+                  operationType,
+                  city,
+                  neighborhood,
+                  propertyType,
+                  minPrice,
+                  maxPrice,
+                }
+
+                return (
+                  <>
+                    {dataV2.buckets.map((bucket) => {
+                      if (bucket.id === 'near') {
+                        if (bucket.items.length === 0) return null
+                        const nearCount = bucket.totalInBucket
+                        return (
+                          <section
+                            key={bucket.id}
+                            className="space-y-3 rounded-xl border border-dashed border-border/50 bg-surface-secondary/15 p-3 md:p-4"
+                          >
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="min-w-0 space-y-1">
+                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                  <h2 className="text-sm font-medium text-text-secondary">
+                                    {displayBucketTitle(bucket.id, bucket.label)}
+                                  </h2>
+                                  <span className="text-xs text-text-tertiary">
+                                    {bucketCountLabel(
+                                      bucket.id,
+                                      bucket.totalInBucket
+                                    )}
+                                  </span>
+                                </div>
+                                {!searchV2NearOpen && nearCount > 0 ? (
+                                  <p
+                                    className="text-sm font-medium text-text-primary"
+                                    role="status"
+                                  >
+                                    {nearCount === 1
+                                      ? S.searchV2NearTeaserOne
+                                      : S.searchV2NearTeaser.replace(
+                                          '{n}',
+                                          String(nearCount)
+                                        )}
+                                  </p>
+                                ) : null}
+                                {searchV2NearOpen ? (
+                                  <p className="text-xs leading-snug text-text-tertiary">
+                                    {buildBucketSessionDigestLine(
+                                      'near',
+                                      digestOpts
+                                    )}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-9 shrink-0 text-xs transition-transform active:scale-[0.98]"
+                                aria-expanded={searchV2NearOpen}
+                                onClick={() => setSearchV2NearOpen((v) => !v)}
+                              >
+                                {searchV2NearOpen
+                                  ? S.searchV2NearToggleHide
+                                  : S.searchV2NearToggleShow}
+                              </Button>
+                            </div>
+                            {searchV2NearOpen ? (
+                              <div className="grid grid-cols-1 gap-6 border-t border-border/40 pt-4 md:grid-cols-2 lg:grid-cols-3">
+                                {bucket.items.map((row) => {
+                                  const listing = row as BuscarListingCardData
+                                  const index = globalIndex++
+                                  return (
+                                    <ListingCard
+                                      key={`${bucket.id}-${listing.id}`}
+                                      listing={listing}
+                                      mapSelectedListingId={mapSyncSelectedId}
+                                      compactMatchReason
+                                      whyBucketId="near"
+                                      onMapSyncHover={
+                                        showMap && mapPins.length > 0
+                                          ? onMapSyncHover
+                                          : undefined
+                                      }
+                                      onResultLinkClick={(listingId) =>
+                                        onSearchResultNavigate(
+                                          listingId,
+                                          'list',
+                                          index
+                                        )
+                                      }
+                                    />
+                                  )
+                                })}
+                              </div>
+                            ) : null}
+                          </section>
+                        )
+                      }
+                      if (bucket.id === 'widened') {
+                        if (bucket.items.length === 0) return null
+                        return (
+                          <section
+                            key={bucket.id}
+                            className="space-y-3 rounded-xl border border-dashed border-border/50 bg-surface-secondary/15 p-3 md:p-4"
+                          >
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="min-w-0 space-y-1">
+                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                  <h2 className="text-sm font-medium text-text-secondary">
+                                    {displayBucketTitle(bucket.id, bucket.label)}
+                                  </h2>
+                                  <span className="text-xs text-text-tertiary">
+                                    {bucketCountLabel(
+                                      bucket.id,
+                                      bucket.totalInBucket
+                                    )}
+                                  </span>
+                                </div>
+                                {!searchV2WidenedOpen && widenedCount > 0 ? (
+                                  <p
+                                    className="text-sm font-medium text-text-primary"
+                                    role="status"
+                                  >
+                                    {widenedCount === 1
+                                      ? S.searchV2WidenedTeaserOne
+                                      : S.searchV2WidenedTeaser.replace(
+                                          '{n}',
+                                          String(widenedCount)
+                                        )}
+                                  </p>
+                                ) : null}
+                                {searchV2WidenedOpen ? (
+                                  <p className="text-xs leading-snug text-text-tertiary">
+                                    {buildBucketSessionDigestLine(
+                                      'widened',
+                                      digestOpts
+                                    )}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-9 shrink-0 text-xs transition-transform active:scale-[0.98]"
+                                aria-expanded={searchV2WidenedOpen}
+                                onClick={() =>
+                                  setSearchV2WidenedOpen((v) => !v)
+                                }
+                              >
+                                {searchV2WidenedOpen
+                                  ? S.searchV2WidenedToggleHide
+                                  : S.searchV2WidenedToggleShow}
+                              </Button>
+                            </div>
+                            {!searchV2WidenedOpen && widenedCount > 0 ? (
+                              <p className="text-xs text-text-tertiary/90" role="status">
+                                {S.searchV2WidenedMapHint}
+                              </p>
+                            ) : null}
+                            {searchV2WidenedOpen ? (
+                              <div className="grid grid-cols-1 gap-6 border-t border-border/40 pt-4 md:grid-cols-2 lg:grid-cols-3">
+                                {bucket.items.map((row) => {
+                                  const listing = row as BuscarListingCardData
+                                  const index = globalIndex++
+                                  return (
+                                    <ListingCard
+                                      key={`${bucket.id}-${listing.id}`}
+                                      listing={listing}
+                                      mapSelectedListingId={mapSyncSelectedId}
+                                      compactMatchReason
+                                      whyBucketId="widened"
+                                      onMapSyncHover={
+                                        showMap && mapPins.length > 0
+                                          ? onMapSyncHover
+                                          : undefined
+                                      }
+                                      onResultLinkClick={(listingId) =>
+                                        onSearchResultNavigate(
+                                          listingId,
+                                          'list',
+                                          index
+                                        )
+                                      }
+                                    />
+                                  )
+                                })}
+                              </div>
+                            ) : null}
+                          </section>
+                        )
+                      }
+
+                      if (bucket.id !== 'strong') return null
+
+                      return (
+                        <section
+                          key={bucket.id}
+                          className={bucketStrongNearSectionClass('strong')}
+                        >
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+                            <h2 className={bucketHeadingClass('strong')}>
+                              {displayBucketTitle(bucket.id, bucket.label)}
+                            </h2>
+                            <span className="text-xs text-text-tertiary">
+                              {bucketCountLabel(
+                                bucket.id,
+                                bucket.totalInBucket
+                              )}
+                            </span>
+                          </div>
+                          <p className="text-sm leading-snug text-text-secondary">
+                            {buildBucketSessionDigestLine('strong', digestOpts)}
+                          </p>
+                          {bucket.items.length === 0 ? (
+                            <p className="text-sm text-text-secondary">
+                              {S.searchV2BucketEmpty}
+                            </p>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                              {bucket.items.map((row) => {
+                                const listing = row as BuscarListingCardData
+                                const index = globalIndex++
+                                return (
+                                  <ListingCard
+                                    key={`${bucket.id}-${listing.id}`}
+                                    listing={listing}
+                                    mapSelectedListingId={mapSyncSelectedId}
+                                    compactMatchReason
+                                    whyBucketId="strong"
+                                    onMapSyncHover={
+                                      showMap && mapPins.length > 0
+                                        ? onMapSyncHover
+                                        : undefined
+                                    }
+                                    onResultLinkClick={(listingId) =>
+                                      onSearchResultNavigate(
+                                        listingId,
+                                        'list',
+                                        index
+                                      )
+                                    }
+                                  />
+                                )
+                              })}
+                            </div>
+                          )}
+                        </section>
+                      )
+                    })}
+                  </>
+                )
+              })()}
+              {data && data.total > 0 ? (
+                <p className="text-center text-sm text-text-secondary">
+                  {S.searchV2TotalSummary.replace('{n}', String(data.total))}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+
+
+
+
 
         
       </div>
