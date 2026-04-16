@@ -67,8 +67,6 @@ import {
 
 import { AddToCompareButton } from '@/components/compare/add-to-compare-button'
 import { BuscarLocalityModal } from '@/components/buscar/buscar-locality-modal'
-import { BuscarSessionBar } from '@/components/buscar/buscar-session-bar'
-import { HeroSearchBar } from '@/components/home/hero-search-bar'
 import { BuscarRecentSearches } from '@/components/buscar/buscar-recent-searches'
 import { ConversationalSearchBlock } from '@/components/portal/conversational-search-block'
 import { InductiveSearchChips } from '@/components/portal/inductive-search-chips'
@@ -1446,178 +1444,14 @@ export function BuscarContent({
           </details>
         ) : null}
 
-        <section
-          aria-label="Búsqueda por texto"
-          className="rounded-lg border border-border/35 bg-surface-primary/70 px-3 py-2.5 shadow-sm md:px-4 md:py-3"
-        >
-          <div className="mb-2 space-y-0.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">
-              {S.buscarFieldKeywords}
-            </p>
-            <p className="text-[11px] leading-snug text-text-secondary md:text-xs">
-              {S.keywordPlaceholder}
-            </p>
-          </div>
-          <HeroSearchBar
-            inputId="buscar-hero-q"
-            formAriaLabel="Búsqueda por palabras clave"
-            value={q}
-            onValueChange={setQ}
-            onSubmit={(trimmed) => {
-              pushBuscarQueryParams((p) => {
-                if (trimmed) p.set('q', trimmed)
-                else p.delete('q')
-              })
-            }}
-            className="max-w-none"
-          />
-        </section>
-
-        <section
-          aria-label="Filtros de búsqueda"
-          className="max-h-[min(38vh,320px)] overflow-y-auto overscroll-y-contain rounded-lg border border-border/35 bg-surface-primary/40 pr-0.5 md:max-h-[min(40vh,360px)]"
-        >
-          <BuscarSessionBar
-            opLocked={opLocked}
-            forcedOperation={forcedOperation}
-            operationType={operationType}
-            city={city}
-            neighborhood={neighborhood}
-            propertyType={propertyType}
-            propertyOptions={PROPERTY_OPTIONS}
-            minPrice={minPrice}
-            maxPrice={maxPrice}
-            minBedrooms={minBedrooms}
-            applyUrlParams={pushBuscarQueryParams}
-            onOpenLocalityModal={() => setLocalityModalOpen(true)}
-            onClearSearch={clearBuscarSearch}
-          />
-          <div className="flex flex-wrap items-center gap-1.5 border-t border-border/30 px-2 pb-2 pt-1.5">
-            <Button
-              type="button"
-              variant={classicFiltersOpen ? 'secondary' : 'outline'}
-              size="sm"
-              className="h-8 gap-1 text-xs"
-              onClick={() => setClassicFiltersOpen((v) => !v)}
-            >
-              <Filter className="h-3 w-3" aria-hidden />
-              {classicFiltersOpen ? S.filtersOptionalCollapse : S.filtersOptionalExpand}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1 text-xs"
-              onClick={openMapFromAssistant}
-            >
-              <MapIcon className="h-3 w-3" aria-hidden />
-              {S.buscarOpenMapCta}
-            </Button>
-            <div
-              className="ml-auto inline-flex rounded-md border border-border/60 bg-surface-secondary/50 p-0.5"
-              role="group"
-              aria-label="Vista de resultados"
-            >
-              <Button
-                type="button"
-                variant={!showMap ? 'default' : 'ghost'}
-                size="sm"
-                className="h-8 rounded-sm px-2.5 text-xs"
-                onClick={() => setShowMap(false)}
-              >
-                Lista
-              </Button>
-              <Button
-                type="button"
-                variant={showMap ? 'default' : 'ghost'}
-                size="sm"
-                className="h-8 rounded-sm px-2.5 text-xs"
-                onClick={() => {
-                  setClassicFiltersOpen(true)
-                  setShowMap(true)
-                  scrollToElementId('buscar-mapa')
-                }}
-              >
-                <MapIcon className="mr-0.5 hidden h-3 w-3 sm:inline" aria-hidden />
-                Mapa
-              </Button>
-            </div>
-          </div>
-        </section>
-
-
-        {assistantHint ? (
-          <div className="rounded-lg border border-border/50 bg-surface-secondary/40 px-3 py-2.5 text-sm text-text-secondary">
-            <p className="font-medium text-text-primary">
-              {S.conversationalInterpretedTitle}
-            </p>
-            <p className="mt-1 text-sm leading-snug">{assistantHint.summary}</p>
-            {assistantHint.messages && assistantHint.messages.length > 0 ? (
-              <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs text-text-tertiary">
-                {assistantHint.messages.map((m, i) => (
-                  <li key={`hint-msg-${i}`}>{m}</li>
-                ))}
-              </ul>
-            ) : null}
-            <p className="mt-2 text-sm text-text-primary">
-              {assistantHint.total > 0 ? (
-                <>
-                  {S.conversationalResultsPrefix}:{' '}
-                  <strong>{assistantHint.total}</strong>
-                  {assistantHint.primaryTotal !== undefined &&
-                  assistantHint.primaryTotal === 0 &&
-                  assistantHint.total > 0 ? (
-                    <span className="mt-1 block text-xs font-normal text-text-secondary">
-                      {S.conversationalRelaxedCountNote}
-                    </span>
-                  ) : null}
-                </>
-              ) : (
-                <span className="text-text-secondary">{S.conversationalResultsZero}</span>
-              )}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={openMapFromAssistant}
-              >
-                {S.conversationalNextMap}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() => {
-                  setClassicFiltersOpen(true)
-                  setShowDeepFilters(true)
-                  window.requestAnimationFrame(() =>
-                    document
-                      .getElementById('buscar-capa-3')
-                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  )
-                }}
-              >
-                {S.conversationalNextFilters}
-              </Button>
-              <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" asChild>
-                <a href="#buscar-resultados">{S.conversationalScrollResults}</a>
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
         <details open
           id="buscar-asistente"
-          className="scroll-mt-24 rounded-lg border border-border/40 bg-surface-secondary/15"
+          className="scroll-mt-16 rounded-lg border border-border/40 bg-surface-secondary/15"
         >
-          <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden">
+          <summary className="cursor-pointer list-none px-2.5 py-1.5 text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden md:px-3 md:py-2 md:text-sm">
             {S.buscarAssistantCollapseTitle}
           </summary>
-          <div className="space-y-3 border-t border-border/40 px-3 pb-4 pt-3">
+          <div className="space-y-2 border-t border-border/40 px-2.5 pb-3 pt-2 md:space-y-2.5 md:px-3 md:pb-3 md:pt-2.5">
             <ConversationalSearchBlock
               variant="buscar"
               routerMode="replace"
@@ -1629,13 +1463,13 @@ export function BuscarContent({
               buscarSearchParamsKey={searchParamsKey}
             />
             {!classicFiltersOpen ? (
-              <details className="rounded-lg border border-border/40 bg-surface-secondary/20">
-                <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden">
+              <details className="rounded-md border border-border/40 bg-surface-secondary/20">
+                <summary className="cursor-pointer px-2.5 py-1.5 text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden md:px-3 md:py-2">
                   {S.inductiveExploreTitle}
                 </summary>
-                <div className="space-y-3 border-t border-border/50 px-3 py-3">
+                <div className="space-y-2 border-t border-border/50 px-2.5 py-2 md:space-y-2.5 md:px-3 md:py-2.5">
                   {contextualBlock ? (
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       <h3 className="text-sm font-semibold text-text-primary">
                         {contextualBlock.title}
                       </h3>
@@ -1700,6 +1534,134 @@ export function BuscarContent({
             ) : null}
           </div>
         </details>
+
+        {assistantHint ? (
+          <div className="rounded-md border border-border/50 bg-surface-secondary/40 px-2.5 py-2 text-sm text-text-secondary md:px-3 md:py-2.5">
+            <p className="text-sm font-medium text-text-primary">
+              {S.conversationalInterpretedTitle}
+            </p>
+            <p className="mt-0.5 text-sm leading-snug">{assistantHint.summary}</p>
+            {assistantHint.messages && assistantHint.messages.length > 0 ? (
+              <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-xs text-text-tertiary">
+                {assistantHint.messages.map((m, i) => (
+                  <li key={`hint-msg-${i}`}>{m}</li>
+                ))}
+              </ul>
+            ) : null}
+            <p className="mt-1.5 text-sm text-text-primary">
+              {assistantHint.total > 0 ? (
+                <>
+                  {S.conversationalResultsPrefix}:{' '}
+                  <strong>{assistantHint.total}</strong>
+                  {assistantHint.primaryTotal !== undefined &&
+                  assistantHint.primaryTotal === 0 &&
+                  assistantHint.total > 0 ? (
+                    <span className="mt-1 block text-xs font-normal text-text-secondary">
+                      {S.conversationalRelaxedCountNote}
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                <span className="text-text-secondary">{S.conversationalResultsZero}</span>
+              )}
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={openMapFromAssistant}
+              >
+                {S.conversationalNextMap}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => {
+                  setClassicFiltersOpen(true)
+                  setShowDeepFilters(true)
+                  window.requestAnimationFrame(() =>
+                    document
+                      .getElementById('buscar-capa-3')
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  )
+                }}
+              >
+                {S.conversationalNextFilters}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" asChild>
+                <a href="#buscar-resultados">{S.conversationalScrollResults}</a>
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        <section
+          aria-label="Filtros de búsqueda"
+          className="flex flex-wrap items-center gap-1.5 rounded-md border border-border/35 bg-surface-primary/50 px-2 py-1.5"
+        >
+          <Button
+            type="button"
+            variant={classicFiltersOpen ? 'secondary' : 'outline'}
+            size="sm"
+            className="h-8 gap-1 text-xs"
+            onClick={() => setClassicFiltersOpen((v) => !v)}
+          >
+            <Filter className="h-3 w-3" aria-hidden />
+            {classicFiltersOpen ? S.filtersOptionalCollapse : S.filtersOptionalExpand}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1 text-xs"
+            onClick={openMapFromAssistant}
+          >
+            <MapIcon className="h-3 w-3" aria-hidden />
+            {S.buscarOpenMapCta}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs text-text-secondary"
+            onClick={clearBuscarSearch}
+          >
+            {S.buscarClearSearch}
+          </Button>
+          <div
+            className="ml-auto inline-flex rounded-md border border-border/60 bg-surface-secondary/50 p-0.5"
+            role="group"
+            aria-label="Vista de resultados"
+          >
+            <Button
+              type="button"
+              variant={!showMap ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 rounded-sm px-2.5 text-xs"
+              onClick={() => setShowMap(false)}
+            >
+              Lista
+            </Button>
+            <Button
+              type="button"
+              variant={showMap ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 rounded-sm px-2.5 text-xs"
+              onClick={() => {
+                setClassicFiltersOpen(true)
+                setShowMap(true)
+                scrollToElementId('buscar-mapa')
+              }}
+            >
+              <MapIcon className="mr-0.5 hidden h-3 w-3 sm:inline" aria-hidden />
+              Mapa
+            </Button>
+          </div>
+        </section>
 
         <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
           {classicFiltersOpen ? (
