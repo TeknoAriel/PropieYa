@@ -20,6 +20,8 @@
 
 **Ingesta Properstar/Kiteprop (cron, webhook, bajas, tipo de aviso):** `docs/48-INGEST-PROPERSTAR-POLITICA-CRON-PUSH-Y-NEGOCIO.md` — resumen operativo en `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md` §3.
 
+**API key de Kiteprop (MCP + REST + properties, misma secret; MCP en cabecera `X-API-Key`):** `docs/58-KITEPROP-API-KEY-UNICA-MCP-Y-REST.md` — no confundir con `KITEPROP_INGEST_WEBHOOK_SECRET` del webhook al portal; regla Cursor `.cursor/rules/kiteprop-api-key-unificada.mdc`.
+
 **Panel de estadísticas / telemetría:** `docs/49-ARQUITECTURA-PANEL-ESTADISTICAS-Y-TELEMETRIA.md` — capas hechos → agregados → API; terminales canónicos `PORTAL_STATS_TERMINALS` en `@propieya/shared`.
 
 **Directiva de producto (anti-Frankenstein, capas, prioridades):** `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`. **Matriz y backlog:** `docs/43-ANEXO-MASTERPLAN-MEJORAS-INTEGRABLES.md`. **Norte corto portal:** `docs/41-PROPUESTA-VALOR-PORTAL.md`.

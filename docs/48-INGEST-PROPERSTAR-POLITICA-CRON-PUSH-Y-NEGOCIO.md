@@ -2,6 +2,8 @@
 
 **Estado:** mandato operativo para producción y pruebas. Complementa `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md` y `docs/44-IMPORT-PROPERSTAR-Y-DEPURACION.md`.
 
+**Credenciales (no mezclar):** la **API key única de Kiteprop** (MCP, REST, properties, etc.) y cómo va en cabecera para MCP están en **`docs/58-KITEPROP-API-KEY-UNICA-MCP-Y-REST.md`**. Este documento (48) trata el **flujo de ingesta al portal** y los secretos **`KITEPROP_INGEST_WEBHOOK_SECRET`** / **`CRON_SECRET`** hacia PropieYa.
+
 ---
 
 ## 1. Fuente de datos

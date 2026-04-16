@@ -53,6 +53,8 @@ Si falta **solo** configuración (DB, ES, OpenAI, email), la UI puede verse “i
 
 **Política operativa completa (cron 30 min prod, prueba 48 h, webhook push, bajas, código tipo de aviso):** `docs/48-INGEST-PROPERSTAR-POLITICA-CRON-PUSH-Y-NEGOCIO.md`.
 
+**API key de Kiteprop (MCP + REST, misma secret; no confundir con el Bearer del webhook al portal):** `docs/58-KITEPROP-API-KEY-UNICA-MCP-Y-REST.md`.
+
 ### Catálogo visible (active vs draft)
 
 - Por defecto, cada sync de Yumblin/Kiteprop **inserta y mantiene** los avisos del JSON como **`status: active`** (con `published_at`, `expires_at` según `LISTING_VALIDITY.MANUAL_VALIDITY_DAYS`), para que el portal liste **todo el feed** sin paso manual.

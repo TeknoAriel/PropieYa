@@ -1,0 +1,17 @@
+---
+description: API key única de Kiteprop (MCP vs REST) y no confundir con secretos del webhook PropieYa
+globs: docs/48-INGEST-PROPERSTAR-POLITICA-CRON-PUSH-Y-NEGOCIO.md,docs/44-IMPORT-PROPERSTAR-Y-DEPURACION.md,docs/58-KITEPROP-API-KEY-UNICA-MCP-Y-REST.md,apps/web/src/app/api/webhooks/**/*,AGENTS.md
+alwaysApply: false
+---
+
+# Kiteprop — API key y secretos del portal
+
+## Fuente de verdad
+
+- **`docs/58-KITEPROP-API-KEY-UNICA-MCP-Y-REST.md`** — misma secret para MCP + REST + properties + POST según producto Kiteprop; MCP la envía en cabecera (p. ej. `X-API-Key`).
+
+## Reglas
+
+1. No documentar “dos API keys” de Kiteprop para MCP vs REST si el producto define **una sola** credencial; la diferencia es **cómo** se envía (MCP: `headers` en la config del cliente).
+2. No confundir con **`KITEPROP_INGEST_WEBHOOK_SECRET`** / **`CRON_SECRET`**: son secretos **del portal PropieYa** para el webhook/cron de ingesta (ver `docs/48-*.md`), salvo que Kiteprop documente explícitamente lo contrario.
+3. Cambios que toquen autenticación Kiteprop ↔ PropieYa: enlazar §3 de la doc 58 para no mezclar conceptos.
