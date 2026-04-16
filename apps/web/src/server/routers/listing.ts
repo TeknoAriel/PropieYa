@@ -39,8 +39,14 @@ import {
   PORTAL_SEARCH_UX_COPY,
   PORTAL_STATS_TERMINALS,
   listingSearchV2InputSchema,
+  SEARCH_V2_BUCKET_LABELS,
+  normalizeSearchSessionMVP,
+  searchSessionHasAnchor,
   type ExplainMatchFilters,
+  type ExplainMatchListing,
+  type ListingSearchV2Result,
   type LocalityCatalogEntry,
+  type SearchSessionMVP,
 } from '@propieya/shared'
 
 import {
@@ -57,7 +63,10 @@ import {
   searchListingsLayered,
   type ListingSearchUX,
 } from '../../lib/search/search-layered'
-import { runListingSearchV2 } from '../../lib/search/search-v2-executor'
+import {
+  runListingSearchV2,
+  searchV2StrongListingSearchFilters,
+} from '../../lib/search/search-v2-executor'
 import {
   getListingSearchSortKeyCount,
   shouldApplyLocalityProximitySort,
@@ -516,6 +525,87 @@ const ORDER_PANEL_RECENCY = [
   desc(listings.updatedAt),
   desc(listings.createdAt),
 ]
+
+function isSearchV2ElasticsearchUnreachable(out: ListingSearchV2Result): boolean {
+  const sum =
+    out.totalsByBucket.strong +
+    out.totalsByBucket.near +
+    out.totalsByBucket.widened
+  if (sum > 0) return false
+  return out.messages.some(
+    (m) =>
+      typeof m === 'string' && m.includes('no pudimos consultar el índice')
+  )
+}
+
+/**
+ * Si ES no responde pero hay ancla de búsqueda, alineamos v2 con `listing.search`:
+ * listado «strong» desde SQL (near/widened quedan vacíos en este fallback).
+ */
+async function trySearchV2SqlFallback(
+  db: Database,
+  session: SearchSessionMVP,
+  limitPerBucket: number,
+  esOut: ListingSearchV2Result
+): Promise<ListingSearchV2Result | null> {
+  if (!searchSessionHasAnchor(normalizeSearchSessionMVP(session))) return null
+  if (!isSearchV2ElasticsearchUnreachable(esOut)) return null
+
+  const f = searchV2StrongListingSearchFilters(session)
+  const fetchLimit = Math.min(50, Math.max(1, limitPerBucket * 3))
+  const seed = searchFiltersToListingInputOverlay(
+    { limit: fetchLimit, offset: 0 } as ListingSearchInput,
+    f
+  )
+  const prep = buildListingSearchSqlFromSeed(seed)
+  const sqlTotal = await countListingSearchSql(db, prep)
+  const rows = await selectListingSearchSqlPage(db, prep, fetchLimit, 0)
+  const explainFilters = seed as unknown as ExplainMatchFilters
+  const decorated = withMatchReasons(
+    explainFilters,
+    rows as ExplainMatchListing[]
+  )
+  const strongSlice = decorated.slice(0, limitPerBucket)
+
+  return {
+    sessionNormalized: esOut.sessionNormalized,
+    buckets: [
+      {
+        id: 'strong',
+        label: SEARCH_V2_BUCKET_LABELS.strong,
+        items: strongSlice,
+        totalInBucket: strongSlice.length,
+      },
+      {
+        id: 'near',
+        label: SEARCH_V2_BUCKET_LABELS.near,
+        items: [],
+        totalInBucket: 0,
+      },
+      {
+        id: 'widened',
+        label: SEARCH_V2_BUCKET_LABELS.widened,
+        items: [],
+        totalInBucket: 0,
+      },
+    ],
+    messages:
+      sqlTotal > 0 ? [PORTAL_SEARCH_UX_COPY.searchSqlFallbackRowsNote] : [],
+    emptyExplanation:
+      sqlTotal === 0
+        ? 'No hay avisos que encajen aún con estos criterios. Probá las acciones de abajo o flexibilizá un requisito.'
+        : null,
+    actions: [],
+    totalsByBucket: {
+      strong: strongSlice.length,
+      near: 0,
+      widened: 0,
+    },
+    orderedListingIds: strongSlice.map((row) =>
+      String((row as unknown as { id: string }).id)
+    ),
+  }
+}
 
 export const listingRouter = createTRPCRouter({
   create: protectedProcedure
@@ -1656,10 +1746,22 @@ export const listingRouter = createTRPCRouter({
     .input(listingSearchV2InputSchema)
     .query(async ({ input, ctx }) => {
       const perfStart = Date.now()
-      const out = await runListingSearchV2({
+      const limitPerBucket = input.limitPerBucket ?? 20
+      let out = await runListingSearchV2({
         session: input.session,
-        limitPerBucket: input.limitPerBucket ?? 20,
+        limitPerBucket,
       })
+
+      const fallback = await trySearchV2SqlFallback(
+        ctx.db,
+        input.session,
+        limitPerBucket,
+        out
+      )
+      if (fallback) {
+        out = fallback
+      }
+
       if (process.env.LOG_SEARCH_MS === '1') {
         console.info(
           '[listing.searchV2]',
@@ -1668,6 +1770,7 @@ export const listingRouter = createTRPCRouter({
             strong: out.totalsByBucket.strong,
             near: out.totalsByBucket.near,
             widened: out.totalsByBucket.widened,
+            sqlFallback: Boolean(fallback),
           })
         )
       }
@@ -1679,7 +1782,7 @@ export const listingRouter = createTRPCRouter({
             out.totalsByBucket.strong +
             out.totalsByBucket.near +
             out.totalsByBucket.widened,
-          source: 'search_v2',
+          source: fallback ? 'search_v2_sql_fallback' : 'search_v2',
         },
       })
       return out
