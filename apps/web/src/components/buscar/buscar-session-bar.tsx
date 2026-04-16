@@ -106,7 +106,7 @@ const ChipTrigger = forwardRef<
       type="button"
       variant="outline"
       size="sm"
-      className="h-auto max-w-[min(100%,14rem)] flex-col items-start gap-0 rounded-full border-border/50 px-2.5 py-1 text-left transition-transform active:scale-[0.98]"
+      className="h-auto max-w-[min(100%,12rem)] flex-col items-start gap-0 rounded-full border-border/50 px-2 py-0.5 text-left transition-transform active:scale-[0.98]"
     >
       <span className="text-[9px] font-medium uppercase tracking-wide text-text-tertiary">
         {kicker}
@@ -139,7 +139,7 @@ export function BuscarSessionBar({
   const [draftMax, setDraftMax] = useState(maxPrice)
 
   return (
-    <Card className="border-border/30 bg-transparent p-2 shadow-none sm:p-2.5">
+    <Card className="border-0 bg-transparent p-1.5 shadow-none sm:p-2">
       <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-0.5">
           <p className="flex items-center gap-1 text-[9px] font-medium uppercase tracking-wide text-text-tertiary">

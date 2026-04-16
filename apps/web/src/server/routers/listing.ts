@@ -530,9 +530,13 @@ function isSearchV2ElasticsearchUnreachable(out: ListingSearchV2Result): boolean
     out.totalsByBucket.near +
     out.totalsByBucket.widened
   if (sum > 0) return false
-  return out.messages.some(
-    (m) =>
-      typeof m === 'string' && m.includes('no pudimos consultar el índice')
+  /** `runListingSearchV2` pone el aviso de índice en `emptyExplanation`, no en `messages`. */
+  const blob = [...out.messages, out.emptyExplanation ?? '']
+    .join('\n')
+    .toLowerCase()
+  return (
+    blob.includes('no pudimos consultar el índice') ||
+    blob.includes('el buscador no está disponible')
   )
 }
 

@@ -897,13 +897,16 @@ export function BuscarContent({
     return b?.items.length ?? 0
   }, [dataV2])
 
-  const shortSearchUxMessages = useMemo(
-    () =>
-      (dataV2?.messages ?? []).filter(
-        (m) => typeof m === 'string' && m.length <= 220
-      ).slice(0, 1),
-    [dataV2?.messages]
-  )
+  const shortSearchUxMessages = useMemo(() => {
+    const total =
+      (dataV2?.totalsByBucket.strong ?? 0) +
+      (dataV2?.totalsByBucket.near ?? 0) +
+      (dataV2?.totalsByBucket.widened ?? 0)
+    if (total > 0) return []
+    return (dataV2?.messages ?? [])
+      .filter((m) => typeof m === 'string' && m.length <= 220)
+      .slice(0, 1)
+  }, [dataV2?.messages, dataV2?.totalsByBucket])
 
   const data =
     dataV2 != null
@@ -1348,14 +1351,16 @@ export function BuscarContent({
   const showQuickAmenityChips = (quickFacetIds?.length ?? 0) > 0
 
   return (
-    <div className="container mx-auto space-y-3 px-4 py-4 md:py-6">
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-2 border-b border-border/40 pb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-          <div className="min-w-0 space-y-0.5">
-            <h1 className="text-lg font-semibold tracking-tight text-text-primary md:text-xl">
+    <div className="container mx-auto space-y-2 px-4 py-2 md:py-3">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5 border-b border-border/40 pb-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
+          <div className="min-w-0 space-y-0">
+            <h1 className="text-base font-semibold tracking-tight text-text-primary md:text-lg">
               {pageTitle}
             </h1>
-            <p className="text-xs text-text-secondary md:text-sm">{pageSubtitle}</p>
+            <p className="text-[11px] leading-snug text-text-secondary md:text-xs">
+              {pageSubtitle}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -1440,21 +1445,77 @@ export function BuscarContent({
           </details>
         ) : null}
 
-        <BuscarSessionBar
-          opLocked={opLocked}
-          forcedOperation={forcedOperation}
-          operationType={operationType}
-          city={city}
-          neighborhood={neighborhood}
-          propertyType={propertyType}
-          propertyOptions={PROPERTY_OPTIONS}
-          minPrice={minPrice}
-          maxPrice={maxPrice}
-          minBedrooms={minBedrooms}
-          applyUrlParams={pushBuscarQueryParams}
-          onOpenLocalityModal={() => setLocalityModalOpen(true)}
-          onClearSearch={clearBuscarSearch}
-        />
+        <section
+          aria-label="Filtros de búsqueda"
+          className="max-h-[min(38vh,320px)] overflow-y-auto overscroll-y-contain rounded-lg border border-border/35 bg-surface-primary/40 pr-0.5 md:max-h-[min(40vh,360px)]"
+        >
+          <BuscarSessionBar
+            opLocked={opLocked}
+            forcedOperation={forcedOperation}
+            operationType={operationType}
+            city={city}
+            neighborhood={neighborhood}
+            propertyType={propertyType}
+            propertyOptions={PROPERTY_OPTIONS}
+            minPrice={minPrice}
+            maxPrice={maxPrice}
+            minBedrooms={minBedrooms}
+            applyUrlParams={pushBuscarQueryParams}
+            onOpenLocalityModal={() => setLocalityModalOpen(true)}
+            onClearSearch={clearBuscarSearch}
+          />
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-border/30 px-2 pb-2 pt-1.5">
+            <Button
+              type="button"
+              variant={classicFiltersOpen ? 'secondary' : 'outline'}
+              size="sm"
+              className="h-8 gap-1 text-xs"
+              onClick={() => setClassicFiltersOpen((v) => !v)}
+            >
+              <Filter className="h-3 w-3" aria-hidden />
+              {classicFiltersOpen ? S.filtersOptionalCollapse : S.filtersOptionalExpand}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1 text-xs"
+              onClick={openMapFromAssistant}
+            >
+              <MapIcon className="h-3 w-3" aria-hidden />
+              {S.buscarOpenMapCta}
+            </Button>
+            <div
+              className="ml-auto inline-flex rounded-md border border-border/60 bg-surface-secondary/50 p-0.5"
+              role="group"
+              aria-label="Vista de resultados"
+            >
+              <Button
+                type="button"
+                variant={!showMap ? 'default' : 'ghost'}
+                size="sm"
+                className="h-8 rounded-sm px-2.5 text-xs"
+                onClick={() => setShowMap(false)}
+              >
+                Lista
+              </Button>
+              <Button
+                type="button"
+                variant={showMap ? 'default' : 'ghost'}
+                size="sm"
+                className="h-8 rounded-sm px-2.5 text-xs"
+                onClick={() => {
+                  setClassicFiltersOpen(true)
+                  setShowMap(true)
+                  scrollToElementId('buscar-mapa')
+                }}
+              >
+                <MapIcon className="mr-0.5 hidden h-3 w-3 sm:inline" aria-hidden />
+                Mapa
+              </Button>
+            </div>
+          </div>
+        </section>
 
         {hasActiveSearchCriteria ? (
           <details className="rounded-lg border border-border/50 bg-surface-secondary/25">
@@ -1585,59 +1646,7 @@ export function BuscarContent({
         ) : null}
 
         <>
-        <div className="flex flex-wrap items-center gap-2 border-b border-border/40 pb-4">
-          <Button
-            type="button"
-            variant={classicFiltersOpen ? 'secondary' : 'outline'}
-            size="sm"
-            className="h-9 gap-1.5"
-            onClick={() => setClassicFiltersOpen((v) => !v)}
-          >
-            <Filter className="h-3.5 w-3.5" aria-hidden />
-            {classicFiltersOpen ? S.filtersOptionalCollapse : S.filtersOptionalExpand}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 gap-1.5"
-            onClick={openMapFromAssistant}
-          >
-            <MapIcon className="h-3.5 w-3.5" aria-hidden />
-            {S.buscarOpenMapCta}
-          </Button>
-          <div
-            className="ml-auto inline-flex rounded-lg border border-border/60 bg-surface-secondary/50 p-0.5"
-            role="group"
-            aria-label="Vista de resultados"
-          >
-            <Button
-              type="button"
-              variant={!showMap ? 'default' : 'ghost'}
-              size="sm"
-              className="h-9 rounded-md px-3 text-xs"
-              onClick={() => setShowMap(false)}
-            >
-              Lista
-            </Button>
-            <Button
-              type="button"
-              variant={showMap ? 'default' : 'ghost'}
-              size="sm"
-              className="h-9 rounded-md px-3 text-xs"
-              onClick={() => {
-                setClassicFiltersOpen(true)
-                setShowMap(true)
-                scrollToElementId('buscar-mapa')
-              }}
-            >
-              <MapIcon className="mr-1 hidden h-3.5 w-3.5 sm:inline" aria-hidden />
-              Mapa
-            </Button>
-          </div>
-        </div>
-
-        <div id="buscar-resultados" className="scroll-mt-24 space-y-6">
+        <div id="buscar-resultados" className="scroll-mt-20 space-y-4">
           {!isLoading &&
           dataV2 &&
           data &&
@@ -1702,8 +1711,8 @@ export function BuscarContent({
               ))}
             </div>
           ) : null}
-          {dataV2?.emptyExplanation ? (
-            <Card className="border-semantic-warning/25 bg-semantic-warning/5 p-4 text-sm leading-relaxed text-text-primary">
+          {dataV2?.emptyExplanation && (data?.total ?? 0) === 0 ? (
+            <Card className="border-semantic-warning/25 bg-semantic-warning/5 p-3 text-sm leading-relaxed text-text-primary">
               {dataV2.emptyExplanation}
             </Card>
           ) : null}
@@ -1751,7 +1760,7 @@ export function BuscarContent({
               ))}
             </div>
           ) : dataV2?.buckets ? (
-            <div className="space-y-10">
+            <div className="space-y-6">
               {!isLoading &&
               data &&
               data.total > 0 &&
