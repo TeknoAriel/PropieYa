@@ -66,7 +66,7 @@
 
 **Excepción documentada (propietario, 2026-03-31):** en ambos archivos, el cron `GET /api/cron/import-yumblin` pasó a **`*/30 * * * *`** (ingesta Properstar/Kiteprop cada 30 min en Production). Contexto y variables: `docs/48-INGEST-PROPERSTAR-POLITICA-CRON-PUSH-Y-NEGOCIO.md`.
 
-**Excepción documentada (bloqueo deploy, 2026-04-16):** la API de Vercel exige **CLI 47.2.2 o superior**; el workflow Promote pasó de **`npx vercel@41`** a **`vercel@47.2.2`** en `pull` / `deploy --prod` / `promote` / `alias`. Sin esto el job fallaba con *"This endpoint requires version 47.2.2 or later"* y el portal no actualizaba `/api/version`.
+**Excepción documentada (bloqueo deploy, 2026-04-16):** la API de Vercel rechazaba **`vercel@41`** con *"This endpoint requires version 47.2.2 or later"*. Ese número **no corresponde** a una versión publicada del paquete npm `vercel` (en npm, la serie **47.x** llega a **47.1.4**; no existe `47.2.2`). El workflow Promote usa **`npx vercel@51.4.0`** en `pull` / `deploy --prod` / `promote` / `alias` (CLI publicada y compatible con la API). Al pinchar una versión inexistente, `npx` falla con `ETARGET` y el deploy no arranca.
 
 ---
 

@@ -109,7 +109,7 @@ Workflow: **`.github/workflows/promote-deploy-infra.yml`**
 
 1. Install dependencies
 2. `pnpm lint`, `pnpm typecheck`, `pnpm build` (equivalente a `pnpm verify`; pasos separados en CI para ver el fallo)
-3. `vercel pull` (production) + **`vercel deploy --prod`** desde la **raíz del monorepo** (sube `packages/*`; Root Directory en Vercel sigue siendo `apps/web`). CLI **`vercel@47.2.2`** (mínimo exigido por la API; ver `docs/DEPLOY-CONTEXTO-AGENTES.md`).
+3. `vercel pull` (production) + **`vercel deploy --prod`** desde la **raíz del monorepo** (sube `packages/*`; Root Directory en Vercel sigue siendo `apps/web`). CLI **`vercel@51.4.0`** (paquete npm publicado; ver `docs/DEPLOY-CONTEXTO-AGENTES.md` sobre el mensaje *47.2.2+* de la API).
 4. Smoke tests **obligatorios** en el dominio canónico:
    - `/` → 2xx
    - `/api/health` → 200 o 503
