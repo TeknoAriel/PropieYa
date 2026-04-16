@@ -211,9 +211,23 @@ export function normalizeSearchSessionMVP(raw: unknown): SearchSessionMVP {
   return enrichSearchSessionMVPFromParsedQuery(base)
 }
 
-/** ¿Hay al menos un ancla para evitar un “widened” mundial absurdo? */
+/**
+ * ¿Hay al menos un ancla para disparar búsqueda v2 sin un “widened” mundial absurdo?
+ *
+ * Incluye **operación explícita** (`sale` | `rent` | `temporary_rent`): las rutas
+ * `/venta` y `/alquiler` fijan operación sin localidad; sin esto `searchV2` nunca
+ * se habilitaba y el listado quedaba vacío pese a que la home sí muestra avisos
+ * vía SQL (`getFeatured`).
+ */
 export function searchSessionHasAnchor(s: SearchSessionMVP): boolean {
   const n = normalizeSearchSessionMVP(s)
+  if (
+    n.operationType === 'sale' ||
+    n.operationType === 'rent' ||
+    n.operationType === 'temporary_rent'
+  ) {
+    return true
+  }
   if (n.city || n.neighborhood) return true
   if (n.q && n.q.length >= 2) return true
   if (

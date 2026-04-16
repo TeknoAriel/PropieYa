@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { normalizeSearchSessionMVP } from './search-session-mvp'
+import {
+  normalizeSearchSessionMVP,
+  searchSessionHasAnchor,
+} from './search-session-mvp'
 
 describe('normalizeSearchSessionMVP + parsing en sesión', () => {
   it('depto alquiler rosario: operación, tipo y ciudad estructurados; q residual sin rosario', () => {
@@ -51,5 +54,24 @@ describe('normalizeSearchSessionMVP + parsing en sesión', () => {
     expect(n.city).toBe('Mendoza')
     expect(n.operationType).toBe('rent')
     expect(n.propertyType).toBe('apartment')
+  })
+})
+
+describe('searchSessionHasAnchor', () => {
+  it('operación sola (p. ej. /venta) cuenta como ancla de catálogo', () => {
+    expect(
+      searchSessionHasAnchor(
+        normalizeSearchSessionMVP({ operationType: 'sale' })
+      )
+    ).toBe(true)
+    expect(
+      searchSessionHasAnchor(
+        normalizeSearchSessionMVP({ operationType: 'rent' })
+      )
+    ).toBe(true)
+  })
+
+  it('sin operación ni localidad ni mapa ni q: no hay ancla', () => {
+    expect(searchSessionHasAnchor(normalizeSearchSessionMVP({}))).toBe(false)
   })
 })
