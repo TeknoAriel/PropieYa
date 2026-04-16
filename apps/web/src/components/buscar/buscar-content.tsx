@@ -68,6 +68,7 @@ import {
 import { AddToCompareButton } from '@/components/compare/add-to-compare-button'
 import { BuscarLocalityModal } from '@/components/buscar/buscar-locality-modal'
 import { BuscarSessionBar } from '@/components/buscar/buscar-session-bar'
+import { HeroSearchBar } from '@/components/home/hero-search-bar'
 import { BuscarRecentSearches } from '@/components/buscar/buscar-recent-searches'
 import { ConversationalSearchBlock } from '@/components/portal/conversational-search-block'
 import { InductiveSearchChips } from '@/components/portal/inductive-search-chips'
@@ -1444,6 +1445,33 @@ export function BuscarContent({
             </div>
           </details>
         ) : null}
+
+        <section
+          aria-label="Búsqueda por texto"
+          className="rounded-lg border border-border/35 bg-surface-primary/70 px-3 py-2.5 shadow-sm md:px-4 md:py-3"
+        >
+          <div className="mb-2 space-y-0.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">
+              {S.buscarFieldKeywords}
+            </p>
+            <p className="text-[11px] leading-snug text-text-secondary md:text-xs">
+              {S.keywordPlaceholder}
+            </p>
+          </div>
+          <HeroSearchBar
+            inputId="buscar-hero-q"
+            formAriaLabel="Búsqueda por palabras clave"
+            value={q}
+            onValueChange={setQ}
+            onSubmit={(trimmed) => {
+              pushBuscarQueryParams((p) => {
+                if (trimmed) p.set('q', trimmed)
+                else p.delete('q')
+              })
+            }}
+            className="max-w-none"
+          />
+        </section>
 
         <section
           aria-label="Filtros de búsqueda"
