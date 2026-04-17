@@ -5,6 +5,19 @@
 
 import { getLeads, getProperties } from './kiteprop-client'
 
+/** Por defecto 10s; override con `KITEPROP_MCP_FETCH_TIMEOUT_MS` (1000–120000). */
+const DEFAULT_MCP_FETCH_TIMEOUT_MS = 10_000
+
+function mcpFetchTimeoutMs(): number {
+  const raw = process.env.KITEPROP_MCP_FETCH_TIMEOUT_MS?.trim()
+  if (!raw) return DEFAULT_MCP_FETCH_TIMEOUT_MS
+  const n = Number.parseInt(raw, 10)
+  if (!Number.isFinite(n) || n < 1000 || n > 120_000) {
+    return DEFAULT_MCP_FETCH_TIMEOUT_MS
+  }
+  return n
+}
+
 export type KitepropMcpQueryResult = {
   results: unknown[]
   summary: string
@@ -50,6 +63,10 @@ function tryParseJsonRpcResult(body: string): unknown {
   return null
 }
 
+function isAbortError(e: unknown): boolean {
+  return e instanceof Error && e.name === 'AbortError'
+}
+
 async function mcpToolsCall(
   tool: string,
   args: Record<string, unknown>
@@ -59,8 +76,14 @@ async function mcpToolsCall(
     return { ok: false, error: 'Sin KITEPROP_API_KEY' }
   }
 
+  const endpoint = mcpUrl()
+  const timeoutMs = mcpFetchTimeoutMs()
+  const controller = new AbortController()
+  const startedAt = Date.now()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
   try {
-    const res = await fetch(mcpUrl(), {
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -74,6 +97,7 @@ async function mcpToolsCall(
         id: globalThis.crypto?.randomUUID?.() ?? `kp-${Date.now()}`,
       }),
       cache: 'no-store',
+      signal: controller.signal,
     })
 
     const text = await res.text()
@@ -92,9 +116,19 @@ async function mcpToolsCall(
 
     return { ok: true, result: text }
   } catch (e) {
+    if (isAbortError(e)) {
+      const elapsedMs = Date.now() - startedAt
+      console.warn(
+        '[kiteprop-mcp] tools/call MCP timeout',
+        JSON.stringify({ tool, endpoint, timeoutMs, elapsedMs })
+      )
+      return { ok: false, error: `MCP timeout (${timeoutMs}ms)` }
+    }
     const msg = e instanceof Error ? e.message : String(e)
     console.error('[kiteprop-mcp] tools/call error', tool, msg)
     return { ok: false, error: msg }
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 
