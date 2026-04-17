@@ -869,53 +869,57 @@ export function BuscarContent({
       }
     )
 
+  /** Sin datos de UI cuando la query falló: evita mezclar error con caché/placeholder obsoleto. */
+  const dataV2Ui = isError ? undefined : dataV2
+
   const listingsAll = useMemo(() => {
-    if (!dataV2?.buckets) return []
+    if (!dataV2Ui?.buckets) return []
     const out: BuscarListingCardData[] = []
-    for (const b of dataV2.buckets) {
+    for (const b of dataV2Ui.buckets) {
       for (const row of b.items) {
         out.push(row as BuscarListingCardData)
       }
     }
     return out
-  }, [dataV2])
+  }, [dataV2Ui])
 
   const listingsForMap = useMemo(() => {
-    if (!dataV2?.buckets || searchV2WidenedOpen) return listingsAll
-    const widened = dataV2.buckets.find((b) => b.id === 'widened')
+    if (!dataV2Ui?.buckets || searchV2WidenedOpen) return listingsAll
+    const widened = dataV2Ui.buckets.find((b) => b.id === 'widened')
     const widenedIds = new Set(
       (widened?.items ?? []).map(
         (row) => (row as BuscarListingCardData).id
       )
     )
     return listingsAll.filter((l) => !widenedIds.has(l.id))
-  }, [dataV2, listingsAll, searchV2WidenedOpen])
+  }, [dataV2Ui, listingsAll, searchV2WidenedOpen])
 
   const widenedListCount = useMemo(() => {
-    const b = dataV2?.buckets?.find((x) => x.id === 'widened')
+    const b = dataV2Ui?.buckets?.find((x) => x.id === 'widened')
     return b?.items.length ?? 0
-  }, [dataV2])
+  }, [dataV2Ui])
 
   const shortSearchUxMessages = useMemo(() => {
+    if (!dataV2Ui?.totalsByBucket) return []
     const total =
-      (dataV2?.totalsByBucket.strong ?? 0) +
-      (dataV2?.totalsByBucket.near ?? 0) +
-      (dataV2?.totalsByBucket.widened ?? 0)
+      (dataV2Ui.totalsByBucket.strong ?? 0) +
+      (dataV2Ui.totalsByBucket.near ?? 0) +
+      (dataV2Ui.totalsByBucket.widened ?? 0)
     if (total > 0) return []
-    return (dataV2?.messages ?? [])
+    return (dataV2Ui.messages ?? [])
       .filter((m) => typeof m === 'string' && m.length <= 220)
       .slice(0, 1)
-  }, [dataV2?.messages, dataV2?.totalsByBucket])
+  }, [dataV2Ui?.messages, dataV2Ui?.totalsByBucket])
 
   const data =
-    dataV2 != null
+    dataV2Ui != null
       ? {
           total:
-            dataV2.totalsByBucket.strong +
-            dataV2.totalsByBucket.near +
-            dataV2.totalsByBucket.widened,
+            dataV2Ui.totalsByBucket.strong +
+            dataV2Ui.totalsByBucket.near +
+            dataV2Ui.totalsByBucket.widened,
           items: listingsAll,
-          searchUX: { messages: dataV2.messages as string[] },
+          searchUX: { messages: dataV2Ui.messages as string[] },
           nextCursor: null as string | null,
         }
       : null
@@ -2485,8 +2489,14 @@ export function BuscarContent({
         ) : null}
 
         <div id="buscar-resultados" className="scroll-mt-20 space-y-4">
+          {isError ? (
+            <Card className="space-y-2 p-6">
+              <p className="text-sm font-medium text-text-primary">{S.searchLoadErrorSoftTitle}</p>
+              <p className="text-sm text-text-secondary">{S.searchLoadErrorSoftBody}</p>
+            </Card>
+          ) : (
+            <>
           {!isLoading &&
-          dataV2 &&
           data &&
           data.total === 0 &&
           hasActiveSearchCriteria ? (
@@ -2549,18 +2559,18 @@ export function BuscarContent({
               ))}
             </div>
           ) : null}
-          {dataV2?.emptyExplanation && (data?.total ?? 0) === 0 ? (
+          {dataV2Ui?.emptyExplanation && (data?.total ?? 0) === 0 ? (
             <Card className="border-semantic-warning/25 bg-semantic-warning/5 p-3 text-sm leading-relaxed text-text-primary">
-              {dataV2.emptyExplanation}
+              {dataV2Ui.emptyExplanation}
             </Card>
           ) : null}
-          {dataV2?.actions && dataV2.actions.length > 0 ? (
+          {dataV2Ui?.actions && dataV2Ui.actions.length > 0 ? (
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
                 {S.searchV2SuggestedActions}
               </p>
               <div className="flex flex-wrap gap-2">
-                {dataV2.actions.map((a) => (
+                {dataV2Ui.actions.map((a) => (
                   <Button
                     key={a.id}
                     type="button"
@@ -2579,12 +2589,7 @@ export function BuscarContent({
               </div>
             </div>
           ) : null}
-          {isError ? (
-            <Card className="space-y-2 p-6">
-              <p className="text-sm font-medium text-text-primary">{S.searchLoadErrorSoftTitle}</p>
-              <p className="text-sm text-text-secondary">{S.searchLoadErrorSoftBody}</p>
-            </Card>
-          ) : isLoading && !dataV2 ? (
+          {isLoading && !dataV2Ui ? (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
                 <Card key={i} className="overflow-hidden">
@@ -2597,7 +2602,7 @@ export function BuscarContent({
                 </Card>
               ))}
             </div>
-          ) : dataV2?.buckets ? (
+          ) : dataV2Ui?.buckets ? (
             <div className="space-y-6">
               {!isLoading &&
               data &&
@@ -2629,7 +2634,7 @@ export function BuscarContent({
               {(() => {
                 let globalIndex = 0
                 const widenedCount =
-                  dataV2.buckets.find((b) => b.id === 'widened')?.totalInBucket ??
+                  dataV2Ui.buckets.find((b) => b.id === 'widened')?.totalInBucket ??
                   0
 
                 const digestOpts = {
@@ -2644,7 +2649,7 @@ export function BuscarContent({
 
                 return (
                   <>
-                    {dataV2.buckets.map((bucket) => {
+                    {dataV2Ui.buckets.map((bucket) => {
                       if (bucket.id === 'near') {
                         if (bucket.items.length === 0) return null
                         const nearCount = bucket.totalInBucket
@@ -2895,6 +2900,8 @@ export function BuscarContent({
               ) : null}
             </div>
           ) : null}
+            </>
+          )}
         </div>
 
 
