@@ -28,12 +28,15 @@ export function HeroSearch() {
             {pack.hero.line1}{' '}
             <span className="text-brand-primary">{pack.hero.line2Accent}</span>
           </h1>
+          <p className="mx-auto mt-2 max-w-xl text-sm leading-snug text-text-secondary md:text-base">
+            {pack.hero.subtitle}
+          </p>
 
           <HeroSearchBar
             value={query}
             onValueChange={setQuery}
             onSubmit={handleSubmit}
-            className="mx-auto mt-5 max-w-xl md:mt-6"
+            className="mx-auto mt-4 max-w-xl md:mt-5"
           />
         </div>
       </div>

@@ -73,7 +73,7 @@ const HOW_IT_WORKS_PROPOSAL_STEPS: PortalHowStep[] = [
   {
     title: 'Traducimos a búsqueda',
     description:
-      'Tu intención se convierte en filtros y texto residual sobre el mismo motor SQL/Elasticsearch.',
+      'Tu intención se convierte en criterios claros que podés ajustar cuando quieras.',
   },
   {
     title: 'Refiná como prefieras',
@@ -107,12 +107,11 @@ const reglaPortalV1: PortalCopyPack = {
     line1: 'Encontrá tu próximo lugar',
     line2Accent: 'contando lo que buscás',
     subtitle:
-      'Una frase ordena operación, zona y prioridades. Es el mismo criterio que detrás del mapa y los filtros, con otro punto de partida.',
-    placeholder:
-      'Ej: 3 ambientes luminosos en Palermo, hasta tanto en venta o alquiler…',
-    filterLink: 'Modo clásico: mapa y filtros',
-    assistantBadge: 'Escribí en simple y encontramos por vos',
-    assistantPitch: 'Mismo buscador que mapa y filtros.',
+      'Escribí una frase o pasá al buscador para afinar zona, tipo y precio.',
+    placeholder: 'Zona, ambientes, presupuesto…',
+    filterLink: 'Ir al buscador',
+    assistantBadge: 'Describí lo que buscás',
+    assistantPitch: 'Podés seguir con mapa y filtros cuando quieras.',
   },
   heroExamples: [
     '3 ambientes en Palermo con balcón',
@@ -148,10 +147,9 @@ const conversacionPrimero: PortalCopyPack = {
     line1: 'Encontrá propiedades',
     line2Accent: 'con la claridad de un portal serio',
     subtitle:
-      'Buscá en una frase o explorá por tipo y zona. Refiná después con mapa y filtros, sin perder el hilo.',
-    placeholder:
-      'Zona, ambientes, presupuesto… Escribí lo que buscás y seguí en el buscador.',
-    filterLink: 'Ir al buscador con mapa y filtros',
+      'Frase libre o buscador: elegí cómo empezar y refiná cuando quieras.',
+    placeholder: 'Zona, ambientes, presupuesto…',
+    filterLink: 'Ir al buscador',
   },
   heroExamples: [
     'Casa en venta, 2 dormitorios, grande, con pileta y quincho',
@@ -166,8 +164,7 @@ const conversacionPrimero: PortalCopyPack = {
   },
   featured: {
     title: 'Elegí por intuición o por dato',
-    subtitle:
-      'Avisos activos para explorar: el asistente y los filtros comparten el mismo índice.',
+    subtitle: 'Avisos activos para explorar.',
     viewAll: 'Ver todas',
     viewAllMobile: 'Ver todas las propiedades',
   },
@@ -187,8 +184,8 @@ const varianteBCercano: PortalCopyPack = {
       'Decinos qué buscás y te mostramos caminos claros; podés seguir en conversación o pasar al mapa y los filtros sin perder contexto.',
     placeholder: 'Contanos qué imaginas: zona, ambientes, presupuesto…',
     filterLink: 'Modo clásico: mapa y filtros',
-    assistantBadge: 'Escribí en simple y encontramos por vos',
-    assistantPitch: 'Mismo buscador que mapa y filtros.',
+    assistantBadge: 'Describí lo que buscás',
+    assistantPitch: 'Podés seguir con mapa y filtros cuando quieras.',
   },
   heroExamples: [
     'Quiero algo luminoso para familia, 3 dormitorios',
@@ -215,13 +212,21 @@ const varianteBCercano: PortalCopyPack = {
  * (descubrimiento, decisión, confianza; mismo motor).
  */
 export const PORTAL_SEARCH_UX_COPY = {
-  buscarTitle: 'Buscador',
+  buscarTitle: 'Buscá propiedades',
   /** Una línea; sin explicar el motor en la cabecera. */
-  buscarSubtitle: 'Elegí zona, tipo y ajustá si querés.',
+  buscarSubtitle: 'Palabras, zona y tipo: refiná cuando quieras.',
+  /** Barra principal arriba del todo (palabra clave). */
+  buscarMainSearchLabel: 'Búsqueda por palabras',
+  buscarMainSearchPlaceholder: 'Ej. luminoso, cochera, Palermo…',
+  buscarMainSearchCta: 'Buscar',
   /** Chip sobre el bloque conversacional en /buscar */
-  buscarAssistantBadge: 'Escribí en simple y encontramos por vos',
+  buscarAssistantBadge: 'Describí lo que buscás',
   /** Resumen colapsable del bloque conversacional (cuando hay resultados). */
-  buscarAssistantCollapseTitle: 'Escribí en simple y encontramos por vos',
+  buscarAssistantCollapseTitle: 'Asistente: describí lo que buscás',
+  /** Una línea bajo el summary del asistente (no repetir el título). */
+  buscarAssistantPanelHint: 'Te ayudamos a encontrar opciones.',
+  /** Ayuda larga del mapa (colapsable). */
+  mapHelpAccordionTitle: 'Más detalle sobre el mapa',
   ventaTitle: 'Propiedades en venta',
   ventaSubtitle:
     'Avisos en venta. Podés refinar con mapa y filtros.',
@@ -246,10 +251,10 @@ export const PORTAL_SEARCH_UX_COPY = {
   profileSaved: 'Perfil actualizado con estos filtros.',
   alertSaved: 'Alerta creada. Podés verla en Mis alertas.',
 
-  keywordPlaceholder: 'Palabras clave (título, descripción)',
+  keywordPlaceholder: 'Palabras que quieras que aparezcan en el aviso',
 
   /** Etiquetas fijas encima de cada control (el placeholder solo ayuda vacío). */
-  buscarFieldKeywords: 'Palabras clave',
+  buscarFieldKeywords: 'Refinar por palabras',
   buscarFieldOperation: 'Operación',
   buscarFieldPropertyType: 'Tipo de propiedad',
   buscarFieldCity: 'Ciudad',
@@ -291,10 +296,9 @@ export const PORTAL_SEARCH_UX_COPY = {
   advancedSectionLocation: 'Ubicación y superficie',
 
   /** Encabezado del card de filtros (tres capas). */
-  mainFiltersTitle: 'Filtros',
-  mainFiltersSubtitle:
-    'Operación, tipo, zona y números. El resto va en capas abajo.',
-  buscarLayer1Kicker: '1 · Lo principal',
+  mainFiltersTitle: 'Zona, tipo y precio',
+  mainFiltersSubtitle: 'Ajustá lo esencial; el resto queda en opciones avanzadas.',
+  buscarLayer1Kicker: '',
   buscarPreferMapCta: 'Prefiero en mapa',
   buscarLayer2Title: '2 · Afinado guiado',
   buscarLayer2Subtitle:
@@ -323,7 +327,7 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Zona confirmada: el listado y el mapa muestran las mismas propiedades. Mové el mapa y volvé a confirmar para actualizar.',
   buscarMapReleaseFilter: 'Dejar de filtrar por el mapa',
   searchV2SuggestedActions: 'Te proponemos esto',
-  searchV2TotalSummary: 'En total hay {n} avisos (las tres listas juntas).',
+  searchV2TotalSummary: '{n} avisos en esta búsqueda.',
   /** Buscador v2: texto bajo el título del bucket ampliado (colapsable). */
   searchV2WidenedExplainer:
     'Misma operación y tipo que pediste: acá relajamos un solo criterio extra (superficie, dormitorios o precio), sin mezclar resultados fuera de tu ciudad ni precios desorbitados.',
@@ -435,17 +439,17 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Probá actualizar en un momento o usá los filtros clásicos más abajo. Si el problema continúa, puede ser un tema de conexión temporal.',
 
   conversationalAssistantDegraded:
-    'No pudimos interpretar la búsqueda en este momento. Podés intentar de nuevo en unos segundos o usar los filtros y el mapa: el resultado suele ser el mismo.',
+    'No pudimos interpretar la búsqueda ahora. Probá de nuevo en unos segundos o usá los filtros y el mapa.',
   conversationalRelaxedAmenitiesNote:
     'Ampliamos la búsqueda: los amenities pasan a ser preferencia para mostrarte más opciones.',
   conversationalRelaxedOperationNote:
-    'Incluimos venta y alquiler para maximizar coincidencias con lo que buscás.',
+    'Incluimos venta y alquiler para mostrarte más opciones.',
   searchSqlFallbackCountNote:
-    'Contamos avisos desde la base de datos porque el índice de búsqueda no devolvió coincidencias con estos criterios.',
+    'Mostramos avisos con los mismos criterios usando una vía alternativa.',
   searchEsUnderfillNote:
-    'El índice de búsqueda devolvió pocas coincidencias; mostramos el listado alineado con la base de datos (mismos filtros).',
+    'Hay pocas coincidencias exactas; el listado refleja lo disponible con tus filtros.',
   searchSqlFallbackRowsNote:
-    'Mostramos coincidencias desde la base de datos porque el índice de búsqueda no devolvió filas con estos criterios.',
+    'Mostramos avisos con los mismos criterios usando una vía alternativa.',
   searchPaginationIndexSoft:
     'No pudimos cargar la página siguiente en este momento. Volvé al inicio del listado o refrescá la página; el índice puede estar actualizándose.',
 
@@ -455,7 +459,7 @@ export const PORTAL_SEARCH_UX_COPY = {
     'No pudimos conectar con la base de datos por un instante. Intentá de nuevo en unos segundos o usá los filtros clásicos debajo del buscador.',
 
   mapHelp:
-    'Solo se marcan avisos con ubicación. El filtro por mapa aplica con el mapa abierto: opción «Actualizar resultados al mover el mapa», o un clic en «Buscar en esta zona», o polígono de 3+ vértices. Con ciudad o barrio, el listado se ordena por cercanía al centro de esa zona (sin recortar). Sin zona, el mapa puede abrir cerca de tu ubicación si el navegador lo permite.',
+    'Solo aparecen pins en avisos con ubicación. Podés mover el mapa y actualizar la zona, dibujar un polígono de tres o más puntos, o buscar en el rectángulo visible. Con ciudad o barrio, el listado se ordena por cercanía a esa zona.',
 
   mapNoPins:
     'No hay resultados con pin en este momento (falta geolocalización en los avisos o los filtros no devolvieron coincidencias con coordenadas).',
@@ -477,7 +481,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   /** Sprint 26.6 — búsqueda progresiva */
   essentialsSectionTitle: 'Esenciales',
   essentialsSectionSubtitle:
-    'Zona, operación y números clave. El mapa y los filtros avanzados usan el mismo motor.',
+    'Zona, operación y números clave. Podés abrir el mapa cuando lo necesites.',
   facetChipsTitle: 'Sugerencias rápidas',
   facetChipsHint: 'Del catálogo de amenities; podés afinar la lista completa en «Más filtros».',
 
@@ -490,16 +494,13 @@ export const PORTAL_SEARCH_UX_COPY = {
 
   /** Sprint 32 — descubrimiento inductivo (mismos params que /buscar). */
   inductiveExploreTitle: 'Búsquedas para arrancar',
-  inductiveExploreSubtitle:
-    'Mismo motor que arriba; tocá y refinás después.',
+  inductiveExploreSubtitle: 'Ideas para arrancar; refinás después.',
 
   /** Bloque conversacional (home + /buscar): intención sin formulario. */
   conversationalBlockTitle: 'Contanos qué buscás',
-  conversationalBlockSubtitle:
-    'Escribí o dictá: lo pasamos a filtros con el mismo motor que mapa y filtros.',
+  conversationalBlockSubtitle: 'Escribí o dictá; refiná después con filtros o mapa.',
   /** Versión más corta (bloque compacto en /buscar). */
-  conversationalBlockSubtitleCompact:
-    'Escribí en simple; refiná después con filtros o mapa.',
+  conversationalBlockSubtitleCompact: 'Escribí en simple; refiná cuando quieras.',
   conversationalVoiceStart: 'Dictar',
   conversationalVoiceStop: 'Detener',
   conversationalVoiceListening: 'Escuchando…',
@@ -508,10 +509,10 @@ export const PORTAL_SEARCH_UX_COPY = {
   conversationalInterpretedTitle: 'Lo que entendimos',
   conversationalResultsPrefix: 'Propiedades encontradas',
   conversationalRelaxedCountNote:
-    'Incluye coincidencias ampliadas: el listado abajo respeta la misma lógica.',
+    'Incluye opciones parecidas a lo que pediste.',
   conversationalNextTitle: 'Siguiente paso',
   conversationalNextMap: 'Afinar en el mapa',
-  conversationalNextFilters: 'Filtros avanzados (capa 3)',
+  conversationalNextFilters: 'Más filtros',
   conversationalNextAgain:
     'Si querés otra intención, usá de nuevo la búsqueda con frase o ajustá los filtros.',
   conversationalScrollResults: 'Ver resultados',

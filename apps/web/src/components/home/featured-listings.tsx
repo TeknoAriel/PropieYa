@@ -26,7 +26,7 @@ type FeaturedListingCardData = {
 
 export function FeaturedListings() {
   const pack = getPortalPack()
-  const { data: listingsRaw = [], isLoading, isError, error } =
+  const { data: listingsRaw = [], isLoading, isError } =
     trpc.listing.getFeatured.useQuery({ limit: 6 })
   const listings = listingsRaw as unknown as FeaturedListingCardData[]
 
@@ -52,10 +52,7 @@ export function FeaturedListings() {
 
         {isError ? (
           <p className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-text-primary">
-            No pudimos cargar los avisos.{' '}
-            {error?.message?.includes('DATABASE') || error?.message?.includes('required')
-              ? 'Revisá que DATABASE_URL esté definida en Vercel (producción).'
-              : (error?.message ?? 'Intentá de nuevo más tarde.')}
+            No pudimos cargar los destacados. Probá de nuevo en un momento.
           </p>
         ) : isLoading ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-3">

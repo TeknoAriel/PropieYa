@@ -555,7 +555,7 @@ export function BuscarContent({
   } | null>(null)
   const [userGeo, setUserGeo] = useState<{ lat: number; lng: number } | null>(null)
   const userGeoRequestRef = useRef(false)
-  /** Filtros clásicos colapsados por defecto; solo se abren si el usuario toca «Mostrar filtros». */
+  /** Opciones avanzadas, mapa detallado y capas extra: colapsado por defecto. */
   const [classicFiltersOpen, setClassicFiltersOpen] = useState(false)
   const [flowDialogOpen, setFlowDialogOpen] = useState(false)
   const [localityModalOpen, setLocalityModalOpen] = useState(false)
@@ -1275,6 +1275,56 @@ export function BuscarContent({
     scrollToElementId('buscar-esenciales')
   }, [scrollToElementId])
 
+  const applyMainFiltersToUrl = useCallback(() => {
+    pushBuscarQueryParams((p) => {
+      const qt = q.trim()
+      if (qt) p.set('q', qt.slice(0, 200))
+      else p.delete('q')
+
+      if (searchPathPage === 'buscar') {
+        if (operationType) p.set('op', operationType)
+        else p.delete('op')
+      }
+
+      if (propertyType) p.set('tipo', propertyType)
+      else p.delete('tipo')
+
+      const c = city.trim()
+      if (c) p.set('ciudad', c.slice(0, 120))
+      else p.delete('ciudad')
+
+      const n = neighborhood.trim()
+      if (n) p.set('barrio', n.slice(0, 120))
+      else p.delete('barrio')
+
+      const nMin = Number(minPrice)
+      if (minPrice.trim() !== '' && Number.isFinite(nMin)) {
+        p.set('min', String(Math.max(0, Math.round(nMin))))
+      } else {
+        p.delete('min')
+      }
+
+      const nMax = Number(maxPrice)
+      if (maxPrice.trim() !== '' && Number.isFinite(nMax)) {
+        p.set('max', String(Math.max(0, Math.round(nMax))))
+      } else {
+        p.delete('max')
+      }
+    })
+    scrollToElementId('buscar-resultados')
+  }, [
+    pushBuscarQueryParams,
+    scrollToElementId,
+    q,
+    searchPathPage,
+    operationType,
+    propertyType,
+    city,
+    neighborhood,
+    minPrice,
+    maxPrice,
+  ])
+
   const smartSuggestionIds = useMemo(() => {
     if (!hasActiveSearchCriteria) return []
     const ids: string[] = []
@@ -1448,161 +1498,6 @@ export function BuscarContent({
           </details>
         ) : null}
 
-        <details open
-          id="buscar-asistente"
-          className="scroll-mt-16 rounded-lg border border-border/40 bg-surface-secondary/15"
-        >
-          <summary className="cursor-pointer list-none px-2.5 py-1.5 text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden md:px-3 md:py-2 md:text-sm">
-            {S.buscarAssistantCollapseTitle}
-          </summary>
-          <div className="space-y-2 border-t border-border/40 px-2.5 pb-3 pt-2 md:space-y-2.5 md:px-3 md:pb-3 md:pt-2.5">
-            <ConversationalSearchBlock
-              variant="buscar"
-              routerMode="replace"
-              searchPathPage={searchPathPage}
-              forcedOperation={forcedOperation}
-              onAfterNavigate={setAssistantHint}
-              compact
-              hideTitle
-              buscarSearchParamsKey={searchParamsKey}
-            />
-            {!classicFiltersOpen ? (
-              <details className="rounded-md border border-border/40 bg-surface-secondary/20">
-                <summary className="cursor-pointer px-2.5 py-1.5 text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden md:px-3 md:py-2">
-                  {S.inductiveExploreTitle}
-                </summary>
-                <div className="space-y-2 border-t border-border/50 px-2.5 py-2 md:space-y-2.5 md:px-3 md:py-2.5">
-                  {contextualBlock ? (
-                    <div className="space-y-1">
-                      <h3 className="text-sm font-semibold text-text-primary">
-                        {contextualBlock.title}
-                      </h3>
-                      <p className="text-xs leading-relaxed text-text-secondary">
-                        {contextualBlock.body}
-                      </p>
-                    </div>
-                  ) : null}
-                  {showQuickAmenityChips ? (
-                    <div className="space-y-2">
-                      <div>
-                        <p className="text-sm font-semibold text-text-primary">
-                          {S.facetChipsTitle}
-                        </p>
-                        <p className="mt-0.5 text-xs text-text-secondary">
-                          {S.facetChipsHintRefine}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {quickFacetIds!.map((fid) => {
-                          const def = facetFlagCatalog.find((f) => f.id === fid)
-                          if (!def) return null
-                          const on = selectedAmenityFacets.includes(fid)
-                          return (
-                            <Button
-                              key={`asistente-facet-${fid}`}
-                              type="button"
-                              size="sm"
-                              variant={on ? 'default' : 'outline'}
-                              className="h-8 text-xs"
-                              onClick={() =>
-                                setSelectedAmenityFacets((prev) =>
-                                  on ? prev.filter((x) => x !== fid) : [...prev, fid]
-                                )
-                              }
-                            >
-                              {def.label}
-                            </Button>
-                          )
-                        })}
-                      </div>
-                      <label className="flex cursor-pointer items-start gap-2 text-sm text-text-primary">
-                        <input
-                          type="checkbox"
-                          className="mt-0.5 rounded border-border"
-                          checked={amenitiesStrict}
-                          onChange={(e) => setAmenitiesStrict(e.target.checked)}
-                        />
-                        <span>
-                          <span className="font-medium">{S.strictAmenitiesLabel}</span>
-                          <span className="block text-xs text-text-secondary">
-                            {S.strictAmenitiesHint}
-                          </span>
-                        </span>
-                      </label>
-                    </div>
-                  ) : (
-                    <InductiveSearchChips variant="embedded" showSubtitle={false} />
-                  )}
-                </div>
-              </details>
-            ) : null}
-          </div>
-        </details>
-
-        {assistantHint ? (
-          <div className="rounded-md border border-border/50 bg-surface-secondary/40 px-2.5 py-2 text-sm text-text-secondary md:px-3 md:py-2.5">
-            <p className="text-sm font-medium text-text-primary">
-              {S.conversationalInterpretedTitle}
-            </p>
-            <p className="mt-0.5 text-sm leading-snug">{assistantHint.summary}</p>
-            {assistantHint.messages && assistantHint.messages.length > 0 ? (
-              <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-xs text-text-tertiary">
-                {assistantHint.messages.map((m, i) => (
-                  <li key={`hint-msg-${i}`}>{m}</li>
-                ))}
-              </ul>
-            ) : null}
-            <p className="mt-1.5 text-sm text-text-primary">
-              {assistantHint.total > 0 ? (
-                <>
-                  {S.conversationalResultsPrefix}:{' '}
-                  <strong>{assistantHint.total}</strong>
-                  {assistantHint.primaryTotal !== undefined &&
-                  assistantHint.primaryTotal === 0 &&
-                  assistantHint.total > 0 ? (
-                    <span className="mt-1 block text-xs font-normal text-text-secondary">
-                      {S.conversationalRelaxedCountNote}
-                    </span>
-                  ) : null}
-                </>
-              ) : (
-                <span className="text-text-secondary">{S.conversationalResultsZero}</span>
-              )}
-            </p>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={openMapFromAssistant}
-              >
-                {S.conversationalNextMap}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() => {
-                  setClassicFiltersOpen(true)
-                  setShowDeepFilters(true)
-                  window.requestAnimationFrame(() =>
-                    document
-                      .getElementById('buscar-capa-3')
-                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  )
-                }}
-              >
-                {S.conversationalNextFilters}
-              </Button>
-              <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" asChild>
-                <a href="#buscar-resultados">{S.conversationalScrollResults}</a>
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
         <section
           aria-label="Filtros de búsqueda"
           className="flex flex-wrap items-center gap-1.5 rounded-md border border-border/35 bg-surface-primary/50 px-2 py-1.5"
@@ -1668,8 +1563,7 @@ export function BuscarContent({
         </section>
 
         <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
-          {classicFiltersOpen ? (
-            <Card className="space-y-4 p-4 md:p-6">
+          <Card className="space-y-4 p-4 md:p-6">
           <div>
             <h2 className="text-lg font-semibold text-text-primary">
               {S.mainFiltersTitle}
@@ -1679,9 +1573,37 @@ export function BuscarContent({
             </p>
           </div>
 
-          <p className="text-xs font-semibold uppercase tracking-wide text-brand-primary">
-            {S.buscarLayer1Kicker}
-          </p>
+          <div className="flex flex-col gap-2 border-b border-border/40 pb-4 sm:flex-row sm:items-end sm:gap-3">
+            <div className="min-w-0 flex-1">
+              <BuscarLabeledField id="buscar-q" label={S.buscarMainSearchLabel}>
+                <Input
+                  id="buscar-q"
+                  placeholder={S.buscarMainSearchPlaceholder}
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      applyMainFiltersToUrl()
+                    }
+                  }}
+                />
+              </BuscarLabeledField>
+            </div>
+            <Button
+              type="button"
+              className="h-[42px] shrink-0 sm:mb-0.5"
+              onClick={applyMainFiltersToUrl}
+            >
+              {S.buscarMainSearchCta}
+            </Button>
+          </div>
+
+          {S.buscarLayer1Kicker.trim() ? (
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand-primary">
+              {S.buscarLayer1Kicker}
+            </p>
+          ) : null}
           <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
             {S.locationBlockTitle}
           </p>
@@ -1764,6 +1686,7 @@ export function BuscarContent({
                 size="sm"
                 className="h-9"
                 onClick={() => {
+                  setClassicFiltersOpen(true)
                   setShowMap(true)
                   scrollToElementId('buscar-mapa')
                 }}
@@ -1773,6 +1696,29 @@ export function BuscarContent({
             </div>
           </div>
 
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <BuscarLabeledField id="buscar-precio-min" label={S.buscarFieldMinPrice}>
+              <Input
+                id="buscar-precio-min"
+                type="number"
+                placeholder="Ej. 50000"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+              />
+            </BuscarLabeledField>
+            <BuscarLabeledField id="buscar-precio-max" label={S.buscarFieldMaxPrice}>
+              <Input
+                id="buscar-precio-max"
+                type="number"
+                placeholder="Ej. 200000"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+              />
+            </BuscarLabeledField>
+          </div>
+
+          {classicFiltersOpen ? (
+          <>
           <div
             id="buscar-mapa"
             className="scroll-mt-24 space-y-2 rounded-lg border border-border/60 bg-surface-primary/80 p-3"
@@ -1965,7 +1911,12 @@ export function BuscarContent({
                       <p className="mt-1 text-text-secondary">{S.buscarMapFilterHintBody}</p>
                     </div>
                   )}
-                  <p className="text-xs text-text-tertiary">{S.mapHelp}</p>
+                  <details className="rounded-md border border-border/40 bg-surface-secondary/30 px-2 py-1.5">
+                    <summary className="cursor-pointer text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden">
+                      {S.mapHelpAccordionTitle}
+                    </summary>
+                    <p className="mt-2 text-xs leading-relaxed text-text-tertiary">{S.mapHelp}</p>
+                  </details>
                   {mapPins.length > 0 ? (
                     <p className="text-xs text-text-tertiary">{S.buscarMapListSyncHint}</p>
                   ) : null}
@@ -1978,24 +1929,6 @@ export function BuscarContent({
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <BuscarLabeledField id="buscar-precio-min" label={S.buscarFieldMinPrice}>
-              <Input
-                id="buscar-precio-min"
-                type="number"
-                placeholder="Ej. 50000"
-                value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value)}
-              />
-            </BuscarLabeledField>
-            <BuscarLabeledField id="buscar-precio-max" label={S.buscarFieldMaxPrice}>
-              <Input
-                id="buscar-precio-max"
-                type="number"
-                placeholder="Ej. 200000"
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
-              />
-            </BuscarLabeledField>
             {propertyType === 'land' ? (
               <>
                 <BuscarLabeledField id="buscar-sup-l1" label={S.buscarFieldMinSurface}>
@@ -2043,16 +1976,6 @@ export function BuscarContent({
                 </BuscarLabeledField>
               </>
             )}
-            <div className="md:col-span-2 lg:col-span-4">
-              <BuscarLabeledField id="buscar-q" label={S.buscarFieldKeywords}>
-                <Input
-                  id="buscar-q"
-                  placeholder={S.keywordPlaceholder}
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                />
-              </BuscarLabeledField>
-            </div>
           </div>
 
           {!showQuickAmenityChips ? (
@@ -2356,8 +2279,9 @@ export function BuscarContent({
               </div>
             </div>
           ) : null}
-          </Card>
+          </>
           ) : null}
+          </Card>
         </div>
 
         {hasActiveSearchCriteria ? (
@@ -2904,12 +2828,160 @@ export function BuscarContent({
           )}
         </div>
 
+        <details
+          id="buscar-asistente"
+          className="scroll-mt-16 rounded-lg border border-border/40 bg-surface-secondary/15"
+        >
+          <summary className="cursor-pointer list-none px-2.5 py-1.5 text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden md:px-3 md:py-2 md:text-sm">
+            {S.buscarAssistantCollapseTitle}
+          </summary>
+          <div className="space-y-2 border-t border-border/40 px-2.5 pb-3 pt-2 md:space-y-2.5 md:px-3 md:pb-3 md:pt-2.5">
+            <p className="text-xs text-text-secondary md:text-sm">{S.buscarAssistantPanelHint}</p>
+            <ConversationalSearchBlock
+              variant="buscar"
+              routerMode="replace"
+              searchPathPage={searchPathPage}
+              forcedOperation={forcedOperation}
+              onAfterNavigate={setAssistantHint}
+              compact
+              hideTitle
+              buscarSearchParamsKey={searchParamsKey}
+            />
+            <details className="rounded-md border border-border/40 bg-surface-secondary/20">
+              <summary className="cursor-pointer px-2.5 py-1.5 text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden md:px-3 md:py-2">
+                {S.inductiveExploreTitle}
+              </summary>
+              <div className="space-y-2 border-t border-border/50 px-2.5 py-2 md:space-y-2.5 md:px-3 md:py-2.5">
+                {contextualBlock ? (
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-semibold text-text-primary">
+                      {contextualBlock.title}
+                    </h3>
+                    <p className="text-xs leading-relaxed text-text-secondary">
+                      {contextualBlock.body}
+                    </p>
+                  </div>
+                ) : null}
+                {showQuickAmenityChips ? (
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-sm font-semibold text-text-primary">
+                        {S.facetChipsTitle}
+                      </p>
+                      <p className="mt-0.5 text-xs text-text-secondary">
+                        {S.facetChipsHintRefine}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {quickFacetIds!.map((fid) => {
+                        const def = facetFlagCatalog.find((f) => f.id === fid)
+                        if (!def) return null
+                        const on = selectedAmenityFacets.includes(fid)
+                        return (
+                          <Button
+                            key={`asistente-facet-${fid}`}
+                            type="button"
+                            size="sm"
+                            variant={on ? 'default' : 'outline'}
+                            className="h-8 text-xs"
+                            onClick={() =>
+                              setSelectedAmenityFacets((prev) =>
+                                on ? prev.filter((x) => x !== fid) : [...prev, fid]
+                              )
+                            }
+                          >
+                            {def.label}
+                          </Button>
+                        )
+                      })}
+                    </div>
+                    <label className="flex cursor-pointer items-start gap-2 text-sm text-text-primary">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 rounded border-border"
+                        checked={amenitiesStrict}
+                        onChange={(e) => setAmenitiesStrict(e.target.checked)}
+                      />
+                      <span>
+                        <span className="font-medium">{S.strictAmenitiesLabel}</span>
+                        <span className="block text-xs text-text-secondary">
+                          {S.strictAmenitiesHint}
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                ) : (
+                  <InductiveSearchChips variant="embedded" showSubtitle={false} />
+                )}
+              </div>
+            </details>
+          </div>
+        </details>
 
+        {assistantHint ? (
+          <div className="rounded-md border border-border/50 bg-surface-secondary/40 px-2.5 py-2 text-sm text-text-secondary md:px-3 md:py-2.5">
+            <p className="text-sm font-medium text-text-primary">
+              {S.conversationalInterpretedTitle}
+            </p>
+            <p className="mt-0.5 text-sm leading-snug">{assistantHint.summary}</p>
+            {assistantHint.messages && assistantHint.messages.length > 0 ? (
+              <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-xs text-text-tertiary">
+                {assistantHint.messages.map((m, i) => (
+                  <li key={`hint-msg-${i}`}>{m}</li>
+                ))}
+              </ul>
+            ) : null}
+            <p className="mt-1.5 text-sm text-text-primary">
+              {assistantHint.total > 0 ? (
+                <>
+                  {S.conversationalResultsPrefix}:{' '}
+                  <strong>{assistantHint.total}</strong>
+                  {assistantHint.primaryTotal !== undefined &&
+                  assistantHint.primaryTotal === 0 &&
+                  assistantHint.total > 0 ? (
+                    <span className="mt-1 block text-xs font-normal text-text-secondary">
+                      {S.conversationalRelaxedCountNote}
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                <span className="text-text-secondary">{S.conversationalResultsZero}</span>
+              )}
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={openMapFromAssistant}
+              >
+                {S.conversationalNextMap}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => {
+                  setClassicFiltersOpen(true)
+                  setShowDeepFilters(true)
+                  window.requestAnimationFrame(() =>
+                    document
+                      .getElementById('buscar-capa-3')
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  )
+                }}
+              >
+                {S.conversationalNextFilters}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" asChild>
+                <a href="#buscar-resultados">{S.conversationalScrollResults}</a>
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
-
-
-
-        
       </div>
 
       <BuscarLocalityModal

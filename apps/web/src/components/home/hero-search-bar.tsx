@@ -25,10 +25,16 @@ function getSpeechRecognitionCtor(): (new () => {
 }
 
 function buildSearchPlaceholder(pack: ReturnType<typeof getPortalPack>): string {
-  const ex = pack.heroExamples.slice(0, 3).filter(Boolean)
-  if (ex.length === 0) return pack.hero.placeholder
-  const joined = ex.join(' · ')
-  return joined.length > 120 ? `${joined.slice(0, 117)}…` : `Ej.: ${joined}`
+  const p = pack.hero.placeholder.trim()
+  if (p.length > 0) {
+    return p.length > 72 ? `${p.slice(0, 69)}…` : p
+  }
+  const ex = pack.heroExamples[0]?.trim()
+  return ex && ex.length > 0
+    ? ex.length > 72
+      ? `${ex.slice(0, 69)}…`
+      : `Ej.: ${ex}`
+    : 'Zona, ambientes, presupuesto…'
 }
 
 export type HeroSearchBarProps = {
