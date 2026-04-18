@@ -604,44 +604,53 @@ export const PORTAL_SEARCH_UX_COPY = {
 
 /** Ficha de propiedad: contacto y confianza (Sprint 28.8, voseo). */
 export const PORTAL_LISTING_UX_COPY = {
-  contactButton: 'Quiero que me contacten',
-  contactPrimaryCta: 'Quiero que me contacten',
-  contactScheduleCta: 'Pedir visita',
-  sidebarTitle: '¿Te interesa esta propiedad?',
+  contactButton: 'Consultá por esta propiedad',
+  contactPrimaryCta: 'Consultá por esta propiedad',
+  contactScheduleCta: 'Coordiná una visita',
+  /** Encima del título del bloque de contacto (ficha). */
+  listingContactEyebrow: 'Consultá sin compromiso',
+  sidebarTitle: 'Siguiente paso',
   sidebarLead:
-    'Dejanos tus datos: el equipo te contacta por este canal. No publicamos teléfono ni email del publicador en la ficha.',
+    'Dejanos tus datos y te respondemos con más información sobre este aviso. Es el canal oficial de consulta: no publicamos teléfono ni email del publicador en la ficha.',
   trustNote:
-    'Los criterios de tu búsqueda se mantienen coherentes en todo el portal; si algo no cierra, escribinos.',
-  contactSmartTitle: '¿Te llevamos un paso más cerca?',
+    'Podés seguir explorando el portal; si preferís hablar con alguien, este formulario es la vía directa.',
+  /** Línea breve según origen del aviso (solo copy; el dato ya existe en la ficha). */
+  listingContactListingOriginImport:
+    'Aviso alineado al inventario de socios: misma seriedad que en la inmobiliaria.',
+  listingContactListingOriginManual: 'Aviso publicado y atendido a través de Propieya.',
+  /** Bloque secundario: comparar (menor protagonismo). */
+  listingContactCompareSectionLabel: 'Para comparar con otras opciones',
+  contactSmartTitle: '¿Seguimos con esta propiedad?',
   contactSmartBodyViews:
-    'Esta propiedad encaja con lo que estás mirando. ¿Querés que te contacten por esta opción?',
+    'Parece que encaja con lo que buscás. Si querés más datos o disponibilidad, un clic alcanza.',
   contactSmartBodyReturn:
-    'Volviste a ver este aviso: suele ser señal de interés. ¿Querés que te escriban?',
+    'Volviste a mirar este aviso: suele ser buena señal. Pedí info y te escribimos.',
   contactSmartBodyCompare:
-    'La guardaste para comparar: es buen momento para pedir info sin compromiso.',
-  modalTitle: 'Te contactamos por esta propiedad',
+    'La tenés en la lista para comparar: es un buen momento para pedir detalle sin compromiso.',
+  modalTitle: 'Consultá por esta propiedad',
   modalDescriptionIdle:
-    'Completá el formulario: es el canal interno de Propieya; el publicador recibe tu consulta sin exponer su mail acá. Referencia del aviso:',
+    'Completá el formulario breve de abajo. Tu consulta llega al equipo y al publicador; acá no mostramos su mail ni teléfono.',
   contactModalInternalNote:
-    'No mostramos teléfono ni email del publicador en la web: la respuesta llega por el equipo o por mail a vos.',
+    'Te respondemos por este canal o por correo a tu casilla. Sin spam: solo lo relacionado con tu consulta.',
   modalSuccessTitle: 'Listo',
-  modalSuccessBody: 'Gracias. Si no ves respuesta en tu casilla, revisá spam o la carpeta de promociones.',
+  modalSuccessBody:
+    'Gracias. Revisá tu email (y spam o promociones) para la respuesta sobre este aviso.',
   modalNameLabel: 'Nombre',
   modalNamePlaceholder: 'Cómo te llamamos',
   modalEmailLabel: 'Email',
   modalEmailPlaceholder: 'tu@email.com',
   modalMessageLabel: 'Mensaje',
-  modalMessagePlaceholder: 'Contanos qué necesitás saber…',
+  modalMessagePlaceholder: 'Contanos qué querés saber: disponibilidad, expensas, visita…',
   modalCancel: 'Cancelar',
-  modalSubmit: 'Enviar',
+  modalSubmit: 'Enviar consulta',
   modalSubmitPending: 'Enviando…',
-  modalSentOk: 'Mensaje enviado',
+  modalSentOk: 'Consulta enviada',
 
   /** P1 confianza — ficha (vigencia, completitud, origen) */
   trustCardTitle: 'Transparencia del aviso',
   completenessLabel: 'Completitud del aviso',
   completenessHint:
-    'Indica qué tan completos están texto, fotos y datos. Si falta algo, pedí más detalle con el botón de contacto.',
+    'Indica qué tan completos están texto, fotos y datos. Si falta algo, pedí más detalle con la consulta en la ficha.',
   sourceImport:
     'Origen: sincronizado desde el feed de socios (mismo inventario que usa la inmobiliaria).',
   sourceManual: 'Origen: publicación gestionada en Propieya.',

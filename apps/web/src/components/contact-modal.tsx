@@ -57,11 +57,16 @@ export function ContactModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{success ? L.modalSuccessTitle : L.modalTitle}</DialogTitle>
-          <DialogDescription>
-            {success
-              ? L.modalSuccessBody
-              : `${L.modalDescriptionIdle} ${listingTitle}`}
-          </DialogDescription>
+          {success ? (
+            <DialogDescription>{L.modalSuccessBody}</DialogDescription>
+          ) : (
+            <>
+              <DialogDescription>{L.modalDescriptionIdle}</DialogDescription>
+              <p className="text-sm font-medium leading-snug text-text-primary">
+                {listingTitle}
+              </p>
+            </>
+          )}
         </DialogHeader>
         {success ? (
           <p className="py-4 text-center text-text-secondary">✓ {L.modalSentOk}</p>
@@ -112,11 +117,11 @@ export function ContactModal({
           {createLead.error && (
             <p className="text-sm text-semantic-error">{createLead.error.message}</p>
           )}
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {L.modalCancel}
             </Button>
-            <Button type="submit" disabled={createLead.isPending}>
+            <Button type="submit" className="sm:min-w-[10rem]" disabled={createLead.isPending}>
               {createLead.isPending ? L.modalSubmitPending : L.modalSubmit}
             </Button>
           </div>

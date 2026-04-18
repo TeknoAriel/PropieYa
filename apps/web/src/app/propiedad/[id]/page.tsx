@@ -228,6 +228,7 @@ function ContactConversionBanner({
       <div className="mt-4 flex flex-wrap gap-2">
         <Button
           type="button"
+          size="lg"
           className="transition-transform active:scale-[0.98]"
           onClick={onContact}
         >
@@ -573,31 +574,55 @@ export default function PropiedadPage() {
             </div>
 
             <aside className="space-y-4 lg:col-span-1">
-              <Card className="rounded-xl border border-border/45 p-6 shadow-none">
-                <h2 className="text-lg font-semibold text-text-primary">{L.sidebarTitle}</h2>
-                <p className="mt-2 text-sm text-text-secondary">{L.sidebarLead}</p>
-                <p className="mt-2 text-xs leading-relaxed text-text-tertiary">{L.trustNote}</p>
-                <div className="mt-4 space-y-2">
-                  <Button
-                    className="w-full transition-transform active:scale-[0.98]"
-                    onClick={() => openContactFlow('sidebar_primary')}
+              <Card className="overflow-hidden rounded-xl border border-border/45 shadow-none ring-1 ring-brand-primary/10">
+                <div className="border-b border-border/40 bg-gradient-to-br from-brand-primary/[0.07] to-transparent px-5 py-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-primary">
+                    {L.listingContactEyebrow}
+                  </p>
+                  <h2 className="mt-1 text-lg font-semibold text-text-primary">{L.sidebarTitle}</h2>
+                </div>
+                <div className="space-y-3 p-5">
+                  <p className="text-sm leading-relaxed text-text-secondary">{L.sidebarLead}</p>
+                  <p
+                    className="text-xs leading-relaxed text-text-secondary border-l-2 border-brand-primary/35 pl-2.5"
+                    role="note"
                   >
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    {L.contactPrimaryCta}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full transition-transform active:scale-[0.98]"
-                    type="button"
-                    onClick={() => openContactFlow('sidebar_secondary')}
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {L.contactScheduleCta}
-                  </Button>
-                  <AddToCompareButton
-                    listingId={listing.id}
-                    onCompareAdded={() => setCompareJustAdded(true)}
-                  />
+                    {listing.source === 'import'
+                      ? L.listingContactListingOriginImport
+                      : L.listingContactListingOriginManual}
+                  </p>
+                  <p className="text-xs leading-relaxed text-text-tertiary">{L.trustNote}</p>
+                  <div className="space-y-2.5 pt-1">
+                    <Button
+                      size="lg"
+                      className="w-full transition-transform active:scale-[0.98]"
+                      onClick={() => openContactFlow('sidebar_primary')}
+                    >
+                      <MessageSquare className="mr-2 h-4 w-4 shrink-0" />
+                      {L.contactPrimaryCta}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="default"
+                      className="w-full transition-transform active:scale-[0.98]"
+                      type="button"
+                      onClick={() => openContactFlow('sidebar_secondary')}
+                    >
+                      <Calendar className="mr-2 h-4 w-4 shrink-0" />
+                      {L.contactScheduleCta}
+                    </Button>
+                  </div>
+                  <div className="border-t border-border/40 pt-4">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary">
+                      {L.listingContactCompareSectionLabel}
+                    </p>
+                    <div className="mt-2 max-w-full">
+                      <AddToCompareButton
+                        listingId={listing.id}
+                        onCompareAdded={() => setCompareJustAdded(true)}
+                      />
+                    </div>
+                  </div>
                 </div>
               </Card>
 
@@ -649,23 +674,28 @@ export default function PropiedadPage() {
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface-primary/95 p-3 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md lg:hidden">
         <div className="mx-auto flex max-w-lg flex-col gap-2">
+          <p className="text-center text-[11px] font-medium uppercase tracking-wide text-text-tertiary">
+            {L.listingContactEyebrow}
+          </p>
           <Button
-            className="min-h-11 w-full transition-transform active:scale-[0.98]"
+            size="lg"
+            className="min-h-12 w-full text-base transition-transform active:scale-[0.98]"
             type="button"
             onClick={() => openContactFlow('sticky_primary')}
           >
             {L.contactPrimaryCta}
           </Button>
-          <div className="flex gap-2">
+          <div className="flex items-stretch gap-2">
             <Button
               variant="outline"
-              className="min-h-11 min-w-0 flex-1 transition-transform active:scale-[0.98]"
+              size="sm"
+              className="min-h-10 min-w-0 flex-1 text-xs transition-transform active:scale-[0.98]"
               type="button"
               onClick={() => openContactFlow('sticky_secondary')}
             >
               {L.contactScheduleCta}
             </Button>
-            <div className="shrink-0 pt-0.5">
+            <div className="flex shrink-0 flex-col items-stretch justify-center">
               <AddToCompareButton
                 listingId={listing.id}
                 compact
