@@ -14,6 +14,7 @@ import { Header } from '@/components/layout/header'
 import { ListingAmenitiesGrid } from '@/components/property/listing-amenities-grid'
 import { ListingTrustPanel } from '@/components/property/listing-trust-panel'
 import { ListingRelatedSearches } from '@/components/property/listing-related-searches'
+import { ListingSearchFlowBanner } from '@/components/property/listing-search-flow-banner'
 import { PropertyLocationMap } from '@/components/property/property-location-map'
 import {
   formatPrice,
@@ -32,6 +33,7 @@ import type {
 
 import { bumpListingFichaEngagement } from '@/lib/listing-ficha-engagement'
 import { trpc } from '@/lib/trpc'
+import { useListingFlowReturn } from '@/lib/use-listing-flow-return'
 
 function FieldSummary({ field }: { field: ListingField | null | undefined }) {
   if (!field) return null
@@ -89,6 +91,8 @@ function FieldSummary({ field }: { field: ListingField | null | undefined }) {
 }
 
 function SimilarSection({ listingId }: { listingId: string }) {
+  const { returnToQuery } = useListingFlowReturn(listingId)
+
   const { data = [], isLoading } = trpc.listing.similar.useQuery({ id: listingId })
   const recordSearchResultClick =
     trpc.listing.recordSearchResultClick.useMutation()
@@ -112,9 +116,14 @@ function SimilarSection({ listingId }: { listingId: string }) {
 
   return (
     <Card className="space-y-4 rounded-xl border border-border/45 p-6 shadow-none">
-      <h2 className="text-lg font-semibold text-text-primary">
-        Propiedades similares
-      </h2>
+      <div className="space-y-1.5 border-b border-border/30 pb-4">
+        <h2 className="text-lg font-semibold text-text-primary">
+          {L.listingSimilarSectionTitle}
+        </h2>
+        <p className="text-sm leading-relaxed text-text-secondary">
+          {L.listingSimilarSectionLead}
+        </p>
+      </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {data.map((item, index) => {
           const addr = item.address as { neighborhood?: string; city?: string } | null
@@ -140,8 +149,9 @@ function SimilarSection({ listingId }: { listingId: string }) {
           return (
             <Link
               key={item.id}
-              href={`/propiedad/${item.id}`}
-              className="block overflow-hidden rounded-xl border border-border/45 bg-surface-primary shadow-none transition-colors hover:border-border/70 hover:shadow-sm"
+              href={`/propiedad/${item.id}${returnToQuery}`}
+              prefetch
+              className="group block overflow-hidden rounded-xl border border-border/45 bg-surface-primary shadow-none transition-all hover:border-border/70 hover:shadow-sm active:scale-[0.99]"
               onClick={() => {
                 recordSearchResultClick.mutate({
                   listingId: item.id,
@@ -447,6 +457,7 @@ export default function PropiedadPage() {
   return (
     <div className="flex min-h-screen flex-col bg-surface-primary">
       <Header />
+      <ListingSearchFlowBanner listingId={listing.id} listingTitle={listing.title} />
       <main className="flex-1 pb-36 lg:pb-10">
         <section className="border-b border-border/50 bg-surface-secondary/30">
           <div className="container mx-auto px-4 py-6 lg:py-8">

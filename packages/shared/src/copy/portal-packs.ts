@@ -663,6 +663,18 @@ export const PORTAL_LISTING_UX_COPY = {
 
   /** Ficha — mapa (evitar jerga técnica del proveedor de tiles) */
   listingLocationMapHint: 'Ubicación aproximada en mapa (referencia).',
+
+  /** Continuidad ficha ↔ /buscar (misma búsqueda, regreso con contexto). */
+  listingFlowBreadcrumbHome: 'Inicio',
+  listingFlowBreadcrumbSearch: 'Tu búsqueda',
+  listingFlowBreadcrumbBuscar: 'Buscar',
+  listingFlowBackToResults: 'Volver a resultados',
+  listingFlowBackToBuscar: 'Ir al buscador',
+  listingFlowNextStepsHint:
+    'Podés consultar por esta propiedad, ver otras similares abajo o volver a tu lista sin perder los filtros.',
+  listingSimilarSectionTitle: 'Seguí explorando',
+  listingSimilarSectionLead:
+    'Misma operación y tipo que estás viendo, en tu zona o cerca: seguís dentro de tu búsqueda.',
 } as const
 
 /** Etiquetas para enlaces «Búsquedas relacionadas» (jerarquía zona + precio). Sprint 43. */

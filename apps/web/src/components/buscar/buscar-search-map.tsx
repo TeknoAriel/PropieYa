@@ -19,6 +19,8 @@ import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import 'leaflet.markercluster'
 
+import { LISTING_RETURN_TO_PARAM } from '@/lib/listing-flow-return-url'
+
 export { BUSCAR_MAP_DEFAULT_CENTER } from './buscar-map-constants'
 
 export type BuscarMapBBox = {
@@ -136,12 +138,15 @@ function ClusteredPins({
   emphasisPinId,
   onPinClickListing,
   onListingNavigateFromMap,
+  listingReturnToEncoded,
 }: {
   pins: BuscarMapPin[]
   emphasisPinId?: string | null
   onPinClickListing?: (listingId: string) => void
   /** Clic en el enlace del popup hacia `/propiedad/[id]` (telemetría embudo). */
   onListingNavigateFromMap?: (listingId: string) => void
+  /** Misma continuidad que la lista: query `returnTo` hacia /buscar. */
+  listingReturnToEncoded: string
 }) {
   const map = useMap()
 
@@ -164,8 +169,13 @@ function ClusteredPins({
         weight: isEmphasis ? 3 : 2,
       })
       const safeTitle = escapeHtml(p.title)
+      const safeId = escapeHtml(p.id)
+      const returnSuffix =
+        listingReturnToEncoded.trim().length > 0
+          ? `?${LISTING_RETURN_TO_PARAM}=${escapeHtml(listingReturnToEncoded)}`
+          : ''
       cm.bindPopup(
-        `<a href="/propiedad/${escapeHtml(p.id)}" class="text-sm font-medium text-blue-600 hover:underline">${safeTitle}</a>`,
+        `<a href="/propiedad/${safeId}${returnSuffix}" class="text-sm font-medium text-blue-600 hover:underline">${safeTitle}</a>`,
       )
       if (onPinClickListing) {
         cm.on('click', (e) => {
@@ -198,7 +208,7 @@ function ClusteredPins({
       mcg.clearLayers()
       map.removeLayer(mcg)
     }
-  }, [map, pins, emphasisPinId, onPinClickListing, onListingNavigateFromMap])
+  }, [map, pins, emphasisPinId, onPinClickListing, onListingNavigateFromMap, listingReturnToEncoded])
 
   return null
 }
@@ -294,6 +304,8 @@ type BuscarSearchMapProps = {
   onListingNavigateFromMap?: (listingId: string) => void
   /** Centrar mapa (p. ej. hover en tarjeta con coordenadas). */
   flyToPinCoords?: { lat: number; lng: number } | null
+  /** Continuidad ficha ↔ búsqueda (popup del mapa). */
+  listingReturnToEncoded?: string
 }
 
 export function BuscarSearchMap({
@@ -311,6 +323,7 @@ export function BuscarSearchMap({
   onPinClickListing,
   onListingNavigateFromMap,
   flyToPinCoords = null,
+  listingReturnToEncoded = '',
 }: BuscarSearchMapProps) {
   const points = useMemo(
     () => pins.map((p) => [p.lat, p.lng] as [number, number]),
@@ -356,6 +369,7 @@ export function BuscarSearchMap({
           emphasisPinId={mapPinEmphasisId}
           onPinClickListing={onPinClickListing}
           onListingNavigateFromMap={onListingNavigateFromMap}
+          listingReturnToEncoded={listingReturnToEncoded}
         />
       </MapContainer>
     </div>

@@ -72,6 +72,7 @@ import { InductiveSearchChips } from '@/components/portal/inductive-search-chips
 import { getAccessToken } from '@/lib/auth-storage'
 import { sanitizeListingCoordinates } from '@/lib/map-geo'
 import { canAppendPolygonVertex } from '@/lib/map-polygon'
+import { encodeBuscarReturnPath, buildListingHrefWithReturn } from '@/lib/listing-flow-return-url'
 import { trpc } from '@/lib/trpc'
 
 export type BuscarContentProps = {
@@ -299,6 +300,7 @@ function ListingCard({
   onResultLinkClick,
   compactMatchReason,
   whyBucketId,
+  buscarReturnToEncoded,
 }: {
   listing: BuscarListingCardData
   mapSelectedListingId: string | null
@@ -308,6 +310,8 @@ function ListingCard({
   /** Buscador v2: una sola línea de encaje en lugar de lista larga. */
   compactMatchReason?: boolean
   whyBucketId?: 'strong' | 'near' | 'widened'
+  /** Continuidad con ficha: path /buscar codificado en query `returnTo`. */
+  buscarReturnToEncoded: string
 }) {
   const operationLabel = OPERATION_TYPE_LABELS[listing.operationType] ?? listing.operationType
   const tipoLabel = PROPERTY_TYPE_LABELS[listing.propertyType] ?? listing.propertyType
@@ -342,13 +346,15 @@ function ListingCard({
       ? 'border-border/45 bg-surface-primary hover:border-border/70'
       : 'border-border/25 bg-surface-secondary/15 hover:border-border/45'
 
+  const listingHref = buildListingHrefWithReturn(listing.id, buscarReturnToEncoded)
+
   return (
     <div
       id={`buscar-listing-${listing.id}`}
       className="scroll-mt-24 rounded-xl"
     >
       <Link
-        href={`/propiedad/${listing.id}`}
+        href={listingHref}
         className="block"
         onClick={() => {
           onResultLinkClick?.(listing.id)
@@ -506,6 +512,11 @@ export function BuscarContent({
   const searchParams = useSearchParams()
   const pathname = usePathname() ?? '/buscar'
   const router = useRouter()
+
+  const buscarReturnToEncoded = useMemo(
+    () => encodeBuscarReturnPath(pathname, searchParams.toString()),
+    [pathname, searchParams]
+  )
 
   const utils = trpc.useUtils()
   const recordSearchResultClick =
@@ -1897,6 +1908,7 @@ export function BuscarContent({
                                       mapSelectedListingId={mapSyncSelectedId}
                                       compactMatchReason
                                       whyBucketId="near"
+                                      buscarReturnToEncoded={buscarReturnToEncoded}
                                       onMapSyncHover={
                                         showMap && mapPins.length > 0
                                           ? onMapSyncHover
@@ -1991,6 +2003,7 @@ export function BuscarContent({
                                       mapSelectedListingId={mapSyncSelectedId}
                                       compactMatchReason
                                       whyBucketId="widened"
+                                      buscarReturnToEncoded={buscarReturnToEncoded}
                                       onMapSyncHover={
                                         showMap && mapPins.length > 0
                                           ? onMapSyncHover
@@ -2049,6 +2062,7 @@ export function BuscarContent({
                                     mapSelectedListingId={mapSyncSelectedId}
                                     compactMatchReason
                                     whyBucketId="strong"
+                                    buscarReturnToEncoded={buscarReturnToEncoded}
                                     onMapSyncHover={
                                       showMap && mapPins.length > 0
                                         ? onMapSyncHover
@@ -2468,6 +2482,7 @@ export function BuscarContent({
                   flyToPinCoords={
                     mapPins.length > 0 ? mapSyncFlyCoords : null
                   }
+                  listingReturnToEncoded={buscarReturnToEncoded}
                 />
                 <div className="mt-2 space-y-2">
                   {mapBbox || mapPolygonRing.length >= 3 ? (
