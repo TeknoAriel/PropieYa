@@ -371,6 +371,14 @@ export const PORTAL_SEARCH_UX_COPY = {
   searchV2ChipApply: 'Listo',
   searchV2ChipCatalog: 'Catálogo de zonas',
   searchV2WhySee: 'Por qué aparece',
+  /** Card de resultado /buscar: CTA explícita (toda la card sigue siendo clicable). */
+  listingCardCta: 'Ver ficha',
+  /** Señales breves derivadas solo de texto del aviso / dirección (sin scoring). */
+  listingSignalGoodLocation: 'Buena ubicación',
+  listingSignalInterestingOption: 'Opción interesante',
+  listingSignalOutdoor: 'Con espacio exterior',
+  listingSignalMoveInReady: 'Listo para mudarse',
+  listingSignalGarage: 'Con cochera',
   searchV2BucketWhyStrong: 'Coincide con tu zona, tipo y números.',
   searchV2BucketWhyNear: 'Cerca de lo que buscás: toda la ciudad, sin el barrio.',
   searchV2BucketWhyWidened: 'Un criterio un poco más flexible; misma operación y tipo.',

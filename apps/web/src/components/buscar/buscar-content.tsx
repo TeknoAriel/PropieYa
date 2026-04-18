@@ -14,7 +14,6 @@ import {
 } from 'react'
 
 import {
-  Badge,
   Button,
   Card,
   Dialog,
@@ -238,10 +237,10 @@ function bucketCountLabel(bucketId: string, n: number): string {
 
 function bucketStrongNearSectionClass(bucketId: string): string {
   if (bucketId === 'strong') {
-    return 'space-y-5 rounded-2xl border border-border/50 bg-surface-primary p-5 shadow-sm ring-1 ring-border/20 md:p-7'
+    return 'space-y-5 rounded-2xl border border-border/40 bg-surface-primary p-5 shadow-none md:p-6'
   }
   if (bucketId === 'near') {
-    return 'space-y-3 rounded-xl border border-border/80 bg-surface-secondary/40 p-4 md:p-5'
+    return 'space-y-3 rounded-xl border border-border/50 bg-surface-secondary/25 p-4 md:p-5'
   }
   return 'space-y-3'
 }
@@ -251,6 +250,46 @@ function bucketHeadingClass(bucketId: string): string {
     return 'text-lg font-semibold tracking-tight text-text-primary md:text-xl'
   if (bucketId === 'near') return 'text-base font-semibold text-text-primary'
   return 'text-base font-semibold text-text-primary'
+}
+
+/** Hasta 2 frases cortas a partir de título, motivos y dirección (sin motor nuevo). */
+function collectListingValueSignals(
+  listing: BuscarListingCardData,
+  whyBucketId?: 'strong' | 'near' | 'widened'
+): string[] {
+  const out: string[] = []
+  const hay = [listing.title, ...(listing.matchReasons ?? [])]
+    .join(' ')
+    .toLowerCase()
+
+  if (/cochera|garage|estacionamiento|bicicletero/.test(hay)) {
+    out.push(S.listingSignalGarage)
+  }
+  if (
+    out.length < 2 &&
+    /patio|terraza|balc[oó]n|jard[ií]n|quincho|pileta|parrilla/.test(hay)
+  ) {
+    out.push(S.listingSignalOutdoor)
+  }
+  if (
+    out.length < 2 &&
+    /amoblado|amueblado|listo para habitar|a estrenar|terminado|reciclado a nuevo/.test(
+      hay
+    )
+  ) {
+    out.push(S.listingSignalMoveInReady)
+  }
+  if (
+    out.length < 2 &&
+    listing.address?.neighborhood?.trim() &&
+    listing.address?.city?.trim()
+  ) {
+    out.push(S.listingSignalGoodLocation)
+  }
+  if (out.length < 2 && whyBucketId === 'widened') {
+    out.push(S.listingSignalInterestingOption)
+  }
+  return out.slice(0, 2)
 }
 
 function ListingCard({
@@ -271,20 +310,37 @@ function ListingCard({
   whyBucketId?: 'strong' | 'near' | 'widened'
 }) {
   const operationLabel = OPERATION_TYPE_LABELS[listing.operationType] ?? listing.operationType
-  const neighborhood = listing.address?.neighborhood ?? '—'
-  const city = listing.address?.city ?? '—'
+  const tipoLabel = PROPERTY_TYPE_LABELS[listing.propertyType] ?? listing.propertyType
+  const nb = listing.address?.neighborhood?.trim()
+  const cy = listing.address?.city?.trim()
+  const locationLine =
+    nb && cy ? `${nb} · ${cy}` : cy || nb || '—'
   const pinCoords = getListingPinCoords(listing)
   const emphasizeFromMap = mapSelectedListingId === listing.id
+  const visualTier: 'primary' | 'alternate' =
+    whyBucketId === 'strong' ? 'primary' : 'alternate'
 
   const firstReason = listing.matchReasons?.[0]
   const matchOneLine =
-    firstReason && firstReason.length > 140
-      ? `${firstReason.slice(0, 137)}…`
+    firstReason && firstReason.length > 120
+      ? `${firstReason.slice(0, 117)}…`
       : (firstReason ?? '')
-  const compactWhyText =
-    compactMatchReason && whyBucketId
-      ? cardWhyLine(listing, whyBucketId)
-      : matchOneLine
+
+  const valueSignals = collectListingValueSignals(listing, whyBucketId)
+
+  const roomsLabel =
+    listing.bedrooms === null || listing.bedrooms === 0
+      ? 'Monoambiente'
+      : `${listing.bedrooms} dorm.`
+  const bathBit =
+    listing.bathrooms !== null && listing.bathrooms > 0
+      ? ` · ${listing.bathrooms} baño${listing.bathrooms > 1 ? 's' : ''}`
+      : ''
+
+  const tierCardClass =
+    visualTier === 'primary'
+      ? 'border-border/45 bg-surface-primary hover:border-border/70'
+      : 'border-border/25 bg-surface-secondary/15 hover:border-border/45'
 
   return (
     <div
@@ -305,109 +361,92 @@ function ListingCard({
         }}
       >
         <Card
-          className={`group cursor-pointer overflow-hidden rounded-xl border border-border/50 shadow-none transition-colors duration-200 hover:border-border/80 hover:shadow-sm ${
+          className={`group flex cursor-pointer flex-col overflow-hidden rounded-xl border shadow-none transition-colors duration-200 hover:shadow-sm ${tierCardClass} ${
             emphasizeFromMap
-              ? 'ring-1 ring-brand-primary/50 ring-offset-2 ring-offset-surface-primary'
+              ? 'ring-1 ring-brand-primary/45 ring-offset-1 ring-offset-surface-primary'
               : ''
           }`}
         >
-        <div className="relative h-52 overflow-hidden bg-surface-secondary md:h-56">
-          <Image
-            src={
-              listing.primaryImageUrl ||
-              'https://placehold.co/600x400/e0ddd8/666660?text=Propiedad'
-            }
-            alt={listing.title}
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover transition-opacity duration-200 group-hover:opacity-[0.97]"
-            unoptimized
-          />
-          <Badge className="absolute top-3 left-3" variant="secondary">
-            {operationLabel}
-          </Badge>
-        </div>
-
-        <div className="p-4 md:p-5">
-          <div className="text-lg font-semibold tracking-tight text-brand-primary md:text-xl">
-            {formatPrice(listing.priceAmount, listing.priceCurrency as Currency)}
+          <div className="relative h-40 shrink-0 overflow-hidden bg-surface-secondary md:h-44">
+            <Image
+              src={
+                listing.primaryImageUrl ||
+                'https://placehold.co/600x400/e0ddd8/666660?text=Propiedad'
+              }
+              alt={listing.title}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              className="object-cover transition-opacity duration-200 group-hover:opacity-[0.96]"
+              unoptimized
+            />
           </div>
 
-          <h3 className="mt-2 font-medium text-text-primary line-clamp-2">
-            {listing.title}
-          </h3>
-
-          <p className="mt-1 text-sm text-text-secondary">
-            {neighborhood}, {city}
-          </p>
-
-          <div className="mt-3 flex items-center gap-4 text-sm text-text-secondary">
-            <span>{listing.surfaceTotal} m²</span>
-            {listing.bedrooms !== null && listing.bedrooms > 0 ? (
-              <span>{listing.bedrooms} dorm.</span>
-            ) : null}
-            {listing.bathrooms !== null ? (
-              <span>
-                {listing.bathrooms} baño
-                {listing.bathrooms > 1 ? 's' : ''}
-              </span>
-            ) : null}
-          </div>
-
-          {compactMatchReason && compactWhyText ? (
-            <div className="mt-3 rounded-lg bg-surface-secondary/60 px-3 py-2.5 text-xs leading-relaxed text-text-secondary">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="min-w-0 flex-1">
-                  <span className="font-medium text-brand-primary">
-                    {S.searchV2WhySee}
-                  </span>
-                  <span className="mt-0.5 block text-text-secondary">
-                    {compactWhyText}
-                  </span>
-                </p>
-                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <AddToCompareButton
-                    listingId={listing.id}
-                    compact
-                    stopNavigation
-                  />
-                </div>
-              </div>
+          <div className="flex min-h-0 flex-1 flex-col gap-2 p-3.5 md:gap-2.5 md:p-4">
+            <div className="text-xl font-semibold tabular-nums tracking-tight text-text-primary md:text-2xl">
+              {formatPrice(listing.priceAmount, listing.priceCurrency as Currency)}
             </div>
-          ) : !compactMatchReason &&
-            listing.matchReasons &&
-            listing.matchReasons.length > 0 ? (
-            <div className="mt-3 rounded-lg bg-surface-secondary/60 px-3 py-2.5 text-xs text-text-secondary">
-              <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-                <p className="min-w-0 flex-1 font-medium text-text-primary">
-                  {S.matchWhyTitle}
-                </p>
-                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <AddToCompareButton
-                    listingId={listing.id}
-                    compact
-                    stopNavigation
-                  />
-                </div>
-              </div>
-              <ul className="list-inside list-disc space-y-0.5">
-                {listing.matchReasons.slice(0, 5).map((r, i) => (
-                  <li key={`${listing.id}-reason-${i}`}>{r}</li>
+
+            <p className="text-sm font-medium leading-snug text-text-secondary">
+              {locationLine}
+            </p>
+
+            <p className="text-sm leading-snug text-text-primary">
+              <span className="text-text-tertiary">{operationLabel}</span>
+              <span className="text-text-tertiary"> · </span>
+              <span>{tipoLabel}</span>
+              <span className="text-text-tertiary"> · </span>
+              <span>{listing.surfaceTotal} m²</span>
+              <span className="text-text-tertiary"> · </span>
+              <span>
+                {roomsLabel}
+                {bathBit}
+              </span>
+            </p>
+
+            {valueSignals.length > 0 ? (
+              <ul className="mt-0.5 flex flex-wrap gap-x-2 gap-y-1" aria-label="Destacados">
+                {valueSignals.map((label) => (
+                  <li
+                    key={`${listing.id}-sig-${label}`}
+                    className="max-w-full truncate rounded-md bg-surface-secondary/50 px-2 py-0.5 text-[11px] font-medium leading-tight text-text-secondary md:text-xs"
+                  >
+                    {label}
+                  </li>
                 ))}
               </ul>
+            ) : matchOneLine ? (
+              <p className="text-xs leading-snug text-text-tertiary line-clamp-2">
+                {matchOneLine}
+              </p>
+            ) : compactMatchReason && whyBucketId ? (
+              <p className="text-xs leading-snug text-text-tertiary line-clamp-2">
+                {cardWhyLine(listing, whyBucketId)}
+              </p>
+            ) : null}
+
+            {!compactMatchReason &&
+            listing.matchReasons &&
+            listing.matchReasons.length > 0 ? (
+              <p className="text-xs leading-snug text-text-tertiary line-clamp-2">
+                {listing.matchReasons.slice(0, 2).join(' · ')}
+              </p>
+            ) : null}
+
+            <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+              <span className="text-sm font-medium text-brand-primary">
+                {S.listingCardCta}
+              </span>
+              <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                <AddToCompareButton
+                  listingId={listing.id}
+                  compact
+                  stopNavigation
+                />
+              </div>
             </div>
-          ) : (
-            <div className="mt-3 flex justify-end">
-              <AddToCompareButton
-                listingId={listing.id}
-                compact
-                stopNavigation
-              />
-            </div>
-          )}
-        </div>
-      </Card>
-    </Link>
+          </div>
+        </Card>
+      </Link>
     </div>
   )
 }
@@ -1796,7 +1835,7 @@ export function BuscarContent({
                         return (
                           <section
                             key={bucket.id}
-                            className="space-y-4 rounded-2xl border border-dashed border-border/30 bg-surface-secondary/15 px-4 py-4 md:px-5 md:py-5"
+                            className="space-y-4 rounded-xl border border-dashed border-border/25 bg-surface-secondary/10 px-3.5 py-3.5 md:px-5 md:py-4"
                           >
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                               <div className="min-w-0 space-y-1">
@@ -1847,7 +1886,7 @@ export function BuscarContent({
                               </Button>
                             </div>
                             {searchV2NearOpen ? (
-                              <div className="grid grid-cols-1 gap-7 border-t border-border/20 pt-5 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
+                              <div className="grid grid-cols-1 gap-5 border-t border-border/15 pt-5 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
                                 {bucket.items.map((row) => {
                                   const listing = row as BuscarListingCardData
                                   const index = globalIndex++
@@ -1883,7 +1922,7 @@ export function BuscarContent({
                         return (
                           <section
                             key={bucket.id}
-                            className="space-y-4 rounded-2xl border border-dashed border-border/30 bg-surface-secondary/15 px-4 py-4 md:px-5 md:py-5"
+                            className="space-y-4 rounded-xl border border-dashed border-border/20 bg-surface-secondary/[0.06] px-3 py-3 md:px-4 md:py-4"
                           >
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                               <div className="min-w-0 space-y-1">
@@ -1941,7 +1980,7 @@ export function BuscarContent({
                               </p>
                             ) : null}
                             {searchV2WidenedOpen ? (
-                              <div className="grid grid-cols-1 gap-7 border-t border-border/20 pt-5 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
+                              <div className="grid grid-cols-1 gap-5 border-t border-border/15 pt-5 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
                                 {bucket.items.map((row) => {
                                   const listing = row as BuscarListingCardData
                                   const index = globalIndex++
@@ -1999,7 +2038,7 @@ export function BuscarContent({
                               {S.searchV2BucketEmpty}
                             </p>
                           ) : (
-                            <div className="grid grid-cols-1 gap-7 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
+                            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
                               {bucket.items.map((row) => {
                                 const listing = row as BuscarListingCardData
                                 const index = globalIndex++
