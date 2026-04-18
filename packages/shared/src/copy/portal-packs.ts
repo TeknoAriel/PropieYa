@@ -2,8 +2,8 @@
  * Packs de copy del portal para pruebas A/B y reglas de lenguaje.
  * Activar con NEXT_PUBLIC_PORTAL_COPY_PACK=<id> (ver PORTAL_COPY_PACK_IDS).
  *
- * Voz canónica: voseo rioplatense, propuesta conversacional-first + mapa/filtros,
- * transparencia técnica cuando aporta confianza (mismo motor SQL/Elasticsearch).
+ * Voz canónica: voseo rioplatense, tono inmobiliario claro y amable; primera capa
+ * simple (encontrar → decidir → descubrir más si el usuario quiere).
  */
 
 export const PORTAL_VOICE_CTA = {
@@ -13,13 +13,13 @@ export const PORTAL_VOICE_CTA = {
   publish: 'Publicá',
 } as const
 
-/** Pie de portal: misma promesa que la home (frase o filtros, mismo motor). */
+/** Pie de portal: marca y confianza, sin mecánica interna. */
 export const PORTAL_BRAND_FOOTER_TAGLINE =
-  'Podés arrancar con una frase o ir al mapa y los filtros avanzados: es el mismo motor de avisos.'
+  'Propiedades en venta y alquiler, con una búsqueda clara y herramientas extra cuando las necesités.'
 
 /** Meta description y referencias SEO del sitio público. */
 export const PORTAL_SITE_DESCRIPTION =
-  'Contale a Propieya qué buscás o usá mapa y filtros; tu intención se traduce al mismo motor SQL/Elasticsearch.'
+  'Encontrá propiedades en venta y alquiler: empezá simple y refiná con mapa, filtros o asistente cuando quieras.'
 
 export const PORTAL_COPY_PACK_IDS = [
   'regla_portal_v1',
@@ -66,32 +66,32 @@ export type PortalCopyPack = {
 
 const HOW_IT_WORKS_PROPOSAL_STEPS: PortalHowStep[] = [
   {
-    title: 'Contale a Propieya',
+    title: 'Empezá por lo esencial',
     description:
-      'Una frase concreta resume operación, zona, tamaño y prioridades — sin recorrer filtro por filtro.',
+      'Zona, operación y lo que te importa: decilo en una frase o entrá al buscador y elegí filtros paso a paso.',
   },
   {
-    title: 'Traducimos a búsqueda',
+    title: 'Mirá opciones ordenadas',
     description:
-      'Tu intención se convierte en criterios claros que podés ajustar cuando quieras.',
+      'Te mostramos resultados para comparar con calma, sin perder el foco en lo que pediste.',
   },
   {
-    title: 'Refiná como prefieras',
+    title: 'Afiná cuando quieras',
     description:
-      'Seguí en conversación o pasá al mapa y a los filtros avanzados sin perder contexto.',
+      'Mapa y filtros avanzados están a mano; los abrís solo si necesitás más precisión.',
   },
   {
-    title: 'Por qué aparece cada aviso',
+    title: 'Decidí con confianza',
     description:
-      'Te mostramos en simple qué coincide con tu búsqueda antes de contactar.',
+      'En cada aviso ves por qué encaja antes de escribirle al publicador.',
   },
 ]
 
 function howItWorksProposal(): PortalCopyPack['howItWorks'] {
   return {
-    sectionTitle: 'Una forma distinta de buscar propiedades',
+    sectionTitle: 'Cómo te acompañamos',
     sectionSubtitle:
-      'Innovación con los pies en el mercado: comprar, alquilar y tipologías siguen siendo los anclas; el cambio es cómo empezás.',
+      'Primero encontrar, después decidir. Lo potente queda disponible, no delante de lo básico.',
     steps: HOW_IT_WORKS_PROPOSAL_STEPS,
   }
 }
@@ -104,14 +104,14 @@ const reglaPortalV1: PortalCopyPack = {
   ruleSummary:
     'Voseo + propuesta de los 4 pasos (home); hero puede variar en matiz emocional; CTAs y “cómo funciona” alineados a la propuesta única.',
   hero: {
-    line1: 'Encontrá tu próximo lugar',
-    line2Accent: 'contando lo que buscás',
+    line1: 'Encontrá propiedades',
+    line2Accent: 'con claridad y buen ritmo',
     subtitle:
-      'Escribí una frase o pasá al buscador para afinar zona, tipo y precio.',
+      'Escribí zona, tipo o presupuesto o abrí el buscador para refinar con calma.',
     placeholder: 'Zona, ambientes, presupuesto…',
-    filterLink: 'Ir al buscador',
+    filterLink: 'Abrir buscador',
     assistantBadge: 'Describí lo que buscás',
-    assistantPitch: 'Podés seguir con mapa y filtros cuando quieras.',
+    assistantPitch: 'Mapa y filtros siguen disponibles cuando los necesités.',
   },
   heroExamples: [
     '3 ambientes en Palermo con balcón',
@@ -126,7 +126,7 @@ const reglaPortalV1: PortalCopyPack = {
   },
   featured: {
     title: 'Propiedades destacadas',
-    subtitle: 'Los últimos avisos activos para explorar.',
+    subtitle: 'Un adelanto del inventario; el buscador es la puerta principal para ver todo.',
     viewAll: 'Ver todas',
     viewAllMobile: 'Ver todas las propiedades',
   },
@@ -135,21 +135,20 @@ const reglaPortalV1: PortalCopyPack = {
 
 /** Variante B — más inductivo en hero; nav igual de funcional */
 /**
- * Pack por defecto (Sprint 23): alinea tono con docs/00 — conversacional-first,
- * lenguaje rioplatense claro, propuesta distinta al “portal con chat”.
+ * Pack por defecto (Sprint 23): conversación y buscador conviven; primera capa simple.
  */
 const conversacionPrimero: PortalCopyPack = {
   id: 'conversacion_primero',
-  title: 'Conversación primero — Propuesta disruptiva baseline',
+  title: 'Conversación primero — baseline portal',
   ruleSummary:
-    'Hero conversacional-first; “Cómo funciona” y CTAs compartidos con el resto de packs (misma propuesta de 4 pasos y voseo).',
+    'Hero directo; sección “Cómo te acompañamos” y CTAs compartidos con el resto de packs (voseo, foco búsqueda).',
   hero: {
     line1: 'Encontrá propiedades',
-    line2Accent: 'con la claridad de un portal serio',
+    line2Accent: 'sin rodeos',
     subtitle:
-      'Frase libre o buscador: elegí cómo empezar y refiná cuando quieras.',
+      'Empezá con lo que necesitás; mapa, filtros y asistente están cuando los quieras usar.',
     placeholder: 'Zona, ambientes, presupuesto…',
-    filterLink: 'Ir al buscador',
+    filterLink: 'Abrir buscador',
   },
   heroExamples: [
     'Casa en venta, 2 dormitorios, grande, con pileta y quincho',
@@ -163,8 +162,8 @@ const conversacionPrimero: PortalCopyPack = {
     publish: PORTAL_VOICE_CTA.publish,
   },
   featured: {
-    title: 'Elegí por intuición o por dato',
-    subtitle: 'Avisos activos para explorar.',
+    title: 'Avisos para explorar',
+    subtitle: 'Un vistazo al inventario; el buscador te lleva al detalle completo.',
     viewAll: 'Ver todas',
     viewAllMobile: 'Ver todas las propiedades',
   },
@@ -179,13 +178,13 @@ const varianteBCercano: PortalCopyPack = {
     'Hero más cercano en titulares; misma sección “Cómo funciona” y CTAs voseados que el resto de packs.',
   hero: {
     line1: 'Tu próximo hogar o inversión',
-    line2Accent: 'empieza con una conversación simple',
+    line2Accent: 'empezá por lo esencial',
     subtitle:
-      'Decinos qué buscás y te mostramos caminos claros; podés seguir en conversación o pasar al mapa y los filtros sin perder contexto.',
+      'Contanos qué buscás en simple; después seguí por mapa, filtros o asistente, al ritmo que prefieras.',
     placeholder: 'Contanos qué imaginas: zona, ambientes, presupuesto…',
-    filterLink: 'Modo clásico: mapa y filtros',
+    filterLink: 'Abrir buscador',
     assistantBadge: 'Describí lo que buscás',
-    assistantPitch: 'Podés seguir con mapa y filtros cuando quieras.',
+    assistantPitch: 'Lo avanzado queda a un clic cuando lo necesités.',
   },
   heroExamples: [
     'Quiero algo luminoso para familia, 3 dormitorios',
@@ -200,7 +199,7 @@ const varianteBCercano: PortalCopyPack = {
   },
   featured: {
     title: 'Oportunidades destacadas',
-    subtitle: 'Avisos recientes para explorar.',
+    subtitle: 'Ideas para mirar; el buscador concentra todo el listado filtrable.',
     viewAll: 'Ver todas',
     viewAllMobile: 'Ver todas las propiedades',
   },
@@ -208,8 +207,7 @@ const varianteBCercano: PortalCopyPack = {
 }
 
 /**
- * Copy de /buscar (y variantes venta/alquiler): alineado a docs/41-PROPUESTA-VALOR-PORTAL.md
- * (descubrimiento, decisión, confianza; mismo motor).
+ * Copy de /buscar (y variantes venta/alquiler): tono claro, sin jerga de sistema.
  */
 export const PORTAL_SEARCH_UX_COPY = {
   buscarTitle: 'Buscá propiedades',
@@ -498,7 +496,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   /** Sprint 28.9 — historial (usuarios logueados) */
   recentSearchesTitle: 'Tus búsquedas recientes',
   recentSearchesEmpty:
-    'Cuando ejecutes búsquedas con la sesión iniciada, van a aparecer acá (mismo motor que /buscar).',
+    'Cuando busques con tu cuenta iniciada, acá vas a ver un resumen de tus últimas búsquedas.',
   recentSearchesHint:
     'Solo vos ves esta lista; cada fila resume filtros y cantidad de resultados en ese momento.',
 
@@ -524,9 +522,9 @@ export const PORTAL_SEARCH_UX_COPY = {
   conversationalNextMap: 'Afinar en el mapa',
   conversationalNextFilters: 'Más filtros',
   conversationalNextAgain:
-    'Si querés otra intención, usá de nuevo la búsqueda con frase o ajustá los filtros.',
+    'Si querés arrancar de nuevo, escribí otra búsqueda o tocá los filtros.',
   conversationalScrollResults: 'Ver resultados',
-  /** Continuidad de búsqueda (multi-turno, mismo motor). */
+  /** Continuidad de búsqueda (multi-turno). */
   conversationalContextBanner:
     'Seguimos desde tu última búsqueda: podés afinar con una frase corta o tocá una idea abajo.',
   conversationalContextSummaryPrefix: 'Criterios activos:',
@@ -541,10 +539,10 @@ export const PORTAL_SEARCH_UX_COPY = {
   conversationalChipParking: 'Con cochera',
   conversationalChipMoreBedrooms: 'Más dormitorios',
 
-  /** /buscar — alineado al “Cómo funciona” de la home (versión compacta). */
-  buscarFlowTitle: 'Cómo buscás en Propieya',
+  /** /buscar — guía breve alineada a la home. */
+  buscarFlowTitle: 'Pasos de búsqueda',
   buscarFlowStep1: 'Contanos en una frase qué imaginás.',
-  buscarFlowStep2: 'Lo pasamos al mismo motor de búsqueda.',
+  buscarFlowStep2: 'Te llevamos al listado con esos criterios.',
   buscarFlowStep3: 'Si querés, mapa o filtros — sin perder contexto.',
   buscarFlowStep4: 'En cada aviso te decimos por qué encaja.',
 
@@ -553,7 +551,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   filtersOptionalCollapse: 'Ocultar filtros',
   essentialsFriendlyTitle: 'Afinar con criterios',
   essentialsFriendlySubtitle:
-    'Opcional — mismo motor que la búsqueda por frase. Tocá «Más filtros» para ir más al detalle.',
+    'Opcional: tocá «Más filtros» cuando quieras precisión extra.',
   buscarPageGentleHint:
     'Los resultados se actualizan al cambiar criterios.',
   /** Encabezado opcional del bloque conversacional (si se muestra aparte del título del componente). */
@@ -572,7 +570,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarFlowDialogOpen: 'Cómo buscar en Propieya',
   buscarFlowDialogDontShowAgain: 'No volver a mostrar esta guía',
   buscarFlowDialogConfirm: 'Listo',
-  buscarFlowLinkInline: '¿Cómo funciona la búsqueda?',
+  buscarFlowLinkInline: '¿Cómo buscar en Propieya?',
   buscarFlowBannerTeaser:
     'Arrancá con una frase en el asistente; después afinás con filtros o mapa si hace falta.',
   buscarFlowBannerSeeSteps: 'Ver pasos',
@@ -613,7 +611,7 @@ export const PORTAL_LISTING_UX_COPY = {
   sidebarLead:
     'Dejanos tus datos: el equipo te contacta por este canal. No publicamos teléfono ni email del publicador en la ficha.',
   trustNote:
-    'Los avisos pasan por el mismo motor de búsqueda que el resto del portal; si ves algo raro, avisanos.',
+    'Los criterios de tu búsqueda se mantienen coherentes en todo el portal; si algo no cierra, escribinos.',
   contactSmartTitle: '¿Te llevamos un paso más cerca?',
   contactSmartBodyViews:
     'Esta propiedad encaja con lo que estás mirando. ¿Querés que te contacten por esta opción?',

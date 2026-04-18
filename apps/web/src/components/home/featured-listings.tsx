@@ -31,7 +31,7 @@ export function FeaturedListings() {
   const listings = listingsRaw as unknown as FeaturedListingCardData[]
 
   return (
-    <section className="border-t border-border/15 bg-surface-secondary/30 pb-14 pt-9 md:pb-20 md:pt-11">
+    <section className="border-t border-border/10 bg-surface-secondary/20 pb-12 pt-8 md:pb-16 md:pt-10">
       <div className="container mx-auto px-4">
         <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between md:mb-10">
           <div className="max-w-xl">
@@ -68,7 +68,7 @@ export function FeaturedListings() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-7 md:grid-cols-2 md:gap-8 lg:grid-cols-3 lg:gap-9">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6 lg:grid-cols-3 lg:gap-7">
             {listings.map((listing) => (
               <ListingCard key={listing.id} listing={listing} />
             ))}

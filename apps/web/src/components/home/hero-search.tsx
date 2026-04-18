@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
@@ -38,6 +39,14 @@ export function HeroSearch() {
             onSubmit={handleSubmit}
             className="mx-auto mt-7 max-w-xl md:mt-9"
           />
+          <p className="mx-auto mt-4 max-w-xl text-center text-sm text-text-tertiary md:mt-5">
+            <Link
+              href="/buscar"
+              className="font-medium text-brand-primary underline-offset-4 transition-colors hover:text-brand-primary/90 hover:underline"
+            >
+              {pack.hero.filterLink}
+            </Link>
+          </p>
         </div>
       </div>
     </section>

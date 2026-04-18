@@ -20,7 +20,7 @@ export function Footer() {
 
           {/* Links */}
           <div>
-            <h4 className="font-semibold text-text-primary mb-4">Buscar</h4>
+            <h4 className="font-semibold text-text-primary mb-4">Propiedades</h4>
             <ul className="space-y-2 text-sm text-text-secondary">
               <li>
                 <Link href="/venta" className="hover:text-text-primary transition-colors">

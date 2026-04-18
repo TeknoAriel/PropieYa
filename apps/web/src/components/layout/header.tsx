@@ -25,17 +25,19 @@ function NavLink({
   href,
   label,
   onNavigate,
+  prominence = 'secondary',
 }: {
   href: string
   label: string
   onNavigate?: () => void
+  prominence?: 'primary' | 'secondary'
 }) {
+  const cls =
+    prominence === 'primary'
+      ? 'whitespace-nowrap text-[13px] font-semibold text-text-primary transition-colors hover:text-brand-primary lg:text-sm'
+      : 'whitespace-nowrap text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary lg:text-sm'
   return (
-    <Link
-      href={href}
-      className="whitespace-nowrap text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary lg:text-sm"
-      onClick={onNavigate}
-    >
+    <Link href={href} className={cls} onClick={onNavigate}>
       {label}
     </Link>
   )
@@ -68,8 +70,13 @@ export function Header() {
             aria-label="Principal"
           >
             <div className="flex items-center gap-x-4 gap-y-1 lg:gap-x-5">
-              {PORTAL_PRIMARY_NAV.map((item) => (
-                <NavLink key={item.href} href={item.href} label={item.label} />
+              {PORTAL_PRIMARY_NAV.map((item, i) => (
+                <NavLink
+                  key={item.href}
+                  href={item.href}
+                  label={item.label}
+                  prominence={i === 0 ? 'primary' : 'secondary'}
+                />
               ))}
             </div>
           </nav>
@@ -135,11 +142,15 @@ export function Header() {
             <DialogTitle>Menú</DialogTitle>
           </DialogHeader>
           <nav className="flex max-h-[min(70vh,520px)] flex-col gap-1 overflow-y-auto pr-1" aria-label="Navegación principal">
-            {PORTAL_PRIMARY_NAV.map((item) => (
+            {PORTAL_PRIMARY_NAV.map((item, i) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={mobileNavClass}
+                className={
+                  i === 0
+                    ? `${mobileNavClass} font-semibold text-text-primary`
+                    : mobileNavClass
+                }
                 onClick={closeMobile}
               >
                 {item.label}
