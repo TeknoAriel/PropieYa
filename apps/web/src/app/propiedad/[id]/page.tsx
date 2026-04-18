@@ -15,6 +15,7 @@ import { ListingAmenitiesGrid } from '@/components/property/listing-amenities-gr
 import { ListingTrustPanel } from '@/components/property/listing-trust-panel'
 import { ListingRelatedSearches } from '@/components/property/listing-related-searches'
 import { ListingSearchFlowBanner } from '@/components/property/listing-search-flow-banner'
+import { ListingSearchPostBanner } from '@/components/property/listing-search-post-banner'
 import { PropertyLocationMap } from '@/components/property/property-location-map'
 import {
   formatPrice,
@@ -90,7 +91,17 @@ function FieldSummary({ field }: { field: ListingField | null | undefined }) {
   }
 }
 
-function SimilarSection({ listingId }: { listingId: string }) {
+function SimilarSection({
+  listingId,
+  basePriceAmount,
+  baseSurfaceTotal,
+  baseNeighborhood,
+}: {
+  listingId: string
+  basePriceAmount: number
+  baseSurfaceTotal: number
+  baseNeighborhood: string
+}) {
   const { returnToQuery } = useListingFlowReturn(listingId)
 
   const { data = [], isLoading } = trpc.listing.similar.useQuery({ id: listingId })
@@ -114,8 +125,10 @@ function SimilarSection({ listingId }: { listingId: string }) {
     return null
   }
 
+  const baseNb = baseNeighborhood.trim().toLowerCase()
+
   return (
-    <Card className="space-y-4 rounded-xl border border-border/45 p-6 shadow-none">
+    <Card className="space-y-4 rounded-xl border border-border/45 p-6 shadow-none transition-shadow duration-300">
       <div className="space-y-1.5 border-b border-border/30 pb-4">
         <h2 className="text-lg font-semibold text-text-primary">
           {L.listingSimilarSectionTitle}
@@ -146,12 +159,29 @@ function SimilarSection({ listingId }: { listingId: string }) {
             item.bathrooms !== null && item.bathrooms > 0
               ? ` · ${item.bathrooms} baño${item.bathrooms > 1 ? 's' : ''}`
               : ''
+
+          const itemNb = (nb ?? '').toLowerCase()
+          const similarTags: string[] = []
+          if (baseNb.length > 0 && itemNb === baseNb) {
+            similarTags.push(L.similarTagBetterLocation)
+          }
+          if (item.priceAmount < basePriceAmount) {
+            similarTags.push(L.similarTagCheaper)
+          }
+          if (item.surfaceTotal > baseSurfaceTotal) {
+            similarTags.push(L.similarTagLargerSurface)
+          }
+          if (index === 0) {
+            similarTags.push(L.similarTagNew)
+          }
+          const similarTagsUi = similarTags.slice(0, 2)
+
           return (
             <Link
               key={item.id}
               href={`/propiedad/${item.id}${returnToQuery}`}
               prefetch
-              className="group block overflow-hidden rounded-xl border border-border/45 bg-surface-primary shadow-none transition-all hover:border-border/70 hover:shadow-sm active:scale-[0.99]"
+              className="group block overflow-hidden rounded-xl border border-border/45 bg-surface-primary shadow-none transition-all duration-200 hover:-translate-y-0.5 hover:border-border/70 hover:shadow-md active:scale-[0.985]"
               onClick={() => {
                 recordSearchResultClick.mutate({
                   listingId: item.id,
@@ -175,6 +205,19 @@ function SimilarSection({ listingId }: { listingId: string }) {
                   />
                 </div>
                 <div className="min-w-0 flex-1 space-y-1.5">
+                  {similarTagsUi.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {similarTagsUi.map((t, ti) => (
+                        <Badge
+                          key={`${item.id}-${ti}-${t}`}
+                          variant="secondary"
+                          className="px-1.5 py-0 text-[10px] font-medium uppercase tracking-wide"
+                        >
+                          {t}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
                   <p className="text-base font-semibold tabular-nums tracking-tight text-text-primary">
                     {formatPrice(item.priceAmount, cur)}
                   </p>
@@ -239,7 +282,7 @@ function ContactConversionBanner({
         <Button
           type="button"
           size="lg"
-          className="transition-transform active:scale-[0.98]"
+          className="text-base font-semibold transition-transform active:scale-[0.985]"
           onClick={onContact}
         >
           {L.contactPrimaryCta}
@@ -458,7 +501,21 @@ export default function PropiedadPage() {
     <div className="flex min-h-screen flex-col bg-surface-primary">
       <Header />
       <ListingSearchFlowBanner listingId={listing.id} listingTitle={listing.title} />
-      <main className="flex-1 pb-36 lg:pb-10">
+      <ListingSearchPostBanner
+        listingId={listing.id}
+        fallbackCurrency={priceCurrency}
+        listing={{
+          operationType: listing.operationType,
+          propertyType: listing.propertyType,
+          priceAmount: listing.priceAmount,
+          bedrooms: listing.bedrooms,
+          surfaceTotal: listing.surfaceTotal,
+          neighborhood: addressNeighborhood,
+          city: addressCity,
+          amenityIds,
+        }}
+      />
+      <main className="flex-1 pb-36 lg:pb-10 transition-opacity duration-300 ease-out">
         <section className="border-b border-border/50 bg-surface-secondary/30">
           <div className="container mx-auto px-4 py-6 lg:py-8">
             <div className="overflow-hidden rounded-2xl border border-border/60 bg-surface-primary shadow-sm">
@@ -606,7 +663,7 @@ export default function PropiedadPage() {
                   <div className="space-y-2.5 pt-1">
                     <Button
                       size="lg"
-                      className="w-full transition-transform active:scale-[0.98]"
+                      className="w-full text-base font-semibold transition-transform active:scale-[0.985]"
                       onClick={() => openContactFlow('sidebar_primary')}
                     >
                       <MessageSquare className="mr-2 h-4 w-4 shrink-0" />
@@ -615,7 +672,7 @@ export default function PropiedadPage() {
                     <Button
                       variant="outline"
                       size="default"
-                      className="w-full transition-transform active:scale-[0.98]"
+                      className="w-full font-medium transition-transform active:scale-[0.985]"
                       type="button"
                       onClick={() => openContactFlow('sidebar_secondary')}
                     >
@@ -677,7 +734,12 @@ export default function PropiedadPage() {
               />
             </div>
             <div className="lg:col-span-2">
-              <SimilarSection listingId={listing.id} />
+              <SimilarSection
+                listingId={listing.id}
+                basePriceAmount={listing.priceAmount}
+                baseSurfaceTotal={listing.surfaceTotal}
+                baseNeighborhood={nbTrim}
+              />
             </div>
           </div>
         </div>
@@ -690,7 +752,7 @@ export default function PropiedadPage() {
           </p>
           <Button
             size="lg"
-            className="min-h-12 w-full text-base transition-transform active:scale-[0.98]"
+            className="min-h-12 w-full text-base font-semibold transition-transform active:scale-[0.985]"
             type="button"
             onClick={() => openContactFlow('sticky_primary')}
           >
@@ -700,7 +762,7 @@ export default function PropiedadPage() {
             <Button
               variant="outline"
               size="sm"
-              className="min-h-10 min-w-0 flex-1 text-xs transition-transform active:scale-[0.98]"
+              className="min-h-10 min-w-0 flex-1 text-xs font-medium transition-transform active:scale-[0.985]"
               type="button"
               onClick={() => openContactFlow('sticky_secondary')}
             >

@@ -604,9 +604,9 @@ export const PORTAL_SEARCH_UX_COPY = {
 
 /** Ficha de propiedad: contacto y confianza (Sprint 28.8, voseo). */
 export const PORTAL_LISTING_UX_COPY = {
-  contactButton: 'Consultá por esta propiedad',
-  contactPrimaryCta: 'Consultá por esta propiedad',
-  contactScheduleCta: 'Coordiná una visita',
+  contactButton: 'Consultar esta propiedad',
+  contactPrimaryCta: 'Consultar esta propiedad',
+  contactScheduleCta: 'Agendar visita',
   /** Encima del título del bloque de contacto (ficha). */
   listingContactEyebrow: 'Consultá sin compromiso',
   sidebarTitle: 'Siguiente paso',
@@ -627,7 +627,7 @@ export const PORTAL_LISTING_UX_COPY = {
     'Volviste a mirar este aviso: suele ser buena señal. Pedí info y te escribimos.',
   contactSmartBodyCompare:
     'La tenés en la lista para comparar: es un buen momento para pedir detalle sin compromiso.',
-  modalTitle: 'Consultá por esta propiedad',
+  modalTitle: 'Quiero más información',
   modalDescriptionIdle:
     'Completá el formulario breve de abajo. Tu consulta llega al equipo y al publicador; acá no mostramos su mail ni teléfono.',
   contactModalInternalNote:
@@ -672,9 +672,37 @@ export const PORTAL_LISTING_UX_COPY = {
   listingFlowBackToBuscar: 'Ir al buscador',
   listingFlowNextStepsHint:
     'Podés consultar por esta propiedad, ver otras similares abajo o volver a tu lista sin perder los filtros.',
-  listingSimilarSectionTitle: 'Seguí explorando',
+  listingSimilarSectionTitle: 'Otras opciones que encajan con tu búsqueda',
   listingSimilarSectionLead:
-    'Misma operación y tipo que estás viendo, en tu zona o cerca: seguís dentro de tu búsqueda.',
+    'Estas propiedades comparten ubicación, rango o características similares.',
+
+  /** Resumen liviano desde `returnTo` (/buscar?...) debajo del banner de flujo. */
+  searchContextSummaryBadge: 'Tu búsqueda',
+  searchContextSummarySeparator: ' · ',
+  searchContextSummaryLocationPrefix: 'en',
+  searchContextSummaryPriceFrom: 'desde',
+  searchContextSummaryPriceUpTo: 'hasta',
+  searchContextSummaryBedrooms: '{n}+ dormitorios',
+  searchContextSummarySurface: '{n} m² o más',
+  searchContextSummaryAmenitiesHint: 'con extras marcados en el buscador',
+
+  /** Heurística cliente: encaje vs filtros (sin scoring numérico). */
+  fitInsightMultiMainCriteria: 'Coincide con varios de tus criterios principales.',
+  fitInsightLocationWithinSearch: 'Se destaca por ubicación dentro de tu búsqueda.',
+  fitInsightOutdoorAmplitude:
+    'Buena opción si priorizás espacios al aire libre y amplitud.',
+  fitInsightPriceBand: 'Encaja en la franja de precio que filtraste.',
+  fitInsightAmenitiesOverlap: 'Reuní varios de los extras que marcaste en el buscador.',
+  fitInsightPairCriteria: 'Encaja con parte de lo que pediste: vale la pena compararla.',
+
+  /** Etiquetas en cards de similares (máx. 2 por card en UI). */
+  similarTagCheaper: 'Más económica',
+  similarTagLargerSurface: 'Mayor superficie',
+  similarTagBetterLocation: 'Mejor ubicación',
+  similarTagNew: 'Nueva',
+
+  /** Regreso desde ficha con hash #buscar-listing-{id}. */
+  buscarReturnFromFichaBadge: 'La estabas viendo',
 } as const
 
 /** Etiquetas para enlaces «Búsquedas relacionadas» (jerarquía zona + precio). Sprint 43. */

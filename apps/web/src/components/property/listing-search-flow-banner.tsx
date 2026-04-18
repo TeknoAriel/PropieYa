@@ -61,7 +61,7 @@ export function ListingSearchFlowBanner({
           <Link
             href={backHref}
             prefetch
-            className="inline-flex w-fit shrink-0 items-center gap-2 rounded-lg border border-border/60 bg-surface-primary px-3.5 py-2 text-sm font-medium text-text-primary shadow-sm transition-all hover:border-brand-primary/40 hover:bg-brand-primary/[0.05] active:scale-[0.99]"
+            className="inline-flex w-fit shrink-0 items-center gap-2 rounded-lg border border-border/60 bg-surface-primary px-3.5 py-2 text-sm font-medium text-text-primary shadow-sm transition-all hover:border-brand-primary/40 hover:bg-brand-primary/[0.05] active:scale-[0.985]"
           >
             <span aria-hidden="true" className="text-text-tertiary">
               ←

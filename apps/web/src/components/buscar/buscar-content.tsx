@@ -14,6 +14,7 @@ import {
 } from 'react'
 
 import {
+  Badge,
   Button,
   Card,
   Dialog,
@@ -52,6 +53,7 @@ import {
   getFacetFlagsForBuscarRefineLayer,
   normalizeSearchSessionMVP,
   OPERATION_TYPE_LABELS,
+  PORTAL_LISTING_UX_COPY as listingUx,
   PORTAL_SEARCH_UX_COPY as S,
   PROPERTY_TYPE_LABELS,
   summarizeSearchFilters,
@@ -301,6 +303,8 @@ function ListingCard({
   compactMatchReason,
   whyBucketId,
   buscarReturnToEncoded,
+  fichaReturnHighlight,
+  fichaReturnShowBadge,
 }: {
   listing: BuscarListingCardData
   mapSelectedListingId: string | null
@@ -312,6 +316,9 @@ function ListingCard({
   whyBucketId?: 'strong' | 'near' | 'widened'
   /** Continuidad con ficha: path /buscar codificado en query `returnTo`. */
   buscarReturnToEncoded: string
+  /** Hash `#buscar-listing-{id}` al volver desde la ficha. */
+  fichaReturnHighlight?: boolean
+  fichaReturnShowBadge?: boolean
 }) {
   const operationLabel = OPERATION_TYPE_LABELS[listing.operationType] ?? listing.operationType
   const tipoLabel = PROPERTY_TYPE_LABELS[listing.propertyType] ?? listing.propertyType
@@ -351,8 +358,24 @@ function ListingCard({
   return (
     <div
       id={`buscar-listing-${listing.id}`}
-      className="scroll-mt-24 rounded-xl"
+      className={`relative scroll-mt-24 rounded-xl transition-[box-shadow,transform] duration-500 ease-out ${
+        fichaReturnHighlight
+          ? 'ring-2 ring-brand-primary/50 ring-offset-2 ring-offset-surface-primary shadow-md'
+          : ''
+      }`}
     >
+      {fichaReturnHighlight ? (
+        <div
+          className={`pointer-events-none absolute left-2 top-2 z-[2] transition-opacity duration-700 ease-out ${
+            fichaReturnShowBadge ? 'opacity-100' : 'opacity-0'
+          }`}
+          aria-hidden={!fichaReturnShowBadge}
+        >
+          <Badge variant="secondary" className="text-[10px] font-semibold shadow-sm">
+            {listingUx.buscarReturnFromFichaBadge}
+          </Badge>
+        </div>
+      ) : null}
       <Link
         href={listingHref}
         className="block"
@@ -367,11 +390,11 @@ function ListingCard({
         }}
       >
         <Card
-          className={`group flex cursor-pointer flex-col overflow-hidden rounded-xl border shadow-none transition-colors duration-200 hover:shadow-sm ${tierCardClass} ${
+          className={`group flex cursor-pointer flex-col overflow-hidden rounded-xl border shadow-none transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${tierCardClass} ${
             emphasizeFromMap
               ? 'ring-1 ring-brand-primary/45 ring-offset-1 ring-offset-surface-primary'
               : ''
-          }`}
+          } active:scale-[0.985]`}
         >
           <div className="relative h-40 shrink-0 overflow-hidden bg-surface-secondary md:h-44">
             <Image
@@ -614,6 +637,9 @@ export function BuscarContent({
   const [polygonDrawHint, setPolygonDrawHint] = useState<string | null>(null)
   const [mapSyncHoverId, setMapSyncHoverId] = useState<string | null>(null)
   const [mapSyncSelectedId, setMapSyncSelectedId] = useState<string | null>(null)
+  /** Regreso desde ficha con `#buscar-listing-{uuid}`: resaltar card y badge temporal. */
+  const [returnFocusListingId, setReturnFocusListingId] = useState<string | null>(null)
+  const [returnFocusShowBadge, setReturnFocusShowBadge] = useState(false)
   /** Huella de sesión v2 para placeholder estable en tRPC. */
   const searchFilterFpRef = useRef<string | null>(null)
   const secondaryToolsDetailsRef = useRef<HTMLDetailsElement>(null)
@@ -1119,6 +1145,48 @@ export function BuscarContent({
   }, [router, pathname])
 
   const searchParamsKey = searchParams.toString()
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const readId = () => {
+      const m = window.location.hash.match(/^#buscar-listing-([0-9a-f-]{36})$/i)
+      return m?.[1] ?? null
+    }
+    const syncFromHash = () => {
+      const hid = readId()
+      setReturnFocusListingId(hid)
+      setReturnFocusShowBadge(Boolean(hid))
+    }
+    syncFromHash()
+    window.addEventListener('hashchange', syncFromHash)
+    return () => window.removeEventListener('hashchange', syncFromHash)
+  }, [pathname, searchParamsKey])
+
+  useEffect(() => {
+    const id = returnFocusListingId
+    if (!id || isLoading) return
+    if (!listingsAll.some((l) => l.id === id)) {
+      if (listingsAll.length > 0) {
+        setReturnFocusListingId(null)
+        setReturnFocusShowBadge(false)
+      }
+      return
+    }
+
+    const raf = requestAnimationFrame(() => {
+      document.getElementById(`buscar-listing-${id}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+    })
+    const t1 = window.setTimeout(() => setReturnFocusShowBadge(false), 4300)
+    const t2 = window.setTimeout(() => setReturnFocusListingId(null), 5200)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+    }
+  }, [returnFocusListingId, isLoading, listingsAll])
 
   const pushBuscarQueryParams = useCallback(
     (mutate: (p: URLSearchParams) => void) => {
@@ -1909,6 +1977,13 @@ export function BuscarContent({
                                       compactMatchReason
                                       whyBucketId="near"
                                       buscarReturnToEncoded={buscarReturnToEncoded}
+                                      fichaReturnHighlight={
+                                        returnFocusListingId === listing.id
+                                      }
+                                      fichaReturnShowBadge={
+                                        returnFocusListingId === listing.id &&
+                                        returnFocusShowBadge
+                                      }
                                       onMapSyncHover={
                                         showMap && mapPins.length > 0
                                           ? onMapSyncHover
@@ -2004,6 +2079,13 @@ export function BuscarContent({
                                       compactMatchReason
                                       whyBucketId="widened"
                                       buscarReturnToEncoded={buscarReturnToEncoded}
+                                      fichaReturnHighlight={
+                                        returnFocusListingId === listing.id
+                                      }
+                                      fichaReturnShowBadge={
+                                        returnFocusListingId === listing.id &&
+                                        returnFocusShowBadge
+                                      }
                                       onMapSyncHover={
                                         showMap && mapPins.length > 0
                                           ? onMapSyncHover
@@ -2063,6 +2145,13 @@ export function BuscarContent({
                                     compactMatchReason
                                     whyBucketId="strong"
                                     buscarReturnToEncoded={buscarReturnToEncoded}
+                                    fichaReturnHighlight={
+                                      returnFocusListingId === listing.id
+                                    }
+                                    fichaReturnShowBadge={
+                                      returnFocusListingId === listing.id &&
+                                      returnFocusShowBadge
+                                    }
                                     onMapSyncHover={
                                       showMap && mapPins.length > 0
                                         ? onMapSyncHover
