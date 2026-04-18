@@ -173,7 +173,7 @@ function cardWhyLine(
   if (bucketId === 'near') {
     return `${tipo} por ${precio} en ${zona}: ampliamos la zona para no perderte nada útil.`
   }
-  return `${tipo} por ${precio} en ${zona}: mismo tipo y operación, con un criterio un poco más flexible.`
+  return `${tipo} por ${precio} en ${zona}: opciones parecidas, con un criterio un poco más flexible.`
 }
 
 function buildBucketSessionDigestLine(
@@ -218,7 +218,7 @@ function buildBucketSessionDigestLine(
     }
     return `Más opciones en ${c || 'tu ciudad'} con ${tipo}${precioBit}.`
   }
-  return `Si aflojás un detalle, aparecen avisos con el mismo tipo y operación${precioBit}.`
+    return `Si aflojás un detalle, aparecen más avisos parecidos a lo que buscás${precioBit}.`
 }
 
 function displayBucketTitle(bucketId: string, serverLabel: string): string {
