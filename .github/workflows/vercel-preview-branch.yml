@@ -1,0 +1,182 @@
+# Deploy Preview en Vercel + smoke HTTP para cada push de rama (excepto deploy/infra).
+# Producción canónica no se toca: esa rama usa promote-deploy-infra.yml.
+# Requiere los mismos secretos VERCEL_* que el workflow de promote.
+
+name: Vercel Preview (ramas)
+
+on:
+  push:
+    branches-ignore:
+      - deploy/infra
+  workflow_dispatch:
+
+concurrency:
+  group: vercel-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/propieya
+  NEXT_PUBLIC_APP_URL: https://propieyaweb.vercel.app
+  NEXT_PUBLIC_PANEL_URL: https://propieya-panel.vercel.app
+  NEXT_PUBLIC_WEB_APP_URL: https://propieyaweb.vercel.app
+
+jobs:
+  preview:
+    name: Verify + Preview deploy + Ready (smoke)
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      TURBO_DAEMON: 'false'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validar secretos Vercel
+        run: |
+          set -euo pipefail
+          missing=0
+          for k in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!k:-}" ]; then
+              echo "::error::Falta secret $k en GitHub Actions (Preview no puede deployar)."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Verificar proyecto web canónico
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          source scripts/production-canonical.env.sh
+          resp="$(curl -fsS -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            "https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}")"
+          name="$(echo "$resp" | jq -r '.name // empty')"
+          if [ -z "$name" ]; then
+            echo "::error::No se pudo leer el proyecto Vercel (token o VERCEL_PROJECT_ID)."
+            exit 1
+          fi
+          if [ "$name" != "${PROPIEYA_VERCEL_WEB_PROJECT_NAME}" ]; then
+            echo "::error::VERCEL_PROJECT_ID apunta a '${name}'; se exige '${PROPIEYA_VERCEL_WEB_PROJECT_NAME}'."
+            exit 1
+          fi
+          echo "OK: preview sobre proyecto ${name}."
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build (turbo)
+        run: pnpm build
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+
+      - name: Linkear proyecto web (raíz monorepo)
+        run: |
+          set -euo pipefail
+          mkdir -p .vercel
+          cat > .vercel/project.json <<JSON
+          {
+            "orgId": "${VERCEL_ORG_ID}",
+            "projectId": "${VERCEL_PROJECT_ID}"
+          }
+          JSON
+
+      - name: Deploy Preview (Vercel CLI, sin --prod)
+        id: deploy
+        run: |
+          set -euo pipefail
+          TOKEN="${VERCEL_TOKEN}"
+          META=( --meta "githubSha=${GITHUB_SHA}" --meta "githubRepo=${GITHUB_REPOSITORY}" --meta "githubRef=${GITHUB_REF_NAME}" )
+          if ! out=$(npx --yes vercel@51.4.0 deploy --yes --token "${TOKEN}" \
+            --build-env "BUILD_COMMIT_SHA=${GITHUB_SHA}" \
+            --build-env "BUILD_GIT_REF=${GITHUB_REF_NAME}" \
+            --env "BUILD_COMMIT_SHA=${GITHUB_SHA}" \
+            --env "BUILD_GIT_REF=${GITHUB_REF_NAME}" \
+            "${META[@]}" 2>&1); then
+            echo "::error::vercel deploy (preview) falló"
+            echo "$out" | tail -n 120
+            exit 1
+          fi
+          echo "$out"
+          url="$(
+            echo "$out" | grep -i 'Preview:' | grep -oE 'https://[a-zA-Z0-9][a-zA-Z0-9.-]*\.vercel\.app' | head -n 1 || true
+          )"
+          if [ -z "${url:-}" ]; then
+            url="$(
+              echo "$out" | grep -iE 'Deployed to|https://[^ ]+\.vercel\.app' | grep -oE 'https://[a-zA-Z0-9][a-zA-Z0-9.-]*\.vercel\.app' | head -n 1 || true
+            )"
+          fi
+          if [ -z "${url:-}" ]; then
+            url="$(
+              echo "$out" | grep -oE 'https://[a-zA-Z0-9][a-zA-Z0-9.-]*\.vercel\.app' | head -n 1 || true
+            )"
+          fi
+          if [ -z "${url:-}" ]; then
+            echo "::error::No se pudo extraer la URL del Preview en la salida del CLI."
+            exit 1
+          fi
+          echo "preview_url=$url" >> "$GITHUB_OUTPUT"
+          echo "PREVIEW_URL=$url" >> "$GITHUB_ENV"
+          echo "### URL Preview" >> "$GITHUB_STEP_SUMMARY"
+          echo "- $url" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Rama: \`${GITHUB_REF_NAME}\` · SHA \`${GITHUB_SHA:0:7}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Esperar build remoto
+        run: sleep 90
+
+      - name: Smoke Preview — raíz (2xx)
+        run: |
+          set -euo pipefail
+          url="${PREVIEW_URL}"
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" "$url" 2>/dev/null || echo "000")
+            echo "Intento $i/12 root Preview: HTTP $code"
+            if [[ "$code" =~ ^2 ]]; then
+              exit 0
+            fi
+            sleep 25
+          done
+          echo "::error::Preview $url no respondió 2xx a tiempo."
+          exit 1
+
+      - name: Smoke Preview — /api/health (200 o 503)
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /dev/null -w "%{http_code}" "${PREVIEW_URL}/api/health" 2>/dev/null || echo "000")
+          echo "/api/health Preview: HTTP $code"
+          if [[ "$code" =~ ^(200|503)$ ]]; then
+            exit 0
+          fi
+          echo "::error::Preview /api/health devolvió $code"
+          exit 1
+
+      - name: Resumen /api/version (Preview)
+        run: |
+          set -euo pipefail
+          curl -sS "${PREVIEW_URL}/api/version" | head -c 500 || true
+          echo ""
+          echo "=== Preview READY OK ==="

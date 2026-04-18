@@ -1,6 +1,7 @@
 # Agentes / IA
 
 - El **propietario no revisa** el repo ni Actions: solo ve el producto y la URL pública.
+- **GitHub Actions:** el workflow **CI** corre en **todas** las ramas y PRs (lint + typecheck + build). El workflow **Vercel Preview (ramas)** hace deploy Preview + smoke en cada push que no sea `deploy/infra` (producción sigue siendo solo `promote-deploy-infra.yml`). Detalle: `docs/DEPLOY-CONTEXTO-AGENTES.md` §CI y Preview.
 - El **agente** ejecuta lint/typecheck (y build si aplica) **antes de push**, corrige CI sin pedir revisión, documenta bloqueos en `docs/REGISTRO-BLOQUEOS.md`. En clones con **Husky** activo, `git push` a `main` o `deploy/infra` dispara `pnpm verify` (`.husky/pre-push`).
 - **Tras push a `deploy/infra`:** el agente ejecuta `pnpm verificar:deploy` y, si hace falta, `pnpm diagnostico:prod` o `pnpm verificar:ruta-produccion` (valida URL canónica y, con `VERCEL_TOKEN`+`VERCEL_PROJECT_ID`, que el secret apunte a `propie-ya-web`). El workflow Promote **falla** si producción no responde o si `VERCEL_PROJECT_ID` no es el proyecto web canónico. Bloqueos: `docs/REGISTRO-BLOQUEOS.md` — ver `.cursor/rules/deploy-infra.mdc`.
 - **Repositorio GitHub operativo (origin):** `https://github.com/TeknoAriel/PropieYa` — push habitual y **Vercel → Git** enlazado aquí. **Copia auditoría (org):** `kiteprop/ia-propieya` como remoto `kiteprop`; subir solo cuando el propietario pida (`git push kiteprop deploy/infra` / `main` según acuerdo).

@@ -56,6 +56,12 @@
 | Dominios del proyecto web | https://vercel.com/teknoariels-projects/propie-ya-web/settings/domains |
 | Secretos GitHub Actions | https://github.com/TeknoAriel/PropieYa/settings/secrets/actions |
 | Workflow deploy | https://github.com/TeknoAriel/PropieYa/actions/workflows/promote-deploy-infra.yml |
+| Workflow Preview (ramas) | https://github.com/TeknoAriel/PropieYa/actions/workflows/vercel-preview-branch.yml |
+
+### CI y Preview en todas las ramas (autónomo)
+
+- **`CI` (`.github/workflows/ci.yml`):** en cada `push` y cada `pull_request` corre lint, typecheck y build del monorepo (ready de compilación sin intervención del propietario).
+- **`Vercel Preview (ramas)` (`.github/workflows/vercel-preview-branch.yml`):** en cada `push` a cualquier rama **excepto** `deploy/infra`, corre verify local, **`vercel deploy` sin `--prod`** al proyecto canónico `propie-ya-web` y exige smoke **2xx** en la URL Preview y **200|503** en `/api/health`. Mismos secretos `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` que el promote. La rama `deploy/infra` sigue usando solo **`promote-deploy-infra.yml`** para producción canónica (`propieyaweb.vercel.app`).
 
 ---
 

@@ -1,13 +1,11 @@
-# CI: lint + typecheck + build para mantener main estable.
-# Simula que el proyecto compila y está listo para deploy.
+# CI: lint + typecheck + build en cualquier rama / PR (ready sin depender del propietario).
+# Producción sigue siendo solo deploy/infra → promote-deploy-infra.yml.
 
 name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
-    branches: [main]
 
 env:
   # Valores mínimos para build (no se usan en runtime en CI)
