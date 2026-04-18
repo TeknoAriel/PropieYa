@@ -32,6 +32,8 @@ export type ParsedBuscarSearchContext = {
   minSurface: number | null
   amenityIds: string[]
   currency: Currency | null
+  /** Frase en /buscar (`q=`), sin sustituir filtros estructurados. */
+  naturalQuery: string
   hasAnySignal: boolean
 }
 
@@ -64,6 +66,7 @@ export function parseBuscarSearchFromReturnPath(
 
   const city = (sp.get('ciudad') ?? '').trim()
   const neighborhood = (sp.get('barrio') ?? '').trim()
+  const naturalQuery = (sp.get('q') ?? '').trim()
   const minPrice = parseNum(sp.get('min'))
   const maxPrice = parseNum(sp.get('max'))
   const minBedrooms = parseNum(sp.get('dorm'))
@@ -92,7 +95,8 @@ export function parseBuscarSearchFromReturnPath(
       maxPrice != null ||
       minBedrooms != null ||
       minSurface != null ||
-      amenityIds.length > 0
+      amenityIds.length > 0 ||
+      naturalQuery.length > 0
   )
 
   if (!hasAnySignal) return null
@@ -108,6 +112,7 @@ export function parseBuscarSearchFromReturnPath(
     minSurface,
     amenityIds,
     currency,
+    naturalQuery,
     hasAnySignal,
   }
 }

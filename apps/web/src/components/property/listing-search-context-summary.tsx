@@ -27,6 +27,12 @@ export function formatListingSearchContextSummary(
   return buildSummaryLine(parsed, fallbackCurrency)
 }
 
+function truncateNatural(q: string, max: number): string {
+  const t = q.trim()
+  if (t.length <= max) return t
+  return `${t.slice(0, Math.max(0, max - 1))}…`
+}
+
 function buildSummaryLine(
   ctx: ParsedBuscarSearchContext,
   fallbackCurrency: Currency
@@ -71,6 +77,15 @@ function buildSummaryLine(
   }
   if (ctx.amenityIds.length > 0) {
     parts.push(L.searchContextSummaryAmenitiesHint)
+  }
+
+  if (ctx.naturalQuery.trim()) {
+    parts.push(
+      L.searchContextSummaryNatural.replace(
+        '{q}',
+        truncateNatural(ctx.naturalQuery, 72)
+      )
+    )
   }
 
   if (parts.length === 0) return null

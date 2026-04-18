@@ -21,6 +21,7 @@ import {
   formatPrice,
   OPERATION_TYPE_LABELS,
   PORTAL_LISTING_UX_COPY as L,
+  PORTAL_SEARCH_UX_COPY as S,
   PROPERTY_TYPE_LABELS,
 } from '@propieya/shared'
 import type {
@@ -126,126 +127,146 @@ function SimilarSection({
   }
 
   const baseNb = baseNeighborhood.trim().toLowerCase()
+  const tierCardClass =
+    'border-border/45 bg-surface-primary hover:border-border/70'
 
   return (
-    <Card className="space-y-4 rounded-xl border border-border/45 p-6 shadow-none transition-shadow duration-300">
-      <div className="space-y-1.5 border-b border-border/30 pb-4">
-        <h2 className="text-lg font-semibold text-text-primary">
-          {L.listingSimilarSectionTitle}
-        </h2>
-        <p className="text-sm leading-relaxed text-text-secondary">
-          {L.listingSimilarSectionLead}
-        </p>
-      </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {data.map((item, index) => {
-          const addr = item.address as { neighborhood?: string; city?: string } | null
-          const op =
-            OPERATION_TYPE_LABELS[item.operationType as OperationType] ??
-            item.operationType
-          const tipo =
-            PROPERTY_TYPE_LABELS[item.propertyType as PropertyType] ??
-            item.propertyType
-          const cur = item.priceCurrency as Currency
-          const nb = addr?.neighborhood?.trim()
-          const cy = addr?.city?.trim()
-          const locLine =
-            nb && cy ? `${nb} · ${cy}` : cy || nb || '—'
-          const roomsLabel =
-            item.bedrooms === null || item.bedrooms === 0
-              ? 'Monoambiente'
-              : `${item.bedrooms} dorm.`
-          const bathBit =
-            item.bathrooms !== null && item.bathrooms > 0
-              ? ` · ${item.bathrooms} baño${item.bathrooms > 1 ? 's' : ''}`
-              : ''
+    <section
+      id="lista-similares"
+      aria-labelledby="listing-similares-heading"
+      className="scroll-mt-28"
+    >
+      <Card className="space-y-4 rounded-xl border border-border/45 p-6 shadow-none transition-shadow duration-300">
+        <div className="space-y-1.5 border-b border-border/30 pb-4">
+          <h2
+            id="listing-similares-heading"
+            className="text-lg font-semibold text-text-primary"
+          >
+            {L.listingSimilarSectionTitle}
+          </h2>
+          <p className="text-sm leading-relaxed text-text-secondary">
+            {L.listingSimilarSectionLead}
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {data.map((item, index) => {
+            const addr = item.address as { neighborhood?: string; city?: string } | null
+            const op =
+              OPERATION_TYPE_LABELS[item.operationType as OperationType] ??
+              item.operationType
+            const tipo =
+              PROPERTY_TYPE_LABELS[item.propertyType as PropertyType] ??
+              item.propertyType
+            const cur = item.priceCurrency as Currency
+            const nb = addr?.neighborhood?.trim()
+            const cy = addr?.city?.trim()
+            const locLine =
+              nb && cy ? `${nb} · ${cy}` : cy || nb || '—'
+            const roomsLabel =
+              item.bedrooms === null || item.bedrooms === 0
+                ? 'Monoambiente'
+                : `${item.bedrooms} dorm.`
+            const bathBit =
+              item.bathrooms !== null && item.bathrooms > 0
+                ? ` · ${item.bathrooms} baño${item.bathrooms > 1 ? 's' : ''}`
+                : ''
 
-          const itemNb = (nb ?? '').toLowerCase()
-          const similarTags: string[] = []
-          if (baseNb.length > 0 && itemNb === baseNb) {
-            similarTags.push(L.similarTagBetterLocation)
-          }
-          if (item.priceAmount < basePriceAmount) {
-            similarTags.push(L.similarTagCheaper)
-          }
-          if (item.surfaceTotal > baseSurfaceTotal) {
-            similarTags.push(L.similarTagLargerSurface)
-          }
-          if (index === 0) {
-            similarTags.push(L.similarTagNew)
-          }
-          const similarTagsUi = similarTags.slice(0, 2)
+            const itemNb = (nb ?? '').toLowerCase()
+            const similarTags: string[] = []
+            if (baseNb.length > 0 && itemNb === baseNb) {
+              similarTags.push(L.similarTagBetterLocation)
+            }
+            if (item.priceAmount < basePriceAmount) {
+              similarTags.push(L.similarTagCheaper)
+            }
+            if (item.surfaceTotal > baseSurfaceTotal) {
+              similarTags.push(L.similarTagLargerSurface)
+            }
+            if (index === 0) {
+              similarTags.push(L.similarTagNew)
+            }
+            const similarTagsUi = similarTags.slice(0, 2)
 
-          return (
-            <Link
-              key={item.id}
-              href={`/propiedad/${item.id}${returnToQuery}`}
-              prefetch
-              className="group block overflow-hidden rounded-xl border border-border/45 bg-surface-primary shadow-none transition-all duration-200 hover:-translate-y-0.5 hover:border-border/70 hover:shadow-md active:scale-[0.985]"
-              onClick={() => {
-                recordSearchResultClick.mutate({
-                  listingId: item.id,
-                  from: 'similar',
-                  position: index,
-                })
-              }}
-            >
-              <div className="flex gap-3 p-3">
-                <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-lg bg-surface-secondary">
-                  <Image
-                    src={
-                      item.primaryImageUrl ||
-                      'https://placehold.co/400x300/e0ddd8/666660?text=Propiedad'
-                    }
-                    alt={item.title}
-                    fill
-                    sizes="112px"
-                    className="object-cover"
-                    unoptimized
-                  />
-                </div>
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  {similarTagsUi.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {similarTagsUi.map((t, ti) => (
-                        <Badge
-                          key={`${item.id}-${ti}-${t}`}
-                          variant="secondary"
-                          className="px-1.5 py-0 text-[10px] font-medium uppercase tracking-wide"
-                        >
-                          {t}
-                        </Badge>
-                      ))}
+            return (
+              <Link
+                key={item.id}
+                href={`/propiedad/${item.id}${returnToQuery}`}
+                prefetch
+                className="block"
+                onClick={() => {
+                  recordSearchResultClick.mutate({
+                    listingId: item.id,
+                    from: 'similar',
+                    position: index,
+                  })
+                }}
+              >
+                <Card
+                  className={`group flex cursor-pointer flex-col overflow-hidden rounded-xl border shadow-none transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${tierCardClass} active:scale-[0.985]`}
+                >
+                  <div className="relative h-40 shrink-0 overflow-hidden bg-surface-secondary md:h-44">
+                    <Image
+                      src={
+                        item.primaryImageUrl ||
+                        'https://placehold.co/600x400/e0ddd8/666660?text=Propiedad'
+                      }
+                      alt={item.title}
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      className="object-cover transition-opacity duration-200 group-hover:opacity-[0.96]"
+                      unoptimized
+                    />
+                  </div>
+                  <div className="flex min-h-0 flex-1 flex-col gap-2 p-3.5 md:gap-2.5 md:p-4">
+                    {similarTagsUi.length > 0 ? (
+                      <ul
+                        className="flex flex-wrap gap-x-2 gap-y-1"
+                        aria-label="Relación con la propiedad que estás viendo"
+                      >
+                        {similarTagsUi.map((t, ti) => (
+                          <li
+                            key={`${item.id}-${ti}-${t}`}
+                            className="max-w-full truncate rounded-md bg-surface-secondary/50 px-2 py-0.5 text-[11px] font-medium leading-tight text-text-secondary md:text-xs"
+                          >
+                            {t}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    <p className="text-xl font-semibold tabular-nums tracking-tight text-text-primary md:text-2xl">
+                      {formatPrice(item.priceAmount, cur)}
+                    </p>
+                    <p className="text-sm font-medium leading-snug text-text-secondary">
+                      {locLine}
+                    </p>
+                    <p className="text-sm leading-snug text-text-primary">
+                      <span className="text-text-tertiary">{op}</span>
+                      <span className="text-text-tertiary"> · </span>
+                      <span>{tipo}</span>
+                      <span className="text-text-tertiary"> · </span>
+                      <span>{item.surfaceTotal} m²</span>
+                      <span className="text-text-tertiary"> · </span>
+                      <span>
+                        {roomsLabel}
+                        {bathBit}
+                      </span>
+                    </p>
+                    <p className="text-sm font-medium leading-snug text-text-primary line-clamp-2">
+                      {item.title}
+                    </p>
+                    <div className="mt-auto pt-2">
+                      <span className="text-sm font-medium text-brand-primary">
+                        {S.listingCardCta}
+                      </span>
                     </div>
-                  ) : null}
-                  <p className="text-base font-semibold tabular-nums tracking-tight text-text-primary">
-                    {formatPrice(item.priceAmount, cur)}
-                  </p>
-                  <p className="text-xs font-medium leading-snug text-text-secondary">
-                    {locLine}
-                  </p>
-                  <p className="text-xs leading-snug text-text-primary">
-                    <span className="text-text-tertiary">{op}</span>
-                    <span className="text-text-tertiary"> · </span>
-                    <span>{tipo}</span>
-                    <span className="text-text-tertiary"> · </span>
-                    <span>{item.surfaceTotal} m²</span>
-                    <span className="text-text-tertiary"> · </span>
-                    <span>
-                      {roomsLabel}
-                      {bathBit}
-                    </span>
-                  </p>
-                  <p className="text-xs font-medium text-text-primary line-clamp-2">
-                    {item.title}
-                  </p>
-                </div>
-              </div>
-            </Link>
-          )
-        })}
-      </div>
-    </Card>
+                  </div>
+                </Card>
+              </Link>
+            )
+          })}
+        </div>
+      </Card>
+    </section>
   )
 }
 
@@ -500,10 +521,13 @@ export default function PropiedadPage() {
   return (
     <div className="flex min-h-screen flex-col bg-surface-primary">
       <Header />
-      <ListingSearchFlowBanner listingId={listing.id} listingTitle={listing.title} />
+      <ListingSearchFlowBanner
+        listingId={listing.id}
+        listingTitle={listing.title}
+        fallbackCurrency={priceCurrency}
+      />
       <ListingSearchPostBanner
         listingId={listing.id}
-        fallbackCurrency={priceCurrency}
         listing={{
           operationType: listing.operationType,
           propertyType: listing.propertyType,
@@ -642,7 +666,10 @@ export default function PropiedadPage() {
             </div>
 
             <aside className="space-y-4 lg:col-span-1">
-              <Card className="overflow-hidden rounded-xl border border-border/45 shadow-none ring-1 ring-brand-primary/10">
+              <Card
+                id="ficha-contacto"
+                className="scroll-mt-28 overflow-hidden rounded-xl border border-border/45 shadow-none ring-1 ring-brand-primary/10"
+              >
                 <div className="border-b border-border/40 bg-gradient-to-br from-brand-primary/[0.07] to-transparent px-5 py-4">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-primary">
                     {L.listingContactEyebrow}

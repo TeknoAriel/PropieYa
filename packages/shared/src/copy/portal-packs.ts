@@ -671,14 +671,19 @@ export const PORTAL_LISTING_UX_COPY = {
   listingFlowBackToResults: 'Volver a resultados',
   listingFlowBackToBuscar: 'Ir al buscador',
   listingFlowNextStepsHint:
-    'Podés consultar por esta propiedad, ver otras similares abajo o volver a tu lista sin perder los filtros.',
-  listingSimilarSectionTitle: 'Otras opciones que encajan con tu búsqueda',
+    'Los mismos filtros quedan guardados: al volver seguís en tu lista.',
+  /** Anclas suaves en ficha: consulta, similares, sin repetir el botón principal de regreso. */
+  listingFlowActionContact: 'Consultar',
+  listingFlowActionExploreSimilar: 'Ver parecidas',
+  listingSimilarSectionTitle: 'Seguí explorando desde esta propiedad',
   listingSimilarSectionLead:
-    'Estas propiedades comparten ubicación, rango o características similares.',
+    'Opciones con la misma operación y tipo, y precio o zona parecidos a lo que estás viendo. Es el mismo recorrido, con otro aviso.',
 
   /** Resumen liviano desde `returnTo` (/buscar?...) debajo del banner de flujo. */
   searchContextSummaryBadge: 'Tu búsqueda',
   searchContextSummarySeparator: ' · ',
+  /** Texto libre del campo «q» en /buscar (búsqueda en lenguaje natural). */
+  searchContextSummaryNatural: 'Texto: «{q}»',
   searchContextSummaryLocationPrefix: 'en',
   searchContextSummaryPriceFrom: 'desde',
   searchContextSummaryPriceUpTo: 'hasta',
