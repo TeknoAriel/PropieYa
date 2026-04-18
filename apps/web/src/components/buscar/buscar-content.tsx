@@ -566,6 +566,7 @@ export function BuscarContent({
   const [mapSyncSelectedId, setMapSyncSelectedId] = useState<string | null>(null)
   /** Huella de sesión v2 para placeholder estable en tRPC. */
   const searchFilterFpRef = useRef<string | null>(null)
+  const secondaryToolsDetailsRef = useRef<HTMLDetailsElement>(null)
 
   const facetFlagDefinitions = useMemo(() => getFacetFlagDefinitions(), [])
   const refineFacetDefinitions = useMemo(
@@ -1273,7 +1274,9 @@ export function BuscarContent({
 
   const openAllFilters = useCallback(() => {
     setClassicFiltersOpen(true)
-    scrollToElementId('buscar-esenciales')
+    const el = secondaryToolsDetailsRef.current
+    if (el) el.open = true
+    scrollToElementId('buscar-herramientas-secundarias')
   }, [scrollToElementId])
 
   const applyMainFiltersToUrl = useCallback(() => {
@@ -1398,6 +1401,8 @@ export function BuscarContent({
   const openMapFromAssistant = useCallback(() => {
     setClassicFiltersOpen(true)
     setShowMap(true)
+    const el = secondaryToolsDetailsRef.current
+    if (el) el.open = true
     scrollToElementId('buscar-mapa')
   }, [scrollToElementId])
 
@@ -1485,96 +1490,9 @@ export function BuscarContent({
           </p>
         ) : null}
 
-        {me ? (
-          <details className="group rounded-xl border border-border/25 bg-surface-secondary/20">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-sm font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden">
-              <span>{S.recentSearchesTitle}</span>
-              <span className="text-xs font-normal text-text-tertiary group-open:hidden">
-                Mostrar
-              </span>
-            </summary>
-            <div className="border-t border-border/15 px-3 pb-3 pt-2">
-              <BuscarRecentSearches />
-            </div>
-          </details>
-        ) : null}
-
-        <section
-          aria-label="Filtros de búsqueda"
-          className="flex flex-wrap items-center gap-2 rounded-xl bg-surface-secondary/25 px-3 py-2.5"
-        >
-          <Button
-            type="button"
-            variant={classicFiltersOpen ? 'secondary' : 'outline'}
-            size="sm"
-            className="h-8 gap-1 text-xs"
-            onClick={() => setClassicFiltersOpen((v) => !v)}
-          >
-            <Filter className="h-3 w-3" aria-hidden />
-            {classicFiltersOpen ? S.filtersOptionalCollapse : S.filtersOptionalExpand}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1 text-xs"
-            onClick={openMapFromAssistant}
-          >
-            <MapIcon className="h-3 w-3" aria-hidden />
-            {S.buscarOpenMapCta}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 text-xs text-text-secondary"
-            onClick={clearBuscarSearch}
-          >
-            {S.buscarClearSearch}
-          </Button>
-          <div
-            className="ml-auto inline-flex rounded-lg border border-border/25 bg-surface-primary/80 p-0.5"
-            role="group"
-            aria-label="Vista de resultados"
-          >
-            <Button
-              type="button"
-              variant={!showMap ? 'default' : 'ghost'}
-              size="sm"
-              className="h-8 rounded-sm px-2.5 text-xs"
-              onClick={() => setShowMap(false)}
-            >
-              Lista
-            </Button>
-            <Button
-              type="button"
-              variant={showMap ? 'default' : 'ghost'}
-              size="sm"
-              className="h-8 rounded-sm px-2.5 text-xs"
-              onClick={() => {
-                setClassicFiltersOpen(true)
-                setShowMap(true)
-                scrollToElementId('buscar-mapa')
-              }}
-            >
-              <MapIcon className="mr-0.5 hidden h-3 w-3 sm:inline" aria-hidden />
-              Mapa
-            </Button>
-          </div>
-        </section>
-
         <div id="buscar-esenciales" className="scroll-mt-24 space-y-5">
-          <Card className="space-y-6 border-border/35 p-5 shadow-none md:space-y-7 md:p-8">
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight text-text-primary md:text-xl">
-              {S.mainFiltersTitle}
-            </h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">
-              {S.mainFiltersSubtitle}
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 border-b border-border/20 pb-6 sm:flex-row sm:items-end sm:gap-4">
+          <Card className="space-y-5 border-border/35 p-5 shadow-none md:space-y-6 md:p-7">
+          <div className="flex flex-col gap-3 border-b border-border/20 pb-5 sm:flex-row sm:items-end sm:gap-4">
             <div className="min-w-0 flex-1">
               <BuscarLabeledField id="buscar-q" label={S.buscarMainSearchLabel}>
                 <Input
@@ -1600,14 +1518,6 @@ export function BuscarContent({
             </Button>
           </div>
 
-          {S.buscarLayer1Kicker.trim() ? (
-            <p className="text-xs font-semibold uppercase tracking-wide text-brand-primary">
-              {S.buscarLayer1Kicker}
-            </p>
-          ) : null}
-          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-text-tertiary">
-            {S.locationBlockTitle}
-          </p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-4">
             {opLocked ? (
               <BuscarLabeledField id="buscar-op-locked" label={S.buscarFieldOperation}>
@@ -1718,695 +1628,8 @@ export function BuscarContent({
             </BuscarLabeledField>
           </div>
 
-          {classicFiltersOpen ? (
-          <>
-          <div
-            id="buscar-mapa"
-            className="scroll-mt-24 space-y-3 rounded-xl border border-border/25 bg-surface-secondary/25 p-4 md:p-5"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-              <p className="text-xs font-semibold text-text-primary">
-                {S.mapIntegratedTitle}
-              </p>
-              {showMap ? (
-                <div className="flex flex-wrap justify-end gap-1.5">
-                  {mapBbox ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-xs"
-                      onClick={() => {
-                        setMapBbox(null)
-                        releaseMapFilter()
-                      }}
-                    >
-                      {S.clearBboxFilter}
-                    </Button>
-                  ) : null}
-                  {mapPolygonRing.length > 0 ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-xs"
-                      onClick={() => {
-                        setMapPolygonRing([])
-                        setPolygonDrawMode(false)
-                        releaseMapFilter()
-                      }}
-                    >
-                      {S.polygonRemove}
-                    </Button>
-                  ) : null}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs"
-                    onClick={() => {
-                      setShowMap(false)
-                      setMapLiveViewport(false)
-                      setMapBbox(null)
-                      setMapPolygonRing([])
-                      setPolygonDrawMode(false)
-                      releaseMapFilter()
-                    }}
-                  >
-                    {S.hideMap}
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-            {!showMap ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9"
-                onClick={() => {
-                  setShowMap(true)
-                  scrollToElementId('buscar-mapa')
-                }}
-              >
-                {S.showMap}
-              </Button>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2">
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-text-primary">
-                    <input
-                      type="checkbox"
-                      className="rounded border-border"
-                      checked={polygonDrawMode}
-                      onChange={(e) => setPolygonDrawMode(e.target.checked)}
-                    />
-                    {S.polygonDrawLabel}
-                  </label>
-                  <span className="text-xs text-text-tertiary">
-                    {mapPolygonRing.length}{' '}
-                    {mapPolygonRing.length === 1
-                      ? S.polygonVertexSingular
-                      : S.polygonVertexPlural}
-                    {mapPolygonRing.length >= 3
-                      ? ` ${S.polygonFilterActive}`
-                      : ` ${S.polygonMinVertices}`}
-                  </span>
-                </div>
-                {polygonDrawHint ? (
-                  <p className="text-sm text-semantic-warning" role="status">
-                    {polygonDrawHint}
-                  </p>
-                ) : null}
-                <div className="flex flex-col gap-2 border-t border-border pt-2">
-                  <label
-                    className={`flex cursor-pointer items-start gap-2 text-xs text-text-primary ${
-                      polygonDrawMode || mapPolygonRing.length > 0
-                        ? 'opacity-60'
-                        : ''
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 rounded border-border"
-                      checked={mapLiveViewport}
-                      disabled={polygonDrawMode || mapPolygonRing.length > 0}
-                      onChange={(e) => setMapLiveViewport(e.target.checked)}
-                    />
-                    <span>
-                      <span className="font-medium">{S.mapLiveViewportLabel}</span>
-                      <span className="mt-0.5 block text-text-tertiary">
-                        {S.mapLiveViewportHint}
-                      </span>
-                    </span>
-                  </label>
-                  {polygonDrawMode || mapPolygonRing.length > 0 ? (
-                    <p className="text-xs text-text-tertiary" role="status">
-                      {S.mapLiveViewportDisabledHint}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="flex flex-col gap-2 border-t border-border pt-2">
-                  {(mapBbox != null || mapPolygonRing.length >= 3) &&
-                  !mapCommitted ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="default"
-                      className="h-9 w-fit"
-                      onClick={commitMapSearchArea}
-                    >
-                      {S.buscarMapCommitCta}
-                    </Button>
-                  ) : null}
-                  {mapCommitted ? (
-                    <p className="text-xs text-text-secondary">
-                      {S.buscarMapCommittedHint}
-                    </p>
-                  ) : null}
-                  {mapCommitted ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-8 w-fit"
-                      onClick={releaseMapFilter}
-                    >
-                      {S.buscarMapReleaseFilter}
-                    </Button>
-                  ) : null}
-                </div>
-                <BuscarSearchMap
-                  pins={mapPins}
-                  onApplyZona={(bbox) => {
-                    setMapBbox(bbox)
-                    scrollToElementId('buscar-resultados')
-                  }}
-                  initialCenter={mapInitialCenter}
-                  initialZoom={mapInitialZoom}
-                  mapRemountKey={mapRemountKey}
-                  onViewportBboxChange={
-                    mapViewportReporterActive ? onViewportBboxChange : undefined
-                  }
-                  polygonRing={mapPolygonRing}
-                  polygonDrawMode={polygonDrawMode}
-                  onPolygonVertex={addPolygonVertexSafe}
-                  mapPinEmphasisId={mapPinEmphasisId}
-                  onPinClickListing={mapPins.length > 0 ? onMapPinSelect : undefined}
-                  onListingNavigateFromMap={(listingId) =>
-                    onSearchResultNavigate(listingId, 'map')
-                  }
-                  flyToPinCoords={
-                    mapPins.length > 0 ? mapSyncFlyCoords : null
-                  }
-                />
-                <div className="mt-2 space-y-2">
-                  {mapBbox || mapPolygonRing.length >= 3 ? (
-                    <p className="text-xs text-text-secondary">{S.buscarMapFilterActiveHint}</p>
-                  ) : (
-                    <div
-                      className="rounded-lg bg-brand-primary/[0.06] px-3 py-2.5 text-xs"
-                      role="status"
-                    >
-                      <span className="font-medium text-text-primary">{S.buscarMapFilterHintTitle}</span>
-                      <p className="mt-1 text-text-secondary">{S.buscarMapFilterHintBody}</p>
-                    </div>
-                  )}
-                  <details className="rounded-lg border border-border/20 bg-surface-primary/50 px-2.5 py-2">
-                    <summary className="cursor-pointer text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden">
-                      {S.mapHelpAccordionTitle}
-                    </summary>
-                    <p className="mt-2 text-xs leading-relaxed text-text-tertiary">{S.mapHelp}</p>
-                  </details>
-                  {mapPins.length > 0 ? (
-                    <p className="text-xs text-text-tertiary">{S.buscarMapListSyncHint}</p>
-                  ) : null}
-                </div>
-                {mapPins.length === 0 && !isLoading ? (
-                  <p className="text-sm text-text-secondary">{S.mapNoPins}</p>
-                ) : null}
-              </>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-4">
-            {propertyType === 'land' ? (
-              <>
-                <BuscarLabeledField id="buscar-sup-l1" label={S.buscarFieldMinSurface}>
-                  <Input
-                    id="buscar-sup-l1"
-                    type="number"
-                    placeholder="Ej. 300"
-                    value={minSurface}
-                    onChange={(e) => setMinSurface(e.target.value)}
-                    min={0}
-                  />
-                </BuscarLabeledField>
-                <BuscarLabeledField id="buscar-sup-max-l1" label={S.buscarFieldMaxSurface}>
-                  <Input
-                    id="buscar-sup-max-l1"
-                    type="number"
-                    placeholder="Ej. 2000"
-                    value={maxSurface}
-                    onChange={(e) => setMaxSurface(e.target.value)}
-                    min={0}
-                  />
-                </BuscarLabeledField>
-              </>
-            ) : (
-              <>
-                <BuscarLabeledField id="buscar-dorm" label={S.buscarFieldMinBedrooms}>
-                  <Input
-                    id="buscar-dorm"
-                    type="number"
-                    placeholder="Ej. 2"
-                    value={minBedrooms}
-                    onChange={(e) => setMinBedrooms(e.target.value)}
-                    min={0}
-                  />
-                </BuscarLabeledField>
-                <BuscarLabeledField id="buscar-ambientes" label={S.buscarFieldMinTotalRooms}>
-                  <Input
-                    id="buscar-ambientes"
-                    type="number"
-                    placeholder="Ej. 3"
-                    value={minTotalRooms}
-                    onChange={(e) => setMinTotalRooms(e.target.value)}
-                    min={0}
-                  />
-                </BuscarLabeledField>
-              </>
-            )}
-          </div>
-
-          {!showQuickAmenityChips ? (
-            <div className="pt-1">
-              <InductiveSearchChips variant="embedded" showSubtitle={false} />
-            </div>
-          ) : null}
-
-          <section
-            id="buscar-capa-2"
-            className="scroll-mt-24 rounded-xl border border-border/25 bg-surface-secondary/20 p-4 md:p-5"
-            aria-label={S.buscarLayer2Title}
-          >
-            <button
-              type="button"
-              className="flex w-full items-center justify-between gap-3 text-left"
-              onClick={() => setGuidedLayerExpanded((v) => !v)}
-            >
-              <span className="text-sm font-semibold text-text-primary">
-                {S.buscarLayer2Title}
-              </span>
-              <span className="shrink-0 text-xs font-semibold text-brand-primary">
-                {guidedLayerExpanded
-                  ? S.buscarLayer2CollapseCta
-                  : S.buscarLayer2ExpandCta}
-              </span>
-            </button>
-            {!guidedLayerExpanded ? (
-              <p className="mt-2 text-xs leading-relaxed text-text-tertiary">
-                {S.buscarLayer2Teaser}
-              </p>
-            ) : (
-              <div className="mt-4 space-y-5 border-t border-border/15 pt-4">
-                <p className="text-xs leading-relaxed text-text-secondary">
-                  {S.buscarLayer2Subtitle}
-                </p>
-                {contextualBlock ? (
-                  <div
-                    className="space-y-3 rounded-lg bg-brand-primary/[0.05] p-3.5 md:p-4"
-                    role="region"
-                  >
-                    <h3 className="text-sm font-semibold text-text-primary">
-                      {contextualBlock.title}
-                    </h3>
-                    <p className="text-xs leading-relaxed text-text-secondary">
-                      {contextualBlock.body}
-                    </p>
-                    {(contextualBlock.quickFacetIds ?? []).length > 0 ? (
-                      <div>
-                        <p className="text-xs font-medium text-text-tertiary">
-                          {S.buscarLayer2QuickChipsHint}
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {(contextualBlock.quickFacetIds ?? [])
-                            .slice(0, 6)
-                            .map((fid) => {
-                              const def = facetFlagCatalog.find((f) => f.id === fid)
-                              if (!def) return null
-                              const on = selectedAmenityFacets.includes(fid)
-                              return (
-                                <Button
-                                  key={`guided-facet-${fid}`}
-                                  type="button"
-                                  size="sm"
-                                  variant={on ? 'default' : 'outline'}
-                                  className="h-8 text-xs"
-                                  onClick={() =>
-                                    setSelectedAmenityFacets((prev) =>
-                                      on
-                                        ? prev.filter((x) => x !== fid)
-                                        : [...prev, fid]
-                                    )
-                                  }
-                                >
-                                  {def.label}
-                                </Button>
-                              )
-                            })}
-                        </div>
-                      </div>
-                    ) : null}
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      className="h-8 text-xs"
-                      onClick={() => {
-                        setShowDeepFilters(true)
-                        scrollToElementId('buscar-capa-3')
-                      }}
-                    >
-                      {S.buscarOpenLayer3Cta}
-                    </Button>
-                  </div>
-                ) : null}
-                <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
-                  {S.essentialsFriendlyTitle}
-                </p>
-                {propertyType === 'land' ? (
-                  <p className="text-xs text-text-secondary">
-                    {S.buscarLayer2LandHint}
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <BuscarLabeledField id="buscar-banos" label={S.buscarFieldMinBathrooms}>
-                      <Input
-                        id="buscar-banos"
-                        type="number"
-                        placeholder="Ej. 1"
-                        value={minBathrooms}
-                        onChange={(e) => setMinBathrooms(e.target.value)}
-                        min={0}
-                      />
-                    </BuscarLabeledField>
-                    <BuscarLabeledField id="buscar-cocheras" label={S.buscarFieldMinGarages}>
-                      <Input
-                        id="buscar-cocheras"
-                        type="number"
-                        placeholder="Ej. 1"
-                        value={minGarages}
-                        onChange={(e) => setMinGarages(e.target.value)}
-                        min={0}
-                      />
-                    </BuscarLabeledField>
-                    <BuscarLabeledField id="buscar-sup-min" label={S.buscarFieldMinSurface}>
-                      <Input
-                        id="buscar-sup-min"
-                        type="number"
-                        placeholder="Ej. 40"
-                        value={minSurface}
-                        onChange={(e) => setMinSurface(e.target.value)}
-                        min={0}
-                      />
-                    </BuscarLabeledField>
-                    <BuscarLabeledField id="buscar-sup-max" label={S.buscarFieldMaxSurface}>
-                      <Input
-                        id="buscar-sup-max"
-                        type="number"
-                        placeholder="Ej. 120"
-                        value={maxSurface}
-                        onChange={(e) => setMaxSurface(e.target.value)}
-                        min={0}
-                      />
-                    </BuscarLabeledField>
-                  </div>
-                )}
-                <label className="flex cursor-pointer items-start gap-2 text-sm text-text-primary">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 rounded border-border"
-                    checked={amenitiesStrict}
-                    onChange={(e) => setAmenitiesStrict(e.target.checked)}
-                  />
-                  <span>
-                    <span className="font-medium">{S.strictAmenitiesLabel}</span>
-                    <span className="block text-xs text-text-secondary">
-                      {S.strictAmenitiesHint}
-                    </span>
-                  </span>
-                </label>
-              </div>
-            )}
-          </section>
-
-          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/20 pt-4">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="mr-auto text-text-secondary hover:text-text-primary"
-              onClick={() => setClassicFiltersOpen(false)}
-            >
-              {S.filtersOptionalCollapse}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDeepFilters((v) => !v)}
-            >
-              {showDeepFilters ? S.buscarCloseLayer3Cta : S.buscarOpenLayer3Cta}
-            </Button>
-          </div>
-
-          {showDeepFilters ? (
-            <div
-              id="buscar-capa-3"
-              className="scroll-mt-24 space-y-4 border-t border-border/20 pt-5"
-            >
-              <div>
-                <p className="text-sm font-semibold text-text-primary">
-                  {S.buscarLayer3Title}
-                </p>
-                <p className="mt-0.5 text-xs text-text-secondary">
-                  {S.buscarLayer3Subtitle}
-                </p>
-              </div>
-              <p className="text-sm font-medium text-text-primary">
-                {S.buscarLayer3TechnicalTitle}
-              </p>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <BuscarLabeledField
-                  id="buscar-cub-min"
-                  label={S.buscarFieldMinSurfaceCovered}
-                >
-                  <Input
-                    id="buscar-cub-min"
-                    type="number"
-                    placeholder="Ej. 30"
-                    value={minSurfaceCovered}
-                    onChange={(e) => setMinSurfaceCovered(e.target.value)}
-                    min={0}
-                  />
-                </BuscarLabeledField>
-                <BuscarLabeledField
-                  id="buscar-cub-max"
-                  label={S.buscarFieldMaxSurfaceCovered}
-                >
-                  <Input
-                    id="buscar-cub-max"
-                    type="number"
-                    placeholder="Ej. 90"
-                    value={maxSurfaceCovered}
-                    onChange={(e) => setMaxSurfaceCovered(e.target.value)}
-                    min={0}
-                  />
-                </BuscarLabeledField>
-                <BuscarLabeledField id="buscar-piso-min" label={S.buscarFieldFloorMin}>
-                  <Input
-                    id="buscar-piso-min"
-                    type="number"
-                    placeholder="Ej. 1"
-                    value={floorMin}
-                    onChange={(e) => setFloorMin(e.target.value)}
-                    min={0}
-                  />
-                </BuscarLabeledField>
-                <BuscarLabeledField id="buscar-piso-max" label={S.buscarFieldFloorMax}>
-                  <Input
-                    id="buscar-piso-max"
-                    type="number"
-                    placeholder="Ej. 12"
-                    value={floorMax}
-                    onChange={(e) => setFloorMax(e.target.value)}
-                    min={0}
-                  />
-                </BuscarLabeledField>
-                <BuscarLabeledField id="buscar-orientacion" label={S.buscarFieldOrientation}>
-                  <select
-                    id="buscar-orientacion"
-                    className={BUSCAR_SELECT_CLASS}
-                    value={orientation}
-                    onChange={(e) =>
-                      setOrientation(e.target.value as typeof orientation)
-                    }
-                  >
-                    <option value="">Cualquiera</option>
-                    <option value="N">Norte</option>
-                    <option value="S">Sur</option>
-                    <option value="E">Este</option>
-                    <option value="W">Oeste</option>
-                    <option value="NE">Noreste</option>
-                    <option value="NW">Noroeste</option>
-                    <option value="SE">Sureste</option>
-                    <option value="SW">Suroeste</option>
-                  </select>
-                </BuscarLabeledField>
-                <BuscarLabeledField id="buscar-escalera" label={S.buscarFieldEscalera}>
-                  <Input
-                    id="buscar-escalera"
-                    placeholder="Ej. A, B"
-                    value={escalera}
-                    onChange={(e) => setEscalera(e.target.value)}
-                    maxLength={10}
-                  />
-                </BuscarLabeledField>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-text-primary">
-                  {S.buscarLayer3AmenitiesTitle}
-                </p>
-                <p className="mt-0.5 text-xs text-text-tertiary">
-                  {S.facetChipsHintRefine}
-                </p>
-                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
-                  {deepFacetCheckboxList.map((facet) => (
-                    <label
-                      key={facet.id}
-                      className="flex cursor-pointer items-center gap-2 text-sm text-text-primary"
-                    >
-                      <input
-                        type="checkbox"
-                        className="rounded border-border"
-                        checked={selectedAmenityFacets.includes(facet.id)}
-                        onChange={() => toggleAmenityFacet(facet.id)}
-                      />
-                      {facet.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
-          </>
-          ) : null}
           </Card>
         </div>
-
-        {hasActiveSearchCriteria ? (
-          <details className="rounded-xl border border-border/20 bg-surface-secondary/15">
-            <summary className="cursor-pointer px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-text-tertiary marker:content-none [&::-webkit-details-marker]:hidden">
-              {S.searchV2GuidedActionsLabel}
-            </summary>
-            <div className="flex flex-col gap-2 border-t border-border/15 px-3 py-3">
-            <div className="flex flex-wrap gap-2">
-              {widenedListCount > 0 && !searchV2WidenedOpen ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="default"
-                  onClick={openWidenedBlock}
-                >
-                  {S.searchV2CtaMoreOptions}
-                </Button>
-              ) : null}
-              {((minPrice.trim() !== '' &&
-                Number.isFinite(Number(minPrice.trim()))) ||
-                (maxPrice.trim() !== '' &&
-                  Number.isFinite(Number(maxPrice.trim())))) ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={widenPriceRange}
-                >
-                  {S.searchV2CtaWiderPrice}
-                </Button>
-              ) : null}
-              {neighborhood.trim() !== '' ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={searchWholeCity}
-                >
-                  {S.searchV2CtaWholeCity}
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={openAllFilters}
-              >
-                {S.searchV2CtaOpenFilters}
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                  >
-                    {S.searchV2CtaRemoveFilterMenu}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-56">
-                  <DropdownMenuLabel>{S.searchV2CtaRemoveFilterMenu}</DropdownMenuLabel>
-                  <DropdownMenuItem
-                    disabled={
-                      minPrice.trim() === '' &&
-                      maxPrice.trim() === ''
-                    }
-                    onClick={() =>
-                      pushBuscarQueryParams((p) => {
-                        p.delete('min')
-                        p.delete('max')
-                      })
-                    }
-                  >
-                    {S.searchV2CtaRemovePrice}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={neighborhood.trim() === ''}
-                    onClick={() =>
-                      pushBuscarQueryParams((p) => {
-                        p.delete('barrio')
-                      })
-                    }
-                  >
-                    {S.searchV2CtaRemoveNeighborhood}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={propertyType === ''}
-                    onClick={() =>
-                      pushBuscarQueryParams((p) => {
-                        p.delete('tipo')
-                      })
-                    }
-                  >
-                    {S.searchV2CtaRemoveType}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    disabled={!mapCommitted}
-                    onClick={() => {
-                      releaseMapFilter()
-                    }}
-                  >
-                    {S.searchV2CtaReleaseMap}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={
-                      selectedAmenityFacets.length === 0 && !amenitiesStrict
-                    }
-                    onClick={() =>
-                      pushBuscarQueryParams((p) => {
-                        p.delete('amenities')
-                        p.delete('amenities_strict')
-                      })
-                    }
-                  >
-                    {S.searchV2CtaRemoveAmenities}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            </div>
-          </details>
-        ) : null}
 
         <div id="buscar-resultados" className="scroll-mt-24 space-y-5 md:space-y-6">
           {isError ? (
@@ -2911,6 +2134,817 @@ export function BuscarContent({
           </div>
         </details>
 
+        <details
+          ref={secondaryToolsDetailsRef}
+          id="buscar-herramientas-secundarias"
+          className="scroll-mt-20 rounded-xl border border-border/20 bg-surface-secondary/10"
+        >
+          <summary className="cursor-pointer list-none px-3 py-2.5 text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden md:px-4 md:py-3 md:text-sm">
+            {S.buscarSecondaryToolsSummary}
+          </summary>
+          <div className="space-y-5 border-t border-border/15 px-3 pb-4 pt-4 md:space-y-6 md:px-4 md:pb-5 md:pt-4">
+        {me ? (
+          <details className="group rounded-xl border border-border/25 bg-surface-secondary/20">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-sm font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden">
+              <span>{S.recentSearchesTitle}</span>
+              <span className="text-xs font-normal text-text-tertiary group-open:hidden">
+                Mostrar
+              </span>
+            </summary>
+            <div className="border-t border-border/15 px-3 pb-3 pt-2">
+              <BuscarRecentSearches />
+            </div>
+          </details>
+        ) : null}
+
+        <section
+          aria-label="Filtros de búsqueda"
+          className="flex flex-wrap items-center gap-2 rounded-xl bg-surface-secondary/25 px-3 py-2.5"
+        >
+          <Button
+            type="button"
+            variant={classicFiltersOpen ? 'secondary' : 'outline'}
+            size="sm"
+            className="h-8 gap-1 text-xs"
+            onClick={() => setClassicFiltersOpen((v) => !v)}
+          >
+            <Filter className="h-3 w-3" aria-hidden />
+            {classicFiltersOpen ? S.filtersOptionalCollapse : S.filtersOptionalExpand}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1 text-xs"
+            onClick={openMapFromAssistant}
+          >
+            <MapIcon className="h-3 w-3" aria-hidden />
+            {S.buscarOpenMapCta}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs text-text-secondary"
+            onClick={clearBuscarSearch}
+          >
+            {S.buscarClearSearch}
+          </Button>
+          <div
+            className="ml-auto inline-flex rounded-lg border border-border/25 bg-surface-primary/80 p-0.5"
+            role="group"
+            aria-label="Vista de resultados"
+          >
+            <Button
+              type="button"
+              variant={!showMap ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 rounded-sm px-2.5 text-xs"
+              onClick={() => setShowMap(false)}
+            >
+              Lista
+            </Button>
+            <Button
+              type="button"
+              variant={showMap ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 rounded-sm px-2.5 text-xs"
+              onClick={() => {
+                setClassicFiltersOpen(true)
+                setShowMap(true)
+                const el = secondaryToolsDetailsRef.current
+                if (el) el.open = true
+                scrollToElementId('buscar-mapa')
+              }}
+            >
+              <MapIcon className="mr-0.5 hidden h-3 w-3 sm:inline" aria-hidden />
+              Mapa
+            </Button>
+          </div>
+        </section>
+            <div className="flex flex-wrap items-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={() => setLocalityModalOpen(true)}
+              >
+                {S.buscarLocalityCatalogButton}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="h-9"
+                onClick={() => {
+                  setClassicFiltersOpen(true)
+                  setShowMap(true)
+                  const el = secondaryToolsDetailsRef.current
+                  if (el) el.open = true
+                  scrollToElementId('buscar-mapa')
+                }}
+              >
+                {S.buscarPreferMapCta}
+              </Button>
+            </div>
+          {classicFiltersOpen ? (
+          <>
+          <div
+            id="buscar-mapa"
+            className="scroll-mt-24 space-y-3 rounded-xl border border-border/25 bg-surface-secondary/25 p-4 md:p-5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+              <p className="text-xs font-semibold text-text-primary">
+                {S.mapIntegratedTitle}
+              </p>
+              {showMap ? (
+                <div className="flex flex-wrap justify-end gap-1.5">
+                  {mapBbox ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={() => {
+                        setMapBbox(null)
+                        releaseMapFilter()
+                      }}
+                    >
+                      {S.clearBboxFilter}
+                    </Button>
+                  ) : null}
+                  {mapPolygonRing.length > 0 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={() => {
+                        setMapPolygonRing([])
+                        setPolygonDrawMode(false)
+                        releaseMapFilter()
+                      }}
+                    >
+                      {S.polygonRemove}
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      setShowMap(false)
+                      setMapLiveViewport(false)
+                      setMapBbox(null)
+                      setMapPolygonRing([])
+                      setPolygonDrawMode(false)
+                      releaseMapFilter()
+                    }}
+                  >
+                    {S.hideMap}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+            {!showMap ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={() => {
+                  setShowMap(true)
+                  scrollToElementId('buscar-mapa')
+                }}
+              >
+                {S.showMap}
+              </Button>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2">
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-text-primary">
+                    <input
+                      type="checkbox"
+                      className="rounded border-border"
+                      checked={polygonDrawMode}
+                      onChange={(e) => setPolygonDrawMode(e.target.checked)}
+                    />
+                    {S.polygonDrawLabel}
+                  </label>
+                  <span className="text-xs text-text-tertiary">
+                    {mapPolygonRing.length}{' '}
+                    {mapPolygonRing.length === 1
+                      ? S.polygonVertexSingular
+                      : S.polygonVertexPlural}
+                    {mapPolygonRing.length >= 3
+                      ? ` ${S.polygonFilterActive}`
+                      : ` ${S.polygonMinVertices}`}
+                  </span>
+                </div>
+                {polygonDrawHint ? (
+                  <p className="text-sm text-semantic-warning" role="status">
+                    {polygonDrawHint}
+                  </p>
+                ) : null}
+                <div className="flex flex-col gap-2 border-t border-border pt-2">
+                  <label
+                    className={`flex cursor-pointer items-start gap-2 text-xs text-text-primary ${
+                      polygonDrawMode || mapPolygonRing.length > 0
+                        ? 'opacity-60'
+                        : ''
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 rounded border-border"
+                      checked={mapLiveViewport}
+                      disabled={polygonDrawMode || mapPolygonRing.length > 0}
+                      onChange={(e) => setMapLiveViewport(e.target.checked)}
+                    />
+                    <span>
+                      <span className="font-medium">{S.mapLiveViewportLabel}</span>
+                      <span className="mt-0.5 block text-text-tertiary">
+                        {S.mapLiveViewportHint}
+                      </span>
+                    </span>
+                  </label>
+                  {polygonDrawMode || mapPolygonRing.length > 0 ? (
+                    <p className="text-xs text-text-tertiary" role="status">
+                      {S.mapLiveViewportDisabledHint}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex flex-col gap-2 border-t border-border pt-2">
+                  {(mapBbox != null || mapPolygonRing.length >= 3) &&
+                  !mapCommitted ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="default"
+                      className="h-9 w-fit"
+                      onClick={commitMapSearchArea}
+                    >
+                      {S.buscarMapCommitCta}
+                    </Button>
+                  ) : null}
+                  {mapCommitted ? (
+                    <p className="text-xs text-text-secondary">
+                      {S.buscarMapCommittedHint}
+                    </p>
+                  ) : null}
+                  {mapCommitted ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 w-fit"
+                      onClick={releaseMapFilter}
+                    >
+                      {S.buscarMapReleaseFilter}
+                    </Button>
+                  ) : null}
+                </div>
+                <BuscarSearchMap
+                  pins={mapPins}
+                  onApplyZona={(bbox) => {
+                    setMapBbox(bbox)
+                    scrollToElementId('buscar-resultados')
+                  }}
+                  initialCenter={mapInitialCenter}
+                  initialZoom={mapInitialZoom}
+                  mapRemountKey={mapRemountKey}
+                  onViewportBboxChange={
+                    mapViewportReporterActive ? onViewportBboxChange : undefined
+                  }
+                  polygonRing={mapPolygonRing}
+                  polygonDrawMode={polygonDrawMode}
+                  onPolygonVertex={addPolygonVertexSafe}
+                  mapPinEmphasisId={mapPinEmphasisId}
+                  onPinClickListing={mapPins.length > 0 ? onMapPinSelect : undefined}
+                  onListingNavigateFromMap={(listingId) =>
+                    onSearchResultNavigate(listingId, 'map')
+                  }
+                  flyToPinCoords={
+                    mapPins.length > 0 ? mapSyncFlyCoords : null
+                  }
+                />
+                <div className="mt-2 space-y-2">
+                  {mapBbox || mapPolygonRing.length >= 3 ? (
+                    <p className="text-xs text-text-secondary">{S.buscarMapFilterActiveHint}</p>
+                  ) : (
+                    <div
+                      className="rounded-lg bg-brand-primary/[0.06] px-3 py-2.5 text-xs"
+                      role="status"
+                    >
+                      <span className="font-medium text-text-primary">{S.buscarMapFilterHintTitle}</span>
+                      <p className="mt-1 text-text-secondary">{S.buscarMapFilterHintBody}</p>
+                    </div>
+                  )}
+                  <details className="rounded-lg border border-border/20 bg-surface-primary/50 px-2.5 py-2">
+                    <summary className="cursor-pointer text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden">
+                      {S.mapHelpAccordionTitle}
+                    </summary>
+                    <p className="mt-2 text-xs leading-relaxed text-text-tertiary">{S.mapHelp}</p>
+                  </details>
+                  {mapPins.length > 0 ? (
+                    <p className="text-xs text-text-tertiary">{S.buscarMapListSyncHint}</p>
+                  ) : null}
+                </div>
+                {mapPins.length === 0 && !isLoading ? (
+                  <p className="text-sm text-text-secondary">{S.mapNoPins}</p>
+                ) : null}
+              </>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-4">
+            {propertyType === 'land' ? (
+              <>
+                <BuscarLabeledField id="buscar-sup-l1" label={S.buscarFieldMinSurface}>
+                  <Input
+                    id="buscar-sup-l1"
+                    type="number"
+                    placeholder="Ej. 300"
+                    value={minSurface}
+                    onChange={(e) => setMinSurface(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+                <BuscarLabeledField id="buscar-sup-max-l1" label={S.buscarFieldMaxSurface}>
+                  <Input
+                    id="buscar-sup-max-l1"
+                    type="number"
+                    placeholder="Ej. 2000"
+                    value={maxSurface}
+                    onChange={(e) => setMaxSurface(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+              </>
+            ) : (
+              <>
+                <BuscarLabeledField id="buscar-dorm" label={S.buscarFieldMinBedrooms}>
+                  <Input
+                    id="buscar-dorm"
+                    type="number"
+                    placeholder="Ej. 2"
+                    value={minBedrooms}
+                    onChange={(e) => setMinBedrooms(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+                <BuscarLabeledField id="buscar-ambientes" label={S.buscarFieldMinTotalRooms}>
+                  <Input
+                    id="buscar-ambientes"
+                    type="number"
+                    placeholder="Ej. 3"
+                    value={minTotalRooms}
+                    onChange={(e) => setMinTotalRooms(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+              </>
+            )}
+          </div>
+
+          {!showQuickAmenityChips ? (
+            <div className="pt-1">
+              <InductiveSearchChips variant="embedded" showSubtitle={false} />
+            </div>
+          ) : null}
+
+          <section
+            id="buscar-capa-2"
+            className="scroll-mt-24 rounded-xl border border-border/25 bg-surface-secondary/20 p-4 md:p-5"
+            aria-label={S.buscarLayer2Title}
+          >
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-3 text-left"
+              onClick={() => setGuidedLayerExpanded((v) => !v)}
+            >
+              <span className="text-sm font-semibold text-text-primary">
+                {S.buscarLayer2Title}
+              </span>
+              <span className="shrink-0 text-xs font-semibold text-brand-primary">
+                {guidedLayerExpanded
+                  ? S.buscarLayer2CollapseCta
+                  : S.buscarLayer2ExpandCta}
+              </span>
+            </button>
+            {!guidedLayerExpanded ? (
+              <p className="mt-2 text-xs leading-relaxed text-text-tertiary">
+                {S.buscarLayer2Teaser}
+              </p>
+            ) : (
+              <div className="mt-4 space-y-5 border-t border-border/15 pt-4">
+                <p className="text-xs leading-relaxed text-text-secondary">
+                  {S.buscarLayer2Subtitle}
+                </p>
+                {contextualBlock ? (
+                  <div
+                    className="space-y-3 rounded-lg bg-brand-primary/[0.05] p-3.5 md:p-4"
+                    role="region"
+                  >
+                    <h3 className="text-sm font-semibold text-text-primary">
+                      {contextualBlock.title}
+                    </h3>
+                    <p className="text-xs leading-relaxed text-text-secondary">
+                      {contextualBlock.body}
+                    </p>
+                    {(contextualBlock.quickFacetIds ?? []).length > 0 ? (
+                      <div>
+                        <p className="text-xs font-medium text-text-tertiary">
+                          {S.buscarLayer2QuickChipsHint}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {(contextualBlock.quickFacetIds ?? [])
+                            .slice(0, 6)
+                            .map((fid) => {
+                              const def = facetFlagCatalog.find((f) => f.id === fid)
+                              if (!def) return null
+                              const on = selectedAmenityFacets.includes(fid)
+                              return (
+                                <Button
+                                  key={`guided-facet-${fid}`}
+                                  type="button"
+                                  size="sm"
+                                  variant={on ? 'default' : 'outline'}
+                                  className="h-8 text-xs"
+                                  onClick={() =>
+                                    setSelectedAmenityFacets((prev) =>
+                                      on
+                                        ? prev.filter((x) => x !== fid)
+                                        : [...prev, fid]
+                                    )
+                                  }
+                                >
+                                  {def.label}
+                                </Button>
+                              )
+                            })}
+                        </div>
+                      </div>
+                    ) : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="h-8 text-xs"
+                      onClick={() => {
+                        setClassicFiltersOpen(true)
+                        setShowDeepFilters(true)
+                        const el = secondaryToolsDetailsRef.current
+                        if (el) el.open = true
+                        window.requestAnimationFrame(() =>
+                          document
+                            .getElementById('buscar-capa-3')
+                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        )
+                      }}
+                    >
+                      {S.buscarOpenLayer3Cta}
+                    </Button>
+                  </div>
+                ) : null}
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+                  {S.essentialsFriendlyTitle}
+                </p>
+                {propertyType === 'land' ? (
+                  <p className="text-xs text-text-secondary">
+                    {S.buscarLayer2LandHint}
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <BuscarLabeledField id="buscar-banos" label={S.buscarFieldMinBathrooms}>
+                      <Input
+                        id="buscar-banos"
+                        type="number"
+                        placeholder="Ej. 1"
+                        value={minBathrooms}
+                        onChange={(e) => setMinBathrooms(e.target.value)}
+                        min={0}
+                      />
+                    </BuscarLabeledField>
+                    <BuscarLabeledField id="buscar-cocheras" label={S.buscarFieldMinGarages}>
+                      <Input
+                        id="buscar-cocheras"
+                        type="number"
+                        placeholder="Ej. 1"
+                        value={minGarages}
+                        onChange={(e) => setMinGarages(e.target.value)}
+                        min={0}
+                      />
+                    </BuscarLabeledField>
+                    <BuscarLabeledField id="buscar-sup-min" label={S.buscarFieldMinSurface}>
+                      <Input
+                        id="buscar-sup-min"
+                        type="number"
+                        placeholder="Ej. 40"
+                        value={minSurface}
+                        onChange={(e) => setMinSurface(e.target.value)}
+                        min={0}
+                      />
+                    </BuscarLabeledField>
+                    <BuscarLabeledField id="buscar-sup-max" label={S.buscarFieldMaxSurface}>
+                      <Input
+                        id="buscar-sup-max"
+                        type="number"
+                        placeholder="Ej. 120"
+                        value={maxSurface}
+                        onChange={(e) => setMaxSurface(e.target.value)}
+                        min={0}
+                      />
+                    </BuscarLabeledField>
+                  </div>
+                )}
+                <label className="flex cursor-pointer items-start gap-2 text-sm text-text-primary">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 rounded border-border"
+                    checked={amenitiesStrict}
+                    onChange={(e) => setAmenitiesStrict(e.target.checked)}
+                  />
+                  <span>
+                    <span className="font-medium">{S.strictAmenitiesLabel}</span>
+                    <span className="block text-xs text-text-secondary">
+                      {S.strictAmenitiesHint}
+                    </span>
+                  </span>
+                </label>
+              </div>
+            )}
+          </section>
+
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/20 pt-4">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mr-auto text-text-secondary hover:text-text-primary"
+              onClick={() => setClassicFiltersOpen(false)}
+            >
+              {S.filtersOptionalCollapse}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDeepFilters((v) => !v)}
+            >
+              {showDeepFilters ? S.buscarCloseLayer3Cta : S.buscarOpenLayer3Cta}
+            </Button>
+          </div>
+
+          {showDeepFilters ? (
+            <div
+              id="buscar-capa-3"
+              className="scroll-mt-24 space-y-4 border-t border-border/20 pt-5"
+            >
+              <div>
+                <p className="text-sm font-semibold text-text-primary">
+                  {S.buscarLayer3Title}
+                </p>
+                <p className="mt-0.5 text-xs text-text-secondary">
+                  {S.buscarLayer3Subtitle}
+                </p>
+              </div>
+              <p className="text-sm font-medium text-text-primary">
+                {S.buscarLayer3TechnicalTitle}
+              </p>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <BuscarLabeledField
+                  id="buscar-cub-min"
+                  label={S.buscarFieldMinSurfaceCovered}
+                >
+                  <Input
+                    id="buscar-cub-min"
+                    type="number"
+                    placeholder="Ej. 30"
+                    value={minSurfaceCovered}
+                    onChange={(e) => setMinSurfaceCovered(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+                <BuscarLabeledField
+                  id="buscar-cub-max"
+                  label={S.buscarFieldMaxSurfaceCovered}
+                >
+                  <Input
+                    id="buscar-cub-max"
+                    type="number"
+                    placeholder="Ej. 90"
+                    value={maxSurfaceCovered}
+                    onChange={(e) => setMaxSurfaceCovered(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+                <BuscarLabeledField id="buscar-piso-min" label={S.buscarFieldFloorMin}>
+                  <Input
+                    id="buscar-piso-min"
+                    type="number"
+                    placeholder="Ej. 1"
+                    value={floorMin}
+                    onChange={(e) => setFloorMin(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+                <BuscarLabeledField id="buscar-piso-max" label={S.buscarFieldFloorMax}>
+                  <Input
+                    id="buscar-piso-max"
+                    type="number"
+                    placeholder="Ej. 12"
+                    value={floorMax}
+                    onChange={(e) => setFloorMax(e.target.value)}
+                    min={0}
+                  />
+                </BuscarLabeledField>
+                <BuscarLabeledField id="buscar-orientacion" label={S.buscarFieldOrientation}>
+                  <select
+                    id="buscar-orientacion"
+                    className={BUSCAR_SELECT_CLASS}
+                    value={orientation}
+                    onChange={(e) =>
+                      setOrientation(e.target.value as typeof orientation)
+                    }
+                  >
+                    <option value="">Cualquiera</option>
+                    <option value="N">Norte</option>
+                    <option value="S">Sur</option>
+                    <option value="E">Este</option>
+                    <option value="W">Oeste</option>
+                    <option value="NE">Noreste</option>
+                    <option value="NW">Noroeste</option>
+                    <option value="SE">Sureste</option>
+                    <option value="SW">Suroeste</option>
+                  </select>
+                </BuscarLabeledField>
+                <BuscarLabeledField id="buscar-escalera" label={S.buscarFieldEscalera}>
+                  <Input
+                    id="buscar-escalera"
+                    placeholder="Ej. A, B"
+                    value={escalera}
+                    onChange={(e) => setEscalera(e.target.value)}
+                    maxLength={10}
+                  />
+                </BuscarLabeledField>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-text-primary">
+                  {S.buscarLayer3AmenitiesTitle}
+                </p>
+                <p className="mt-0.5 text-xs text-text-tertiary">
+                  {S.facetChipsHintRefine}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+                  {deepFacetCheckboxList.map((facet) => (
+                    <label
+                      key={facet.id}
+                      className="flex cursor-pointer items-center gap-2 text-sm text-text-primary"
+                    >
+                      <input
+                        type="checkbox"
+                        className="rounded border-border"
+                        checked={selectedAmenityFacets.includes(facet.id)}
+                        onChange={() => toggleAmenityFacet(facet.id)}
+                      />
+                      {facet.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
+          </>
+          ) : null}
+
+        {hasActiveSearchCriteria ? (
+          <details className="rounded-xl border border-border/20 bg-surface-secondary/15">
+            <summary className="cursor-pointer px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-text-tertiary marker:content-none [&::-webkit-details-marker]:hidden">
+              {S.searchV2GuidedActionsLabel}
+            </summary>
+            <div className="flex flex-col gap-2 border-t border-border/15 px-3 py-3">
+            <div className="flex flex-wrap gap-2">
+              {widenedListCount > 0 && !searchV2WidenedOpen ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  onClick={openWidenedBlock}
+                >
+                  {S.searchV2CtaMoreOptions}
+                </Button>
+              ) : null}
+              {((minPrice.trim() !== '' &&
+                Number.isFinite(Number(minPrice.trim()))) ||
+                (maxPrice.trim() !== '' &&
+                  Number.isFinite(Number(maxPrice.trim())))) ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={widenPriceRange}
+                >
+                  {S.searchV2CtaWiderPrice}
+                </Button>
+              ) : null}
+              {neighborhood.trim() !== '' ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={searchWholeCity}
+                >
+                  {S.searchV2CtaWholeCity}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={openAllFilters}
+              >
+                {S.searchV2CtaOpenFilters}
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                  >
+                    {S.searchV2CtaRemoveFilterMenu}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuLabel>{S.searchV2CtaRemoveFilterMenu}</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    disabled={
+                      minPrice.trim() === '' &&
+                      maxPrice.trim() === ''
+                    }
+                    onClick={() =>
+                      pushBuscarQueryParams((p) => {
+                        p.delete('min')
+                        p.delete('max')
+                      })
+                    }
+                  >
+                    {S.searchV2CtaRemovePrice}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={neighborhood.trim() === ''}
+                    onClick={() =>
+                      pushBuscarQueryParams((p) => {
+                        p.delete('barrio')
+                      })
+                    }
+                  >
+                    {S.searchV2CtaRemoveNeighborhood}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={propertyType === ''}
+                    onClick={() =>
+                      pushBuscarQueryParams((p) => {
+                        p.delete('tipo')
+                      })
+                    }
+                  >
+                    {S.searchV2CtaRemoveType}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={!mapCommitted}
+                    onClick={() => {
+                      releaseMapFilter()
+                    }}
+                  >
+                    {S.searchV2CtaReleaseMap}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={
+                      selectedAmenityFacets.length === 0 && !amenitiesStrict
+                    }
+                    onClick={() =>
+                      pushBuscarQueryParams((p) => {
+                        p.delete('amenities')
+                        p.delete('amenities_strict')
+                      })
+                    }
+                  >
+                    {S.searchV2CtaRemoveAmenities}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            </div>
+          </details>
+        ) : null}
+          </div>
+        </details>
+
         {assistantHint ? (
           <div className="rounded-xl border border-border/20 bg-surface-secondary/25 px-3 py-3 text-sm text-text-secondary md:px-4 md:py-4">
             <p className="text-sm font-medium text-text-primary">
@@ -2959,6 +2993,8 @@ export function BuscarContent({
                 onClick={() => {
                   setClassicFiltersOpen(true)
                   setShowDeepFilters(true)
+                  const el = secondaryToolsDetailsRef.current
+                  if (el) el.open = true
                   window.requestAnimationFrame(() =>
                     document
                       .getElementById('buscar-capa-3')

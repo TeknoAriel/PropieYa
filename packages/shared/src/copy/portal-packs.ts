@@ -221,6 +221,8 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarMainSearchCta: 'Buscar',
   /** Chip sobre el bloque conversacional en /buscar */
   buscarAssistantBadge: 'Describí lo que buscás',
+  /** Panel colapsable bajo resultados: mapa, avanzados, recientes, acciones guiadas. */
+  buscarSecondaryToolsSummary: 'Mapa, más filtros y ayudas',
   /** Resumen colapsable del bloque conversacional (cuando hay resultados). */
   buscarAssistantCollapseTitle: 'Asistente: describí lo que buscás',
   /** Una línea bajo el summary del asistente (no repetir el título). */
