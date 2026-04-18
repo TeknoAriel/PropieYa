@@ -238,7 +238,7 @@ function bucketCountLabel(bucketId: string, n: number): string {
 
 function bucketStrongNearSectionClass(bucketId: string): string {
   if (bucketId === 'strong') {
-    return 'space-y-4 rounded-2xl border-2 border-brand-primary/35 bg-gradient-to-br from-brand-primary/[0.08] via-brand-primary/[0.03] to-transparent p-4 shadow-md ring-1 ring-brand-primary/15 md:p-6'
+    return 'space-y-5 rounded-2xl border border-border/50 bg-surface-primary p-5 shadow-sm ring-1 ring-border/20 md:p-7'
   }
   if (bucketId === 'near') {
     return 'space-y-3 rounded-xl border border-border/80 bg-surface-secondary/40 p-4 md:p-5'
@@ -247,7 +247,8 @@ function bucketStrongNearSectionClass(bucketId: string): string {
 }
 
 function bucketHeadingClass(bucketId: string): string {
-  if (bucketId === 'strong') return 'text-lg font-bold text-text-primary md:text-xl'
+  if (bucketId === 'strong')
+    return 'text-lg font-semibold tracking-tight text-text-primary md:text-xl'
   if (bucketId === 'near') return 'text-base font-semibold text-text-primary'
   return 'text-base font-semibold text-text-primary'
 }
@@ -288,7 +289,7 @@ function ListingCard({
   return (
     <div
       id={`buscar-listing-${listing.id}`}
-      className="scroll-mt-24 rounded-lg transition-transform duration-200 hover:-translate-y-0.5"
+      className="scroll-mt-24 rounded-xl"
     >
       <Link
         href={`/propiedad/${listing.id}`}
@@ -304,9 +305,9 @@ function ListingCard({
         }}
       >
         <Card
-          className={`group cursor-pointer overflow-hidden rounded-xl border border-border/70 shadow-sm transition-all duration-200 hover:border-brand-primary/30 hover:shadow-md ${
+          className={`group cursor-pointer overflow-hidden rounded-xl border border-border/50 shadow-none transition-colors duration-200 hover:border-border/80 hover:shadow-sm ${
             emphasizeFromMap
-              ? 'ring-2 ring-brand-primary ring-offset-2 ring-offset-surface-primary'
+              ? 'ring-1 ring-brand-primary/50 ring-offset-2 ring-offset-surface-primary'
               : ''
           }`}
         >
@@ -319,7 +320,7 @@ function ListingCard({
             alt={listing.title}
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className="object-cover transition-opacity duration-200 group-hover:opacity-[0.97]"
             unoptimized
           />
           <Badge className="absolute top-3 left-3" variant="secondary">
@@ -327,8 +328,8 @@ function ListingCard({
           </Badge>
         </div>
 
-        <div className="p-4">
-          <div className="text-xl font-bold text-brand-primary">
+        <div className="p-4 md:p-5">
+          <div className="text-lg font-semibold tracking-tight text-brand-primary md:text-xl">
             {formatPrice(listing.priceAmount, listing.priceCurrency as Currency)}
           </div>
 
@@ -354,7 +355,7 @@ function ListingCard({
           </div>
 
           {compactMatchReason && compactWhyText ? (
-            <div className="mt-3 rounded-md border border-border/60 bg-surface-secondary/80 px-3 py-2 text-xs text-text-secondary">
+            <div className="mt-3 rounded-lg bg-surface-secondary/60 px-3 py-2.5 text-xs leading-relaxed text-text-secondary">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <p className="min-w-0 flex-1">
                   <span className="font-medium text-brand-primary">
@@ -376,7 +377,7 @@ function ListingCard({
           ) : !compactMatchReason &&
             listing.matchReasons &&
             listing.matchReasons.length > 0 ? (
-            <div className="mt-3 rounded-md border border-border/60 bg-surface-secondary/80 px-3 py-2 text-xs text-text-secondary">
+            <div className="mt-3 rounded-lg bg-surface-secondary/60 px-3 py-2.5 text-xs text-text-secondary">
               <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                 <p className="min-w-0 flex-1 font-medium text-text-primary">
                   {S.matchWhyTitle}
@@ -425,10 +426,10 @@ function BuscarLabeledField({
   children: ReactNode
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
+    <div className="flex min-w-0 flex-col gap-2">
       <label
         htmlFor={id}
-        className="text-xs font-medium text-text-primary"
+        className="text-xs font-medium text-text-secondary"
       >
         {label}
       </label>
@@ -1404,14 +1405,14 @@ export function BuscarContent({
   const showQuickAmenityChips = (quickFacetIds?.length ?? 0) > 0
 
   return (
-    <div className="container mx-auto space-y-2 px-4 py-2 md:py-3">
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-col gap-1.5 border-b border-border/40 pb-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
-          <div className="min-w-0 space-y-0">
-            <h1 className="text-base font-semibold tracking-tight text-text-primary md:text-lg">
+    <div className="container mx-auto space-y-5 px-4 py-4 md:space-y-6 md:py-6">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2 border-b border-border/20 pb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+          <div className="min-w-0 space-y-1">
+            <h1 className="text-lg font-semibold tracking-tight text-text-primary md:text-xl">
               {pageTitle}
             </h1>
-            <p className="text-[11px] leading-snug text-text-secondary md:text-xs">
+            <p className="max-w-2xl text-xs leading-relaxed text-text-secondary md:text-sm">
               {pageSubtitle}
             </p>
           </div>
@@ -1485,14 +1486,14 @@ export function BuscarContent({
         ) : null}
 
         {me ? (
-          <details className="group rounded-lg border border-border/50 bg-surface-primary/60">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden">
+          <details className="group rounded-xl border border-border/25 bg-surface-secondary/20">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-sm font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden">
               <span>{S.recentSearchesTitle}</span>
               <span className="text-xs font-normal text-text-tertiary group-open:hidden">
                 Mostrar
               </span>
             </summary>
-            <div className="border-t border-border/40 px-3 pb-3 pt-1">
+            <div className="border-t border-border/15 px-3 pb-3 pt-2">
               <BuscarRecentSearches />
             </div>
           </details>
@@ -1500,7 +1501,7 @@ export function BuscarContent({
 
         <section
           aria-label="Filtros de búsqueda"
-          className="flex flex-wrap items-center gap-1.5 rounded-md border border-border/35 bg-surface-primary/50 px-2 py-1.5"
+          className="flex flex-wrap items-center gap-2 rounded-xl bg-surface-secondary/25 px-3 py-2.5"
         >
           <Button
             type="button"
@@ -1532,7 +1533,7 @@ export function BuscarContent({
             {S.buscarClearSearch}
           </Button>
           <div
-            className="ml-auto inline-flex rounded-md border border-border/60 bg-surface-secondary/50 p-0.5"
+            className="ml-auto inline-flex rounded-lg border border-border/25 bg-surface-primary/80 p-0.5"
             role="group"
             aria-label="Vista de resultados"
           >
@@ -1562,18 +1563,18 @@ export function BuscarContent({
           </div>
         </section>
 
-        <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
-          <Card className="space-y-4 p-4 md:p-6">
+        <div id="buscar-esenciales" className="scroll-mt-24 space-y-5">
+          <Card className="space-y-6 border-border/35 p-5 shadow-none md:space-y-7 md:p-8">
           <div>
-            <h2 className="text-lg font-semibold text-text-primary">
+            <h2 className="text-lg font-semibold tracking-tight text-text-primary md:text-xl">
               {S.mainFiltersTitle}
             </h2>
-            <p className="mt-1 text-sm text-text-secondary">
+            <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">
               {S.mainFiltersSubtitle}
             </p>
           </div>
 
-          <div className="flex flex-col gap-2 border-b border-border/40 pb-4 sm:flex-row sm:items-end sm:gap-3">
+          <div className="flex flex-col gap-3 border-b border-border/20 pb-6 sm:flex-row sm:items-end sm:gap-4">
             <div className="min-w-0 flex-1">
               <BuscarLabeledField id="buscar-q" label={S.buscarMainSearchLabel}>
                 <Input
@@ -1604,15 +1605,15 @@ export function BuscarContent({
               {S.buscarLayer1Kicker}
             </p>
           ) : null}
-          <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-text-tertiary">
             {S.locationBlockTitle}
           </p>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-4">
             {opLocked ? (
               <BuscarLabeledField id="buscar-op-locked" label={S.buscarFieldOperation}>
                 <div
                   id="buscar-op-locked"
-                  className="flex min-h-[42px] items-center rounded-md border border-border bg-surface-secondary px-3 py-2 text-sm"
+                  className="flex min-h-[42px] items-center rounded-lg border border-border/50 bg-surface-secondary/80 px-3 py-2 text-sm"
                   role="status"
                 >
                   <span className="font-medium text-text-primary">
@@ -1696,7 +1697,7 @@ export function BuscarContent({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-4">
             <BuscarLabeledField id="buscar-precio-min" label={S.buscarFieldMinPrice}>
               <Input
                 id="buscar-precio-min"
@@ -1721,7 +1722,7 @@ export function BuscarContent({
           <>
           <div
             id="buscar-mapa"
-            className="scroll-mt-24 space-y-2 rounded-lg border border-border/60 bg-surface-primary/80 p-3"
+            className="scroll-mt-24 space-y-3 rounded-xl border border-border/25 bg-surface-secondary/25 p-4 md:p-5"
           >
             <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
               <p className="text-xs font-semibold text-text-primary">
@@ -1904,14 +1905,14 @@ export function BuscarContent({
                     <p className="text-xs text-text-secondary">{S.buscarMapFilterActiveHint}</p>
                   ) : (
                     <div
-                      className="rounded-md border border-brand-primary/25 bg-brand-primary/5 px-3 py-2 text-xs"
+                      className="rounded-lg bg-brand-primary/[0.06] px-3 py-2.5 text-xs"
                       role="status"
                     >
                       <span className="font-medium text-text-primary">{S.buscarMapFilterHintTitle}</span>
                       <p className="mt-1 text-text-secondary">{S.buscarMapFilterHintBody}</p>
                     </div>
                   )}
-                  <details className="rounded-md border border-border/40 bg-surface-secondary/30 px-2 py-1.5">
+                  <details className="rounded-lg border border-border/20 bg-surface-primary/50 px-2.5 py-2">
                     <summary className="cursor-pointer text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden">
                       {S.mapHelpAccordionTitle}
                     </summary>
@@ -1928,7 +1929,7 @@ export function BuscarContent({
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-4">
             {propertyType === 'land' ? (
               <>
                 <BuscarLabeledField id="buscar-sup-l1" label={S.buscarFieldMinSurface}>
@@ -1986,7 +1987,7 @@ export function BuscarContent({
 
           <section
             id="buscar-capa-2"
-            className="scroll-mt-24 rounded-xl border border-border/80 bg-surface-secondary/40 p-3 md:p-4"
+            className="scroll-mt-24 rounded-xl border border-border/25 bg-surface-secondary/20 p-4 md:p-5"
             aria-label={S.buscarLayer2Title}
           >
             <button
@@ -2008,13 +2009,13 @@ export function BuscarContent({
                 {S.buscarLayer2Teaser}
               </p>
             ) : (
-              <div className="mt-3 space-y-4 border-t border-border/60 pt-3">
+              <div className="mt-4 space-y-5 border-t border-border/15 pt-4">
                 <p className="text-xs leading-relaxed text-text-secondary">
                   {S.buscarLayer2Subtitle}
                 </p>
                 {contextualBlock ? (
                   <div
-                    className="space-y-3 rounded-lg border border-brand-primary/20 bg-brand-primary/5 p-3"
+                    className="space-y-3 rounded-lg bg-brand-primary/[0.05] p-3.5 md:p-4"
                     role="region"
                   >
                     <h3 className="text-sm font-semibold text-text-primary">
@@ -2140,7 +2141,7 @@ export function BuscarContent({
             )}
           </section>
 
-          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/60 pt-3">
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/20 pt-4">
             <Button
               type="button"
               variant="ghost"
@@ -2163,7 +2164,7 @@ export function BuscarContent({
           {showDeepFilters ? (
             <div
               id="buscar-capa-3"
-              className="scroll-mt-24 space-y-4 border-t border-border pt-4"
+              className="scroll-mt-24 space-y-4 border-t border-border/20 pt-5"
             >
               <div>
                 <p className="text-sm font-semibold text-text-primary">
@@ -2285,18 +2286,17 @@ export function BuscarContent({
         </div>
 
         {hasActiveSearchCriteria ? (
-          <details className="rounded-lg border border-border/50 bg-surface-secondary/25">
-            <summary className="cursor-pointer px-3 py-2 text-xs font-semibold uppercase tracking-wide text-text-tertiary marker:content-none [&::-webkit-details-marker]:hidden">
+          <details className="rounded-xl border border-border/20 bg-surface-secondary/15">
+            <summary className="cursor-pointer px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-text-tertiary marker:content-none [&::-webkit-details-marker]:hidden">
               {S.searchV2GuidedActionsLabel}
             </summary>
-            <div className="flex flex-col gap-2 border-t border-border/40 px-3 py-3">
+            <div className="flex flex-col gap-2 border-t border-border/15 px-3 py-3">
             <div className="flex flex-wrap gap-2">
               {widenedListCount > 0 && !searchV2WidenedOpen ? (
                 <Button
                   type="button"
                   size="sm"
                   variant="default"
-                  className="transition-transform active:scale-[0.98]"
                   onClick={openWidenedBlock}
                 >
                   {S.searchV2CtaMoreOptions}
@@ -2310,7 +2310,6 @@ export function BuscarContent({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="transition-transform active:scale-[0.98]"
                   onClick={widenPriceRange}
                 >
                   {S.searchV2CtaWiderPrice}
@@ -2321,7 +2320,6 @@ export function BuscarContent({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="transition-transform active:scale-[0.98]"
                   onClick={searchWholeCity}
                 >
                   {S.searchV2CtaWholeCity}
@@ -2331,7 +2329,6 @@ export function BuscarContent({
                 type="button"
                 size="sm"
                 variant="outline"
-                className="transition-transform active:scale-[0.98]"
                 onClick={openAllFilters}
               >
                 {S.searchV2CtaOpenFilters}
@@ -2342,7 +2339,6 @@ export function BuscarContent({
                     type="button"
                     size="sm"
                     variant="secondary"
-                    className="transition-transform active:scale-[0.98]"
                   >
                     {S.searchV2CtaRemoveFilterMenu}
                   </Button>
@@ -2412,9 +2408,9 @@ export function BuscarContent({
           </details>
         ) : null}
 
-        <div id="buscar-resultados" className="scroll-mt-20 space-y-4">
+        <div id="buscar-resultados" className="scroll-mt-24 space-y-5 md:space-y-6">
           {isError ? (
-            <Card className="space-y-2 p-6">
+            <Card className="space-y-2 border-border/30 p-6 shadow-none">
               <p className="text-sm font-medium text-text-primary">{S.searchLoadErrorSoftTitle}</p>
               <p className="text-sm text-text-secondary">{S.searchLoadErrorSoftBody}</p>
             </Card>
@@ -2424,7 +2420,7 @@ export function BuscarContent({
           data &&
           data.total === 0 &&
           hasActiveSearchCriteria ? (
-            <Card className="space-y-3 border-semantic-warning/20 bg-semantic-warning/5 p-4">
+            <Card className="space-y-3 border-semantic-warning/15 bg-semantic-warning/[0.06] p-5 shadow-none">
               <p className="text-base font-semibold text-text-primary">
                 {S.searchV2EmptyTitle}
               </p>
@@ -2442,7 +2438,6 @@ export function BuscarContent({
                     type="button"
                     size="sm"
                     variant="default"
-                    className="transition-transform active:scale-[0.98]"
                     onClick={widenPriceRange}
                   >
                     {S.searchV2CtaWiderPrice}
@@ -2453,7 +2448,6 @@ export function BuscarContent({
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="transition-transform active:scale-[0.98]"
                     onClick={searchWholeCity}
                   >
                     {S.searchV2CtaWholeCity}
@@ -2463,7 +2457,6 @@ export function BuscarContent({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="transition-transform active:scale-[0.98]"
                   onClick={openAllFilters}
                 >
                   {S.searchV2CtaOpenFilters}
@@ -2476,7 +2469,7 @@ export function BuscarContent({
               {shortSearchUxMessages.map((msg, i) => (
                 <Card
                   key={`search-ux-${i}`}
-                  className="border-brand-primary/20 bg-brand-primary/5 p-3 text-sm leading-snug text-text-primary"
+                  className="border-border/20 bg-brand-primary/[0.04] p-3.5 text-sm leading-relaxed text-text-primary shadow-none"
                 >
                   {msg}
                 </Card>
@@ -2484,13 +2477,13 @@ export function BuscarContent({
             </div>
           ) : null}
           {dataV2Ui?.emptyExplanation && (data?.total ?? 0) === 0 ? (
-            <Card className="border-semantic-warning/25 bg-semantic-warning/5 p-3 text-sm leading-relaxed text-text-primary">
+            <Card className="border-semantic-warning/15 bg-semantic-warning/[0.06] p-4 text-sm leading-relaxed text-text-primary shadow-none">
               {dataV2Ui.emptyExplanation}
             </Card>
           ) : null}
           {dataV2Ui?.actions && dataV2Ui.actions.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary">
                 {S.searchV2SuggestedActions}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -2514,9 +2507,9 @@ export function BuscarContent({
             </div>
           ) : null}
           {isLoading && !dataV2Ui ? (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-7 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
-                <Card key={i} className="overflow-hidden">
+                <Card key={i} className="overflow-hidden border-border/25 shadow-none">
                   <Skeleton className="h-48 w-full" />
                   <div className="space-y-3 p-4">
                     <Skeleton className="h-4 w-3/4" />
@@ -2527,12 +2520,12 @@ export function BuscarContent({
               ))}
             </div>
           ) : dataV2Ui?.buckets ? (
-            <div className="space-y-6">
+            <div className="space-y-8 md:space-y-10">
               {!isLoading &&
               data &&
               data.total > 0 &&
               smartSuggestionIds.length > 0 ? (
-                <div className="rounded-xl border border-brand-primary/20 bg-brand-primary/[0.06] p-4 shadow-sm">
+                <div className="rounded-xl border border-border/25 bg-brand-primary/[0.04] p-4 md:p-5 shadow-none">
                   <p className="text-sm font-semibold text-text-primary">
                     {S.searchV2SmartSuggestionsTitle}
                   </p>
@@ -2546,7 +2539,7 @@ export function BuscarContent({
                         type="button"
                         size="sm"
                         variant="secondary"
-                        className="h-9 max-w-full whitespace-normal text-left text-xs leading-snug transition-transform active:scale-[0.98] sm:text-sm"
+                        className="h-9 max-w-full whitespace-normal text-left text-xs leading-snug sm:text-sm"
                         onClick={() => applySmartSuggestion(sid)}
                       >
                         {smartSuggestionLabel(sid)}
@@ -2580,15 +2573,15 @@ export function BuscarContent({
                         return (
                           <section
                             key={bucket.id}
-                            className="space-y-3 rounded-xl border border-dashed border-border/50 bg-surface-secondary/15 p-3 md:p-4"
+                            className="space-y-4 rounded-2xl border border-dashed border-border/30 bg-surface-secondary/15 px-4 py-4 md:px-5 md:py-5"
                           >
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                               <div className="min-w-0 space-y-1">
                                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                                  <h2 className="text-sm font-medium text-text-secondary">
+                                  <h2 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
                                     {displayBucketTitle(bucket.id, bucket.label)}
                                   </h2>
-                                  <span className="text-xs text-text-tertiary">
+                                  <span className="text-xs text-text-tertiary/80">
                                     {bucketCountLabel(
                                       bucket.id,
                                       bucket.totalInBucket
@@ -2621,7 +2614,7 @@ export function BuscarContent({
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                className="h-9 shrink-0 text-xs transition-transform active:scale-[0.98]"
+                                className="h-9 shrink-0 text-xs"
                                 aria-expanded={searchV2NearOpen}
                                 onClick={() => setSearchV2NearOpen((v) => !v)}
                               >
@@ -2631,7 +2624,7 @@ export function BuscarContent({
                               </Button>
                             </div>
                             {searchV2NearOpen ? (
-                              <div className="grid grid-cols-1 gap-6 border-t border-border/40 pt-4 md:grid-cols-2 lg:grid-cols-3">
+                              <div className="grid grid-cols-1 gap-7 border-t border-border/20 pt-5 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
                                 {bucket.items.map((row) => {
                                   const listing = row as BuscarListingCardData
                                   const index = globalIndex++
@@ -2667,15 +2660,15 @@ export function BuscarContent({
                         return (
                           <section
                             key={bucket.id}
-                            className="space-y-3 rounded-xl border border-dashed border-border/50 bg-surface-secondary/15 p-3 md:p-4"
+                            className="space-y-4 rounded-2xl border border-dashed border-border/30 bg-surface-secondary/15 px-4 py-4 md:px-5 md:py-5"
                           >
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                               <div className="min-w-0 space-y-1">
                                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                                  <h2 className="text-sm font-medium text-text-secondary">
+                                  <h2 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
                                     {displayBucketTitle(bucket.id, bucket.label)}
                                   </h2>
-                                  <span className="text-xs text-text-tertiary">
+                                  <span className="text-xs text-text-tertiary/80">
                                     {bucketCountLabel(
                                       bucket.id,
                                       bucket.totalInBucket
@@ -2708,7 +2701,7 @@ export function BuscarContent({
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                className="h-9 shrink-0 text-xs transition-transform active:scale-[0.98]"
+                                className="h-9 shrink-0 text-xs"
                                 aria-expanded={searchV2WidenedOpen}
                                 onClick={() =>
                                   setSearchV2WidenedOpen((v) => !v)
@@ -2725,7 +2718,7 @@ export function BuscarContent({
                               </p>
                             ) : null}
                             {searchV2WidenedOpen ? (
-                              <div className="grid grid-cols-1 gap-6 border-t border-border/40 pt-4 md:grid-cols-2 lg:grid-cols-3">
+                              <div className="grid grid-cols-1 gap-7 border-t border-border/20 pt-5 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
                                 {bucket.items.map((row) => {
                                   const listing = row as BuscarListingCardData
                                   const index = globalIndex++
@@ -2783,7 +2776,7 @@ export function BuscarContent({
                               {S.searchV2BucketEmpty}
                             </p>
                           ) : (
-                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                            <div className="grid grid-cols-1 gap-7 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
                               {bucket.items.map((row) => {
                                 const listing = row as BuscarListingCardData
                                 const index = globalIndex++
@@ -2818,7 +2811,7 @@ export function BuscarContent({
                 )
               })()}
               {data && data.total > 0 ? (
-                <p className="text-center text-sm text-text-secondary">
+                <p className="mt-6 border-t border-border/15 pt-6 text-center text-sm text-text-secondary">
                   {S.searchV2TotalSummary.replace('{n}', String(data.total))}
                 </p>
               ) : null}
@@ -2830,12 +2823,12 @@ export function BuscarContent({
 
         <details
           id="buscar-asistente"
-          className="scroll-mt-16 rounded-lg border border-border/40 bg-surface-secondary/15"
+          className="scroll-mt-20 rounded-xl border border-border/20 bg-surface-secondary/15"
         >
-          <summary className="cursor-pointer list-none px-2.5 py-1.5 text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden md:px-3 md:py-2 md:text-sm">
+          <summary className="cursor-pointer list-none px-3 py-2.5 text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden md:px-4 md:py-3 md:text-sm">
             {S.buscarAssistantCollapseTitle}
           </summary>
-          <div className="space-y-2 border-t border-border/40 px-2.5 pb-3 pt-2 md:space-y-2.5 md:px-3 md:pb-3 md:pt-2.5">
+          <div className="space-y-3 border-t border-border/15 px-3 pb-4 pt-3 md:space-y-4 md:px-4 md:pb-5 md:pt-4">
             <p className="text-xs text-text-secondary md:text-sm">{S.buscarAssistantPanelHint}</p>
             <ConversationalSearchBlock
               variant="buscar"
@@ -2847,11 +2840,11 @@ export function BuscarContent({
               hideTitle
               buscarSearchParamsKey={searchParamsKey}
             />
-            <details className="rounded-md border border-border/40 bg-surface-secondary/20">
-              <summary className="cursor-pointer px-2.5 py-1.5 text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden md:px-3 md:py-2">
+            <details className="rounded-lg border border-border/20 bg-surface-primary/40">
+              <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-text-secondary marker:content-none [&::-webkit-details-marker]:hidden md:px-3.5 md:py-2.5">
                 {S.inductiveExploreTitle}
               </summary>
-              <div className="space-y-2 border-t border-border/50 px-2.5 py-2 md:space-y-2.5 md:px-3 md:py-2.5">
+              <div className="space-y-2 border-t border-border/15 px-3 py-2.5 md:space-y-3 md:px-3.5 md:py-3">
                 {contextualBlock ? (
                   <div className="space-y-1">
                     <h3 className="text-sm font-semibold text-text-primary">
@@ -2919,7 +2912,7 @@ export function BuscarContent({
         </details>
 
         {assistantHint ? (
-          <div className="rounded-md border border-border/50 bg-surface-secondary/40 px-2.5 py-2 text-sm text-text-secondary md:px-3 md:py-2.5">
+          <div className="rounded-xl border border-border/20 bg-surface-secondary/25 px-3 py-3 text-sm text-text-secondary md:px-4 md:py-4">
             <p className="text-sm font-medium text-text-primary">
               {S.conversationalInterpretedTitle}
             </p>

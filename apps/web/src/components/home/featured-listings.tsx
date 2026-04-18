@@ -31,14 +31,14 @@ export function FeaturedListings() {
   const listings = listingsRaw as unknown as FeaturedListingCardData[]
 
   return (
-    <section className="border-t border-border/25 bg-surface-secondary/25 pb-12 pt-5 md:pb-16 md:pt-6">
+    <section className="border-t border-border/15 bg-surface-secondary/30 pb-14 pt-9 md:pb-20 md:pt-11">
       <div className="container mx-auto px-4">
-        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between md:mb-5">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight text-text-primary md:text-2xl">
+        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between md:mb-10">
+          <div className="max-w-xl">
+            <h2 className="text-[1.35rem] font-semibold tracking-tight text-text-primary md:text-2xl">
               {pack.featured.title}
             </h2>
-            <p className="mt-1 max-w-lg text-xs leading-relaxed text-text-tertiary md:text-sm md:text-text-secondary">
+            <p className="mt-2 max-w-lg text-sm leading-relaxed text-text-secondary md:mt-2.5 md:text-[0.9375rem]">
               {pack.featured.subtitle}
             </p>
           </div>
@@ -68,7 +68,7 @@ export function FeaturedListings() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-7 md:grid-cols-2 md:gap-8 lg:grid-cols-3 lg:gap-9">
             {listings.map((listing) => (
               <ListingCard key={listing.id} listing={listing} />
             ))}
@@ -95,9 +95,9 @@ function ListingCard({ listing }: { listing: FeaturedListingCardData }) {
 
   return (
     <Link href={`/propiedad/${listing.id}`} className="block h-full">
-      <Card className="group h-full cursor-pointer overflow-hidden rounded-xl border border-border/70 shadow-sm transition-shadow duration-200 hover:border-border hover:shadow-md">
+      <Card className="group h-full cursor-pointer overflow-hidden rounded-2xl border border-border/45 shadow-none transition-colors duration-200 hover:border-border/70 hover:shadow-sm">
         {/* Image */}
-        <div className="relative h-52 overflow-hidden bg-surface-secondary md:h-56">
+        <div className="relative h-52 overflow-hidden bg-surface-secondary md:h-[15.5rem]">
           <Image
             src={
               listing.primaryImageUrl ||
@@ -106,7 +106,7 @@ function ListingCard({ listing }: { listing: FeaturedListingCardData }) {
             alt={listing.title}
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className="object-cover transition-opacity duration-200 group-hover:opacity-95"
             unoptimized
           />
           <Badge className="absolute top-3 left-3" variant="secondary">
@@ -115,8 +115,8 @@ function ListingCard({ listing }: { listing: FeaturedListingCardData }) {
         </div>
 
         {/* Content */}
-        <div className="p-4">
-          <div className="text-xl font-bold text-brand-primary">
+        <div className="p-5 md:p-5">
+          <div className="text-lg font-semibold tracking-tight text-brand-primary md:text-xl">
             {formatPrice(
               listing.priceAmount,
               listing.priceCurrency as Currency
