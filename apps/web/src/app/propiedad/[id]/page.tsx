@@ -17,9 +17,9 @@ import { ListingRelatedSearches } from '@/components/property/listing-related-se
 import { PropertyLocationMap } from '@/components/property/property-location-map'
 import {
   formatPrice,
-  formatSurface,
   OPERATION_TYPE_LABELS,
   PORTAL_LISTING_UX_COPY as L,
+  PROPERTY_TYPE_LABELS,
 } from '@propieya/shared'
 import type {
   Currency,
@@ -95,7 +95,7 @@ function SimilarSection({ listingId }: { listingId: string }) {
 
   if (isLoading) {
     return (
-      <Card className="p-6 space-y-4">
+      <Card className="space-y-4 rounded-xl border border-border/45 p-6 shadow-none">
         <Skeleton className="h-7 w-56" />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {[0, 1, 2].map((i) => (
@@ -111,7 +111,7 @@ function SimilarSection({ listingId }: { listingId: string }) {
   }
 
   return (
-    <Card className="p-6 space-y-4">
+    <Card className="space-y-4 rounded-xl border border-border/45 p-6 shadow-none">
       <h2 className="text-lg font-semibold text-text-primary">
         Propiedades similares
       </h2>
@@ -121,12 +121,27 @@ function SimilarSection({ listingId }: { listingId: string }) {
           const op =
             OPERATION_TYPE_LABELS[item.operationType as OperationType] ??
             item.operationType
+          const tipo =
+            PROPERTY_TYPE_LABELS[item.propertyType as PropertyType] ??
+            item.propertyType
           const cur = item.priceCurrency as Currency
+          const nb = addr?.neighborhood?.trim()
+          const cy = addr?.city?.trim()
+          const locLine =
+            nb && cy ? `${nb} · ${cy}` : cy || nb || '—'
+          const roomsLabel =
+            item.bedrooms === null || item.bedrooms === 0
+              ? 'Monoambiente'
+              : `${item.bedrooms} dorm.`
+          const bathBit =
+            item.bathrooms !== null && item.bathrooms > 0
+              ? ` · ${item.bathrooms} baño${item.bathrooms > 1 ? 's' : ''}`
+              : ''
           return (
             <Link
               key={item.id}
               href={`/propiedad/${item.id}`}
-              className="flex gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-surface-secondary"
+              className="block overflow-hidden rounded-xl border border-border/45 bg-surface-primary shadow-none transition-colors hover:border-border/70 hover:shadow-sm"
               onClick={() => {
                 recordSearchResultClick.mutate({
                   listingId: item.id,
@@ -135,30 +150,43 @@ function SimilarSection({ listingId }: { listingId: string }) {
                 })
               }}
             >
-              <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-md bg-surface-secondary">
-                <Image
-                  src={
-                    item.primaryImageUrl ||
-                    'https://placehold.co/400x300/e0ddd8/666660?text=Propiedad'
-                  }
-                  alt={item.title}
-                  fill
-                  sizes="112px"
-                  className="object-cover"
-                  unoptimized
-                />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-text-tertiary">{op}</p>
-                <p className="font-semibold text-text-primary line-clamp-2">
-                  {item.title}
-                </p>
-                <p className="mt-1 text-sm font-medium text-brand-primary">
-                  {formatPrice(item.priceAmount, cur)}
-                </p>
-                <p className="text-xs text-text-secondary truncate">
-                  {addr?.neighborhood ?? '—'}, {addr?.city ?? '—'}
-                </p>
+              <div className="flex gap-3 p-3">
+                <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-lg bg-surface-secondary">
+                  <Image
+                    src={
+                      item.primaryImageUrl ||
+                      'https://placehold.co/400x300/e0ddd8/666660?text=Propiedad'
+                    }
+                    alt={item.title}
+                    fill
+                    sizes="112px"
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <p className="text-base font-semibold tabular-nums tracking-tight text-text-primary">
+                    {formatPrice(item.priceAmount, cur)}
+                  </p>
+                  <p className="text-xs font-medium leading-snug text-text-secondary">
+                    {locLine}
+                  </p>
+                  <p className="text-xs leading-snug text-text-primary">
+                    <span className="text-text-tertiary">{op}</span>
+                    <span className="text-text-tertiary"> · </span>
+                    <span>{tipo}</span>
+                    <span className="text-text-tertiary"> · </span>
+                    <span>{item.surfaceTotal} m²</span>
+                    <span className="text-text-tertiary"> · </span>
+                    <span>
+                      {roomsLabel}
+                      {bathBit}
+                    </span>
+                  </p>
+                  <p className="text-xs font-medium text-text-primary line-clamp-2">
+                    {item.title}
+                  </p>
+                </div>
               </div>
             </Link>
           )
@@ -190,7 +218,7 @@ function ContactConversionBanner({
         : L.contactSmartBodyViews
 
   return (
-    <Card className="rounded-xl border-2 border-brand-primary/35 bg-gradient-to-br from-brand-primary/[0.09] via-brand-primary/[0.04] to-transparent p-5 shadow-md md:p-6">
+    <Card className="rounded-xl border border-brand-primary/30 bg-gradient-to-br from-brand-primary/[0.07] via-brand-primary/[0.03] to-transparent p-5 shadow-none md:p-6">
       <h2 className="text-lg font-semibold text-text-primary md:text-xl">
         {L.contactSmartTitle}
       </h2>
@@ -305,7 +333,7 @@ export default function PropiedadPage() {
         <Header />
         <main className="flex-1 container mx-auto px-4 py-10">
           <Skeleton className="mb-4 h-8 w-2/3" />
-          <Card className="space-y-4 p-6">
+          <Card className="space-y-4 rounded-xl border border-border/45 p-6 shadow-none">
             <Skeleton className="h-64 w-full rounded-xl" />
             <Skeleton className="h-6 w-1/2" />
             <Skeleton className="h-6 w-3/4" />
@@ -374,6 +402,24 @@ export default function PropiedadPage() {
   const addressCity = listing.address?.city ?? '—'
   const priceCurrency = listing.priceCurrency as Currency
 
+  const operationLabel =
+    OPERATION_TYPE_LABELS[listing.operationType] ?? listing.operationType
+  const tipoLabel =
+    PROPERTY_TYPE_LABELS[listing.propertyType] ?? listing.propertyType
+  const nbTrim =
+    addressNeighborhood !== '—' ? addressNeighborhood.trim() : ''
+  const cyTrim = addressCity !== '—' ? addressCity.trim() : ''
+  const locationLine =
+    nbTrim && cyTrim ? `${nbTrim} · ${cyTrim}` : cyTrim || nbTrim || '—'
+  const roomsLabel =
+    listing.bedrooms === null || listing.bedrooms === 0
+      ? 'Monoambiente'
+      : `${listing.bedrooms} dorm.`
+  const bathBit =
+    listing.bathrooms !== null && listing.bathrooms > 0
+      ? ` · ${listing.bathrooms} baño${listing.bathrooms > 1 ? 's' : ''}`
+      : ''
+
   const features = listing.features ?? {}
   const field = features.field
   const commercialSub = features.commercialSub
@@ -400,7 +446,7 @@ export default function PropiedadPage() {
   return (
     <div className="flex min-h-screen flex-col bg-surface-primary">
       <Header />
-      <main className="flex-1 pb-28 lg:pb-10">
+      <main className="flex-1 pb-36 lg:pb-10">
         <section className="border-b border-border/50 bg-surface-secondary/30">
           <div className="container mx-auto px-4 py-6 lg:py-8">
             <div className="overflow-hidden rounded-2xl border border-border/60 bg-surface-primary shadow-sm">
@@ -451,63 +497,39 @@ export default function PropiedadPage() {
               onContact={() => openContactFlow('smart_suggestion')}
             />
           ) : null}
-          <Card className="rounded-xl border border-border/70 p-5 shadow-sm md:p-6">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0 space-y-2">
-                <Badge variant="outline" className="w-fit font-normal">
-                  {OPERATION_TYPE_LABELS[listing.operationType] ??
-                    listing.operationType}
-                </Badge>
-                <h1 className="text-2xl font-bold tracking-tight text-text-primary md:text-3xl">
-                  {listing.title}
-                </h1>
-                <p className="text-base text-text-secondary md:text-lg">
-                  {addressNeighborhood}, {addressCity}
-                </p>
-              </div>
-              <div className="shrink-0">
-                <p className="text-3xl font-bold text-brand-primary md:text-4xl">
-                  {formatPrice(listing.priceAmount, priceCurrency)}
-                </p>
-              </div>
+          <Card className="rounded-xl border border-border/45 p-5 shadow-none md:p-6">
+            <div className="space-y-3 md:space-y-4">
+              <p className="text-3xl font-semibold tabular-nums tracking-tight text-text-primary md:text-4xl">
+                {formatPrice(listing.priceAmount, priceCurrency)}
+              </p>
+              <p className="text-base font-medium leading-snug text-text-secondary md:text-lg">
+                {locationLine}
+              </p>
+              <p className="text-sm leading-snug text-text-primary md:text-base">
+                <span className="text-text-tertiary">{operationLabel}</span>
+                <span className="text-text-tertiary"> · </span>
+                <span>{tipoLabel}</span>
+                <span className="text-text-tertiary"> · </span>
+                <span>{listing.surfaceTotal} m²</span>
+                <span className="text-text-tertiary"> · </span>
+                <span>
+                  {roomsLabel}
+                  {bathBit}
+                </span>
+              </p>
+              <h1 className="text-lg font-semibold leading-snug text-text-primary line-clamp-3 md:text-xl">
+                {listing.title}
+              </h1>
             </div>
-            <dl className="mt-6 grid grid-cols-2 gap-4 border-t border-border/60 pt-6 sm:grid-cols-4">
-              <div>
-                <dt className="text-xs font-medium text-text-tertiary">Superficie</dt>
-                <dd className="mt-0.5 text-sm font-semibold text-text-primary">
-                  {formatSurface(listing.surfaceTotal)}
-                </dd>
-              </div>
-              {listing.bedrooms !== null ? (
-                <div>
-                  <dt className="text-xs font-medium text-text-tertiary">Dormitorios</dt>
-                  <dd className="mt-0.5 text-sm font-semibold text-text-primary">
-                    {listing.bedrooms}
-                  </dd>
-                </div>
-              ) : null}
-              {listing.bathrooms !== null ? (
-                <div>
-                  <dt className="text-xs font-medium text-text-tertiary">Baños</dt>
-                  <dd className="mt-0.5 text-sm font-semibold text-text-primary">
-                    {listing.bathrooms}
-                  </dd>
-                </div>
-              ) : null}
-              <div>
-                <dt className="text-xs font-medium text-text-tertiary">Publicación</dt>
-                <dd className="mt-0.5 text-sm font-semibold text-text-primary">
-                  {listing.publishedAt
-                    ? new Date(listing.publishedAt).toLocaleDateString('es-AR')
-                    : '—'}
-                </dd>
-              </div>
-            </dl>
           </Card>
+
+          <div className="lg:hidden">
+            <ListingTrustPanel listing={listing} />
+          </div>
 
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
             <div className="space-y-6 lg:col-span-2">
-              <Card className="rounded-xl border border-border/70 p-6 shadow-sm">
+              <Card className="rounded-xl border border-border/45 p-6 shadow-none">
                 <h2 className="text-lg font-semibold text-text-primary">Descripción</h2>
                 <p className="mt-3 text-sm leading-relaxed text-text-secondary whitespace-pre-wrap">
                   {listing.description}
@@ -515,13 +537,13 @@ export default function PropiedadPage() {
               </Card>
 
               {amenityIds.length > 0 ? (
-                <Card className="rounded-xl border border-border/70 p-6 shadow-sm">
+                <Card className="rounded-xl border border-border/45 p-6 shadow-none">
                   <ListingAmenitiesGrid amenityIds={amenityIds} />
                 </Card>
               ) : null}
 
               {listing.propertyType === 'land' ? (
-                <Card className="rounded-xl border border-border/70 p-6 shadow-sm">
+                <Card className="rounded-xl border border-border/45 p-6 shadow-none">
                   <h2 className="text-lg font-semibold text-text-primary">Campo</h2>
                   <div className="mt-3">
                     <FieldSummary field={field} />
@@ -536,7 +558,7 @@ export default function PropiedadPage() {
 
               {(listing.propertyType === 'commercial' ||
                 listing.propertyType === 'office') && (
-                <Card className="rounded-xl border border-border/70 p-6 shadow-sm">
+                <Card className="rounded-xl border border-border/45 p-6 shadow-none">
                   <h2 className="text-lg font-semibold text-text-primary">Comercial</h2>
                   <div className="mt-3">
                     <CommercialSubSummary commercialSub={commercialSub} />
@@ -551,11 +573,7 @@ export default function PropiedadPage() {
             </div>
 
             <aside className="space-y-4 lg:col-span-1">
-              <div className="hidden lg:block">
-                <ListingTrustPanel listing={listing} />
-              </div>
-
-              <Card className="rounded-xl border border-border/70 p-6 shadow-sm">
+              <Card className="rounded-xl border border-border/45 p-6 shadow-none">
                 <h2 className="text-lg font-semibold text-text-primary">{L.sidebarTitle}</h2>
                 <p className="mt-2 text-sm text-text-secondary">{L.sidebarLead}</p>
                 <p className="mt-2 text-xs leading-relaxed text-text-tertiary">{L.trustNote}</p>
@@ -583,24 +601,19 @@ export default function PropiedadPage() {
                 </div>
               </Card>
 
-              <Card className="rounded-xl border border-border/70 p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-text-primary">Datos</h2>
-                <div className="mt-3 space-y-2 text-sm text-text-secondary">
-                  <p>Superficie: {formatSurface(listing.surfaceTotal)}</p>
-                  {listing.bedrooms !== null ? <p>Dormitorios: {listing.bedrooms}</p> : null}
-                  {listing.bathrooms !== null ? <p>Baños: {listing.bathrooms}</p> : null}
-                </div>
-              </Card>
+              <div className="hidden lg:block">
+                <ListingTrustPanel listing={listing} />
+              </div>
 
               {listing.hideExactAddress !== true &&
               listing.locationLat != null &&
               listing.locationLng != null &&
               !Number.isNaN(listing.locationLat) &&
               !Number.isNaN(listing.locationLng) ? (
-                <Card className="rounded-xl border border-border/70 p-6 shadow-sm">
+                <Card className="rounded-xl border border-border/45 p-6 shadow-none">
                   <h2 className="text-lg font-semibold text-text-primary">Ubicación</h2>
                   <p className="mt-1 text-xs text-text-secondary">
-                    Referencia en mapa (OpenStreetMap).
+                    {L.listingLocationMapHint}
                   </p>
                   <div className="mt-3 overflow-hidden rounded-lg border border-border/40">
                     <PropertyLocationMap
@@ -612,10 +625,6 @@ export default function PropiedadPage() {
                 </Card>
               ) : null}
             </aside>
-          </div>
-
-          <div className="lg:hidden">
-            <ListingTrustPanel listing={listing} />
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -638,22 +647,33 @@ export default function PropiedadPage() {
         </div>
       </main>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 flex gap-2 border-t border-border bg-surface-primary/95 p-3 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md lg:hidden">
-        <Button
-          className="min-h-11 flex-1 transition-transform active:scale-[0.98]"
-          type="button"
-          onClick={() => openContactFlow('sticky_primary')}
-        >
-          {L.contactPrimaryCta}
-        </Button>
-        <Button
-          variant="outline"
-          className="min-h-11 flex-1 transition-transform active:scale-[0.98]"
-          type="button"
-          onClick={() => openContactFlow('sticky_secondary')}
-        >
-          {L.contactScheduleCta}
-        </Button>
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface-primary/95 p-3 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md lg:hidden">
+        <div className="mx-auto flex max-w-lg flex-col gap-2">
+          <Button
+            className="min-h-11 w-full transition-transform active:scale-[0.98]"
+            type="button"
+            onClick={() => openContactFlow('sticky_primary')}
+          >
+            {L.contactPrimaryCta}
+          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="min-h-11 min-w-0 flex-1 transition-transform active:scale-[0.98]"
+              type="button"
+              onClick={() => openContactFlow('sticky_secondary')}
+            >
+              {L.contactScheduleCta}
+            </Button>
+            <div className="shrink-0 pt-0.5">
+              <AddToCompareButton
+                listingId={listing.id}
+                compact
+                onCompareAdded={() => setCompareJustAdded(true)}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <ContactModal

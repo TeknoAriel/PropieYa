@@ -651,6 +651,9 @@ export const PORTAL_LISTING_UX_COPY = {
 
   /** Sprint 32 — ampliar zona / mismo criterio en el buscador */
   relatedSearchesTitle: 'Búsquedas relacionadas',
+
+  /** Ficha — mapa (evitar jerga técnica del proveedor de tiles) */
+  listingLocationMapHint: 'Ubicación aproximada en mapa (referencia).',
 } as const
 
 /** Etiquetas para enlaces «Búsquedas relacionadas» (jerarquía zona + precio). Sprint 43. */

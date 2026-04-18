@@ -55,7 +55,7 @@ export function ListingTrustPanel({ listing }: { listing: ListingTrustSource }) 
     src === 'import' ? formatListingInventoryRefForPortal(listing.externalId) : null
 
   return (
-    <Card className="p-6 space-y-4">
+    <Card className="space-y-4 rounded-xl border border-border/45 p-5 shadow-none">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-semibold text-text-primary">{L.trustCardTitle}</h2>
         {freshness.isExpiringSoon ? (
