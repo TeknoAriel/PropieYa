@@ -1,6 +1,6 @@
 # Contexto y reglas duras — Deploy (para agentes y humanos)
 
-**Última actualización:** 2026-04-16 (repo operativo Tekno + copia kiteprop). Este archivo es la **hoja de contexto** cuando haya dudas sobre Vercel, dominios o CI. No duplicar reglas contradictorias en otros docs: enlazar aquí.
+**Última actualización:** 2026-04-19 (cuotas Hobby + verificación). Este archivo es la **hoja de contexto** cuando haya dudas sobre Vercel, dominios o CI. No duplicar reglas contradictorias en otros docs: enlazar aquí.
 
 ---
 
@@ -21,6 +21,25 @@
 | **Variables Vercel (web, Production)** | Mínimo: `DATABASE_URL`, `JWT_SECRET`, `TRUSTED_PANEL_ORIGINS`. [Environment Variables →](https://vercel.com/teknoariels-projects/propie-ya-web/settings/environment-variables) |
 
 **Proyecto obsoleto (no usar):** `propieya_web` — quedó en estado inconsistente; puede **eliminarse** del dashboard Vercel cuando no haya dependencias. No volver a vincular el dominio canónico a ese proyecto.
+
+---
+
+## Cuotas y límites (Vercel Hobby vs. “errores del repo”)
+
+**Fuente numérica:** [Planes — Hobby](https://vercel.com/docs/plans/hobby) y [Limits overview](https://vercel.com/docs/limits). Vercel puede cambiar cifras; el dashboard del team (`Settings` / `Usage` / `Billing`) es la comprobación operativa.
+
+| Recurso (orientativo) | Hobby (doc Vercel) | Qué implica para Propieya |
+|-----------------------|--------------------|----------------------------|
+| **Deployments por día** | **100** por día (cuenta **Preview + Production** que se *crean* ese día) | Muchos pushes a ramas + Promote + redeploys pueden **agotar el cupo**. El síntoma en GitHub/Vercel suele ser error de **quota / limit / rate**, no un fallo de TypeScript. |
+| **Build execution minutes** | **6.000 min / mes** (tabla Hobby) | Sin minutos de build **no hay** deploy aunque `pnpm verify` esté verde. |
+
+### Sobre correos que dicen “25 deploys por día”
+
+Algunos **correos o resúmenes antiguos** (Vercel u otros) citaban **25** u otros límites más bajos. Eso puede estar **desactualizado** respecto a la tabla oficial (hoy **100** deployments/día en el enlace de arriba). **Regla para el agente:** si el deploy no avanza, **no** asumir regresión en el monorepo hasta revisar el **log del deployment** en Vercel y **Usage** del team.
+
+**Dónde mirar:** [Dashboard — Usage](https://vercel.com/teknoariels-projects/~/usage) (team `teknoariels-projects`; ajustar si el team cambia).
+
+**Si la causa confirmada es cuota:** una línea en `docs/REGISTRO-BLOQUEOS.md` con fecha, enlace al deployment o al run de Actions, y un solo paso (esperar ventana, reducir previews, o upgrade de plan).
 
 ---
 
