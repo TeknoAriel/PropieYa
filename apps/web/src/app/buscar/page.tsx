@@ -16,7 +16,7 @@ export default function BuscarPage() {
       <main className="flex-1">
         <Suspense
           fallback={
-            <div className="container mx-auto px-4 py-10">
+            <div className="container mx-auto px-4 py-6">
               <Skeleton className="h-10 w-48" />
               <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-3">
                 {[...Array(6)].map((_, i) => (

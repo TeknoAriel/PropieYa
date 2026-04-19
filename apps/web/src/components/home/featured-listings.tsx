@@ -31,9 +31,9 @@ export function FeaturedListings() {
   const listings = listingsRaw as unknown as FeaturedListingCardData[]
 
   return (
-    <section className="border-t border-border/10 bg-surface-secondary/20 pb-12 pt-8 md:pb-16 md:pt-10">
+    <section className="border-t border-border/10 bg-surface-secondary/20 pb-8 pt-5 md:pb-10 md:pt-6">
       <div className="container mx-auto px-4">
-        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between md:mb-10">
+        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between md:mb-6">
           <div className="max-w-xl">
             <h2 className="text-[1.35rem] font-semibold tracking-tight text-text-primary md:text-2xl">
               {pack.featured.title}
@@ -55,7 +55,7 @@ export function FeaturedListings() {
             No pudimos cargar los destacados. Probá de nuevo en un momento.
           </p>
         ) : isLoading ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3">
             {[...Array(3)].map((_, i) => (
               <Card key={i} className="overflow-hidden">
                 <Skeleton className="h-48 w-full" />
@@ -68,7 +68,7 @@ export function FeaturedListings() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6 lg:grid-cols-3 lg:gap-7">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-3 lg:gap-6">
             {listings.map((listing) => (
               <ListingCard key={listing.id} listing={listing} />
             ))}
@@ -97,7 +97,7 @@ function ListingCard({ listing }: { listing: FeaturedListingCardData }) {
     <Link href={`/propiedad/${listing.id}`} className="block h-full">
       <Card className="group h-full cursor-pointer overflow-hidden rounded-2xl border border-border/45 shadow-none transition-colors duration-200 hover:border-border/70 hover:shadow-sm">
         {/* Image */}
-        <div className="relative h-52 overflow-hidden bg-surface-secondary md:h-[15.5rem]">
+        <div className="relative h-44 overflow-hidden bg-surface-secondary md:h-52">
           <Image
             src={
               listing.primaryImageUrl ||
@@ -115,7 +115,7 @@ function ListingCard({ listing }: { listing: FeaturedListingCardData }) {
         </div>
 
         {/* Content */}
-        <div className="p-5 md:p-5">
+        <div className="p-4 md:p-4">
           <div className="text-lg font-semibold tracking-tight text-brand-primary md:text-xl">
             {formatPrice(
               listing.priceAmount,
@@ -123,7 +123,7 @@ function ListingCard({ listing }: { listing: FeaturedListingCardData }) {
             )}
           </div>
 
-          <h3 className="mt-2 font-medium text-text-primary line-clamp-2">
+          <h3 className="mt-1.5 font-medium text-text-primary line-clamp-2">
             {listing.title}
           </h3>
 
@@ -131,7 +131,7 @@ function ListingCard({ listing }: { listing: FeaturedListingCardData }) {
             {neighborhood}, {city}
           </p>
 
-          <div className="mt-3 flex items-center gap-4 text-sm text-text-tertiary">
+          <div className="mt-2 flex items-center gap-4 text-sm text-text-tertiary">
             <span>{listing.surfaceTotal} m²</span>
             {listing.bedrooms !== null && listing.bedrooms > 0 && (
               <span>{listing.bedrooms} dorm.</span>

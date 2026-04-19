@@ -55,7 +55,7 @@ export function Header() {
   const closeMobile = () => setMobileOpen(false)
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-surface-primary/95 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-surface-primary/90">
+    <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-[rgba(255,252,245,0.7)] shadow-sm backdrop-blur-md dark:bg-[rgba(30,30,32,0.78)]">
       <div className="container mx-auto px-4">
         <div className="flex h-14 items-center justify-between gap-3 md:h-16 md:gap-4">
           <Link

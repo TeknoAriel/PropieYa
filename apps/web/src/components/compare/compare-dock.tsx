@@ -26,7 +26,7 @@ export function CompareDock() {
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-surface-elevated/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-surface-elevated/90 pb-[env(safe-area-inset-bottom)]"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-[rgba(255,252,245,0.7)] shadow-lg backdrop-blur-md dark:bg-[rgba(36,36,38,0.82)] pb-[env(safe-area-inset-bottom)]"
       role="region"
       aria-label={C.compareBarTitle}
     >

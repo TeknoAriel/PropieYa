@@ -396,7 +396,7 @@ function ListingCard({
               : ''
           } active:scale-[0.985]`}
         >
-          <div className="relative h-40 shrink-0 overflow-hidden bg-surface-secondary md:h-44">
+          <div className="relative h-36 shrink-0 overflow-hidden bg-surface-secondary md:h-40">
             <Image
               src={
                 listing.primaryImageUrl ||
@@ -410,7 +410,7 @@ function ListingCard({
             />
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-2 p-3.5 md:gap-2.5 md:p-4">
+          <div className="flex min-h-0 flex-1 flex-col gap-1.5 p-3 md:gap-2 md:p-3.5">
             <div className="text-xl font-semibold tabular-nums tracking-tight text-text-primary md:text-2xl">
               {formatPrice(listing.priceAmount, listing.priceCurrency as Currency)}
             </div>
@@ -1528,9 +1528,9 @@ export function BuscarContent({
   const showQuickAmenityChips = (quickFacetIds?.length ?? 0) > 0
 
   return (
-    <div className="container mx-auto space-y-5 px-4 py-4 md:space-y-6 md:py-6">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2 border-b border-border/20 pb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+    <div className="container mx-auto space-y-4 px-4 py-3 md:space-y-5 md:py-4">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2 border-b border-border/20 pb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
           <div className="min-w-0 space-y-1">
             <h1 className="text-lg font-semibold tracking-tight text-text-primary md:text-xl">
               {pageTitle}
@@ -1608,9 +1608,9 @@ export function BuscarContent({
           </p>
         ) : null}
 
-        <div id="buscar-esenciales" className="scroll-mt-24 space-y-5">
-          <Card className="space-y-5 border-border/35 p-5 shadow-none md:space-y-6 md:p-7">
-          <div className="flex flex-col gap-3 border-b border-border/20 pb-5 sm:flex-row sm:items-end sm:gap-4">
+        <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
+          <Card className="space-y-4 border-border/35 p-4 shadow-none md:space-y-5 md:p-5">
+          <div className="flex flex-col gap-2.5 border-b border-border/20 pb-4 sm:flex-row sm:items-end sm:gap-3">
             <div className="min-w-0 flex-1">
               <BuscarLabeledField id="buscar-q" label={S.buscarMainSearchLabel}>
                 <Input
@@ -1749,7 +1749,7 @@ export function BuscarContent({
           </Card>
         </div>
 
-        <div id="buscar-resultados" className="scroll-mt-24 space-y-5 md:space-y-6">
+        <div id="buscar-resultados" className="scroll-mt-24 space-y-4 md:space-y-5">
           {isError ? (
             <Card className="space-y-2 border-border/30 p-6 shadow-none">
               <p className="text-sm font-medium text-text-primary">{S.searchLoadErrorSoftTitle}</p>
@@ -1848,11 +1848,11 @@ export function BuscarContent({
             </div>
           ) : null}
           {isLoading && !dataV2Ui ? (
-            <div className="grid grid-cols-1 gap-7 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
                 <Card key={i} className="overflow-hidden border-border/25 shadow-none">
-                  <Skeleton className="h-48 w-full" />
-                  <div className="space-y-3 p-4">
+                  <Skeleton className="h-40 w-full" />
+                  <div className="space-y-2.5 p-3.5">
                     <Skeleton className="h-4 w-3/4" />
                     <Skeleton className="h-6 w-1/2" />
                     <Skeleton className="h-4 w-full" />
@@ -1861,7 +1861,7 @@ export function BuscarContent({
               ))}
             </div>
           ) : dataV2Ui?.buckets ? (
-            <div className="space-y-8 md:space-y-10">
+            <div className="space-y-6 md:space-y-8">
               {!isLoading &&
               data &&
               data.total > 0 &&
@@ -1914,7 +1914,7 @@ export function BuscarContent({
                         return (
                           <section
                             key={bucket.id}
-                            className="space-y-4 rounded-xl border border-dashed border-border/25 bg-surface-secondary/10 px-3.5 py-3.5 md:px-5 md:py-4"
+                            className="space-y-3 rounded-xl border border-dashed border-border/25 bg-surface-secondary/10 px-3 py-3 md:px-4 md:py-3.5"
                           >
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                               <div className="min-w-0 space-y-1">
@@ -1965,7 +1965,7 @@ export function BuscarContent({
                               </Button>
                             </div>
                             {searchV2NearOpen ? (
-                              <div className="grid grid-cols-1 gap-5 border-t border-border/15 pt-5 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
+                              <div className="grid grid-cols-1 gap-4 border-t border-border/15 pt-4 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
                                 {bucket.items.map((row) => {
                                   const listing = row as BuscarListingCardData
                                   const index = globalIndex++
@@ -2009,7 +2009,7 @@ export function BuscarContent({
                         return (
                           <section
                             key={bucket.id}
-                            className="space-y-4 rounded-xl border border-dashed border-border/20 bg-surface-secondary/[0.06] px-3 py-3 md:px-4 md:py-4"
+                            className="space-y-3 rounded-xl border border-dashed border-border/20 bg-surface-secondary/[0.06] px-3 py-2.5 md:px-3.5 md:py-3"
                           >
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                               <div className="min-w-0 space-y-1">
@@ -2067,7 +2067,7 @@ export function BuscarContent({
                               </p>
                             ) : null}
                             {searchV2WidenedOpen ? (
-                              <div className="grid grid-cols-1 gap-5 border-t border-border/15 pt-5 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
+                              <div className="grid grid-cols-1 gap-4 border-t border-border/15 pt-4 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
                                 {bucket.items.map((row) => {
                                   const listing = row as BuscarListingCardData
                                   const index = globalIndex++
@@ -2133,7 +2133,7 @@ export function BuscarContent({
                               {S.searchV2BucketEmpty}
                             </p>
                           ) : (
-                            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
                               {bucket.items.map((row) => {
                                 const listing = row as BuscarListingCardData
                                 const index = globalIndex++
@@ -2176,7 +2176,7 @@ export function BuscarContent({
                 )
               })()}
               {data && data.total > 0 ? (
-                <p className="mt-6 border-t border-border/15 pt-6 text-center text-sm text-text-secondary">
+                <p className="mt-4 border-t border-border/15 pt-4 text-center text-sm text-text-secondary">
                   {S.searchV2TotalSummary.replace('{n}', String(data.total))}
                 </p>
               ) : null}

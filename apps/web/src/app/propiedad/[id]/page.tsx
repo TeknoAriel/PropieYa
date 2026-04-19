@@ -136,8 +136,8 @@ function SimilarSection({
       aria-labelledby="listing-similares-heading"
       className="scroll-mt-28"
     >
-      <Card className="space-y-4 rounded-xl border border-border/45 p-6 shadow-none transition-shadow duration-300">
-        <div className="space-y-1.5 border-b border-border/30 pb-4">
+      <Card className="space-y-3 rounded-xl border border-border/45 p-4 shadow-none transition-shadow duration-300 md:space-y-4 md:p-5">
+        <div className="space-y-1.5 border-b border-border/30 pb-3 md:pb-4">
           <h2
             id="listing-similares-heading"
             className="text-lg font-semibold text-text-primary"
@@ -204,7 +204,7 @@ function SimilarSection({
                 <Card
                   className={`group flex cursor-pointer flex-col overflow-hidden rounded-xl border shadow-none transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${tierCardClass} active:scale-[0.985]`}
                 >
-                  <div className="relative h-40 shrink-0 overflow-hidden bg-surface-secondary md:h-44">
+                  <div className="relative h-36 shrink-0 overflow-hidden bg-surface-secondary md:h-40">
                     <Image
                       src={
                         item.primaryImageUrl ||
@@ -217,7 +217,7 @@ function SimilarSection({
                       unoptimized
                     />
                   </div>
-                  <div className="flex min-h-0 flex-1 flex-col gap-2 p-3.5 md:gap-2.5 md:p-4">
+                  <div className="flex min-h-0 flex-1 flex-col gap-1.5 p-3 md:gap-2 md:p-3.5">
                     {similarTagsUi.length > 0 ? (
                       <ul
                         className="flex flex-wrap gap-x-2 gap-y-1"
@@ -541,7 +541,7 @@ export default function PropiedadPage() {
       />
       <main className="flex-1 pb-36 lg:pb-10 transition-opacity duration-300 ease-out">
         <section className="border-b border-border/50 bg-surface-secondary/30">
-          <div className="container mx-auto px-4 py-6 lg:py-8">
+          <div className="container mx-auto px-4 py-4 lg:py-6">
             <div className="overflow-hidden rounded-2xl border border-border/60 bg-surface-primary shadow-sm">
               {images.length ? (
                 <div className="space-y-0">
@@ -583,7 +583,7 @@ export default function PropiedadPage() {
           </div>
         </section>
 
-        <div className="container mx-auto space-y-8 px-4 py-8">
+        <div className="container mx-auto space-y-5 px-4 py-5 md:space-y-6 md:py-6">
           {showContactSuggestion && suggestionReason ? (
             <ContactConversionBanner
               reason={suggestionReason}
@@ -772,7 +772,7 @@ export default function PropiedadPage() {
         </div>
       </main>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface-primary/95 p-3 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-[rgba(255,252,245,0.7)] p-3 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md dark:bg-[rgba(30,30,32,0.78)] lg:hidden">
         <div className="mx-auto flex max-w-lg flex-col gap-2">
           <p className="text-center text-[11px] font-medium uppercase tracking-wide text-text-tertiary">
             {L.listingContactEyebrow}

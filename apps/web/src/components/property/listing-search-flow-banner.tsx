@@ -42,8 +42,8 @@ export function ListingSearchFlowBanner({
 
   return (
     <div className="border-b border-border/45 bg-surface-secondary/30">
-      <div className="container mx-auto px-4 py-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+      <div className="container mx-auto px-4 py-2.5">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <nav aria-label="Navegación de ficha" className="min-w-0 text-sm text-text-secondary">
             <ol className="flex flex-wrap items-center gap-x-1 gap-y-1">
               <li>
@@ -115,7 +115,7 @@ export function ListingSearchFlowBanner({
         </div>
 
         {summaryText ? (
-          <div className="mt-3 max-w-4xl border-t border-border/35 pt-3 transition-opacity duration-300 ease-out">
+          <div className="mt-2 max-w-4xl border-t border-border/35 pt-2 transition-opacity duration-300 ease-out">
             <ListingSearchContextSummaryContent summaryText={summaryText} />
           </div>
         ) : null}

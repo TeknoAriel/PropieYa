@@ -22,14 +22,14 @@ export function HeroSearch() {
   }
 
   return (
-    <section className="border-b border-border/20 bg-surface-primary pb-10 pt-10 md:pb-12 md:pt-12">
+    <section className="border-b border-border/20 bg-surface-primary pb-6 pt-6 md:pb-8 md:pt-8">
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="text-[1.7rem] font-semibold leading-snug tracking-tight text-text-primary md:text-[1.875rem] md:leading-[1.2]">
             {pack.hero.line1}{' '}
             <span className="text-brand-primary">{pack.hero.line2Accent}</span>
           </h1>
-          <p className="mx-auto mt-4 max-w-lg text-[0.9375rem] leading-relaxed text-text-secondary md:mt-5 md:max-w-xl md:text-base">
+          <p className="mx-auto mt-3 max-w-lg text-[0.9375rem] leading-relaxed text-text-secondary md:mt-4 md:max-w-xl md:text-base">
             {pack.hero.subtitle}
           </p>
 
@@ -37,9 +37,9 @@ export function HeroSearch() {
             value={query}
             onValueChange={setQuery}
             onSubmit={handleSubmit}
-            className="mx-auto mt-7 max-w-xl md:mt-9"
+            className="mx-auto mt-5 max-w-xl md:mt-6"
           />
-          <p className="mx-auto mt-4 max-w-xl text-center text-sm text-text-tertiary md:mt-5">
+          <p className="mx-auto mt-3 max-w-xl text-center text-sm text-text-tertiary md:mt-4">
             <Link
               href="/buscar"
               className="font-medium text-brand-primary underline-offset-4 transition-colors hover:text-brand-primary/90 hover:underline"
