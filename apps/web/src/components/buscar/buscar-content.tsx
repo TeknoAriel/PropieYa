@@ -461,17 +461,22 @@ function ListingCard({
               </p>
             ) : null}
 
-            <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-              <span className="text-sm font-medium text-brand-primary">
-                {S.listingCardCta}
-              </span>
-              <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                <AddToCompareButton
-                  listingId={listing.id}
-                  compact
-                  stopNavigation
-                />
+            <div className="mt-auto space-y-1 border-t border-border/25 pt-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-brand-primary">
+                  {S.listingCardCta}
+                </span>
+                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <AddToCompareButton
+                    listingId={listing.id}
+                    compact
+                    stopNavigation
+                  />
+                </div>
               </div>
+              <p className="text-end text-[10px] leading-tight text-text-tertiary md:text-[11px]">
+                {S.listingCardCompareMicro}
+              </p>
             </div>
           </div>
         </Card>
@@ -1596,6 +1601,17 @@ export function BuscarContent({
               </DropdownMenu>
             ) : null}
           </div>
+          {!canAuth ? (
+            <p className="text-[11px] leading-relaxed text-text-secondary">
+              <Link
+                href="/login"
+                className="font-medium text-brand-primary underline-offset-2 hover:underline"
+              >
+                {S.buscarPersistLoginCta}
+              </Link>
+              {S.buscarPersistLoginHint}
+            </p>
+          ) : null}
         </div>
         {profileSaved ? (
           <p className="text-sm text-semantic-success">

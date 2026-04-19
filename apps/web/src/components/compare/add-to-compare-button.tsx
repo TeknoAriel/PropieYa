@@ -72,17 +72,31 @@ export function AddToCompareButton({
     )
   }
 
+  const label = compact
+    ? inList
+      ? C.removeFromCompareCompact
+      : C.addToCompareCompact
+    : inList
+      ? C.removeFromCompare
+      : C.addToCompare
+
   return (
     <div className={compact ? 'inline-flex flex-col items-stretch gap-1' : 'space-y-1'}>
       <Button
         type="button"
         variant={inList ? 'secondary' : 'outline'}
         size={compact ? 'sm' : 'default'}
-        className={compact ? 'text-xs' : undefined}
+        className={
+          compact
+            ? `text-xs ${inList ? '' : 'border-dashed border-border/60 text-text-secondary hover:text-text-primary'}`
+            : undefined
+        }
         onClick={handleClick}
         aria-pressed={inList}
+        aria-label={inList ? C.removeFromCompareAria : C.addToCompareAria}
+        title={inList ? C.removeFromCompare : C.addToCompare}
       >
-        {inList ? C.removeFromCompare : C.addToCompare}
+        {label}
       </Button>
       {maxHint ? (
         <p className="text-xs text-semantic-warning" role="status">

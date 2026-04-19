@@ -238,18 +238,31 @@ export const PORTAL_SEARCH_UX_COPY = {
   hintAdvancedStrong: 'Más filtros',
   hintAdvancedTail: 'para barrio, amenities y medidas.',
 
-  saveProfile: 'Guardar filtros en mi perfil',
+  saveProfile: 'Guardar estos filtros en mi perfil',
   saveProfilePending: 'Guardando…',
-  createAlert: 'Crear alerta con estos filtros',
-  createAlertPending: 'Creando…',
+  createAlert: 'Avisarme si aparecen avisos nuevos',
+  createAlertPending: 'Creando alerta…',
   /** Mis alertas → búsqueda guardada. */
   savedAlertOpenSearch: 'Abrir búsqueda',
+  /** Debajo del título de /buscar si el usuario no está logueado. */
+  buscarPersistLoginCta: 'Ingresá',
+  buscarPersistLoginHint:
+    'para guardar filtros en tu perfil y recibir alertas con lo que estás buscando.',
 
   allOperations: 'Todas las operaciones',
   homeLink: 'Inicio',
 
-  profileSaved: 'Perfil actualizado con estos filtros.',
-  alertSaved: 'Alerta creada. Podés verla en Mis alertas.',
+  profileSaved: 'Listo: estos filtros quedaron en tu perfil.',
+  alertSaved: 'Te avisamos si hay novedades. Revisalo en Mis alertas.',
+
+  /** Página /mis-alertas (usuario logueado, cabecera). */
+  misAlertasPageSubtitle:
+    'Búsquedas guardadas y avisos: retomás donde dejaste, sin rearmar todo a mano.',
+  /** Estado vacío con enlace a /buscar. */
+  misAlertasEmptyBody:
+    'Creá una alerta desde el buscador (menú «Más» cuando iniciás sesión) y te avisamos si hay avisos nuevos con tus filtros.',
+  /** Visitante sin sesión. */
+  misAlertasGuestLead: 'Alertas y filtros guardados quedan en tu cuenta.',
 
   keywordPlaceholder: 'Palabras que quieras que aparezcan en el aviso',
 
@@ -371,6 +384,8 @@ export const PORTAL_SEARCH_UX_COPY = {
   searchV2WhySee: 'Por qué aparece',
   /** Card de resultado /buscar: CTA explícita (toda la card sigue siendo clicable). */
   listingCardCta: 'Ver ficha',
+  /** Una línea bajo la acción de comparar en cards de resultado (misma lógica que siempre). */
+  listingCardCompareMicro: 'Hasta 3 avisos en este dispositivo para decidir tranquilo/a.',
   /** Señales breves derivadas solo de texto del aviso / dirección (sin scoring). */
   listingSignalGoodLocation: 'Buena ubicación',
   listingSignalInterestingOption: 'Opción interesante',
@@ -618,8 +633,10 @@ export const PORTAL_LISTING_UX_COPY = {
   listingContactListingOriginImport:
     'Aviso alineado al inventario de socios: misma seriedad que en la inmobiliaria.',
   listingContactListingOriginManual: 'Aviso publicado y atendido a través de Propieya.',
-  /** Bloque secundario: comparar (menor protagonismo). */
-  listingContactCompareSectionLabel: 'Para comparar con otras opciones',
+  /** Bloque secundario: comparar (intención persistente, sin competir con consultar). */
+  listingContactCompareSectionLabel: 'Guardá y compará después',
+  listingContactCompareSectionLead:
+    'Sumá este aviso a tu lista (hasta 3 en este equipo). Abrís la tabla cuando quieras y ves precio, zona y datos lado a lado.',
   contactSmartTitle: '¿Seguimos con esta propiedad?',
   contactSmartBodyViews:
     'Parece que encaja con lo que buscás. Si querés más datos o disponibilidad, un clic alcanza.',
@@ -675,6 +692,8 @@ export const PORTAL_LISTING_UX_COPY = {
   /** Anclas suaves en ficha: consulta, similares, sin repetir el botón principal de regreso. */
   listingFlowActionContact: 'Consultar',
   listingFlowActionExploreSimilar: 'Ver parecidas',
+  /** Continuidad: búsqueda viva en cuenta. */
+  listingFlowActionMyAlerts: 'Mis alertas',
   listingSimilarSectionTitle: 'Seguí explorando desde esta propiedad',
   listingSimilarSectionLead:
     'Opciones con la misma operación y tipo, y precio o zona parecidos a lo que estás viendo. Es el mismo recorrido, con otro aviso.',
@@ -727,18 +746,27 @@ export const PORTAL_LISTING_RELATED_SEARCH_LABELS = {
 export const PORTAL_COMPARE_COPY = {
   pageTitle: 'Comparar avisos',
   pageSubtitle:
-    'Hasta tres propiedades activas. Los datos son los mismos que en cada ficha pública.',
-  addToCompare: 'Comparar',
-  removeFromCompare: 'Quitar',
+    'Misma información que en cada ficha, en una tabla para decidir con calma (hasta 3 avisos activos).',
+  addToCompare: 'Guardar para comparar',
+  /** Botón compacto (ficha móvil / cards angostas). */
+  addToCompareCompact: 'Guardar',
+  removeFromCompare: 'Quitar de la lista',
+  removeFromCompareCompact: 'En lista',
   inCompareShort: 'En lista',
-  compareOpen: 'Ver comparación',
-  compareBarTitle: 'Comparación',
-  compareClear: 'Vaciar',
+  compareOpen: 'Abrir tabla',
+  compareBarTitle: 'Tu lista para comparar',
+  /** `{n}` = cantidad de avisos. */
+  compareBarCount: '{n} guardados',
+  compareBarHint: 'Misma info que en la ficha, sin consultar todavía.',
+  compareClear: 'Vaciar lista',
   compareNeedTwo:
-    'Elegí al menos dos avisos. Podés agregarlos desde el buscador o la ficha.',
+    'Elegí al menos dos avisos guardados. Sumalos desde el buscador o la ficha con «Guardar para comparar».',
   compareTooFewLoaded:
-    'Algunos avisos ya no están activos. Agregá otros o volvé al buscador.',
-  compareMaxReached: 'Ya tenés 3 avisos. Quitá uno para agregar otro.',
+    'Algunos avisos ya no están activos. Agregá otros desde el listado o vaciá la lista.',
+  compareMaxReached: 'Máximo 3 avisos en la lista. Quitá uno para sumar otro.',
+  addToCompareAria:
+    'Guardar este aviso en la lista de comparación. Podés sumar hasta tres propiedades en este dispositivo.',
+  removeFromCompareAria: 'Quitar este aviso de la lista de comparación.',
   tableProperty: 'Propiedad',
   tablePrice: 'Precio',
   tableSurface: 'Superficie',

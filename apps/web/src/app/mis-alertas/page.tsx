@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
-import { PORTAL_VOICE_CTA } from '@propieya/shared'
+import { PORTAL_SEARCH_UX_COPY, PORTAL_VOICE_CTA } from '@propieya/shared'
 import { Button, Card, Skeleton } from '@propieya/ui'
 
 import { AlertFeedCard } from '@/components/alertas/feed-card'
@@ -42,7 +42,8 @@ export default function MisAlertasPage() {
         <Card className="p-8">
           <h1 className="text-2xl font-bold text-text-primary">Mis alertas</h1>
           <p className="mt-3 text-text-secondary">
-            Iniciá sesión para ver tus alertas y coincidencias.
+            {PORTAL_SEARCH_UX_COPY.misAlertasGuestLead} Iniciá sesión para ver alertas y
+            coincidencias.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button asChild>
@@ -104,7 +105,7 @@ export default function MisAlertasPage() {
             Mis alertas
           </h1>
           <p className="mt-2 text-sm text-text-secondary">
-            Novedades y búsquedas guardadas con el mismo formato de ficha.
+            {PORTAL_SEARCH_UX_COPY.misAlertasPageSubtitle}
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
@@ -115,9 +116,9 @@ export default function MisAlertasPage() {
       {items.length === 0 ? (
         <Card className="p-6">
           <p className="text-text-secondary">
-            Todavía no tenés alertas ni coincidencias. Guardá una búsqueda desde{' '}
-            <Link href="/buscar" className="text-brand-primary hover:underline">
-              Buscar
+            {PORTAL_SEARCH_UX_COPY.misAlertasEmptyBody}{' '}
+            <Link href="/buscar" className="font-medium text-brand-primary hover:underline">
+              Ir al buscador
             </Link>
             .
           </p>

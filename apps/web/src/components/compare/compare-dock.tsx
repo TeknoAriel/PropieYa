@@ -31,10 +31,16 @@ export function CompareDock() {
       aria-label={C.compareBarTitle}
     >
       <div className="container mx-auto flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <p className="text-sm text-text-primary">
-          <span className="font-semibold">{C.compareBarTitle}</span>
-          <span className="text-text-secondary"> · {ids.length} avisos</span>
-        </p>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-text-primary">
+            <span className="font-semibold">{C.compareBarTitle}</span>
+            <span className="text-text-secondary">
+              {' '}
+              · {C.compareBarCount.replace('{n}', String(ids.length))}
+            </span>
+          </p>
+          <p className="mt-0.5 text-xs leading-snug text-text-tertiary">{C.compareBarHint}</p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"

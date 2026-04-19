@@ -711,7 +711,10 @@ export default function PropiedadPage() {
                     <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary">
                       {L.listingContactCompareSectionLabel}
                     </p>
-                    <div className="mt-2 max-w-full">
+                    <p className="mt-1.5 text-xs leading-relaxed text-text-secondary">
+                      {L.listingContactCompareSectionLead}
+                    </p>
+                    <div className="mt-3 max-w-full">
                       <AddToCompareButton
                         listingId={listing.id}
                         onCompareAdded={() => setCompareJustAdded(true)}

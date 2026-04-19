@@ -110,6 +110,16 @@ export function ListingSearchFlowBanner({
               >
                 {L.listingFlowActionExploreSimilar}
               </a>
+              <span aria-hidden="true" className="text-text-tertiary">
+                ·
+              </span>
+              <Link
+                href="/mis-alertas"
+                prefetch={false}
+                className="rounded-sm text-brand-primary underline-offset-2 transition-colors duration-200 hover:text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+              >
+                {L.listingFlowActionMyAlerts}
+              </Link>
             </div>
           </div>
         </div>

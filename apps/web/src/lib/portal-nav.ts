@@ -18,5 +18,5 @@ export const PORTAL_PRIMARY_NAV: PortalNavItem[] = [
 export const PORTAL_ACCOUNT = {
   login: { href: '/login', label: 'Ingresar' },
   alerts: { href: '/mis-alertas', label: 'Mis alertas' },
-  compare: { href: '/comparar', label: 'Comparar' },
+  compare: { href: '/comparar', label: 'Comparar avisos' },
 } as const
