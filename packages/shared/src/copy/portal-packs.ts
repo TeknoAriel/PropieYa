@@ -107,7 +107,7 @@ const reglaPortalV1: PortalCopyPack = {
     line1: 'Encontrá propiedades',
     line2Accent: 'con claridad y buen ritmo',
     subtitle:
-      'Escribí zona, tipo o presupuesto o abrí el buscador para refinar con calma.',
+      'Escribí zona o entrá a venta o alquiler por ciudad; refinás con el buscador cuando quieras.',
     placeholder: 'Zona, ambientes, presupuesto…',
     filterLink: 'Abrir buscador',
     assistantBadge: 'Describí lo que buscás',
@@ -146,7 +146,7 @@ const conversacionPrimero: PortalCopyPack = {
     line1: 'Encontrá propiedades',
     line2Accent: 'sin rodeos',
     subtitle:
-      'Empezá con lo que necesitás; mapa, filtros y asistente están cuando los quieras usar.',
+      'Escribí lo que buscás o entrá a venta o alquiler por ciudad; refinás con mapa o filtros cuando quieras.',
     placeholder: 'Zona, ambientes, presupuesto…',
     filterLink: 'Abrir buscador',
   },
@@ -163,7 +163,7 @@ const conversacionPrimero: PortalCopyPack = {
   },
   featured: {
     title: 'Avisos para explorar',
-    subtitle: 'Un vistazo al inventario; el buscador te lleva al detalle completo.',
+    subtitle: 'Un adelanto del listado; venta y alquiler tienen la misma búsqueda con más contexto.',
     viewAll: 'Ver todas',
     viewAllMobile: 'Ver todas las propiedades',
   },
@@ -227,12 +227,18 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarAssistantPanelHint: 'Te ayudamos a encontrar opciones.',
   /** Ayuda larga del mapa (colapsable). */
   mapHelpAccordionTitle: 'Más detalle sobre el mapa',
-  ventaTitle: 'Propiedades en venta',
+  /** H1 por defecto en /venta (sin ?ciudad=); tono orientado a descubrimiento. */
+  ventaTitle: 'Casas y departamentos en venta',
   ventaSubtitle:
-    'Avisos en venta. Podés refinar con mapa y filtros.',
-  alquilerTitle: 'Propiedades en alquiler',
+    'Avisos para explorar ya; ciudad, tipo y precio los ajustás abajo o en el mapa.',
+  /** H1 por defecto en /alquiler. */
+  alquilerTitle: 'Alquileres y temporarios',
   alquilerSubtitle:
-    'Alquiler tradicional o temporal. Misma búsqueda que en el resto del portal.',
+    'Departamentos y casas publicadas; refiná zona y condiciones cuando quieras.',
+
+  /** Fila opcional de atajos por ciudad (solo landings; sin API). */
+  landingQuickCitiesAriaLabel: 'Ciudades frecuentes',
+  landingQuickCitiesLead: 'También podés empezar por:',
 
   hintAdvancedLead: 'Abrí',
   hintAdvancedStrong: 'Más filtros',
@@ -621,6 +627,126 @@ export const PORTAL_SEARCH_UX_COPY = {
   /** Sprint 41 — capa 4 contextual (doc 38 §Z). */
   contextualOpenAdvancedButton: 'Ir a más filtros',
 } as const
+
+/** Normaliza un query param repetido o array de Next. */
+export function portalPickSingleSearchParam(
+  value: string | string[] | undefined
+): string {
+  if (typeof value === 'string') return value.trim()
+  if (Array.isArray(value)) {
+    const first = value.find((x) => typeof x === 'string' && x.trim().length > 0)
+    return typeof first === 'string' ? first.trim() : ''
+  }
+  return ''
+}
+
+/**
+ * Convierte un segmento de URL (/venta/rosario) en etiqueta de ciudad para ?ciudad=.
+ * Sin geocodificar ni validar contra inventario (solo entrada amigable).
+ */
+export function portalCityPathSlugToLabel(slug: string): string {
+  const raw = (() => {
+    try {
+      return decodeURIComponent(slug.trim())
+    } catch {
+      return slug.trim()
+    }
+  })()
+  if (!raw) return ''
+  return raw
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ')
+}
+
+/** Atajos estáticos para landings (Argentina); enlazan a ?ciudad= sin backend. */
+export const PORTAL_LANDING_QUICK_CITIES_ARGENTINA = [
+  'CABA',
+  'Rosario',
+  'Córdoba',
+  'Mendoza',
+  'Mar del Plata',
+  'La Plata',
+] as const
+
+export function portalVentaLandingH1(ciudad: string): string {
+  const c = ciudad.trim()
+  if (!c) return PORTAL_SEARCH_UX_COPY.ventaTitle
+  return `Casas y departamentos en venta en ${c}`
+}
+
+export function portalVentaLandingLead(ciudad: string): string {
+  const c = ciudad.trim()
+  if (!c) return PORTAL_SEARCH_UX_COPY.ventaSubtitle
+  return `Lo que hay publicado en ${c}. Seguí con filtros o mapa para afinar.`
+}
+
+export function portalVentaDocumentTitle(ciudad: string): string {
+  const c = ciudad.trim()
+  if (!c) return 'Casas y departamentos en venta'
+  return `Casas y departamentos en venta en ${c}`
+}
+
+export function portalVentaMetaDescription(ciudad: string): string {
+  const c = ciudad.trim()
+  if (!c) {
+    return 'Casas, departamentos y más en venta. Explorá avisos y refiná por zona, tipo y precio en Propieya.'
+  }
+  return `Casas y departamentos en venta en ${c}. Explorá avisos y refiná con filtros o mapa en Propieya.`
+}
+
+export function portalAlquilerLandingH1(ciudad: string): string {
+  const c = ciudad.trim()
+  if (!c) return PORTAL_SEARCH_UX_COPY.alquilerTitle
+  return `Alquileres en ${c}`
+}
+
+export function portalAlquilerLandingLead(ciudad: string): string {
+  const c = ciudad.trim()
+  if (!c) return PORTAL_SEARCH_UX_COPY.alquilerSubtitle
+  return `Avisos de alquiler en ${c}. Ajustá tipo, precio o barrio cuando quieras.`
+}
+
+export function portalAlquilerDocumentTitle(ciudad: string): string {
+  const c = ciudad.trim()
+  if (!c) return 'Alquileres y temporarios'
+  return `Alquileres en ${c} · departamentos y casas`
+}
+
+export function portalAlquilerMetaDescription(ciudad: string): string {
+  const c = ciudad.trim()
+  if (!c) {
+    return 'Departamentos y casas en alquiler o temporario. Explorá avisos y refiná por zona en Propieya.'
+  }
+  return `Alquileres y temporarios en ${c}. Explorá avisos y refiná con filtros o mapa en Propieya.`
+}
+
+export function portalBuscarLandingH1(ciudad: string): string {
+  const c = ciudad.trim()
+  if (!c) return PORTAL_SEARCH_UX_COPY.buscarTitle
+  return `Propiedades en ${c}`
+}
+
+export function portalBuscarLandingLead(ciudad: string): string {
+  const c = ciudad.trim()
+  if (!c) return PORTAL_SEARCH_UX_COPY.buscarSubtitle
+  return `Resultados y filtros para ${c}. Sumá palabras o tipo si hace falta.`
+}
+
+export function portalBuscarDocumentTitle(ciudad: string): string {
+  const c = ciudad.trim()
+  if (!c) return 'Buscá propiedades'
+  return `Propiedades en ${c}`
+}
+
+export function portalBuscarMetaDescription(ciudad: string): string {
+  const c = ciudad.trim()
+  if (!c) {
+    return 'Buscá casas y departamentos en venta o alquiler. Palabras, zona y filtros en Propieya.'
+  }
+  return `Propiedades en ${c}: venta y alquiler. Refiná con filtros o mapa en Propieya.`
+}
 
 /** Ficha de propiedad: contacto y confianza (Sprint 28.8, voseo). */
 export const PORTAL_LISTING_UX_COPY = {

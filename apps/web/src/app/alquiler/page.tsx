@@ -1,13 +1,31 @@
-'use client'
-
+import type { Metadata } from 'next'
 import { Suspense } from 'react'
 
-import { PORTAL_SEARCH_UX_COPY } from '@propieya/shared'
+import {
+  portalPickSingleSearchParam,
+  portalAlquilerDocumentTitle,
+  portalAlquilerMetaDescription,
+} from '@propieya/shared'
 import { Card, Skeleton } from '@propieya/ui'
 
-import { BuscarContent } from '@/components/buscar/buscar-content'
 import { Footer } from '@/components/layout/footer'
 import { Header } from '@/components/layout/header'
+
+import { AlquilerLandingView } from './alquiler-landing-view'
+
+type AlquilerPageProps = {
+  searchParams: Record<string, string | string[] | undefined>
+}
+
+export async function generateMetadata({
+  searchParams,
+}: AlquilerPageProps): Promise<Metadata> {
+  const ciudad = portalPickSingleSearchParam(searchParams.ciudad)
+  return {
+    title: portalAlquilerDocumentTitle(ciudad),
+    description: portalAlquilerMetaDescription(ciudad),
+  }
+}
 
 export default function AlquilerPage() {
   return (
@@ -31,11 +49,7 @@ export default function AlquilerPage() {
             </div>
           }
         >
-          <BuscarContent
-            forcedOperation="rent"
-            pageTitle={PORTAL_SEARCH_UX_COPY.alquilerTitle}
-            pageSubtitle={PORTAL_SEARCH_UX_COPY.alquilerSubtitle}
-          />
+          <AlquilerLandingView />
         </Suspense>
       </main>
       <Footer />

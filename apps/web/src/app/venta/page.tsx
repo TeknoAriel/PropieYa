@@ -1,13 +1,31 @@
-'use client'
-
+import type { Metadata } from 'next'
 import { Suspense } from 'react'
 
-import { PORTAL_SEARCH_UX_COPY } from '@propieya/shared'
+import {
+  portalPickSingleSearchParam,
+  portalVentaDocumentTitle,
+  portalVentaMetaDescription,
+} from '@propieya/shared'
 import { Card, Skeleton } from '@propieya/ui'
 
-import { BuscarContent } from '@/components/buscar/buscar-content'
 import { Footer } from '@/components/layout/footer'
 import { Header } from '@/components/layout/header'
+
+import { VentaLandingView } from './venta-landing-view'
+
+type VentaPageProps = {
+  searchParams: Record<string, string | string[] | undefined>
+}
+
+export async function generateMetadata({
+  searchParams,
+}: VentaPageProps): Promise<Metadata> {
+  const ciudad = portalPickSingleSearchParam(searchParams.ciudad)
+  return {
+    title: portalVentaDocumentTitle(ciudad),
+    description: portalVentaMetaDescription(ciudad),
+  }
+}
 
 export default function VentaPage() {
   return (
@@ -31,11 +49,7 @@ export default function VentaPage() {
             </div>
           }
         >
-          <BuscarContent
-            forcedOperation="sale"
-            pageTitle={PORTAL_SEARCH_UX_COPY.ventaTitle}
-            pageSubtitle={PORTAL_SEARCH_UX_COPY.ventaSubtitle}
-          />
+          <VentaLandingView />
         </Suspense>
       </main>
       <Footer />

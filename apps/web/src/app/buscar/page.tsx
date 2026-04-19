@@ -1,13 +1,31 @@
-'use client'
-
+import type { Metadata } from 'next'
 import { Suspense } from 'react'
 
-import { PORTAL_SEARCH_UX_COPY } from '@propieya/shared'
+import {
+  portalPickSingleSearchParam,
+  portalBuscarDocumentTitle,
+  portalBuscarMetaDescription,
+} from '@propieya/shared'
 import { Card, Skeleton } from '@propieya/ui'
 
-import { BuscarContent } from '@/components/buscar/buscar-content'
 import { Footer } from '@/components/layout/footer'
 import { Header } from '@/components/layout/header'
+
+import { BuscarLandingView } from './buscar-landing-view'
+
+type BuscarPageProps = {
+  searchParams: Record<string, string | string[] | undefined>
+}
+
+export async function generateMetadata({
+  searchParams,
+}: BuscarPageProps): Promise<Metadata> {
+  const ciudad = portalPickSingleSearchParam(searchParams.ciudad)
+  return {
+    title: portalBuscarDocumentTitle(ciudad),
+    description: portalBuscarMetaDescription(ciudad),
+  }
+}
 
 export default function BuscarPage() {
   return (
@@ -32,10 +50,7 @@ export default function BuscarPage() {
             </div>
           }
         >
-          <BuscarContent
-            pageTitle={PORTAL_SEARCH_UX_COPY.buscarTitle}
-            pageSubtitle={PORTAL_SEARCH_UX_COPY.buscarSubtitle}
-          />
+          <BuscarLandingView />
         </Suspense>
       </main>
       <Footer />
