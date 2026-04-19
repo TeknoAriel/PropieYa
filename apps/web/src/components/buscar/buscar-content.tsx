@@ -1545,33 +1545,33 @@ export function BuscarContent({
   const showQuickAmenityChips = (quickFacetIds?.length ?? 0) > 0
 
   return (
-    <div className="container mx-auto space-y-4 px-4 py-3 md:space-y-5 md:py-4">
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-2 border-b border-border/20 pb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-          <div className="min-w-0 space-y-1">
-            <h1 className="text-lg font-semibold tracking-tight text-text-primary md:text-xl">
+    <div className="container mx-auto space-y-3 px-4 py-2.5 md:space-y-4 md:py-3">
+      <div className="flex flex-col gap-2 md:gap-2.5">
+        <div className="flex flex-col gap-2 border-b border-border/20 pb-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-x-3 sm:gap-y-1.5 sm:pb-2.5">
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <h1 className="text-[1.0625rem] font-semibold tracking-tight text-text-primary md:text-lg">
               {pageTitle}
             </h1>
-            <p className="max-w-2xl text-xs leading-relaxed text-text-secondary md:text-sm">
+            <p className="max-w-2xl text-[11px] leading-snug text-text-secondary md:text-xs md:leading-relaxed">
               {pageSubtitle}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-border/15 pt-2 sm:border-t-0 sm:pt-0">
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="h-8 text-xs text-text-secondary"
+              className="h-8 border-border/50 text-xs text-text-secondary"
               onClick={() => setFlowDialogOpen(true)}
             >
               {S.buscarFlowLinkInline}
             </Button>
             {opLocked ? (
-              <Button asChild variant="outline" size="sm" className="h-8">
+              <Button asChild variant="outline" size="sm" className="h-8 border-border/50 text-xs">
                 <Link href="/buscar">{S.allOperations}</Link>
               </Button>
             ) : null}
-            <Button asChild variant="ghost" size="sm" className="h-8 text-xs">
+            <Button asChild variant="outline" size="sm" className="h-8 border-border/50 text-xs">
               <Link href="/">{S.homeLink}</Link>
             </Button>
             {me ? (
@@ -1636,9 +1636,9 @@ export function BuscarContent({
           </p>
         ) : null}
 
-        <div id="buscar-esenciales" className="scroll-mt-24 space-y-4">
-          <Card className="space-y-4 border-border/35 p-4 shadow-none md:space-y-5 md:p-5">
-          <div className="flex flex-col gap-2.5 border-b border-border/20 pb-4 sm:flex-row sm:items-end sm:gap-3">
+        <div id="buscar-esenciales" className="scroll-mt-24 space-y-3">
+          <Card className="space-y-3 border-border/35 p-3.5 shadow-none md:space-y-4 md:p-4">
+          <div className="flex flex-col gap-2 border-b border-border/20 pb-3 sm:flex-row sm:items-end sm:gap-3">
             <div className="min-w-0 flex-1">
               <BuscarLabeledField id="buscar-q" label={S.buscarMainSearchLabel}>
                 <Input
@@ -1664,7 +1664,7 @@ export function BuscarContent({
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-4">
             {opLocked ? (
               <BuscarLabeledField id="buscar-op-locked" label={S.buscarFieldOperation}>
                 <div
@@ -1727,21 +1727,21 @@ export function BuscarContent({
                 onChange={(e) => setNeighborhood(e.target.value)}
               />
             </BuscarLabeledField>
-            <div className="flex flex-wrap items-end gap-2 md:col-span-2 lg:col-span-4">
+            <div className="flex flex-wrap items-end gap-1.5 md:col-span-2 lg:col-span-4">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-9"
+                className="h-8 border-border/50 text-xs"
                 onClick={() => setLocalityModalOpen(true)}
               >
                 {S.buscarLocalityCatalogButton}
               </Button>
               <Button
                 type="button"
-                variant="secondary"
+                variant="outline"
                 size="sm"
-                className="h-9"
+                className="h-8 border-border/50 text-xs"
                 onClick={() => {
                   setClassicFiltersOpen(true)
                   setShowMap(true)

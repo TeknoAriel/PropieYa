@@ -109,7 +109,7 @@ const reglaPortalV1: PortalCopyPack = {
     subtitle:
       'Escribí zona o entrá a venta o alquiler por ciudad; refinás con el buscador cuando quieras.',
     placeholder: 'Zona, ambientes, presupuesto…',
-    filterLink: 'Abrir buscador',
+    filterLink: 'Buscador con filtros y mapa',
     assistantBadge: 'Describí lo que buscás',
     assistantPitch: 'Mapa y filtros siguen disponibles cuando los necesités.',
   },
@@ -144,11 +144,11 @@ const conversacionPrimero: PortalCopyPack = {
     'Hero directo; sección “Cómo te acompañamos” y CTAs compartidos con el resto de packs (voseo, foco búsqueda).',
   hero: {
     line1: 'Encontrá propiedades',
-    line2Accent: 'sin rodeos',
+    line2Accent: 'con más claridad',
     subtitle:
-      'Escribí lo que buscás o entrá a venta o alquiler por ciudad; refinás con mapa o filtros cuando quieras.',
+      'Escribí acá o pasá al buscador con mapa y ciudad; venta y alquiler cuando quieras.',
     placeholder: 'Zona, ambientes, presupuesto…',
-    filterLink: 'Abrir buscador',
+    filterLink: 'Buscador con filtros y mapa',
   },
   heroExamples: [
     'Casa en venta, 2 dormitorios, grande, con pileta y quincho',
@@ -182,7 +182,7 @@ const varianteBCercano: PortalCopyPack = {
     subtitle:
       'Contanos qué buscás en simple; después seguí por mapa, filtros o asistente, al ritmo que prefieras.',
     placeholder: 'Contanos qué imaginas: zona, ambientes, presupuesto…',
-    filterLink: 'Abrir buscador',
+    filterLink: 'Buscador con filtros y mapa',
     assistantBadge: 'Describí lo que buscás',
     assistantPitch: 'Lo avanzado queda a un clic cuando lo necesités.',
   },
@@ -212,9 +212,9 @@ const varianteBCercano: PortalCopyPack = {
 export const PORTAL_SEARCH_UX_COPY = {
   buscarTitle: 'Buscá propiedades',
   /** Una línea; sin explicar el motor en la cabecera. */
-  buscarSubtitle: 'Palabras, zona y tipo: refiná cuando quieras.',
+  buscarSubtitle: 'Palabras, ubicación y tipo. Refinás cuando quieras.',
   /** Barra principal arriba del todo (palabra clave). */
-  buscarMainSearchLabel: 'Búsqueda por palabras',
+  buscarMainSearchLabel: 'Palabras clave',
   buscarMainSearchPlaceholder: 'Ej. luminoso, cochera, Palermo…',
   buscarMainSearchCta: 'Buscar',
   /** Chip sobre el bloque conversacional en /buscar */
@@ -278,7 +278,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   buscarFieldPropertyType: 'Tipo de propiedad',
   buscarFieldCity: 'Ciudad',
   buscarFieldNeighborhood: 'Barrio',
-  buscarLocalityCatalogButton: 'Elegir del catálogo',
+  buscarLocalityCatalogButton: 'Catálogo de zonas',
   buscarLocalityCatalogTitle: 'Zonas del catálogo',
   buscarLocalityCatalogHint:
     'Las que tienen número suman avisos activos con esa ciudad/barrio; «Sugerida» son zonas frecuentes que aún pueden no tener publicaciones. Siempre podés escribir a mano en los campos.',
@@ -318,7 +318,7 @@ export const PORTAL_SEARCH_UX_COPY = {
   mainFiltersTitle: 'Zona, tipo y precio',
   mainFiltersSubtitle: 'Ajustá lo esencial; el resto queda en opciones avanzadas.',
   buscarLayer1Kicker: '',
-  buscarPreferMapCta: 'Prefiero en mapa',
+  buscarPreferMapCta: 'Ver en mapa',
   buscarLayer2Title: '2 · Afinado guiado',
   buscarLayer2Subtitle:
     'Pocas decisiones que ordenan mejor los resultados. Por defecto los amenities afinan sin bloquear opciones similares.',
@@ -754,8 +754,8 @@ export const PORTAL_LISTING_UX_COPY = {
   contactPrimaryCta: 'Consultar ahora',
   contactScheduleCta: 'Pedir visita',
   /** Encima del título del bloque de contacto (ficha). */
-  listingContactEyebrow: 'Publicador activo en este aviso',
-  sidebarTitle: 'Pedí información al publicador',
+  listingContactEyebrow: 'Anunciante activo en este aviso',
+  sidebarTitle: 'Pedí información al anunciante',
   sidebarLead:
     'Nombre, mail y un mensaje corto alcanzan. La consulta llega a quien publica; la respuesta suele llegar por mail (revisá spam o promociones).',
   trustNote:
@@ -815,7 +815,7 @@ export const PORTAL_LISTING_UX_COPY = {
   expiringSoonBadge: 'Vence pronto',
 
   /** Sprint 32 — ampliar zona / mismo criterio en el buscador */
-  relatedSearchesTitle: 'Búsquedas relacionadas',
+  relatedSearchesTitle: 'Seguí explorando',
 
   /** Ficha — mapa (evitar jerga técnica del proveedor de tiles) */
   listingLocationMapHint: 'Ubicación aproximada en mapa (referencia).',

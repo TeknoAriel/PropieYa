@@ -292,14 +292,14 @@ function ContactConversionBanner({
         : L.contactSmartBodyViews
 
   return (
-    <Card className="rounded-xl border border-brand-primary/30 bg-gradient-to-br from-brand-primary/[0.07] via-brand-primary/[0.03] to-transparent p-5 shadow-none md:p-6">
-      <h2 className="text-lg font-semibold text-text-primary md:text-xl">
+    <Card className="rounded-xl border border-brand-primary/30 bg-gradient-to-br from-brand-primary/[0.07] via-brand-primary/[0.03] to-transparent p-4 shadow-none md:p-5">
+      <h2 className="text-base font-semibold text-text-primary md:text-lg">
         {L.contactSmartTitle}
       </h2>
-      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-secondary md:text-base">
+      <p className="mt-1.5 max-w-2xl text-sm leading-snug text-text-secondary md:leading-relaxed">
         {body}
       </p>
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         <Button
           type="button"
           size="lg"
@@ -541,11 +541,11 @@ export default function PropiedadPage() {
       />
       <main className="flex-1 pb-36 lg:pb-10 transition-opacity duration-300 ease-out">
         <section className="border-b border-border/50 bg-surface-secondary/30">
-          <div className="container mx-auto px-4 py-4 lg:py-6">
-            <div className="overflow-hidden rounded-2xl border border-border/60 bg-surface-primary shadow-sm">
+          <div className="container mx-auto px-4 py-3 lg:py-4">
+            <div className="overflow-hidden rounded-xl border border-border/60 bg-surface-primary shadow-sm">
               {images.length ? (
                 <div className="space-y-0">
-                  <div className="relative aspect-[16/10] w-full max-h-[min(72vh,560px)] min-h-[220px] bg-surface-secondary sm:aspect-[21/9]">
+                  <div className="relative aspect-[16/10] w-full max-h-[min(56vh,440px)] min-h-[180px] bg-surface-secondary sm:aspect-[21/9] sm:max-h-[min(52vh,400px)]">
                     <Image
                       src={mainImage?.url ?? ''}
                       alt={mainImage?.alt ?? listing.title}
@@ -557,11 +557,11 @@ export default function PropiedadPage() {
                     />
                   </div>
                   {images.length > 1 ? (
-                    <div className="flex gap-2 overflow-x-auto border-t border-border/40 bg-surface-primary px-3 py-3">
+                    <div className="flex gap-1.5 overflow-x-auto border-t border-border/40 bg-surface-primary px-2.5 py-2">
                       {images.slice(1, 8).map((img, idx) => (
                         <div
                           key={img.id ?? idx}
-                          className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border/50 bg-surface-secondary sm:h-20 sm:w-20"
+                          className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md border border-border/50 bg-surface-secondary sm:h-[4.25rem] sm:w-[4.25rem]"
                         >
                           <Image
                             src={img.url}
@@ -583,7 +583,7 @@ export default function PropiedadPage() {
           </div>
         </section>
 
-        <div className="container mx-auto space-y-5 px-4 py-5 md:space-y-6 md:py-6">
+        <div className="container mx-auto space-y-4 px-4 py-4 md:space-y-5 md:py-5">
           {showContactSuggestion && suggestionReason ? (
             <ContactConversionBanner
               reason={suggestionReason}
@@ -670,13 +670,13 @@ export default function PropiedadPage() {
                 id="ficha-contacto"
                 className="scroll-mt-28 overflow-hidden rounded-xl border border-border/45 shadow-none ring-1 ring-brand-primary/10"
               >
-                <div className="border-b border-border/40 bg-gradient-to-br from-brand-primary/[0.07] to-transparent px-5 py-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-primary">
+                <div className="border-b border-border/40 bg-gradient-to-br from-brand-primary/[0.07] to-transparent px-4 py-3 md:px-5 md:py-3.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-primary md:text-[11px]">
                     {L.listingContactEyebrow}
                   </p>
-                  <h2 className="mt-1 text-lg font-semibold text-text-primary">{L.sidebarTitle}</h2>
+                  <h2 className="mt-0.5 text-base font-semibold text-text-primary md:text-lg">{L.sidebarTitle}</h2>
                 </div>
-                <div className="space-y-3 p-5">
+                <div className="space-y-2.5 p-4 md:p-5">
                   <p className="text-sm leading-relaxed text-text-secondary">{L.sidebarLead}</p>
                   <p
                     className="text-xs leading-relaxed text-text-secondary border-l-2 border-brand-primary/35 pl-2.5"
@@ -753,27 +753,23 @@ export default function PropiedadPage() {
             </aside>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-1">
-              <ListingRelatedSearches
-                operationType={listing.operationType}
-                propertyType={listing.propertyType}
-                city={addressCity !== '—' ? addressCity : null}
-                neighborhood={
-                  addressNeighborhood !== '—' ? addressNeighborhood : null
-                }
-                showPrice={listing.showPrice}
-                priceAmount={listing.priceAmount}
-              />
-            </div>
-            <div className="lg:col-span-2">
-              <SimilarSection
-                listingId={listing.id}
-                basePriceAmount={listing.priceAmount}
-                baseSurfaceTotal={listing.surfaceTotal}
-                baseNeighborhood={nbTrim}
-              />
-            </div>
+          <div className="flex flex-col gap-5 md:gap-6">
+            <ListingRelatedSearches
+              operationType={listing.operationType}
+              propertyType={listing.propertyType}
+              city={addressCity !== '—' ? addressCity : null}
+              neighborhood={
+                addressNeighborhood !== '—' ? addressNeighborhood : null
+              }
+              showPrice={listing.showPrice}
+              priceAmount={listing.priceAmount}
+            />
+            <SimilarSection
+              listingId={listing.id}
+              basePriceAmount={listing.priceAmount}
+              baseSurfaceTotal={listing.surfaceTotal}
+              baseNeighborhood={nbTrim}
+            />
           </div>
         </div>
       </main>

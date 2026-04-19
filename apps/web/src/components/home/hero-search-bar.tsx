@@ -141,7 +141,7 @@ export function HeroSearchBar({
       <div className="relative">
         <Input
           id={inputId}
-          className="h-12 rounded-lg border-border/45 bg-surface-primary pl-4 pr-[5.75rem] text-[15px] shadow-none md:h-12 md:pr-[6rem] md:text-base"
+          className="h-11 rounded-lg border-border/45 bg-surface-primary pl-3.5 pr-[5.5rem] text-[15px] shadow-none md:h-11 md:pr-[5.75rem] md:text-[15px]"
           placeholder={placeholder}
           value={value}
           onChange={(e) => onValueChange(e.target.value)}

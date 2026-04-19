@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 
-import { Card } from '@propieya/ui'
 import {
   PORTAL_LISTING_RELATED_SEARCH_LABELS as RS,
   PORTAL_LISTING_UX_COPY as L,
@@ -89,23 +88,33 @@ function buildLinks(props: ListingRelatedSearchesProps) {
 export function ListingRelatedSearches(props: ListingRelatedSearchesProps) {
   const links = buildLinks(props)
 
+  if (links.length === 0) return null
+
   return (
-    <Card className="p-6 space-y-4">
-      <h2 className="text-lg font-semibold text-text-primary">
-        {L.relatedSearchesTitle}
-      </h2>
-      <ul className="flex flex-col gap-2">
-        {links.map((item) => (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              className="text-sm font-medium text-brand-primary underline-offset-4 hover:underline"
-            >
-              {item.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </Card>
+    <section
+      aria-labelledby="listing-related-heading"
+      className="rounded-xl border border-border/35 bg-surface-secondary/30 px-3 py-2.5 md:px-4 md:py-3"
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <h2
+          id="listing-related-heading"
+          className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-text-tertiary"
+        >
+          {L.relatedSearchesTitle}
+        </h2>
+        <ul className="flex min-w-0 flex-1 flex-wrap gap-1.5 sm:gap-2">
+          {links.map((item) => (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                className="inline-flex max-w-full items-center rounded-full border border-border/45 bg-surface-primary/90 px-2.5 py-1 text-[11px] font-medium leading-tight text-text-primary transition-colors hover:border-brand-primary/40 hover:bg-surface-primary hover:text-brand-primary md:px-3 md:text-xs"
+              >
+                <span className="truncate">{item.label}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   )
 }

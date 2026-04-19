@@ -31,9 +31,9 @@ export function FeaturedListings() {
   const listings = listingsRaw as unknown as FeaturedListingCardData[]
 
   return (
-    <section className="border-t border-border/10 bg-surface-secondary/20 pb-8 pt-5 md:pb-10 md:pt-6">
+    <section className="border-t border-border/10 bg-surface-secondary/20 pb-6 pt-4 md:pb-8 md:pt-5">
       <div className="container mx-auto px-4">
-        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between md:mb-6">
+        <div className="mb-4 flex flex-col gap-1.5 sm:flex-row sm:items-end sm:justify-between md:mb-5">
           <div className="max-w-xl">
             <h2 className="text-[1.35rem] font-semibold tracking-tight text-text-primary md:text-2xl">
               {pack.featured.title}
