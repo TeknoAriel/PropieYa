@@ -59,11 +59,15 @@ export function ListingTrustPanel({ listing }: { listing: ListingTrustSource }) 
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-semibold text-text-primary">{L.trustCardTitle}</h2>
         {freshness.isExpiringSoon ? (
-          <Badge variant="secondary">{L.expiringSoonBadge}</Badge>
+          <Badge variant="secondary" className="font-medium">
+            {L.expiringSoonBadge}
+          </Badge>
         ) : null}
       </div>
 
-      <ul className="space-y-2 text-sm text-text-secondary">
+      <p className="text-xs leading-relaxed text-text-tertiary">{L.trustCardIntro}</p>
+
+      <ul className="space-y-2 border-t border-border/25 pt-3 text-sm text-text-secondary">
         {freshness.publishedLine ? <li>{freshness.publishedLine}</li> : null}
         {freshness.expiresLine ? <li>{freshness.expiresLine}</li> : null}
         <li className="text-text-tertiary">{originLine}</li>
@@ -81,9 +85,10 @@ export function ListingTrustPanel({ listing }: { listing: ListingTrustSource }) 
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-surface-secondary">
           <div
-            className="h-full rounded-full bg-brand-primary transition-[width] duration-300"
+            className="h-full rounded-full bg-brand-primary/90 transition-[width] duration-300"
             style={{ width: `${completeness}%` }}
             role="progressbar"
+            aria-label={L.completenessLabel}
             aria-valuenow={completeness}
             aria-valuemin={0}
             aria-valuemax={100}

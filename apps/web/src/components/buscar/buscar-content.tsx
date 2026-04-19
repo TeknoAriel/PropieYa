@@ -289,6 +289,15 @@ function collectListingValueSignals(
   ) {
     out.push(S.listingSignalGoodLocation)
   }
+  if (
+    out.length < 2 &&
+    listing.locationLat != null &&
+    listing.locationLng != null &&
+    !Number.isNaN(Number(listing.locationLat)) &&
+    !Number.isNaN(Number(listing.locationLng))
+  ) {
+    out.push(S.listingSignalMapReference)
+  }
   if (out.length < 2 && whyBucketId === 'widened') {
     out.push(S.listingSignalInterestingOption)
   }
@@ -433,11 +442,14 @@ function ListingCard({
             </p>
 
             {valueSignals.length > 0 ? (
-              <ul className="mt-0.5 flex flex-wrap gap-x-2 gap-y-1" aria-label="Destacados">
+              <ul
+                className="mt-0.5 flex flex-wrap gap-x-1.5 gap-y-1"
+                aria-label="Datos destacados del aviso"
+              >
                 {valueSignals.map((label) => (
                   <li
                     key={`${listing.id}-sig-${label}`}
-                    className="max-w-full truncate rounded-md bg-surface-secondary/50 px-2 py-0.5 text-[11px] font-medium leading-tight text-text-secondary md:text-xs"
+                    className="max-w-full truncate rounded-md border border-border/25 bg-surface-secondary/30 px-2 py-0.5 text-[11px] font-normal leading-tight text-text-tertiary md:text-xs"
                   >
                     {label}
                   </li>

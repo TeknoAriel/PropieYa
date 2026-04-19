@@ -386,12 +386,17 @@ export const PORTAL_SEARCH_UX_COPY = {
   listingCardCta: 'Ver ficha',
   /** Una línea bajo la acción de comparar en cards de resultado (misma lógica que siempre). */
   listingCardCompareMicro: 'Hasta 3 avisos en este dispositivo para decidir tranquilo/a.',
-  /** Señales breves derivadas solo de texto del aviso / dirección (sin scoring). */
-  listingSignalGoodLocation: 'Buena ubicación',
-  listingSignalInterestingOption: 'Opción interesante',
-  listingSignalOutdoor: 'Con espacio exterior',
-  listingSignalMoveInReady: 'Listo para mudarse',
-  listingSignalGarage: 'Con cochera',
+  /**
+   * Señales breves en cards (texto del aviso, dirección o datos ya expuestos).
+   * Sin “verificado” ni claims que el sistema no respalde.
+   */
+  listingSignalGoodLocation: 'Ubicación detallada',
+  listingSignalInterestingOption: 'Encaje amplio',
+  listingSignalOutdoor: 'Espacio exterior',
+  listingSignalMoveInReady: 'Listo o a estrenar',
+  listingSignalGarage: 'Cochera o estacionamiento',
+  /** Solo si el listado trae coordenadas publicadas. */
+  listingSignalMapReference: 'Ubicación en mapa',
   searchV2BucketWhyStrong: 'Coincide con tu zona, tipo y números.',
   searchV2BucketWhyNear: 'Cerca de lo que buscás: toda la ciudad, sin el barrio.',
   searchV2BucketWhyWidened: 'Un criterio un poco más flexible; misma operación y tipo.',
@@ -623,32 +628,32 @@ export const PORTAL_LISTING_UX_COPY = {
   contactPrimaryCta: 'Consultar esta propiedad',
   contactScheduleCta: 'Agendar visita',
   /** Encima del título del bloque de contacto (ficha). */
-  listingContactEyebrow: 'Consultá sin compromiso',
-  sidebarTitle: 'Siguiente paso',
+  listingContactEyebrow: 'Consulta atendida por el publicador',
+  sidebarTitle: 'Pedir información',
   sidebarLead:
-    'Dejanos tus datos y te respondemos con más información sobre este aviso. Es el canal oficial de consulta: no publicamos teléfono ni email del publicador en la ficha.',
+    'Completá el formulario: la consulta llega al equipo que publica el aviso. Te respondemos por este canal o por mail; acá no mostramos teléfono ni correo del publicador.',
   trustNote:
-    'Podés seguir explorando el portal; si preferís hablar con alguien, este formulario es la vía directa.',
+    'Es el mismo aviso que ves en el listado: datos y fotos salen de lo cargado en Propieya o del inventario del socio.',
   /** Línea breve según origen del aviso (solo copy; el dato ya existe en la ficha). */
   listingContactListingOriginImport:
-    'Aviso alineado al inventario de socios: misma seriedad que en la inmobiliaria.',
-  listingContactListingOriginManual: 'Aviso publicado y atendido a través de Propieya.',
+    'Publicado desde el inventario de socios: mismo origen que usa la inmobiliaria.',
+  listingContactListingOriginManual: 'Publicación gestionada en Propieya.',
   /** Bloque secundario: comparar (intención persistente, sin competir con consultar). */
   listingContactCompareSectionLabel: 'Guardá y compará después',
   listingContactCompareSectionLead:
     'Sumá este aviso a tu lista (hasta 3 en este equipo). Abrís la tabla cuando quieras y ves precio, zona y datos lado a lado.',
-  contactSmartTitle: '¿Seguimos con esta propiedad?',
+  contactSmartTitle: '¿Querés cerrar dudas con el publicador?',
   contactSmartBodyViews:
-    'Parece que encaja con lo que buscás. Si querés más datos o disponibilidad, un clic alcanza.',
+    'Este aviso encaja con lo que buscás: pedí disponibilidad o detalle y te respondemos por el canal oficial.',
   contactSmartBodyReturn:
-    'Volviste a mirar este aviso: suele ser buena señal. Pedí info y te escribimos.',
+    'Volviste a ver este aviso: si querés afinar condiciones o visita, la consulta es el paso natural.',
   contactSmartBodyCompare:
-    'La tenés en la lista para comparar: es un buen momento para pedir detalle sin compromiso.',
+    'Ya lo sumaste a comparar: pedir información ayuda a decidir sin perder el contexto.',
   modalTitle: 'Quiero más información',
   modalDescriptionIdle:
-    'Completá el formulario breve de abajo. Tu consulta llega al equipo y al publicador; acá no mostramos su mail ni teléfono.',
+    'Una consulta breve alcanza: llega al publicador y al equipo que da soporte en Propieya. No pedimos datos que no hagan falta.',
   contactModalInternalNote:
-    'Te respondemos por este canal o por correo a tu casilla. Sin spam: solo lo relacionado con tu consulta.',
+    'Respuesta por este canal o por mail. Solo mensajes vinculados a tu consulta, sin listas de difusión.',
   modalSuccessTitle: 'Listo',
   modalSuccessBody:
     'Gracias. Revisá tu email (y spam o promociones) para la respuesta sobre este aviso.',
@@ -664,16 +669,18 @@ export const PORTAL_LISTING_UX_COPY = {
   modalSentOk: 'Consulta enviada',
 
   /** P1 confianza — ficha (vigencia, completitud, origen) */
-  trustCardTitle: 'Transparencia del aviso',
-  completenessLabel: 'Completitud del aviso',
+  trustCardTitle: 'Acerca de este aviso',
+  trustCardIntro:
+    'Fechas y origen son los mismos datos que usa el portal para mostrar el listado; la completitud resume texto, fotos y campos clave.',
+  completenessLabel: 'Completitud de la ficha',
   completenessHint:
-    'Indica qué tan completos están texto, fotos y datos. Si falta algo, pedí más detalle con la consulta en la ficha.',
+    'Un aviso más completo suele ser más fácil de evaluar. Si algo no queda claro, pedí precisión en la consulta.',
   sourceImport:
-    'Origen: sincronizado desde el feed de socios (mismo inventario que usa la inmobiliaria).',
-  sourceManual: 'Origen: publicación gestionada en Propieya.',
+    'Sincronizado con el inventario del socio (misma base que la inmobiliaria).',
+  sourceManual: 'Cargado y editado en Propieya.',
   /** Línea opcional cuando hay `external_id` (solo referencia acotada). */
-  sourceImportRefPrefix: 'Referencia de inventario:',
-  expiringSoonBadge: 'Por vencer',
+  sourceImportRefPrefix: 'Ref. interna de inventario:',
+  expiringSoonBadge: 'Vence pronto',
 
   /** Sprint 32 — ampliar zona / mismo criterio en el buscador */
   relatedSearchesTitle: 'Búsquedas relacionadas',
@@ -696,7 +703,7 @@ export const PORTAL_LISTING_UX_COPY = {
   listingFlowActionMyAlerts: 'Mis alertas',
   listingSimilarSectionTitle: 'Seguí explorando desde esta propiedad',
   listingSimilarSectionLead:
-    'Opciones con la misma operación y tipo, y precio o zona parecidos a lo que estás viendo. Es el mismo recorrido, con otro aviso.',
+    'Misma operación y tipo, con precio o zona parecidos. Son avisos activos del catálogo, con el mismo criterio de publicación.',
 
   /** Resumen liviano desde `returnTo` (/buscar?...) debajo del banner de flujo. */
   searchContextSummaryBadge: 'Tu búsqueda',
