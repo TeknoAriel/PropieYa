@@ -686,11 +686,10 @@ export default function PropiedadPage() {
                       ? L.listingContactListingOriginImport
                       : L.listingContactListingOriginManual}
                   </p>
-                  <p className="text-xs leading-relaxed text-text-tertiary">{L.trustNote}</p>
-                  <div className="space-y-2.5 pt-1">
+                  <div className="space-y-2 pt-1">
                     <Button
                       size="lg"
-                      className="w-full text-base font-semibold transition-transform active:scale-[0.985]"
+                      className="w-full text-base font-semibold shadow-sm transition-transform active:scale-[0.985]"
                       onClick={() => openContactFlow('sidebar_primary')}
                     >
                       <MessageSquare className="mr-2 h-4 w-4 shrink-0" />
@@ -706,7 +705,11 @@ export default function PropiedadPage() {
                       <Calendar className="mr-2 h-4 w-4 shrink-0" />
                       {L.contactScheduleCta}
                     </Button>
+                    <p className="text-center text-[11px] leading-snug text-text-tertiary">
+                      {L.listingContactScheduleHint}
+                    </p>
                   </div>
+                  <p className="text-[11px] leading-relaxed text-text-tertiary">{L.trustNote}</p>
                   <div className="border-t border-border/40 pt-4">
                     <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary">
                       {L.listingContactCompareSectionLabel}
@@ -782,7 +785,7 @@ export default function PropiedadPage() {
           </p>
           <Button
             size="lg"
-            className="min-h-12 w-full text-base font-semibold transition-transform active:scale-[0.985]"
+            className="min-h-12 w-full text-base font-semibold shadow-sm transition-transform active:scale-[0.985]"
             type="button"
             onClick={() => openContactFlow('sticky_primary')}
           >
@@ -806,6 +809,9 @@ export default function PropiedadPage() {
               />
             </div>
           </div>
+          <p className="text-center text-[10px] leading-snug text-text-tertiary">
+            {L.listingContactScheduleHint}
+          </p>
         </div>
       </div>
 

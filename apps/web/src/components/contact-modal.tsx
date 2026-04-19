@@ -62,19 +62,21 @@ export function ContactModal({
           ) : (
             <>
               <DialogDescription>{L.modalDescriptionIdle}</DialogDescription>
-              <p className="text-sm font-medium leading-snug text-text-primary">
+              <p className="mt-2 rounded-lg border border-border/40 bg-surface-secondary/60 px-3 py-2 text-xs leading-relaxed text-text-secondary">
+                {L.modalExpectationLine}
+              </p>
+              <p className="mt-3 text-sm font-medium leading-snug text-text-primary">
                 {listingTitle}
               </p>
             </>
           )}
         </DialogHeader>
         {success ? (
-          <p className="py-4 text-center text-text-secondary">✓ {L.modalSentOk}</p>
+          <p className="py-4 text-center text-sm font-medium text-semantic-success">
+            ✓ {L.modalSentOk}
+          </p>
         ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          <p className="text-xs leading-relaxed text-text-tertiary">
-            {L.contactModalInternalNote}
-          </p>
           <div>
             <Label htmlFor="contact-name">{L.modalNameLabel}</Label>
             <Input
@@ -114,14 +116,15 @@ export function ContactModal({
               className="mt-1 w-full min-h-[100px] rounded-lg border border-border-default bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-0"
             />
           </div>
+          <p className="text-[11px] leading-relaxed text-text-tertiary">{L.contactModalInternalNote}</p>
           {createLead.error && (
             <p className="text-sm text-semantic-error">{createLead.error.message}</p>
           )}
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {L.modalCancel}
             </Button>
-            <Button type="submit" className="sm:min-w-[10rem]" disabled={createLead.isPending}>
+            <Button type="submit" className="font-semibold sm:min-w-[11rem]" disabled={createLead.isPending}>
               {createLead.isPending ? L.modalSubmitPending : L.modalSubmit}
             </Button>
           </div>

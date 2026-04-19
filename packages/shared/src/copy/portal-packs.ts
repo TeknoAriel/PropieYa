@@ -751,45 +751,51 @@ export function portalBuscarMetaDescription(ciudad: string): string {
 /** Ficha de propiedad: contacto y confianza (Sprint 28.8, voseo). */
 export const PORTAL_LISTING_UX_COPY = {
   contactButton: 'Consultar esta propiedad',
-  contactPrimaryCta: 'Consultar esta propiedad',
-  contactScheduleCta: 'Agendar visita',
+  contactPrimaryCta: 'Consultar ahora',
+  contactScheduleCta: 'Pedir visita',
   /** Encima del título del bloque de contacto (ficha). */
-  listingContactEyebrow: 'Consulta atendida por el publicador',
-  sidebarTitle: 'Pedir información',
+  listingContactEyebrow: 'Publicador activo en este aviso',
+  sidebarTitle: 'Pedí información al publicador',
   sidebarLead:
-    'Completá el formulario: la consulta llega al equipo que publica el aviso. Te respondemos por este canal o por mail; acá no mostramos teléfono ni correo del publicador.',
+    'Nombre, mail y un mensaje corto alcanzan. La consulta llega a quien publica; la respuesta suele llegar por mail (revisá spam o promociones).',
   trustNote:
-    'Es el mismo aviso que ves en el listado: datos y fotos salen de lo cargado en Propieya o del inventario del socio.',
+    'Datos y fotos son los del aviso en Propieya o del inventario del socio.',
   /** Línea breve según origen del aviso (solo copy; el dato ya existe en la ficha). */
   listingContactListingOriginImport:
-    'Publicado desde el inventario de socios: mismo origen que usa la inmobiliaria.',
+    'Inventario del socio: mismo origen que usa la inmobiliaria.',
   listingContactListingOriginManual: 'Publicación gestionada en Propieya.',
+  /** Misma acción que “Consultar”; evita duda de doble camino técnico. */
+  listingContactScheduleHint:
+    'Abrimos el mismo formulario: aclará si querés coordinar una visita.',
   /** Bloque secundario: comparar (intención persistente, sin competir con consultar). */
-  listingContactCompareSectionLabel: 'Guardá y compará después',
+  listingContactCompareSectionLabel: 'Guardá y compará',
   listingContactCompareSectionLead:
-    'Sumá este aviso a tu lista (hasta 3 en este equipo). Abrís la tabla cuando quieras y ves precio, zona y datos lado a lado.',
-  contactSmartTitle: '¿Querés cerrar dudas con el publicador?',
+    'Hasta 3 avisos en este equipo; abrís la tabla cuando quieras y ves precio y zona al lado.',
+  contactSmartTitle: '¿Te quedó alguna duda?',
   contactSmartBodyViews:
-    'Este aviso encaja con lo que buscás: pedí disponibilidad o detalle y te respondemos por el canal oficial.',
+    'Este aviso suma interés: pedí disponibilidad o detalle y lo cerrás con quien publica.',
   contactSmartBodyReturn:
-    'Volviste a ver este aviso: si querés afinar condiciones o visita, la consulta es el paso natural.',
+    'Volviste a este aviso: si querés condiciones, precio o visita, mandá una consulta corta.',
   contactSmartBodyCompare:
-    'Ya lo sumaste a comparar: pedir información ayuda a decidir sin perder el contexto.',
-  modalTitle: 'Quiero más información',
+    'Ya está en comparar: una consulta ayuda a decidir sin salir de la ficha.',
+  modalTitle: 'Consultá en un minuto',
   modalDescriptionIdle:
-    'Una consulta breve alcanza: llega al publicador y al equipo que da soporte en Propieya. No pedimos datos que no hagan falta.',
+    'Completá los tres campos. Tu mensaje llega al publicador y al equipo de Propieya para que te respondan.',
+  /** Expectativa explícita sin prometer plazos inventados. */
+  modalExpectationLine:
+    'La respuesta suele llegar por mail; si no ves nada, revisá spam o promociones.',
   contactModalInternalNote:
-    'Respuesta por este canal o por mail. Solo mensajes vinculados a tu consulta, sin listas de difusión.',
-  modalSuccessTitle: 'Listo',
+    'Usamos tu mail solo para esta consulta, sin listas de difusión.',
+  modalSuccessTitle: 'Listo, enviamos tu consulta',
   modalSuccessBody:
-    'Gracias. Revisá tu email (y spam o promociones) para la respuesta sobre este aviso.',
-  modalNameLabel: 'Nombre',
+    'El publicador o el equipo de Propieya la va a ver en breve. Mirá tu correo (incluido spam o promociones) para la respuesta.',
+  modalNameLabel: 'Tu nombre',
   modalNamePlaceholder: 'Cómo te llamamos',
   modalEmailLabel: 'Email',
-  modalEmailPlaceholder: 'tu@email.com',
+  modalEmailPlaceholder: 'donde te escriban de vuelta',
   modalMessageLabel: 'Mensaje',
-  modalMessagePlaceholder: 'Contanos qué querés saber: disponibilidad, expensas, visita…',
-  modalCancel: 'Cancelar',
+  modalMessagePlaceholder: 'Ej.: disponibilidad, expensas, si podés visitarlo…',
+  modalCancel: 'Cerrar',
   modalSubmit: 'Enviar consulta',
   modalSubmitPending: 'Enviando…',
   modalSentOk: 'Consulta enviada',
