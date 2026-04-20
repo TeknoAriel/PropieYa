@@ -242,6 +242,18 @@ function formatResultCountEsAr(n: number): string {
   return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n)
 }
 
+function formatAppliedLocation(opts: {
+  city?: string | null
+  neighborhood?: string | null
+}): string | null {
+  const c = (opts.city ?? '').trim()
+  const n = (opts.neighborhood ?? '').trim()
+  if (n && c) return `${n}, ${c}`
+  if (c) return c
+  if (n) return n
+  return null
+}
+
 function bucketStrongNearSectionClass(bucketId: string): string {
   if (bucketId === 'strong') {
     return 'space-y-5 rounded-2xl border border-border/40 bg-surface-primary p-5 shadow-none md:p-6'
@@ -639,7 +651,7 @@ export function BuscarContent({
   const [searchV2WidenedOpen, setSearchV2WidenedOpen] = useState(false)
   const [searchV2NearOpen, setSearchV2NearOpen] = useState(false)
   /** Tamaño de página v2 (1–40 por bucket); solo UI + input existente a tRPC. */
-  const [listLimitPerBucket, setListLimitPerBucket] = useState(20)
+  const [listLimitPerBucket, setListLimitPerBucket] = useState(24)
   const [polygonDrawMode, setPolygonDrawMode] = useState(false)
   /** Sprint 40 — rectángulo del mapa se aplica al listado al panear (debounce). */
   const [mapLiveViewport, setMapLiveViewport] = useState(false)
@@ -1028,9 +1040,28 @@ export function BuscarContent({
 
   const strictCatalogTotal = dataV2Ui?.strictCatalogTotal ?? 0
   const strongBucketShown = dataV2Ui?.totalsByBucket?.strong ?? 0
+  const nearBucketShown = dataV2Ui?.totalsByBucket?.near ?? 0
+  const widenedBucketShown = dataV2Ui?.totalsByBucket?.widened ?? 0
   const relaxedBucketShown =
-    (dataV2Ui?.totalsByBucket?.near ?? 0) + (dataV2Ui?.totalsByBucket?.widened ?? 0)
+    nearBucketShown + widenedBucketShown
   const visibleListingsTotal = data?.total ?? 0
+  const visibleListNow =
+    strongBucketShown +
+    (searchV2NearOpen ? nearBucketShown : 0) +
+    (searchV2WidenedOpen ? widenedBucketShown : 0)
+  const appliedLocationLabel = formatAppliedLocation({
+    city: dataV2Ui?.sessionNormalized?.city ?? city,
+    neighborhood: dataV2Ui?.sessionNormalized?.neighborhood ?? neighborhood,
+  })
+  const appliedCityLabel = (dataV2Ui?.sessionNormalized?.city ?? city).trim()
+  const appliedNeighborhoodLabel = (
+    dataV2Ui?.sessionNormalized?.neighborhood ?? neighborhood
+  ).trim()
+  const hasMapZoneApplied = Boolean(
+    dataV2Ui?.sessionNormalized?.mapCommitted &&
+      ((dataV2Ui?.sessionNormalized?.bbox != null) ||
+        (dataV2Ui?.sessionNormalized?.polygon?.length ?? 0) >= 3)
+  )
   const canLoadMoreResults =
     listLimitPerBucket < 40 && strictCatalogTotal > strongBucketShown
   const showSearchVolumeCard =
@@ -1044,7 +1075,7 @@ export function BuscarContent({
   useEffect(() => {
     setSearchV2WidenedOpen(false)
     setSearchV2NearOpen(false)
-    setListLimitPerBucket(20)
+    setListLimitPerBucket(24)
   }, [v2SessionFingerprint])
 
   useEffect(() => {
@@ -1910,15 +1941,29 @@ export function BuscarContent({
             <div className="space-y-6 md:space-y-8">
               {showSearchVolumeCard ? (
                 <Card className="space-y-3 border-border/30 bg-surface-secondary/20 p-4 shadow-none md:p-5">
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
                       {S.searchV2AppliedCriteriaTitle}
                     </p>
-                    <p className="text-sm font-medium leading-snug text-text-primary">
+                    <div className="flex flex-wrap gap-2">
+                      {appliedCityLabel ? (
+                        <Badge variant="outline" className="text-xs">
+                          Ciudad: {appliedCityLabel}
+                        </Badge>
+                      ) : null}
+                      {appliedNeighborhoodLabel ? (
+                        <Badge variant="outline" className="text-xs">
+                          Barrio: {appliedNeighborhoodLabel}
+                        </Badge>
+                      ) : null}
+                      {hasMapZoneApplied ? (
+                        <Badge variant="outline" className="text-xs">
+                          Zona de mapa activa
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <p className="text-sm leading-snug text-text-secondary">
                       {activeSummaryRaw}
-                    </p>
-                    <p className="text-[11px] leading-snug text-text-tertiary">
-                      {S.searchV2AppliedCriteriaHint}
                     </p>
                   </div>
                   <div
@@ -1926,37 +1971,29 @@ export function BuscarContent({
                     role="status"
                     aria-live="polite"
                   >
+                    {strictCatalogTotal > 0 ? (
+                      <p className="text-base font-semibold leading-relaxed text-text-primary">
+                        {appliedLocationLabel
+                          ? `${formatResultCountEsAr(strictCatalogTotal)} propiedades en ${appliedLocationLabel}`
+                          : `${formatResultCountEsAr(strictCatalogTotal)} propiedades encontradas`}
+                      </p>
+                    ) : null}
                     <p className="text-sm leading-relaxed text-text-primary">
-                      {S.searchV2VolumeShowing.replace(
-                        '{visible}',
-                        formatResultCountEsAr(visibleListingsTotal)
-                      )}
+                      {`Mostrando ${formatResultCountEsAr(visibleListNow)} ahora`}
                     </p>
                     {strictCatalogTotal > 0 ? (
                       strictCatalogTotal > strongBucketShown ? (
                         <p className="text-sm leading-relaxed text-text-secondary">
-                          {S.searchV2VolumeShowingOf.replace(
-                            '{visible}',
-                            formatResultCountEsAr(strongBucketShown)
-                          ).replace(
-                            '{total}',
-                            formatResultCountEsAr(strictCatalogTotal)
-                          )}
+                          {`En esta lista principal estás viendo ${formatResultCountEsAr(strongBucketShown)} de ${formatResultCountEsAr(strictCatalogTotal)}.`}
                         </p>
                       ) : strongBucketShown >= strictCatalogTotal &&
                         relaxedBucketShown === 0 ? (
                         <p className="text-sm leading-relaxed text-text-secondary">
-                          {S.searchV2VolumeSame.replace(
-                            '{n}',
-                            formatResultCountEsAr(strictCatalogTotal)
-                          )}
+                          {`Ya estás viendo todas las propiedades principales (${formatResultCountEsAr(strictCatalogTotal)}).`}
                         </p>
                       ) : (
                         <p className="text-sm leading-relaxed text-text-secondary">
-                          {S.searchV2VolumeCatalog.replace(
-                            '{total}',
-                            formatResultCountEsAr(strictCatalogTotal)
-                          )}
+                          {`El catálogo principal tiene ${formatResultCountEsAr(strictCatalogTotal)} propiedades.`}
                         </p>
                       )
                     ) : null}
@@ -1975,7 +2012,7 @@ export function BuscarContent({
                         variant="secondary"
                         className="h-9 shrink-0"
                         onClick={() =>
-                          setListLimitPerBucket((n) => Math.min(40, n + 10))
+                          setListLimitPerBucket((n) => Math.min(40, n + 6))
                         }
                       >
                         {S.searchV2LoadMore}
