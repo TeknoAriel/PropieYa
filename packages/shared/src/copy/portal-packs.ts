@@ -145,10 +145,9 @@ const conversacionPrimero: PortalCopyPack = {
   hero: {
     line1: 'Encontrá propiedades',
     line2Accent: 'con más claridad',
-    subtitle:
-      'Escribí acá o pasá al buscador con mapa y ciudad; venta y alquiler cuando quieras.',
+    subtitle: 'Buscá por zona, tipo o presupuesto.',
     placeholder: 'Zona, ambientes, presupuesto…',
-    filterLink: 'Buscador con filtros y mapa',
+    filterLink: 'Filtros y mapa',
   },
   heroExamples: [
     'Casa en venta, 2 dormitorios, grande, con pileta y quincho',

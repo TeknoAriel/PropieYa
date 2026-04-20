@@ -1042,8 +1042,6 @@ export function BuscarContent({
   const strongBucketShown = dataV2Ui?.totalsByBucket?.strong ?? 0
   const nearBucketShown = dataV2Ui?.totalsByBucket?.near ?? 0
   const widenedBucketShown = dataV2Ui?.totalsByBucket?.widened ?? 0
-  const relaxedBucketShown =
-    nearBucketShown + widenedBucketShown
   const visibleListingsTotal = data?.total ?? 0
   const visibleListNow =
     strongBucketShown +
@@ -1464,6 +1462,9 @@ export function BuscarContent({
   }, [scrollToElementId])
 
   const applyMainFiltersToUrl = useCallback(() => {
+    // Al confirmar búsqueda, cerramos la segunda capa para recuperar aire visual.
+    setShowDeepFilters(false)
+    setClassicFiltersOpen(false)
     pushBuscarQueryParams((p) => {
       const qt = q.trim()
       if (qt) p.set('q', qt.slice(0, 200))
@@ -1511,6 +1512,8 @@ export function BuscarContent({
     neighborhood,
     minPrice,
     maxPrice,
+    setShowDeepFilters,
+    setClassicFiltersOpen,
   ])
 
   const smartSuggestionIds = useMemo(() => {
@@ -1685,6 +1688,38 @@ export function BuscarContent({
           </p>
         ) : null}
 
+        {showSearchVolumeCard && hasActiveSearchCriteria ? (
+          <Card className="space-y-2 border-border/25 bg-surface-secondary/20 p-3.5 shadow-none md:p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-base font-semibold leading-relaxed text-text-primary">
+                {appliedLocationLabel
+                  ? `${formatResultCountEsAr(strictCatalogTotal)} propiedades en ${appliedLocationLabel}`
+                  : `${formatResultCountEsAr(strictCatalogTotal)} propiedades encontradas`}
+              </p>
+              <span className="text-xs text-text-tertiary">
+                {`Mostrando ${formatResultCountEsAr(visibleListNow)} ahora`}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {appliedCityLabel ? (
+                <Badge variant="outline" className="text-xs">
+                  Ciudad: {appliedCityLabel}
+                </Badge>
+              ) : null}
+              {appliedNeighborhoodLabel ? (
+                <Badge variant="outline" className="text-xs">
+                  Barrio: {appliedNeighborhoodLabel}
+                </Badge>
+              ) : null}
+              {hasMapZoneApplied ? (
+                <Badge variant="outline" className="text-xs">
+                  Zona de mapa activa
+                </Badge>
+              ) : null}
+            </div>
+          </Card>
+        ) : null}
+
         <div id="buscar-esenciales" className="scroll-mt-24 space-y-3">
           <Card className="space-y-3 border-border/35 p-3.5 shadow-none md:space-y-4 md:p-4">
           <div className="flex flex-col gap-2 border-b border-border/20 pb-3 sm:flex-row sm:items-end sm:gap-3">
@@ -1776,33 +1811,9 @@ export function BuscarContent({
                 onChange={(e) => setNeighborhood(e.target.value)}
               />
             </BuscarLabeledField>
-            <div className="flex flex-wrap items-end gap-1.5 md:col-span-2 lg:col-span-4">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 border-border/50 text-xs"
-                onClick={() => setLocalityModalOpen(true)}
-              >
-                {S.buscarLocalityCatalogButton}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 border-border/50 text-xs"
-                onClick={() => {
-                  setClassicFiltersOpen(true)
-                  setShowMap(true)
-                  scrollToElementId('buscar-mapa')
-                }}
-              >
-                {S.buscarPreferMapCta}
-              </Button>
-            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-4">
             <BuscarLabeledField id="buscar-precio-min" label={S.buscarFieldMinPrice}>
               <Input
                 id="buscar-precio-min"
@@ -1821,6 +1832,50 @@ export function BuscarContent({
                 onChange={(e) => setMaxPrice(e.target.value)}
               />
             </BuscarLabeledField>
+            <div className="md:col-span-2 lg:col-span-2">
+              <p className="mb-1.5 text-xs font-medium text-text-secondary">Zonas y mapa</p>
+              <div className="flex flex-wrap items-center justify-start gap-1.5 lg:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-border/50 text-xs"
+                  onClick={() => setLocalityModalOpen(true)}
+                >
+                  {S.buscarLocalityCatalogButton}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-border/50 text-xs"
+                  onClick={() => {
+                    setClassicFiltersOpen(true)
+                    setShowMap(true)
+                    scrollToElementId('buscar-mapa')
+                  }}
+                >
+                  {S.buscarPreferMapCta}
+                </Button>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-start border-t border-border/15 pt-2.5 md:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 border-border/50 text-xs"
+              onClick={() => {
+                setClassicFiltersOpen(true)
+                setShowDeepFilters((v) => !v)
+                const el = secondaryToolsDetailsRef.current
+                if (el) el.open = true
+                scrollToElementId('buscar-herramientas-secundarias')
+              }}
+            >
+              {showDeepFilters ? S.buscarCloseLayer3Cta : S.buscarOpenLayer3Cta}
+            </Button>
           </div>
 
           </Card>
@@ -1939,92 +1994,6 @@ export function BuscarContent({
             </div>
           ) : dataV2Ui?.buckets ? (
             <div className="space-y-6 md:space-y-8">
-              {showSearchVolumeCard ? (
-                <Card className="space-y-3 border-border/30 bg-surface-secondary/20 p-4 shadow-none md:p-5">
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
-                      {S.searchV2AppliedCriteriaTitle}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {appliedCityLabel ? (
-                        <Badge variant="outline" className="text-xs">
-                          Ciudad: {appliedCityLabel}
-                        </Badge>
-                      ) : null}
-                      {appliedNeighborhoodLabel ? (
-                        <Badge variant="outline" className="text-xs">
-                          Barrio: {appliedNeighborhoodLabel}
-                        </Badge>
-                      ) : null}
-                      {hasMapZoneApplied ? (
-                        <Badge variant="outline" className="text-xs">
-                          Zona de mapa activa
-                        </Badge>
-                      ) : null}
-                    </div>
-                    <p className="text-sm leading-snug text-text-secondary">
-                      {activeSummaryRaw}
-                    </p>
-                  </div>
-                  <div
-                    className="space-y-1 border-t border-border/15 pt-3"
-                    role="status"
-                    aria-live="polite"
-                  >
-                    {strictCatalogTotal > 0 ? (
-                      <p className="text-base font-semibold leading-relaxed text-text-primary">
-                        {appliedLocationLabel
-                          ? `${formatResultCountEsAr(strictCatalogTotal)} propiedades en ${appliedLocationLabel}`
-                          : `${formatResultCountEsAr(strictCatalogTotal)} propiedades encontradas`}
-                      </p>
-                    ) : null}
-                    <p className="text-sm leading-relaxed text-text-primary">
-                      {`Mostrando ${formatResultCountEsAr(visibleListNow)} ahora`}
-                    </p>
-                    {strictCatalogTotal > 0 ? (
-                      strictCatalogTotal > strongBucketShown ? (
-                        <p className="text-sm leading-relaxed text-text-secondary">
-                          {`En esta lista principal estás viendo ${formatResultCountEsAr(strongBucketShown)} de ${formatResultCountEsAr(strictCatalogTotal)}.`}
-                        </p>
-                      ) : strongBucketShown >= strictCatalogTotal &&
-                        relaxedBucketShown === 0 ? (
-                        <p className="text-sm leading-relaxed text-text-secondary">
-                          {`Ya estás viendo todas las propiedades principales (${formatResultCountEsAr(strictCatalogTotal)}).`}
-                        </p>
-                      ) : (
-                        <p className="text-sm leading-relaxed text-text-secondary">
-                          {`El catálogo principal tiene ${formatResultCountEsAr(strictCatalogTotal)} propiedades.`}
-                        </p>
-                      )
-                    ) : null}
-                    {relaxedBucketShown > 0 ? (
-                      <p className="text-xs leading-snug text-text-tertiary">
-                        {S.searchV2VolumeRelaxedSectionsNote}
-                      </p>
-                    ) : null}
-                  </div>
-                  {canLoadMoreResults ? (
-                    <div className="flex flex-col gap-2 border-t border-border/15 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-xs text-text-tertiary">{S.searchV2LoadMoreHint}</p>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        className="h-9 shrink-0"
-                        onClick={() =>
-                          setListLimitPerBucket((n) => Math.min(40, n + 6))
-                        }
-                      >
-                        {S.searchV2LoadMore}
-                      </Button>
-                    </div>
-                  ) : listLimitPerBucket >= 40 && strictCatalogTotal > strongBucketShown ? (
-                    <p className="border-t border-border/15 pt-3 text-xs leading-snug text-text-tertiary">
-                      {S.searchV2LoadMoreAtCap}
-                    </p>
-                  ) : null}
-                </Card>
-              ) : null}
               {!isLoading &&
               data &&
               data.total > 0 &&
@@ -2338,6 +2307,46 @@ export function BuscarContent({
                   </>
                 )
               })()}
+              {!isLoading && data && data.total > 0 ? (
+                <Card className="border-border/25 bg-surface-secondary/15 p-3.5 shadow-none md:p-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm leading-snug text-text-secondary">
+                      Seguí explorando más propiedades de esta búsqueda o ajustá filtros.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {canLoadMoreResults ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          className="h-9"
+                          onClick={() =>
+                            setListLimitPerBucket((n) => Math.min(40, n + 6))
+                          }
+                        >
+                          {S.searchV2LoadMore}
+                        </Button>
+                      ) : null}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-9"
+                        onClick={openAllFilters}
+                      >
+                        {S.searchV2CtaOpenFilters}
+                      </Button>
+                    </div>
+                  </div>
+                  {!canLoadMoreResults &&
+                  listLimitPerBucket >= 40 &&
+                  strictCatalogTotal > strongBucketShown ? (
+                    <p className="mt-2 border-t border-border/15 pt-2 text-xs leading-snug text-text-tertiary">
+                      {S.searchV2LoadMoreAtCap}
+                    </p>
+                  ) : null}
+                </Card>
+              ) : null}
             </div>
           ) : null}
             </>

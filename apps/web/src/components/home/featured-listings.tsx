@@ -31,14 +31,14 @@ export function FeaturedListings() {
   const listings = listingsRaw as unknown as FeaturedListingCardData[]
 
   return (
-    <section className="border-t border-border/10 bg-surface-secondary/20 pb-6 pt-4 md:pb-8 md:pt-5">
+    <section className="border-t border-border/10 bg-surface-secondary/20 pb-4 pt-2.5 md:pb-6 md:pt-3">
       <div className="container mx-auto px-4">
-        <div className="mb-4 flex flex-col gap-1.5 sm:flex-row sm:items-end sm:justify-between md:mb-5">
+        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between md:mb-3.5">
           <div className="max-w-xl">
-            <h2 className="text-[1.35rem] font-semibold tracking-tight text-text-primary md:text-2xl">
+            <h2 className="text-[1.2rem] font-semibold tracking-tight text-text-primary md:text-[1.35rem]">
               {pack.featured.title}
             </h2>
-            <p className="mt-2 max-w-lg text-sm leading-relaxed text-text-secondary md:mt-2.5 md:text-[0.9375rem]">
+            <p className="mt-1 max-w-lg text-sm leading-snug text-text-secondary md:mt-1.5 md:text-[0.9rem]">
               {pack.featured.subtitle}
             </p>
           </div>
@@ -68,14 +68,14 @@ export function FeaturedListings() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 lg:grid-cols-3 lg:gap-6">
+          <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2 md:gap-4 lg:grid-cols-3 lg:gap-5">
             {listings.map((listing) => (
               <ListingCard key={listing.id} listing={listing} />
             ))}
           </div>
         )}
 
-        <div className="mt-6 text-center md:hidden">
+        <div className="mt-4 text-center md:hidden">
           <Button variant="outline" size="sm" asChild>
             <Link href="/buscar">
               {pack.featured.viewAllMobile}
@@ -97,7 +97,7 @@ function ListingCard({ listing }: { listing: FeaturedListingCardData }) {
     <Link href={`/propiedad/${listing.id}`} className="block h-full">
       <Card className="group h-full cursor-pointer overflow-hidden rounded-2xl border border-border/45 shadow-none transition-colors duration-200 hover:border-border/70 hover:shadow-sm">
         {/* Image */}
-        <div className="relative h-44 overflow-hidden bg-surface-secondary md:h-52">
+        <div className="relative h-40 overflow-hidden bg-surface-secondary md:h-[11.5rem]">
           <Image
             src={
               listing.primaryImageUrl ||
