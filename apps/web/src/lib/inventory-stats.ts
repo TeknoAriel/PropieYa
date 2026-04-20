@@ -1,8 +1,10 @@
 import { and, count, eq, isNotNull } from 'drizzle-orm'
 
-import { db, listings } from '@propieya/database'
+import { db, listings, organizations } from '@propieya/database'
 
 export type PublicInventoryStats = {
+  /** Filas en tabla `organizations` (cuentas tipo inmobiliaria / org en el portal). */
+  totalOrganizations: number
   totalListings: number
   activeListings: number
   listingsFromImportSource: number
@@ -23,12 +25,14 @@ export type PublicInventoryStats = {
  */
 export async function getPublicInventoryStats(): Promise<PublicInventoryStats> {
   const [
+    [orgRow],
     [totalRow],
     [activeRow],
     [importRow],
     [activeImportRow],
     [extRow],
   ] = await Promise.all([
+    db.select({ c: count() }).from(organizations),
     db.select({ c: count() }).from(listings),
     db
       .select({ c: count() })
@@ -56,6 +60,7 @@ export async function getPublicInventoryStats(): Promise<PublicInventoryStats> {
     : 'Default en código (Properstar vía static.kiteprop — ver docs/37 y 44).'
 
   return {
+    totalOrganizations: Number(orgRow?.c ?? 0),
     totalListings: Number(totalRow?.c ?? 0),
     activeListings: Number(activeRow?.c ?? 0),
     listingsFromImportSource: Number(importRow?.c ?? 0),

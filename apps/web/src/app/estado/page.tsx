@@ -90,6 +90,12 @@ export default async function EstadoPage() {
         ) : inventory ? (
           <dl className="grid gap-2 text-sm text-text-secondary sm:grid-cols-2">
             <div>
+              <dt className="font-medium text-text-primary">
+                Organizaciones / inmobiliarias (DB)
+              </dt>
+              <dd>{inventory.totalOrganizations}</dd>
+            </div>
+            <div>
               <dt className="font-medium text-text-primary">Total avisos (DB)</dt>
               <dd>{inventory.totalListings}</dd>
             </div>
