@@ -302,7 +302,9 @@ export function mapYumblinItem(
     postalCode: getValue(item, 'postcode', 'codigo_postal', 'postalCode') ?? null,
   }
 
-  const externalId = getValue(item, 'public_code', 'id', 'codigo', 'external_id', 'id_aviso') as string | null
+  const externalId = getValue(item, 'public_code', 'id', 'codigo', 'external_id', 'id_aviso', 'uuid') as
+    | string
+    | null
   const bedrooms = getValue(item, 'bedrooms', 'dormitorios', 'rooms', 'ambientes') as number | string | null
   const bathrooms = getValue(item, 'bathrooms', 'banos', 'half_bathrooms') as number | string | null
   const garagesVal = getValue(item, 'garages', 'cocheras', 'garage_count', 'estacionamientos') ?? item.garages ?? item.cocheras
@@ -348,6 +350,39 @@ export function mapYumblinItem(
     item as Record<string, unknown>
   )
 
+  const agencyBlock =
+    (item.agency ?? item.inmobiliaria ?? item.real_estate_agency ?? item.publisher_office) as
+      | Record<string, unknown>
+      | undefined
+  let kitepropAgency: Record<string, unknown> | null = null
+  if (agencyBlock && typeof agencyBlock === 'object' && !Array.isArray(agencyBlock)) {
+    const aid = agencyBlock.id ?? agencyBlock.agency_id ?? agencyBlock.uuid
+    const aname = agencyBlock.name ?? agencyBlock.nombre ?? agencyBlock.title
+    if (aid != null || aname != null) {
+      kitepropAgency = {
+        ...(aid != null ? { id: String(aid) } : {}),
+        ...(aname != null ? { name: String(aname) } : {}),
+        ...(agencyBlock.slug != null ? { slug: String(agencyBlock.slug) } : {}),
+      }
+    }
+  }
+  if (!kitepropAgency) {
+    const flatId = getValue(item, 'agency_id', 'agencyId', 'inmobiliaria_id', 'publisher_id')
+    const flatName = getValue(
+      item,
+      'agency_name',
+      'inmobiliaria_nombre',
+      'publisher_name',
+      'office_name'
+    )
+    if (flatId || flatName) {
+      kitepropAgency = {
+        ...(flatId ? { id: String(flatId) } : {}),
+        ...(flatName ? { name: String(flatName) } : {}),
+      }
+    }
+  }
+
   const features: Record<string, unknown> = {
     amenities,
     floor: Number.isFinite(floorNum) ? floorNum : null,
@@ -355,6 +390,7 @@ export function mapYumblinItem(
     orientation: orientation ?? null,
     escalera: escalera ?? null,
     ...(feedRawTokens.length > 0 ? { feedAmenityRaw: feedRawTokens } : {}),
+    ...(kitepropAgency ? { kitepropAgency } : {}),
   }
 
   return {
@@ -404,7 +440,7 @@ export function extractListingsFromFeed(data: unknown): JsonItem[] {
  * Properstar / Kiteprop: `public_code` (ej. KP499781) antes que `id` numérico.
  */
 export function peekFeedExternalId(item: JsonItem): string | null {
-  const v = getValue(item, 'public_code', 'id', 'codigo', 'external_id', 'id_aviso')
+  const v = getValue(item, 'public_code', 'id', 'codigo', 'external_id', 'id_aviso', 'uuid')
   if (v === undefined || v === null) return null
   const s = String(v).trim()
   return s.length > 0 ? s : null

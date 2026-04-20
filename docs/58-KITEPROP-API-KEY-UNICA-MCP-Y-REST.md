@@ -43,6 +43,10 @@ La ingesta Properstar/Kiteprop hacia **este** monorepo usa secretos **del lado P
 
 Salvo que Kiteprop documente explícitamente que unifican ambos mundos, **tratarlos como conceptos distintos** y no asumir que el Bearer del webhook es la misma string que la API key del panel MCP/REST.
 
+### 3.1 Ingest masiva saliente (cron / `import:yumblin`)
+
+Además del feed JSON estático, el pipeline puede **consumir el listado REST de propiedades** en `www.kiteprop.com` con la **misma API key** (`KITEPROP_API_KEY` o alias `KITEPROP_API_TOKEN`) y cabecera `X-API-Key`, alineado con `apps/web/src/lib/integrations/kiteprop-client.ts`. Variables relacionadas: `KITEPROP_INGEST_MODE`, `KITEPROP_INGEST_PER_PAGE`, `KITEPROP_INGEST_PROPERTIES_QUERY`, `KITEPROP_API_BASE_URL`, `KITEPROP_PATH_PROPERTIES` (ver `.env.example`). La documentación de contrato y parámetros de la API pública es la que publique Kiteprop (p. ej. [docs API v1](https://www.kiteprop.com/docs/api/v1)).
+
 ---
 
 ## 4. Mantenimiento

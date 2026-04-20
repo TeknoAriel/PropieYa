@@ -12,6 +12,12 @@ import { and, eq, inArray, isNull, isNotNull, ne, notInArray, or } from 'drizzle
 
 import { db } from './client'
 import {
+  buildKitepropPropertiesListUrl,
+  fetchKitepropPropertiesAllPages,
+  resolveKitepropIngestMode,
+  useKitepropPagedApiIngest,
+} from './kiteprop-api-ingest-fetch'
+import {
   importFeedSources,
   listingMedia,
   listings,
@@ -186,11 +192,17 @@ async function replaceListingMedia(listingId: string, urls: string[]) {
 export async function runYumblinImportSync(
   options: YumblinImportSyncOptions = {}
 ): Promise<YumblinImportSyncResult> {
-  const feedUrl =
+  const ingestMode = resolveKitepropIngestMode()
+
+  let feedUrl =
     options.feedUrl ??
     (options.rawData !== undefined ? 'file://default-import' : undefined) ??
     process.env.YUMBLIN_JSON_URL ??
     DEFAULT_FEED_URL
+
+  if (ingestMode === 'api' && options.rawData === undefined) {
+    feedUrl = buildKitepropPropertiesListUrl()
+  }
 
   let organizationId = options.organizationId ?? process.env.IMPORT_ORGANIZATION_ID
   let publisherId = options.publisherId ?? process.env.IMPORT_PUBLISHER_ID
@@ -289,12 +301,16 @@ export async function runYumblinImportSync(
       }
     }
   } else {
+    const useApi = useKitepropPagedApiIngest(feedUrl, ingestMode, false)
+
     const fetchOpts =
       options.forceFullFetch === true
         ? {}
         : { etag: source.lastEtag, lastModified: source.lastModified }
 
-    const fetched = await fetchYumblinFeedConditional(feedUrl, fetchOpts)
+    const fetched = useApi
+      ? await fetchKitepropPropertiesAllPages(feedUrl)
+      : await fetchYumblinFeedConditional(feedUrl, fetchOpts)
 
     if (fetched.kind === 'not_modified') {
       await db
@@ -721,6 +737,8 @@ export async function runYumblinImportSyncAllSources(
 ): Promise<{
   results: YumblinImportSyncResult[]
 }> {
+  const ingestMode = resolveKitepropIngestMode()
+
   let organizationId =
     process.env.IMPORT_ORGANIZATION_ID ??
     (undefined as unknown as string | undefined)
@@ -759,10 +777,19 @@ export async function runYumblinImportSyncAllSources(
     ...feedUrlsFromDb.map((r) => r.feedUrl),
   ]
 
-  const feedUrlsUnique = [...new Set(candidates)]
+  let feedUrlsUnique = [...new Set(candidates)]
+
+  if (ingestMode === 'api') {
+    feedUrlsUnique = [buildKitepropPropertiesListUrl()]
+  } else if (ingestMode === 'both') {
+    const canon = buildKitepropPropertiesListUrl()
+    feedUrlsUnique = [...new Set([canon, ...feedUrlsUnique])]
+  }
 
   const fallbackDefault =
-    process.env.YUMBLIN_JSON_URL ?? DEFAULT_FEED_URL
+    ingestMode === 'api'
+      ? buildKitepropPropertiesListUrl()
+      : process.env.YUMBLIN_JSON_URL ?? DEFAULT_FEED_URL
 
   const finalFeedUrls = feedUrlsUnique.length > 0 ? feedUrlsUnique : [fallbackDefault]
 
