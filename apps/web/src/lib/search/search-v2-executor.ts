@@ -449,6 +449,7 @@ export async function runListingSearchV2(opts: {
         'No pudimos consultar el índice de búsqueda. Los resultados aparecerán cuando el servicio vuelva a responder.',
       actions: [],
       totalsByBucket: { strong: 0, near: 0, widened: 0 },
+      strictCatalogTotal: 0,
       orderedListingIds: [],
     }
   }
@@ -597,6 +598,7 @@ export async function runListingSearchV2(opts: {
       near: nearHits.length,
       widened: wideHits.length,
     },
+    strictCatalogTotal: resStrong.total,
     orderedListingIds,
   }
 }

@@ -266,6 +266,12 @@ export type ListingSearchV2Result = {
   emptyExplanation: string | null
   actions: SearchV2Action[]
   totalsByBucket: SearchV2BucketTotals
+  /**
+   * Total en índice (o conteo SQL en fallback) para los filtros «strong» — misma intención
+   * que la primera pasada ES, sin relajar barrio ni criterios numéricos.
+   * Puede ser mucho mayor que la suma de tarjetas mostradas (`totalsByBucket`).
+   */
+  strictCatalogTotal: number
   /** Ids en orden de lista global (strong → near → widened) para mapa/lista alineados. */
   orderedListingIds: string[]
 }

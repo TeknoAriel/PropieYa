@@ -346,7 +346,24 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Zona confirmada: el listado y el mapa muestran las mismas propiedades. Mové el mapa y volvé a confirmar para actualizar.',
   buscarMapReleaseFilter: 'Dejar de filtrar por el mapa',
   searchV2SuggestedActions: 'Te proponemos esto',
+  /** @deprecated Preferir searchV2Volume*; se mantuvo por compat. */
   searchV2TotalSummary: '{n} avisos en esta búsqueda.',
+  searchV2AppliedCriteriaTitle: 'Qué estamos buscando',
+  searchV2AppliedCriteriaHint:
+    'Así interpretamos tu pedido (ciudad, barrio, operación y el resto de filtros activos).',
+  searchV2VolumeShowing: 'Mostrando {visible} propiedades en lista y mapa.',
+  searchV2VolumeCatalog: 'Con esos criterios el catálogo tiene {total}.',
+  searchV2VolumeShowingOf:
+    'Mostrando {visible} de {total} propiedades que coinciden con lo principal de tu búsqueda.',
+  searchV2VolumeSame:
+    'Son {n} propiedades con coincidencia principal; las estás viendo todas en esta vista.',
+  searchV2VolumeRelaxedSectionsNote:
+    'Más abajo podés abrir listas extra con criterios un poco más flexibles (misma ciudad y operación).',
+  searchV2LoadMore: 'Cargar más resultados',
+  searchV2LoadMoreHint:
+    'Ampliamos cada bloque sin recargar la página (hasta 40 por sección).',
+  searchV2LoadMoreAtCap:
+    'Ya alcanzaste el máximo por vista (40 por sección). Si querés acotar, refiná mapa o filtros.',
   /** Buscador v2: texto bajo el título del bucket ampliado (colapsable). */
   searchV2WidenedExplainer:
     'Misma operación y tipo que pediste: acá relajamos un solo criterio extra (superficie, dormitorios o precio), sin mezclar resultados fuera de tu ciudad ni precios desorbitados.',

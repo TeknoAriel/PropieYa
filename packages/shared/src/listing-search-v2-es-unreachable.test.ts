@@ -36,6 +36,7 @@ function emptyV2(
     emptyExplanation: null,
     actions: [],
     totalsByBucket: { strong: 0, near: 0, widened: 0 },
+    strictCatalogTotal: 0,
     orderedListingIds: [],
     ...partial,
   } as ListingSearchV2Result

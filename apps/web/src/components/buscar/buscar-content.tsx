@@ -238,6 +238,10 @@ function bucketCountLabel(bucketId: string, n: number): string {
   return `${s} en este grupo`
 }
 
+function formatResultCountEsAr(n: number): string {
+  return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n)
+}
+
 function bucketStrongNearSectionClass(bucketId: string): string {
   if (bucketId === 'strong') {
     return 'space-y-5 rounded-2xl border border-border/40 bg-surface-primary p-5 shadow-none md:p-6'
@@ -634,6 +638,8 @@ export function BuscarContent({
   /** Buscador v2: bucket «ampliadas» colapsado por defecto (pins = solo lo visible). */
   const [searchV2WidenedOpen, setSearchV2WidenedOpen] = useState(false)
   const [searchV2NearOpen, setSearchV2NearOpen] = useState(false)
+  /** Tamaño de página v2 (1–40 por bucket); solo UI + input existente a tRPC. */
+  const [listLimitPerBucket, setListLimitPerBucket] = useState(20)
   const [polygonDrawMode, setPolygonDrawMode] = useState(false)
   /** Sprint 40 — rectángulo del mapa se aplica al listado al panear (debounce). */
   const [mapLiveViewport, setMapLiveViewport] = useState(false)
@@ -946,17 +952,18 @@ export function BuscarContent({
   ])
 
   const v2SessionFingerprint = JSON.stringify(searchSessionMVP)
+  const v2QueryPlaceholderKey = `${v2SessionFingerprint}::l${listLimitPerBucket}`
 
   const { data: dataV2, isLoading, isError } =
     trpc.listing.searchV2.useQuery(
       {
         session: normalizeSearchSessionMVP(searchSessionMVP),
-        limitPerBucket: 20,
+        limitPerBucket: listLimitPerBucket,
       },
       {
         placeholderData: (previousData) => {
-          if (searchFilterFpRef.current !== v2SessionFingerprint) {
-            searchFilterFpRef.current = v2SessionFingerprint
+          if (searchFilterFpRef.current !== v2QueryPlaceholderKey) {
+            searchFilterFpRef.current = v2QueryPlaceholderKey
             return undefined
           }
           return previousData
@@ -1019,6 +1026,16 @@ export function BuscarContent({
         }
       : null
 
+  const strictCatalogTotal = dataV2Ui?.strictCatalogTotal ?? 0
+  const strongBucketShown = dataV2Ui?.totalsByBucket?.strong ?? 0
+  const relaxedBucketShown =
+    (dataV2Ui?.totalsByBucket?.near ?? 0) + (dataV2Ui?.totalsByBucket?.widened ?? 0)
+  const visibleListingsTotal = data?.total ?? 0
+  const canLoadMoreResults =
+    listLimitPerBucket < 40 && strictCatalogTotal > strongBucketShown
+  const showSearchVolumeCard =
+    Boolean(dataV2Ui && data && visibleListingsTotal > 0 && !isLoading)
+
   const mapPins = useMemo(
     () => pinsFromListings(listingsForMap),
     [listingsForMap]
@@ -1027,6 +1044,7 @@ export function BuscarContent({
   useEffect(() => {
     setSearchV2WidenedOpen(false)
     setSearchV2NearOpen(false)
+    setListLimitPerBucket(20)
   }, [v2SessionFingerprint])
 
   useEffect(() => {
@@ -1890,6 +1908,86 @@ export function BuscarContent({
             </div>
           ) : dataV2Ui?.buckets ? (
             <div className="space-y-6 md:space-y-8">
+              {showSearchVolumeCard ? (
+                <Card className="space-y-3 border-border/30 bg-surface-secondary/20 p-4 shadow-none md:p-5">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+                      {S.searchV2AppliedCriteriaTitle}
+                    </p>
+                    <p className="text-sm font-medium leading-snug text-text-primary">
+                      {activeSummaryRaw}
+                    </p>
+                    <p className="text-[11px] leading-snug text-text-tertiary">
+                      {S.searchV2AppliedCriteriaHint}
+                    </p>
+                  </div>
+                  <div
+                    className="space-y-1 border-t border-border/15 pt-3"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <p className="text-sm leading-relaxed text-text-primary">
+                      {S.searchV2VolumeShowing.replace(
+                        '{visible}',
+                        formatResultCountEsAr(visibleListingsTotal)
+                      )}
+                    </p>
+                    {strictCatalogTotal > 0 ? (
+                      strictCatalogTotal > strongBucketShown ? (
+                        <p className="text-sm leading-relaxed text-text-secondary">
+                          {S.searchV2VolumeShowingOf.replace(
+                            '{visible}',
+                            formatResultCountEsAr(strongBucketShown)
+                          ).replace(
+                            '{total}',
+                            formatResultCountEsAr(strictCatalogTotal)
+                          )}
+                        </p>
+                      ) : strongBucketShown >= strictCatalogTotal &&
+                        relaxedBucketShown === 0 ? (
+                        <p className="text-sm leading-relaxed text-text-secondary">
+                          {S.searchV2VolumeSame.replace(
+                            '{n}',
+                            formatResultCountEsAr(strictCatalogTotal)
+                          )}
+                        </p>
+                      ) : (
+                        <p className="text-sm leading-relaxed text-text-secondary">
+                          {S.searchV2VolumeCatalog.replace(
+                            '{total}',
+                            formatResultCountEsAr(strictCatalogTotal)
+                          )}
+                        </p>
+                      )
+                    ) : null}
+                    {relaxedBucketShown > 0 ? (
+                      <p className="text-xs leading-snug text-text-tertiary">
+                        {S.searchV2VolumeRelaxedSectionsNote}
+                      </p>
+                    ) : null}
+                  </div>
+                  {canLoadMoreResults ? (
+                    <div className="flex flex-col gap-2 border-t border-border/15 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-xs text-text-tertiary">{S.searchV2LoadMoreHint}</p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="h-9 shrink-0"
+                        onClick={() =>
+                          setListLimitPerBucket((n) => Math.min(40, n + 10))
+                        }
+                      >
+                        {S.searchV2LoadMore}
+                      </Button>
+                    </div>
+                  ) : listLimitPerBucket >= 40 && strictCatalogTotal > strongBucketShown ? (
+                    <p className="border-t border-border/15 pt-3 text-xs leading-snug text-text-tertiary">
+                      {S.searchV2LoadMoreAtCap}
+                    </p>
+                  ) : null}
+                </Card>
+              ) : null}
               {!isLoading &&
               data &&
               data.total > 0 &&
@@ -2203,11 +2301,6 @@ export function BuscarContent({
                   </>
                 )
               })()}
-              {data && data.total > 0 ? (
-                <p className="mt-4 border-t border-border/15 pt-4 text-center text-sm text-text-secondary">
-                  {S.searchV2TotalSummary.replace('{n}', String(data.total))}
-                </p>
-              ) : null}
             </div>
           ) : null}
             </>

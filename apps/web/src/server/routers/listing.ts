@@ -587,6 +587,7 @@ async function trySearchV2SqlFallback(
       near: 0,
       widened: 0,
     },
+    strictCatalogTotal: sqlTotal,
     orderedListingIds: strongSlice.map((row) =>
       String((row as unknown as { id: string }).id)
     ),
