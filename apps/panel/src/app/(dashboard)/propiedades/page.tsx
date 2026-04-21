@@ -72,6 +72,8 @@ export default function PropiedadesPage() {
           <option value="pending_review">En revisión</option>
           <option value="sold">Vendido / alquilado</option>
           <option value="withdrawn">Dado de baja</option>
+          <option value="rejected">Rechazado (validación)</option>
+          <option value="expired">Vencido (sin actualizar contenido)</option>
         </select>
       </div>
 

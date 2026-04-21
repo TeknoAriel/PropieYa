@@ -12,6 +12,10 @@
       "schedule": "0 5 * * *"
     },
     {
+      "path": "/api/cron/listing-stale-content",
+      "schedule": "30 5 * * *"
+    },
+    {
       "path": "/api/cron/sync-search",
       "schedule": "0 4 * * *"
     }

@@ -91,6 +91,14 @@ export const listings = pgTable(
     publishedAt: timestamp('published_at', { withTimezone: true }),
     lastValidatedAt: timestamp('last_validated_at', { withTimezone: true }),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
+    /**
+     * Última vez que cambió el **contenido** del aviso (texto, precio, fotos, tipo, ubicación, etc.).
+     * No se renueva con `view_count` ni con la sola renovación de vigencia (`renew`).
+     * Usado por el job de vencimiento por contenido obsoleto (LISTING_STALE_CONTENT_DAYS).
+     */
+    lastContentUpdatedAt: timestamp('last_content_updated_at', {
+      withTimezone: true,
+    }),
     renewalCount: integer('renewal_count').notNull().default(0),
 
     // Métricas
@@ -188,6 +196,40 @@ export const listingModerations = pgTable(
 )
 
 /**
+ * Transiciones de estado / validación con trazabilidad y payload hacia KiteProp (outbox).
+ */
+export const listingLifecycleEvents = pgTable(
+  'listing_lifecycle_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    listingId: uuid('listing_id')
+      .notNull()
+      .references(() => listings.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    source: varchar('source', { length: 40 }).notNull(),
+    actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
+    previousStatus: varchar('previous_status', { length: 50 }).notNull(),
+    newStatus: varchar('new_status', { length: 50 }).notNull(),
+    reasonCode: varchar('reason_code', { length: 80 }).notNull(),
+    reasonMessage: text('reason_message').notNull(),
+    details: jsonb('details').notNull().default({}),
+    kitepropPayload: jsonb('kiteprop_payload').notNull(),
+    kitepropWebhookStatus: varchar('kiteprop_webhook_status', { length: 20 })
+      .notNull()
+      .default('pending'),
+    kitepropWebhookError: text('kiteprop_webhook_error'),
+    kitepropSentAt: timestamp('kiteprop_sent_at', { withTimezone: true }),
+  },
+  (table) => ({
+    listingIdx: index('listing_lifecycle_events_listing_idx').on(table.listingId),
+    pendingWebhookIdx: index('listing_lifecycle_events_pending_webhook_idx').on(
+      table.kitepropWebhookStatus,
+      table.createdAt
+    ),
+  })
+)
+
+/**
  * Propiedades favoritas de usuarios
  */
 export const userFavorites = pgTable(
@@ -243,7 +285,18 @@ export const listingsRelations = relations(listings, ({ one, many }) => ({
   media: many(listingMedia),
   validations: many(listingValidations),
   moderations: many(listingModerations),
+  lifecycleEvents: many(listingLifecycleEvents),
 }))
+
+export const listingLifecycleEventsRelations = relations(
+  listingLifecycleEvents,
+  ({ one }) => ({
+    listing: one(listings, {
+      fields: [listingLifecycleEvents.listingId],
+      references: [listings.id],
+    }),
+  })
+)
 
 export const listingMediaRelations = relations(listingMedia, ({ one }) => ({
   listing: one(listings, {

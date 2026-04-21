@@ -5,7 +5,12 @@ export function formatListingVigencia(
   expiresAt: Date | string | null | undefined,
   status: string
 ): string {
-  if (status === 'draft' || status === 'pending_review') {
+  if (
+    status === 'draft' ||
+    status === 'pending_review' ||
+    status === 'rejected' ||
+    status === 'expired'
+  ) {
     return '—'
   }
   if (expiresAt == null) {

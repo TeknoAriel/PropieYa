@@ -1,18 +1,15 @@
 /**
- * Pipeline compartido: ingest JSON Kiteprop/Properstar + bajas en ES + publicación de borradores de import.
+ * Pipeline compartido: ingest JSON Kiteprop/Properstar + bajas en ES + flush de notificaciones
+ * de ciclo de vida (outbox → webhook KiteProp).
  * Lo usan GET /api/cron/import-yumblin y POST /api/webhooks/kiteprop-ingest.
  */
 
-import { and, eq } from 'drizzle-orm'
-
-import { db, listings, runYumblinImportSyncAllSources } from '@propieya/database'
-import { LISTING_VALIDITY, PORTAL_STATS_TERMINALS } from '@propieya/shared'
+import { db, runYumblinImportSyncAllSources } from '@propieya/database'
+import { PORTAL_STATS_TERMINALS } from '@propieya/shared'
 
 import { recordPortalStatsEvent } from '@/lib/analytics/record-portal-stats-event'
-import { removeListingFromSearch, syncListingToSearch } from '@/lib/search/sync'
-
-/** Por encima de esto, no indexamos ES ítem a ítem (evita timeout en Vercel); conviene cron `sync-search` o `pnpm reindex:es`. */
-const IMPORT_PUBLISH_INLINE_ES_MAX = 80
+import { flushPendingListingLifecycleWebhooks } from '@/lib/integrations/kiteprop-listing-lifecycle-webhook'
+import { removeListingFromSearch } from '@/lib/search/sync'
 
 export interface YumblinImportPipelineResult {
   totals: {
@@ -24,9 +21,10 @@ export interface YumblinImportPipelineResult {
     withdrawn: number
   }
   resultsCount: number
-  publishedCount: number
-  /** Si hubo muchas publicaciones, el índice ES queda para el job masivo. */
-  searchIndexDeferred?: boolean
+  /** Siempre false: la publicación masiva de drafts en pipeline quedó deprecada (validación en ingesta). */
+  searchIndexDeferred: false
+  /** Eventos de webhook procesados tras la ingesta (sent / skipped / errors). */
+  lifecycleWebhookFlush?: { processed: number; sent: number; skipped: number; errors: number }
 }
 
 export async function runYumblinImportPipeline(options: {
@@ -57,9 +55,11 @@ export async function runYumblinImportPipeline(options: {
   )
 
   const withdrawnIds = results.flatMap((r) => r.withdrawnListingIds)
-  if (withdrawnIds.length > 0) {
+  const deactivatedIds = results.flatMap((r) => r.deactivatedListingIds)
+  const searchRemovalIds = [...new Set([...withdrawnIds, ...deactivatedIds])]
+  if (searchRemovalIds.length > 0) {
     await Promise.allSettled(
-      withdrawnIds.map((id) =>
+      searchRemovalIds.map((id) =>
         removeListingFromSearch(id).catch((e) => {
           console.error('removeListingFromSearch failed for', id, e)
         })
@@ -67,59 +67,7 @@ export async function runYumblinImportPipeline(options: {
     )
   }
 
-  const drafts = await db
-    .select({ id: listings.id })
-    .from(listings)
-    .where(and(eq(listings.status, 'draft'), eq(listings.source, 'import')))
-
-  const now = new Date()
-  const expiresAt = new Date(
-    now.getTime() + LISTING_VALIDITY.MANUAL_VALIDITY_DAYS * 24 * 60 * 60 * 1000
-  )
-
-  let publishedCount = 0
-  let searchIndexDeferred = false
-
-  if (drafts.length > 0) {
-    publishedCount = drafts.length
-
-    if (drafts.length <= IMPORT_PUBLISH_INLINE_ES_MAX) {
-      const updated = await db
-        .update(listings)
-        .set({
-          status: 'active',
-          publishedAt: now,
-          lastValidatedAt: now,
-          expiresAt,
-          updatedAt: now,
-        })
-        .where(and(eq(listings.status, 'draft'), eq(listings.source, 'import')))
-        .returning({ id: listings.id })
-      const publishedIds = updated.map((r) => r.id)
-      await Promise.allSettled(
-        publishedIds.map((id) =>
-          syncListingToSearch(db, id).catch((e) => {
-            console.error('syncListingToSearch failed for', id, e)
-          })
-        )
-      )
-    } else {
-      searchIndexDeferred = true
-      await db
-        .update(listings)
-        .set({
-          status: 'active',
-          publishedAt: now,
-          lastValidatedAt: now,
-          expiresAt,
-          updatedAt: now,
-        })
-        .where(and(eq(listings.status, 'draft'), eq(listings.source, 'import')))
-      console.warn(
-        `[import-pipeline] Publicados ${drafts.length} avisos import; índice ES diferido (sync-search / reindex).`
-      )
-    }
-  }
+  const lifecycleWebhookFlush = await flushPendingListingLifecycleWebhooks(db, 50)
 
   recordPortalStatsEvent(db, {
     terminalId: PORTAL_STATS_TERMINALS.INGEST_RUN_COMPLETED,
@@ -131,8 +79,10 @@ export async function runYumblinImportPipeline(options: {
       withdrawn: totals.withdrawn,
       skippedInvalid: totals.skippedInvalid,
       skippedUnchangedBySourceTime: totals.skippedUnchangedBySourceTime,
-      publishedCount,
-      searchIndexDeferred: Boolean(searchIndexDeferred),
+      /** Histórico: antes se publicaban borradores import en bloque; la publicación pasa por validación en ingesta. */
+      publishedCount: 0,
+      searchIndexDeferred: false,
+      lifecycleWebhookFlush,
       feedSources: results.length,
     },
   })
@@ -140,7 +90,7 @@ export async function runYumblinImportPipeline(options: {
   return {
     totals,
     resultsCount: results.length,
-    publishedCount,
-    ...(searchIndexDeferred ? { searchIndexDeferred: true } : {}),
+    searchIndexDeferred: false,
+    lifecycleWebhookFlush,
   }
 }

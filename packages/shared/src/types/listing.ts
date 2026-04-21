@@ -30,13 +30,15 @@ export type OperationType = 'sale' | 'rent' | 'temporary_rent'
  */
 export type ListingStatus =
   | 'draft' // Borrador, no publicado
-  | 'pending_review' // Pendiente de moderación
-  | 'active' // Activo y visible
-  | 'expiring_soon' // Próximo a vencer (27+ días sin renovar)
-  | 'suspended' // Suspendido (30+ días sin renovar)
+  | 'pending_review' // Pendiente de moderación (equiv. operativo a pending_validation)
+  | 'active' // Activo y visible (publicado en portal)
+  | 'expiring_soon' // Próximo a vencer (renovación de vigencia)
+  | 'suspended' // Suspendido por vencimiento de vigencia sin renovar
   | 'archived' // Archivado (15+ días suspendido)
   | 'sold' // Vendido/alquilado
-  | 'withdrawn' // Dado de baja por el usuario
+  | 'withdrawn' // Dado de baja (p. ej. ya no está en feed import)
+  | 'rejected' // No publicable / validación fallida (integración)
+  | 'expired' // Publicación retirada por contenido obsoleto (stale)
 
 /**
  * Fuente del aviso

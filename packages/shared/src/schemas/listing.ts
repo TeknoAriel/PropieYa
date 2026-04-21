@@ -193,6 +193,8 @@ export const listingFiltersSchema = z.object({
       'archived',
       'sold',
       'withdrawn',
+      'rejected',
+      'expired',
     ])
     .optional(),
   propertyType: z.enum(propertyTypes).optional(),

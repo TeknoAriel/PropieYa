@@ -36,6 +36,8 @@ export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
   archived: 'Archivado',
   sold: 'Vendido/Alquilado',
   withdrawn: 'Dado de baja',
+  rejected: 'Rechazado (validación)',
+  expired: 'Vencido (sin actualizar contenido)',
 }
 
 /**
@@ -50,6 +52,8 @@ export const LISTING_STATUS_COLORS: Record<ListingStatus, string> = {
   archived: 'gray',
   sold: 'blue',
   withdrawn: 'gray',
+  rejected: 'red',
+  expired: 'orange',
 }
 
 /**

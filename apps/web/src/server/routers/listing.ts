@@ -24,10 +24,14 @@ import {
   listingsSelectPublic,
   organizations,
   organizationMemberships,
+  recordListingTransitionForKiteprop,
   searchHistory,
 } from '@propieya/database'
 import {
+  assessListingPublishability,
   createListingSchema,
+  getListingPublishConfigFromEnv,
+  listingRowToPublishabilityInput,
   updateListingSchema,
   LISTING_VALIDITY,
   mergePublicSearchFromQuery,
@@ -83,6 +87,26 @@ import {
   listingSearchInputSchema,
   type ListingSearchInput,
 } from './listing-search-input'
+
+function listingManualContentPatchDefined(
+  data: z.infer<typeof updateListingSchema>
+): boolean {
+  const keys: (keyof z.infer<typeof updateListingSchema>)[] = [
+    'propertyType',
+    'operationType',
+    'address',
+    'location',
+    'hideExactAddress',
+    'title',
+    'description',
+    'internalNotes',
+    'price',
+    'surface',
+    'rooms',
+    'features',
+  ]
+  return keys.some((k) => data[k] !== undefined)
+}
 
 const conversationalPriorFiltersSchema = z.object({
   q: z.string().max(200).optional(),
@@ -683,6 +707,56 @@ export const listingRouter = createTRPCRouter({
         throw new Error('Propiedad no encontrada')
       }
 
+      const publishConfig = getListingPublishConfigFromEnv()
+      const [mediaRow] = await ctx.db
+        .select({ mediaRows: count() })
+        .from(listingMedia)
+        .where(eq(listingMedia.listingId, input.id))
+      const mediaCount = Number(mediaRow?.mediaRows ?? 0)
+
+      const assessment = assessListingPublishability(
+        listingRowToPublishabilityInput(
+          {
+            operationType: existing.operationType,
+            propertyType: existing.propertyType,
+            priceAmount: existing.priceAmount,
+            priceCurrency: existing.priceCurrency,
+            title: existing.title,
+            description: existing.description,
+            address: existing.address,
+          },
+          mediaCount,
+          publishConfig
+        )
+      )
+
+      if (!assessment.ok) {
+        const primary = assessment.primaryIssue
+        if (primary) {
+          await recordListingTransitionForKiteprop({
+            listingId: input.id,
+            externalId: existing.externalId,
+            previousStatus: existing.status,
+            newStatus: existing.status,
+            source: 'validation',
+            reasonCode: primary.code,
+            reasonMessage: primary.message,
+            details: {
+              issues: assessment.issues.map((i) => ({
+                code: i.code,
+                message: i.message,
+                details: i.details,
+              })),
+            },
+            actorUserId: ctx.session.userId,
+          })
+        }
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: primary?.message ?? 'No se puede publicar este aviso.',
+        })
+      }
+
       const publishedAt = new Date()
       const expiresAt = new Date(
         publishedAt.getTime() +
@@ -696,6 +770,7 @@ export const listingRouter = createTRPCRouter({
           publishedAt,
           lastValidatedAt: new Date(),
           expiresAt,
+          lastContentUpdatedAt: publishedAt,
           updatedAt: new Date(),
         })
         .where(eq(listings.id, input.id))
@@ -725,11 +800,41 @@ export const listingRouter = createTRPCRouter({
         throw new Error('Propiedad no encontrada')
       }
 
-      const allowedStatuses = ['expiring_soon', 'suspended']
+      const allowedStatuses = ['expiring_soon', 'suspended', 'expired']
       if (!allowedStatuses.includes(existing.status)) {
         throw new Error(
-          'Solo se pueden renovar propiedades por vencer o suspendidas'
+          'Solo se pueden renovar propiedades por vencer, suspendidas o vencidas por contenido'
         )
+      }
+
+      const publishConfig = getListingPublishConfigFromEnv()
+      const [mediaRowRenew] = await ctx.db
+        .select({ mediaRows: count() })
+        .from(listingMedia)
+        .where(eq(listingMedia.listingId, input.id))
+      const mediaCountRenew = Number(mediaRowRenew?.mediaRows ?? 0)
+
+      const renewAssessment = assessListingPublishability(
+        listingRowToPublishabilityInput(
+          {
+            operationType: existing.operationType,
+            propertyType: existing.propertyType,
+            priceAmount: existing.priceAmount,
+            priceCurrency: existing.priceCurrency,
+            title: existing.title,
+            description: existing.description,
+            address: existing.address,
+          },
+          mediaCountRenew,
+          publishConfig
+        )
+      )
+      if (!renewAssessment.ok) {
+        const pr = renewAssessment.primaryIssue
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: pr?.message ?? 'No se puede renovar hasta corregir los datos del aviso.',
+        })
       }
 
       const now = new Date()
@@ -838,6 +943,8 @@ export const listingRouter = createTRPCRouter({
       'archived',
       'sold',
       'withdrawn',
+      'rejected',
+      'expired',
     ] as const
     for (const s of known) {
       if (byStatus[s] === undefined) byStatus[s] = 0
@@ -874,42 +981,105 @@ export const listingRouter = createTRPCRouter({
       const priceAmount = data.price?.amount ?? existing.priceAmount
       const pricePerM2 = surfaceTotal > 0 ? priceAmount / surfaceTotal : null
 
+      const contentPatch = listingManualContentPatchDefined(data)
+      const publishConfig = getListingPublishConfigFromEnv()
+      const [mediaRowUpd] = await ctx.db
+        .select({ mediaRows: count() })
+        .from(listingMedia)
+        .where(eq(listingMedia.listingId, input.id))
+      const mediaCountUpd = Number(mediaRowUpd?.mediaRows ?? 0)
+
+      const mergedForPublishability = {
+        operationType: data.operationType ?? existing.operationType,
+        propertyType: data.propertyType ?? existing.propertyType,
+        priceAmount,
+        priceCurrency: data.price?.currency ?? existing.priceCurrency,
+        title: data.title ?? existing.title,
+        description: data.description ?? existing.description,
+        address: data.address ?? existing.address,
+      }
+
+      const assessment = assessListingPublishability(
+        listingRowToPublishabilityInput(
+          mergedForPublishability,
+          mediaCountUpd,
+          publishConfig
+        )
+      )
+
+      const wasLive =
+        existing.status === 'active' || existing.status === 'expiring_soon'
+
+      const patch: Record<string, unknown> = {
+        propertyType: mergedForPublishability.propertyType,
+        operationType: mergedForPublishability.operationType,
+        address: mergedForPublishability.address,
+        locationLat: data.location?.lat ?? existing.locationLat,
+        locationLng: data.location?.lng ?? existing.locationLng,
+        hideExactAddress: data.hideExactAddress ?? existing.hideExactAddress,
+        title: mergedForPublishability.title,
+        description: mergedForPublishability.description,
+        internalNotes: data.internalNotes ?? existing.internalNotes,
+        priceAmount,
+        priceCurrency: mergedForPublishability.priceCurrency,
+        pricePerM2,
+        showPrice: data.price?.showPrice ?? existing.showPrice,
+        expenses: data.price?.expenses ?? existing.expenses,
+        expensesCurrency:
+          data.price?.expensesCurrency ?? existing.expensesCurrency,
+        surfaceTotal,
+        surfaceCovered: data.surface?.covered ?? existing.surfaceCovered,
+        surfaceSemicovered:
+          data.surface?.semicovered ?? existing.surfaceSemicovered,
+        surfaceLand: data.surface?.land ?? existing.surfaceLand,
+        bedrooms: data.rooms?.bedrooms ?? existing.bedrooms,
+        bathrooms: data.rooms?.bathrooms ?? existing.bathrooms,
+        toilettes: data.rooms?.toilettes ?? existing.toilettes,
+        garages: data.rooms?.garages ?? existing.garages,
+        totalRooms: data.rooms?.total ?? existing.totalRooms,
+        features: data.features ?? existing.features,
+        updatedAt: new Date(),
+      }
+
+      if (wasLive && !assessment.ok) {
+        patch.status = 'draft'
+        patch.publishedAt = null
+        patch.lastValidatedAt = null
+        patch.expiresAt = null
+        patch.lastContentUpdatedAt = null
+      } else if (wasLive && assessment.ok && contentPatch) {
+        patch.lastContentUpdatedAt = new Date()
+      }
+
       const [updated] = await ctx.db
         .update(listings)
-        .set({
-          propertyType: data.propertyType ?? existing.propertyType,
-          operationType: data.operationType ?? existing.operationType,
-          address: data.address ?? existing.address,
-          locationLat: data.location?.lat ?? existing.locationLat,
-          locationLng: data.location?.lng ?? existing.locationLng,
-          hideExactAddress: data.hideExactAddress ?? existing.hideExactAddress,
-          title: data.title ?? existing.title,
-          description: data.description ?? existing.description,
-          internalNotes: data.internalNotes ?? existing.internalNotes,
-          priceAmount,
-          priceCurrency: data.price?.currency ?? existing.priceCurrency,
-          pricePerM2,
-          showPrice: data.price?.showPrice ?? existing.showPrice,
-          expenses: data.price?.expenses ?? existing.expenses,
-          expensesCurrency:
-            data.price?.expensesCurrency ?? existing.expensesCurrency,
-          surfaceTotal,
-          surfaceCovered: data.surface?.covered ?? existing.surfaceCovered,
-          surfaceSemicovered:
-            data.surface?.semicovered ?? existing.surfaceSemicovered,
-          surfaceLand: data.surface?.land ?? existing.surfaceLand,
-          bedrooms: data.rooms?.bedrooms ?? existing.bedrooms,
-          bathrooms: data.rooms?.bathrooms ?? existing.bathrooms,
-          toilettes: data.rooms?.toilettes ?? existing.toilettes,
-          garages: data.rooms?.garages ?? existing.garages,
-          totalRooms: data.rooms?.total ?? existing.totalRooms,
-          features: data.features ?? existing.features,
-          updatedAt: new Date(),
-        })
+        .set(patch as typeof listings.$inferInsert)
         .where(eq(listings.id, input.id))
         .returning()
 
-      if (updated && updated.status === 'active') {
+      if (wasLive && !assessment.ok) {
+        await removeListingFromSearch(input.id).catch(() => {})
+        const primary = assessment.primaryIssue
+        if (primary) {
+          await recordListingTransitionForKiteprop({
+            listingId: input.id,
+            externalId: existing.externalId,
+            previousStatus: existing.status,
+            newStatus: 'draft',
+            source: 'validation',
+            reasonCode: primary.code,
+            reasonMessage: primary.message,
+            details: {
+              issues: assessment.issues.map((i) => ({
+                code: i.code,
+                message: i.message,
+                details: i.details,
+              })),
+            },
+            actorUserId: ctx.session.userId,
+          })
+        }
+      } else if (updated && updated.status === 'active') {
         syncListingToSearch(ctx.db, input.id).catch(() => {})
       }
       return updated

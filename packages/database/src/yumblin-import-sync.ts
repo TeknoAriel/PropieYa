@@ -1,8 +1,12 @@
 import {
+  assessListingPublishability,
   computeImportContentHash,
   extractListingsFromFeed,
   fetchYumblinFeedConditional,
+  getListingPublishConfigFromEnv,
+  LISTING_REASON_MESSAGES_ES,
   LISTING_VALIDITY,
+  listingRowToPublishabilityInput,
   mapYumblinItem,
   parseFeedItemSourceUpdatedAt,
   peekFeedExternalId,
@@ -17,6 +21,7 @@ import {
   resolveKitepropIngestMode,
   useKitepropPagedApiIngest,
 } from './kiteprop-api-ingest-fetch'
+import { recordListingTransitionForKiteprop } from './listing-lifecycle-record'
 import {
   importFeedSources,
   listingMedia,
@@ -34,21 +39,44 @@ function resolveIngestAsDraft(): boolean {
   return v === '1' || v === 'true' || v === 'yes'
 }
 
-function buildImportLifecycleFields(
+const LIFECYCLE_PREVIOUS_UNLISTED = 'unlisted'
+
+function importPublicationSet(
   now: Date,
-  ingestAsDraft: boolean
+  ingestAsDraft: boolean,
+  assessment: ReturnType<typeof assessListingPublishability>
 ): {
-  status: 'draft' | 'active'
+  status: 'draft' | 'active' | 'rejected'
   publishedAt: Date | null
   lastValidatedAt: Date | null
   expiresAt: Date | null
+  lastContentUpdatedAt: Date | null
 } {
+  if (!assessment.ok) {
+    if (ingestAsDraft) {
+      return {
+        status: 'draft',
+        publishedAt: null,
+        lastValidatedAt: null,
+        expiresAt: null,
+        lastContentUpdatedAt: null,
+      }
+    }
+    return {
+      status: 'rejected',
+      publishedAt: null,
+      lastValidatedAt: null,
+      expiresAt: null,
+      lastContentUpdatedAt: null,
+    }
+  }
   if (ingestAsDraft) {
     return {
       status: 'draft',
       publishedAt: null,
       lastValidatedAt: null,
       expiresAt: null,
+      lastContentUpdatedAt: null,
     }
   }
   const expiresAt = new Date(
@@ -59,7 +87,38 @@ function buildImportLifecycleFields(
     publishedAt: now,
     lastValidatedAt: now,
     expiresAt,
+    lastContentUpdatedAt: now,
   }
+}
+
+function assessMappedImport(
+  mapped: {
+    operationType: string
+    propertyType: string
+    priceAmount: number
+    priceCurrency: string
+    title: string
+    description: string
+    address: unknown
+    imageUrls: string[]
+  },
+  config: ReturnType<typeof getListingPublishConfigFromEnv>
+) {
+  return assessListingPublishability(
+    listingRowToPublishabilityInput(
+      {
+        operationType: mapped.operationType,
+        propertyType: mapped.propertyType,
+        priceAmount: mapped.priceAmount,
+        priceCurrency: mapped.priceCurrency,
+        title: mapped.title,
+        description: mapped.description,
+        address: mapped.address,
+      },
+      mapped.imageUrls.length,
+      config
+    )
+  )
 }
 
 export interface YumblinImportSyncOptions {
@@ -112,6 +171,8 @@ export interface YumblinImportSyncResult {
   }
   /** IDs dados de baja en este sync (para quitar de Elasticsearch). */
   withdrawnListingIds: string[]
+  /** Avisos que dejaron de estar publicados por validación en este sync (quitar de ES en pipeline). */
+  deactivatedListingIds: string[]
 }
 
 function resolveWithdrawOrgWideExplicit(options: YumblinImportSyncOptions): boolean {
@@ -231,7 +292,8 @@ export async function runYumblinImportSync(
   const includeUnassigned = options.assumeUnassignedBelongsToThisSource === true
   const now = new Date()
   const ingestAsDraft = resolveIngestAsDraft()
-  const lifecycle = buildImportLifecycleFields(now, ingestAsDraft)
+  const publishConfig = getListingPublishConfigFromEnv()
+  const deactivatedListingIds: string[] = []
 
   if (enforceInterval && source.lastSuccessfulSyncAt) {
     const intervalMs = getIntervalMs()
@@ -251,6 +313,7 @@ export async function runYumblinImportSync(
           withdrawn: 0,
         },
         withdrawnListingIds: [],
+        deactivatedListingIds: [],
       }
     }
   }
@@ -298,6 +361,7 @@ export async function runYumblinImportSync(
           withdrawn: 0,
         },
         withdrawnListingIds: [],
+        deactivatedListingIds: [],
       }
     }
   } else {
@@ -335,6 +399,7 @@ export async function runYumblinImportSync(
           withdrawn: 0,
         },
         withdrawnListingIds: [],
+        deactivatedListingIds: [],
       }
     }
 
@@ -369,6 +434,7 @@ export async function runYumblinImportSync(
           withdrawn: 0,
         },
         withdrawnListingIds: [],
+        deactivatedListingIds: [],
       }
     }
 
@@ -446,6 +512,8 @@ export async function runYumblinImportSync(
     }
 
     const hash = computeImportContentHash(mapped)
+    const assessment = assessMappedImport(mapped, publishConfig)
+    const pub = importPublicationSet(now, ingestAsDraft, assessment)
 
     if (!mapped.externalId) {
       const [inserted] = await db
@@ -478,12 +546,37 @@ export async function runYumblinImportSync(
           primaryImageUrl: mapped.primaryImageUrl,
           mediaCount: mapped.imageUrls.length,
           features: mapped.features ?? { amenities: mapped.amenities ?? [] },
-          ...lifecycle,
+          status: pub.status,
+          publishedAt: pub.publishedAt,
+          lastValidatedAt: pub.lastValidatedAt,
+          expiresAt: pub.expiresAt,
+          lastContentUpdatedAt: pub.lastContentUpdatedAt,
         })
         .returning()
 
       if (inserted && mapped.imageUrls.length > 0) {
         await replaceListingMedia(inserted.id, mapped.imageUrls)
+      }
+      if (inserted && !ingestAsDraft && !assessment.ok) {
+        const primary = assessment.primaryIssue
+        if (primary) {
+          await recordListingTransitionForKiteprop({
+            listingId: inserted.id,
+            externalId: mapped.externalId,
+            previousStatus: LIFECYCLE_PREVIOUS_UNLISTED,
+            newStatus: 'rejected',
+            source: 'sync',
+            reasonCode: primary.code,
+            reasonMessage: primary.message,
+            details: {
+              issues: assessment.issues.map((i) => ({
+                code: i.code,
+                message: i.message,
+                details: i.details,
+              })),
+            },
+          })
+        }
       }
       counts.imported++
       continue
@@ -521,7 +614,11 @@ export async function runYumblinImportSync(
           primaryImageUrl: mapped.primaryImageUrl,
           mediaCount: mapped.imageUrls.length,
           features: mapped.features ?? { amenities: mapped.amenities ?? [] },
-          ...lifecycle,
+          status: pub.status,
+          publishedAt: pub.publishedAt,
+          lastValidatedAt: pub.lastValidatedAt,
+          expiresAt: pub.expiresAt,
+          lastContentUpdatedAt: pub.lastContentUpdatedAt,
         })
         .returning()
 
@@ -529,6 +626,27 @@ export async function runYumblinImportSync(
         if (mapped.externalId) byExternal.set(mapped.externalId, inserted)
         if (mapped.imageUrls.length > 0) {
           await replaceListingMedia(inserted.id, mapped.imageUrls)
+        }
+        if (!ingestAsDraft && !assessment.ok) {
+          const primary = assessment.primaryIssue
+          if (primary) {
+            await recordListingTransitionForKiteprop({
+              listingId: inserted.id,
+              externalId: mapped.externalId,
+              previousStatus: LIFECYCLE_PREVIOUS_UNLISTED,
+              newStatus: 'rejected',
+              source: 'sync',
+              reasonCode: primary.code,
+              reasonMessage: primary.message,
+              details: {
+                issues: assessment.issues.map((i) => ({
+                  code: i.code,
+                  message: i.message,
+                  details: i.details,
+                })),
+              },
+            })
+          }
         }
       }
       counts.imported++
@@ -558,49 +676,112 @@ export async function runYumblinImportSync(
       continue
     }
 
-    const promoteDraftToActive =
-      !ingestAsDraft && existing.status === 'draft'
-        ? {
-            status: 'active' as const,
-            publishedAt: now,
-            lastValidatedAt: now,
-            expiresAt: new Date(
-              now.getTime() + LISTING_VALIDITY.MANUAL_VALIDITY_DAYS * 24 * 60 * 60 * 1000
-            ),
-          }
-        : {}
+    const wasLive =
+      existing.status === 'active' || existing.status === 'expiring_soon'
 
-    await db
-      .update(listings)
-      .set({
-        publisherId: mapped.publisherId,
-        importFeedSourceId: source.id,
-        importContentHash: hash,
-        importSourceUpdatedAt: feedUpdated ?? null,
-        propertyType: mapped.propertyType,
-        operationType: mapped.operationType,
-        address: mapped.address,
-        title: mapped.title,
-        description: mapped.description,
-        priceAmount: mapped.priceAmount,
-        priceCurrency: mapped.priceCurrency,
-        surfaceTotal: mapped.surfaceTotal,
-        surfaceCovered: mapped.surfaceCovered ?? null,
-        surfaceSemicovered: mapped.surfaceSemicovered ?? null,
-        surfaceLand: mapped.surfaceLand ?? null,
-        bedrooms: mapped.bedrooms,
-        bathrooms: mapped.bathrooms,
-        garages: mapped.garages ?? null,
-        totalRooms: mapped.totalRooms ?? null,
-        locationLat: mapped.locationLat,
-        locationLng: mapped.locationLng,
-        primaryImageUrl: mapped.primaryImageUrl,
-        mediaCount: mapped.imageUrls.length,
-        features: mapped.features ?? { amenities: mapped.amenities ?? [] },
-        updatedAt: now,
-        ...promoteDraftToActive,
-      })
-      .where(eq(listings.id, existing.id))
+    const baseUpdate = {
+      publisherId: mapped.publisherId,
+      importFeedSourceId: source.id,
+      importContentHash: hash,
+      importSourceUpdatedAt: feedUpdated ?? null,
+      propertyType: mapped.propertyType,
+      operationType: mapped.operationType,
+      address: mapped.address,
+      title: mapped.title,
+      description: mapped.description,
+      priceAmount: mapped.priceAmount,
+      priceCurrency: mapped.priceCurrency,
+      surfaceTotal: mapped.surfaceTotal,
+      surfaceCovered: mapped.surfaceCovered ?? null,
+      surfaceSemicovered: mapped.surfaceSemicovered ?? null,
+      surfaceLand: mapped.surfaceLand ?? null,
+      bedrooms: mapped.bedrooms,
+      bathrooms: mapped.bathrooms,
+      garages: mapped.garages ?? null,
+      totalRooms: mapped.totalRooms ?? null,
+      locationLat: mapped.locationLat,
+      locationLng: mapped.locationLng,
+      primaryImageUrl: mapped.primaryImageUrl,
+      mediaCount: mapped.imageUrls.length,
+      features: mapped.features ?? { amenities: mapped.amenities ?? [] },
+      updatedAt: now,
+    }
+
+    if (wasLive && !assessment.ok) {
+      await db
+        .update(listings)
+        .set({
+          ...baseUpdate,
+          status: 'draft',
+          publishedAt: null,
+          lastValidatedAt: null,
+          expiresAt: null,
+          lastContentUpdatedAt: null,
+        })
+        .where(eq(listings.id, existing.id))
+      deactivatedListingIds.push(existing.id)
+      const primary = assessment.primaryIssue
+      if (primary) {
+        await recordListingTransitionForKiteprop({
+          listingId: existing.id,
+          externalId: mapped.externalId,
+          previousStatus: existing.status,
+          newStatus: 'draft',
+          source: 'sync',
+          reasonCode: primary.code,
+          reasonMessage: primary.message,
+          details: {
+            issues: assessment.issues.map((i) => ({
+              code: i.code,
+              message: i.message,
+              details: i.details,
+            })),
+          },
+        })
+      }
+    } else if (wasLive && assessment.ok) {
+      await db
+        .update(listings)
+        .set({
+          ...baseUpdate,
+          lastContentUpdatedAt: now,
+        })
+        .where(eq(listings.id, existing.id))
+    } else {
+      await db
+        .update(listings)
+        .set({
+          ...baseUpdate,
+          status: pub.status,
+          publishedAt: pub.publishedAt,
+          lastValidatedAt: pub.lastValidatedAt,
+          expiresAt: pub.expiresAt,
+          lastContentUpdatedAt: pub.lastContentUpdatedAt,
+        })
+        .where(eq(listings.id, existing.id))
+
+      if (!ingestAsDraft && !assessment.ok && pub.status === 'rejected') {
+        const primary = assessment.primaryIssue
+        if (primary) {
+          await recordListingTransitionForKiteprop({
+            listingId: existing.id,
+            externalId: mapped.externalId,
+            previousStatus: existing.status,
+            newStatus: 'rejected',
+            source: 'sync',
+            reasonCode: primary.code,
+            reasonMessage: primary.message,
+            details: {
+              issues: assessment.issues.map((i) => ({
+                code: i.code,
+                message: i.message,
+                details: i.details,
+              })),
+            },
+          })
+        }
+      }
+    }
 
     await replaceListingMedia(existing.id, mapped.imageUrls)
     byExternal.set(mapped.externalId, {
@@ -627,7 +808,11 @@ export async function runYumblinImportSync(
           : eq(listings.importFeedSourceId, source.id)
 
     const toWithdraw = await db
-      .select({ id: listings.id })
+      .select({
+        id: listings.id,
+        externalId: listings.externalId,
+        status: listings.status,
+      })
       .from(listings)
       .where(
         and(
@@ -642,6 +827,18 @@ export async function runYumblinImportSync(
 
     if (toWithdraw.length > 0) {
       withdrawnListingIds = toWithdraw.map((r) => r.id)
+      for (const row of toWithdraw) {
+        await recordListingTransitionForKiteprop({
+          listingId: row.id,
+          externalId: row.externalId,
+          previousStatus: row.status,
+          newStatus: 'withdrawn',
+          source: 'import_withdraw',
+          reasonCode: 'IMPORT_FEED_WITHDRAWN',
+          reasonMessage: LISTING_REASON_MESSAGES_ES.IMPORT_FEED_WITHDRAWN,
+          details: {},
+        })
+      }
       await db
         .update(listings)
         .set({ status: 'withdrawn', updatedAt: now })
@@ -651,8 +848,7 @@ export async function runYumblinImportSync(
   }
 
   /**
-   * Import completo: todos los `draft` de este feed en org pasan a `active` (histórico de catálogo).
-   * Import parcial (`limit`): solo `external_id` presentes en el lote, para no publicar fuera del slice.
+   * Promoción controlada: solo borradores import que pasan validación de publicabilidad.
    */
   if (!ingestAsDraft) {
     const promoteScope = includeUnassigned
@@ -670,7 +866,34 @@ export async function runYumblinImportSync(
       promoteScope
     )
 
-    if (isPartialImport && extIdsForQuery.length > 0) {
+    const partialFilter =
+      isPartialImport && extIdsForQuery.length > 0
+        ? inArray(listings.externalId, extIdsForQuery)
+        : undefined
+
+    const draftCandidates = await db
+      .select()
+      .from(listings)
+      .where(partialFilter ? and(promoteBase, partialFilter) : promoteBase)
+
+    for (const row of draftCandidates) {
+      const rowAssessment = assessListingPublishability(
+        listingRowToPublishabilityInput(
+          {
+            operationType: row.operationType,
+            propertyType: row.propertyType,
+            priceAmount: row.priceAmount,
+            priceCurrency: row.priceCurrency,
+            title: row.title,
+            description: row.description,
+            address: row.address,
+          },
+          row.mediaCount,
+          publishConfig
+        )
+      )
+      if (!rowAssessment.ok) continue
+
       await db
         .update(listings)
         .set({
@@ -678,20 +901,10 @@ export async function runYumblinImportSync(
           publishedAt: now,
           lastValidatedAt: now,
           expiresAt: expiresAtBulk,
+          lastContentUpdatedAt: now,
           updatedAt: now,
         })
-        .where(and(promoteBase, inArray(listings.externalId, extIdsForQuery)))
-    } else if (!isPartialImport) {
-      await db
-        .update(listings)
-        .set({
-          status: 'active',
-          publishedAt: now,
-          lastValidatedAt: now,
-          expiresAt: expiresAtBulk,
-          updatedAt: now,
-        })
-        .where(promoteBase)
+        .where(eq(listings.id, row.id))
     }
   }
 
@@ -713,6 +926,7 @@ export async function runYumblinImportSync(
     skipped: false,
     counts,
     withdrawnListingIds,
+    deactivatedListingIds,
   }
 }
 

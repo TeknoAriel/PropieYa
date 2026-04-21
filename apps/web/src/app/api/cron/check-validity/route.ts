@@ -9,13 +9,15 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 import { and, eq, gt, inArray, lt, lte } from 'drizzle-orm'
 
-import { db, listings, users } from '@propieya/database'
+import { db, listings, recordListingTransitionForKiteprop, users } from '@propieya/database'
 import {
+  LISTING_REASON_MESSAGES_ES,
   LISTING_VALIDITY,
   type ListingStatus,
 } from '@propieya/shared'
 
 import { sendExpiringSoonEmail } from '@/lib/email'
+import { flushPendingListingLifecycleWebhooks } from '@/lib/integrations/kiteprop-listing-lifecycle-webhook'
 import { removeListingFromSearch } from '@/lib/search/sync'
 
 export const runtime = 'nodejs'
@@ -37,7 +39,11 @@ export async function GET(req: NextRequest) {
 
     // 1. Suspender: expiring_soon o active con expiresAt < now
     const toSuspend = await db
-      .select({ id: listings.id })
+      .select({
+        id: listings.id,
+        status: listings.status,
+        externalId: listings.externalId,
+      })
       .from(listings)
       .where(
         and(
@@ -54,11 +60,23 @@ export async function GET(req: NextRequest) {
           status: 'suspended' as ListingStatus,
           updatedAt: now,
         })
-        .where(eq(listings.id, row.id))
+        .where(
+          and(eq(listings.id, row.id), inArray(listings.status, ['active', 'expiring_soon']))
+        )
         .returning({ id: listings.id })
       if (updated) {
         suspended++
         await removeListingFromSearch(row.id)
+        await recordListingTransitionForKiteprop({
+          listingId: row.id,
+          externalId: row.externalId,
+          previousStatus: row.status,
+          newStatus: 'suspended',
+          source: 'expiration_job',
+          reasonCode: 'LISTING_VALIDITY_EXPIRED',
+          reasonMessage: LISTING_REASON_MESSAGES_ES.LISTING_VALIDITY_EXPIRED,
+          details: { rule: 'expiresAt < now' },
+        })
       }
     }
 
@@ -105,9 +123,12 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const webhookFlush = await flushPendingListingLifecycleWebhooks(db, 50)
+
     return NextResponse.json({
       suspended,
       expiringSoon,
+      lifecycleWebhookFlush: webhookFlush,
     })
   } catch (err) {
     console.error('Cron check-validity:', err)
