@@ -34,6 +34,8 @@
     "audit:listing-types": "pnpm exec tsx scripts/audit-listing-property-types.ts",
     "reclassify:listing-types": "pnpm exec tsx scripts/reclassify-listing-property-types.ts",
     "audit:yumblin-fields": "pnpm exec tsx scripts/audit-yumblin-fields.ts",
+    "audit:prod:leads": "pnpm exec tsx scripts/audit-prod-leads-schema.ts",
+    "apply:prod:leads-schema": "pnpm exec tsx scripts/apply-prod-leads-schema-fix.ts",
     "diff:import-types": "pnpm exec tsx scripts/diff-import-property-types.ts",
     "sample:feed-types": "pnpm exec tsx scripts/sample-feed-property-types.ts",
     "verificar:prod": "bash scripts/verificar-produccion.sh",
@@ -44,11 +46,12 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "argon2": "^0.31.2",
-    "dotenv": "^16.4.0",
     "@commitlint/cli": "^19.0.0",
     "@commitlint/config-conventional": "^19.0.0",
+    "argon2": "^0.31.2",
+    "dotenv": "^16.4.0",
     "husky": "^9.0.0",
+    "postgres": "3.4.8",
     "prettier": "^3.2.0",
     "prettier-plugin-tailwindcss": "^0.5.0",
     "tsx": "^4.7.0",
