@@ -36,6 +36,7 @@ import type {
 import { bumpListingFichaEngagement } from '@/lib/listing-ficha-engagement'
 import { trpc } from '@/lib/trpc'
 import { useListingFlowReturn } from '@/lib/use-listing-flow-return'
+import { preferredWhatsappPhone } from '@/lib/integrations/kiteprop-listing-contact'
 
 function FieldSummary({ field }: { field: ListingField | null | undefined }) {
   if (!field) return null
@@ -313,6 +314,14 @@ function ContactConversionBanner({
   )
 }
 
+function whatsappHref(phoneRaw: string, listingTitle: string): string {
+  const digits = phoneRaw.replace(/[^\d+]/g, '')
+  const msg = encodeURIComponent(
+    `Hola, te escribo por el aviso "${listingTitle}" que vi en Propieya.`
+  )
+  return `https://wa.me/${digits.replace(/^\+/, '')}?text=${msg}`
+}
+
 function CommercialSubSummary({
   commercialSub,
 }: {
@@ -468,6 +477,13 @@ export default function PropiedadPage() {
       amenities?: string[]
     } | null
     media?: ListingMedia[]
+    assignedContact?: {
+      id: string | null
+      full_name: string | null
+      email: string | null
+      phone: string | null
+      phone_whatsapp: string | null
+    } | null
   }
 
   // TRPC + JSONB puede tipar `{}`. Convertimos a un shape “de UI”.
@@ -517,6 +533,11 @@ export default function PropiedadPage() {
     : []
 
   const mainImage = images[0]
+  const assignedContact = listing.assignedContact ?? null
+  const assignedWhatsappOrPhone = preferredWhatsappPhone(assignedContact)
+  const canShowWhatsappCta =
+    Boolean(assignedWhatsappOrPhone) &&
+    assignedWhatsappOrPhone !== null
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-primary">
@@ -678,6 +699,22 @@ export default function PropiedadPage() {
                 </div>
                 <div className="space-y-2.5 p-4 md:p-5">
                   <p className="text-sm leading-relaxed text-text-secondary">{L.sidebarLead}</p>
+                  {assignedContact ? (
+                    <div className="rounded-lg border border-border/40 bg-surface-secondary/50 px-3 py-2">
+                      <p className="text-xs uppercase tracking-wide text-text-tertiary">
+                        Contacto del aviso
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-text-primary">
+                        {assignedContact.full_name ?? 'Equipo comercial'}
+                      </p>
+                      {assignedContact.email ? (
+                        <p className="text-xs text-text-secondary">{assignedContact.email}</p>
+                      ) : null}
+                      {assignedContact.phone ? (
+                        <p className="text-xs text-text-secondary">{assignedContact.phone}</p>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <p
                     className="text-xs leading-relaxed text-text-secondary border-l-2 border-brand-primary/35 pl-2.5"
                     role="note"
@@ -695,6 +732,22 @@ export default function PropiedadPage() {
                       <MessageSquare className="mr-2 h-4 w-4 shrink-0" />
                       {L.contactPrimaryCta}
                     </Button>
+                    {canShowWhatsappCta ? (
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="default"
+                        className="w-full font-medium transition-transform active:scale-[0.985]"
+                      >
+                        <a
+                          href={whatsappHref(assignedWhatsappOrPhone!, listing.title)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          WhatsApp del aviso
+                        </a>
+                      </Button>
+                    ) : null}
                     <Button
                       variant="outline"
                       size="default"
@@ -814,6 +867,8 @@ export default function PropiedadPage() {
       <ContactModal
         listingId={listing.id}
         listingTitle={listing.title}
+        listingExternalId={listing.externalId ?? null}
+        assignedContact={assignedContact}
         open={contactOpen}
         onOpenChange={setContactOpen}
       />

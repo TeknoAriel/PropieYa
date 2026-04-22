@@ -6,14 +6,14 @@
  *
  * Casos:
  * 1) getProperties (REST)
- * 2) getLeads (REST)
- * 3) createLead simulado (solo si KITEPROP_SMOKE_CREATE_LEAD=1)
+ * 2) getMessages (REST)
+ * 3) createContact simulado (solo si KITEPROP_SMOKE_CREATE_LEAD=1)
  * 4) error sin API key
  */
 
 import {
-  createLead,
-  getLeads,
+  createContact,
+  getMessages,
   getProfile,
   getProperties,
   isKitepropConfigured,
@@ -45,8 +45,8 @@ async function main() {
   const props = await getProperties({ per_page: 2, page: 1 })
   console.log(props.ok ? `OK status=${props.status}` : props.message)
 
-  section('3) Leads (REST)')
-  const leads = await getLeads({ per_page: 2, page: 1 })
+  section('3) Mensajes/consultas (REST)')
+  const leads = await getMessages({ per_page: 2, page: 1 })
   console.log(leads.ok ? `OK status=${leads.status}` : leads.message)
 
   section('4) MCP / fallback — propiedades (prompt corto)')
@@ -58,9 +58,9 @@ async function main() {
   console.log('source:', mcpL.source, 'rows:', mcpL.results.length, '|', mcpL.summary)
 
   if (process.env.KITEPROP_SMOKE_CREATE_LEAD === '1') {
-    section('6) createLead (KITEPROP_SMOKE_CREATE_LEAD=1)')
+    section('6) createContact (KITEPROP_SMOKE_CREATE_LEAD=1)')
     const ext = `smoke-${Date.now()}`
-    const created = await createLead({
+    const created = await createContact({
       source: 'propieya',
       external_lead_id: ext,
       name: 'Smoke Propieya',
@@ -69,7 +69,7 @@ async function main() {
     })
     console.log(created.ok ? `OK status=${created.status}` : created.message)
   } else {
-    section('6) createLead omitido (definí KITEPROP_SMOKE_CREATE_LEAD=1 para probar)')
+    section('6) createContact omitido (definí KITEPROP_SMOKE_CREATE_LEAD=1 para probar)')
   }
 
   console.log('\nSmoke terminado.')

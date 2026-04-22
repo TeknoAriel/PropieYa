@@ -3,7 +3,7 @@
  * Documentación: https://mcp.kiteprop.com — herramientas `search_properties`, `search_messages`.
  */
 
-import { getLeads, getProperties } from './kiteprop-client'
+import { getMessages, getProperties } from './kiteprop-client'
 
 /** Por defecto 10s; override con `KITEPROP_MCP_FETCH_TIMEOUT_MS` (1000–120000). */
 const DEFAULT_MCP_FETCH_TIMEOUT_MS = 10_000
@@ -222,7 +222,7 @@ export async function queryPropertiesFromMCP(prompt: string): Promise<KitepropMc
 }
 
 /**
- * Leads / mensajes vía MCP `search_messages` o REST `getLeads`.
+ * Leads / mensajes vía MCP `search_messages` o REST `getMessages`.
  */
 export async function queryLeadsFromMCP(prompt: string): Promise<KitepropMcpQueryResult> {
   const trimmed = prompt.trim()
@@ -252,7 +252,7 @@ export async function queryLeadsFromMCP(prompt: string): Promise<KitepropMcpQuer
     console.warn('[kiteprop-mcp] search_messages fallback REST:', mcp.error)
   }
 
-  const rest = await getLeads({
+  const rest = await getMessages({
     q: trimmed,
     search: trimmed,
   })

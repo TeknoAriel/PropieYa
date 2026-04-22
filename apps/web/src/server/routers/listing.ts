@@ -67,6 +67,7 @@ import {
   searchListingsLayered,
   type ListingSearchUX,
 } from '../../lib/search/search-layered'
+import { resolveAssignedContactForListing } from '../../lib/integrations/kiteprop-listing-contact'
 import {
   runListingSearchV2,
   searchV2StrongListingSearchFilters,
@@ -1182,9 +1183,16 @@ export const listingRouter = createTRPCRouter({
         orderBy: [desc(listingMedia.isPrimary), listingMedia.order],
       })
 
+      const assignedContact = await resolveAssignedContactForListing({
+        source: listing.source,
+        externalId: listing.externalId,
+        features: listing.features,
+      })
+
       return {
         ...listing,
         media,
+        assignedContact,
       }
     }),
 

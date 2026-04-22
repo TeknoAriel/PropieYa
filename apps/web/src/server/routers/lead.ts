@@ -45,7 +45,12 @@ export const leadRouter = createTRPCRouter({
         listingId: z.string().uuid(),
         contactName: z.string().min(1).max(255),
         contactEmail: z.string().email().max(255),
+        contactPhone: z.string().min(3).max(50).optional(),
         message: z.string().min(10).max(2000),
+        pageUrl: z.string().url().max(2048).optional(),
+        propertyCode: z.string().max(255).optional(),
+        assignedUserId: z.string().max(255).optional(),
+        assignedUserName: z.string().max(255).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -77,12 +82,19 @@ export const leadRouter = createTRPCRouter({
           listingId: input.listingId,
           contactName: input.contactName.trim(),
           contactEmail: input.contactEmail.trim().toLowerCase(),
+          contactPhone: input.contactPhone?.trim() || null,
           message: input.message.trim(),
           source: 'listing_contact',
           status: 'new',
           accessStatus: paid ? 'activated' : 'pending',
           activatedAt: paid ? now : null,
           activationMode: paid ? 'plan' : null,
+          enrichment: {
+            pageUrl: input.pageUrl ?? null,
+            propertyCode: input.propertyCode ?? null,
+            assignedUserId: input.assignedUserId ?? null,
+            assignedUserName: input.assignedUserName ?? null,
+          },
         })
         .returning()
 

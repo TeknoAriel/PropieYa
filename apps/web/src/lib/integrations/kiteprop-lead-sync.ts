@@ -3,7 +3,11 @@ import { eq } from 'drizzle-orm'
 import type { Database } from '@propieya/database'
 import { leads, listings } from '@propieya/database'
 
-import { createLead, isKitepropConfigured } from './kiteprop-client'
+import { isKitepropConfigured } from './kiteprop-client'
+import {
+  createPropertyInquiryInKiteProp,
+  getPropertyAssignedContact,
+} from './kiteprop-properties'
 
 type KitepropLeadMeta = {
   syncedAt?: string
@@ -46,6 +50,7 @@ export async function syncActivatedLeadToKiteprop(
       listingId: leads.listingId,
       listingTitle: listings.title,
       listingExternalId: listings.externalId,
+      listingFeatures: listings.features,
     })
     .from(leads)
     .innerJoin(listings, eq(leads.listingId, listings.id))
@@ -68,25 +73,36 @@ export async function syncActivatedLeadToKiteprop(
 
   const attemptAt = new Date().toISOString()
 
-  const payload: Record<string, unknown> = {
-    source: 'propieya',
-    external_lead_id: row.id,
-    propieya_listing_id: row.listingId,
+  const assignedContact = getPropertyAssignedContact(
+    (row.listingFeatures as Record<string, unknown>) ?? {}
+  )
+
+  const inquiry = await createPropertyInquiryInKiteProp({
+    property_id: row.listingExternalId ?? undefined,
+    property_code: row.listingExternalId ?? undefined,
+    property_title: row.listingTitle,
+    source: 'Propieya',
+    page_url:
+      (row.enrichment as Record<string, unknown> | null | undefined)?.pageUrl as
+        | string
+        | undefined,
+    lead_intent_id: row.id,
     name: row.contactName,
     email: row.contactEmail,
     phone: row.contactPhone ?? undefined,
     message: row.message,
-    property_title: row.listingTitle,
-    property_external_id: row.listingExternalId ?? undefined,
-  }
+    assigned_user_id: assignedContact?.id ?? undefined,
+    assigned_user_name: assignedContact?.full_name ?? undefined,
+  })
 
-  const result = await createLead(payload)
-
-  if (!result.ok) {
-    console.error('[kiteprop-lead-sync] createLead falló', {
+  if (!inquiry.ok) {
+    if (inquiry.reason === 'contract_not_confirmed' || inquiry.reason === 'not_configured') {
+      return
+    }
+    console.error('[kiteprop-lead-sync] createPropertyInquiryInKiteProp falló', {
       leadId,
-      status: result.status,
-      message: result.message,
+      reason: inquiry.reason,
+      message: inquiry.message,
     })
     await db
       .update(leads)
@@ -96,7 +112,7 @@ export async function syncActivatedLeadToKiteprop(
           kiteprop: {
             ...meta,
             syncStatus: 'error' as const,
-            lastError: result.message,
+            lastError: inquiry.message,
             lastAttemptAt: attemptAt,
           },
         },
@@ -105,26 +121,13 @@ export async function syncActivatedLeadToKiteprop(
     return
   }
 
-  const data = result.data
-  let remoteId: string | null = null
-  if (data && typeof data === 'object') {
-    const o = data as Record<string, unknown>
-    const id = o.id ?? o.data
-    if (typeof id === 'string' || typeof id === 'number') {
-      remoteId = String(id)
-    } else if (id && typeof id === 'object' && 'id' in id) {
-      const inner = (id as Record<string, unknown>).id
-      if (typeof inner === 'string' || typeof inner === 'number') remoteId = String(inner)
-    }
-  }
+  const remoteId = inquiry.contactId ?? null
+  const preview = JSON.stringify({ mode: inquiry.mode, contactId: inquiry.contactId ?? null })
 
-  const preview =
-    typeof data === 'object' ? JSON.stringify(data).slice(0, 2000) : String(data).slice(0, 500)
-
-  console.info('[kiteprop-lead-sync] createLead OK', {
+  console.info('[kiteprop-lead-sync] createPropertyInquiryInKiteProp OK', {
     leadId,
     remoteId,
-    httpStatus: result.status,
+    mode: inquiry.mode,
   })
 
   await db

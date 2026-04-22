@@ -19,6 +19,14 @@ import { trpc } from '@/lib/trpc'
 interface ContactModalProps {
   listingId: string
   listingTitle: string
+  listingExternalId?: string | null
+  assignedContact?: {
+    id: string | null
+    full_name: string | null
+    email: string | null
+    phone: string | null
+    phone_whatsapp: string | null
+  } | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -26,11 +34,14 @@ interface ContactModalProps {
 export function ContactModal({
   listingId,
   listingTitle,
+  listingExternalId,
+  assignedContact,
   open,
   onOpenChange,
 }: ContactModalProps) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [message, setMessage] = useState('')
 
   const [success, setSuccess] = useState(false)
@@ -39,6 +50,7 @@ export function ContactModal({
       setSuccess(true)
       setName('')
       setEmail('')
+      setPhone('')
       setMessage('')
       setTimeout(() => {
         setSuccess(false)
@@ -49,7 +61,18 @@ export function ContactModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    createLead.mutate({ listingId, contactName: name, contactEmail: email, message })
+    const pageUrl = typeof window !== 'undefined' ? window.location.href : undefined
+    createLead.mutate({
+      listingId,
+      contactName: name,
+      contactEmail: email,
+      contactPhone: phone.trim() ? phone.trim() : undefined,
+      message,
+      pageUrl,
+      propertyCode: listingExternalId ?? undefined,
+      assignedUserId: assignedContact?.id ?? undefined,
+      assignedUserName: assignedContact?.full_name ?? undefined,
+    })
   }
 
   return (
@@ -99,6 +122,17 @@ export function ContactModal({
               placeholder={L.modalEmailPlaceholder}
               required
               maxLength={255}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="contact-phone">Teléfono (opcional)</Label>
+            <Input
+              id="contact-phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+54 9 11 1234-5678"
+              maxLength={50}
               className="mt-1"
             />
           </div>

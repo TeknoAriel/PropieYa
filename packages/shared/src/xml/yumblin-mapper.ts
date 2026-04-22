@@ -383,6 +383,68 @@ export function mapYumblinItem(
     }
   }
 
+  const agentBlock = item.agent as Record<string, unknown> | undefined
+  const fallbackContact =
+    (item.assigned_user as Record<string, unknown> | undefined) ??
+    (item.user as Record<string, unknown> | undefined)
+  const assignedRaw =
+    (agentBlock && typeof agentBlock === 'object' && !Array.isArray(agentBlock)
+      ? agentBlock
+      : fallbackContact) ?? null
+  let kitepropAssignedContact: Record<string, unknown> | null = null
+  if (assignedRaw) {
+    const cid =
+      assignedRaw.id ??
+      assignedRaw.user_id ??
+      assignedRaw.agent_id
+    const cname =
+      assignedRaw.name ??
+      assignedRaw.full_name ??
+      assignedRaw.fullName
+    const cemail = assignedRaw.email
+    const cphone =
+      assignedRaw.phone ??
+      assignedRaw.mobile_phone
+    const cwhatsapp =
+      assignedRaw.phone_whatsapp ??
+      assignedRaw.whatsapp ??
+      assignedRaw.whatsapp_phone
+    if (
+      cid != null ||
+      cname != null ||
+      cemail != null ||
+      cphone != null ||
+      cwhatsapp != null
+    ) {
+      kitepropAssignedContact = {
+        ...(cid != null ? { id: String(cid) } : {}),
+        ...(cname != null ? { full_name: String(cname) } : {}),
+        ...(cemail != null ? { email: String(cemail) } : {}),
+        ...(cphone != null ? { phone: String(cphone) } : {}),
+        ...(cwhatsapp != null ? { phone_whatsapp: String(cwhatsapp) } : {}),
+      }
+    }
+  }
+  if (!kitepropAssignedContact && kitepropAgency) {
+    kitepropAssignedContact = {
+      ...(kitepropAgency.id != null
+        ? { id: String(kitepropAgency.id) }
+        : {}),
+      ...(kitepropAgency.name != null
+        ? { full_name: String(kitepropAgency.name) }
+        : {}),
+      ...(kitepropAgency.email != null
+        ? { email: String(kitepropAgency.email) }
+        : {}),
+      ...(kitepropAgency.phone != null
+        ? { phone: String(kitepropAgency.phone) }
+        : {}),
+      ...(kitepropAgency.phone_whatsapp != null
+        ? { phone_whatsapp: String(kitepropAgency.phone_whatsapp) }
+        : {}),
+    }
+  }
+
   const features: Record<string, unknown> = {
     amenities,
     floor: Number.isFinite(floorNum) ? floorNum : null,
@@ -391,6 +453,7 @@ export function mapYumblinItem(
     escalera: escalera ?? null,
     ...(feedRawTokens.length > 0 ? { feedAmenityRaw: feedRawTokens } : {}),
     ...(kitepropAgency ? { kitepropAgency } : {}),
+    ...(kitepropAssignedContact ? { kitepropAssignedContact } : {}),
   }
 
   return {
