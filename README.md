@@ -77,11 +77,11 @@ pnpm install
 docker compose up -d
 
 # 4. Configurar variables de entorno
-cp .env.example .env.local
-# Editar .env.local con tus valores
+cp .env.example .env
+# Editar .env (DATABASE_URL a localhost:5433 para Docker). Para Next, también apps/web/.env.local si hace falta.
 
-# 5. Aplicar schema de base de datos
-pnpm db:push
+# 5. Aplicar schema (Drizzle + parches SQL idempotentes)
+pnpm db:schema:local
 
 # 6. Iniciar desarrollo
 pnpm dev
@@ -93,7 +93,7 @@ pnpm dev
 |----------|-----|
 | Portal web | http://localhost:3010 |
 | Panel B2B | http://localhost:3011 |
-| PostgreSQL | localhost:5432 |
+| PostgreSQL | localhost:5433 |
 | Elasticsearch | http://localhost:9200 |
 | Redis | localhost:6379 |
 | MinIO Console | http://localhost:9001 |
@@ -110,10 +110,13 @@ pnpm lint             # Lint de todo el monorepo
 pnpm typecheck        # Type check de todo el monorepo
 
 # Base de datos
+pnpm db:schema:local  # Push Drizzle + docs/sql (recomendado en local)
+pnpm db:sql:apply     # Solo parches SQL (manifest)
 pnpm db:generate      # Generar migraciones
 pnpm db:migrate       # Aplicar migraciones
-pnpm db:push          # Push directo del schema (dev)
+pnpm db:push          # Solo push Drizzle (sin parches manifest)
 pnpm db:studio        # Abrir Drizzle Studio
+pnpm infra:test       # Docker + schema + build + health (smoke)
 
 # Otros
 pnpm clean            # Limpiar node_modules y caches

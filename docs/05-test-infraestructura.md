@@ -18,7 +18,7 @@ pnpm run infra:test
 4. Verifica/copia `.env`
 5. Instala dependencias (`pnpm install`)
 6. Ejecuta **typecheck**
-7. Aplica schema a la DB (`pnpm db:push`, config `strict: false` en drizzle para CI)
+7. Aplica schema a la DB (`pnpm db:schema:local`: `drizzle-kit push` + parches `docs/sql/manifest.txt`)
 8. **Build** de todas las apps (`pnpm build`)
 9. Arranca la app web, llama a `/api/health`, verifica respuesta
 10. Detiene el servidor
@@ -36,6 +36,8 @@ En cada **push** y **PR** a `main`:
 - **Build**: construye todas las apps (simula deploy)
 
 Si los tres pasan, el PR puede mergearse y el proyecto está listo para deploy.
+
+Además, el workflow **Schema local** (`.github/workflows/schema-local.yml`) corre cuando cambian `packages/database`, `docs/sql` o los scripts de schema: levanta Postgres en CI y ejecuta `pnpm db:schema:local`.
 
 ---
 

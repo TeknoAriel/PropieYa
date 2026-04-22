@@ -16,6 +16,6 @@ export default defineConfig({
     url: process.env.DATABASE_URL!,
   },
   verbose: true,
-  // strict: false para permitir db:push sin confirmación en CI (infra:test)
+  // strict: false: menos prompts en push local; prod: preferir SQL en docs/sql + manifest.
   strict: false,
 })

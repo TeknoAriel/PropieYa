@@ -19,6 +19,8 @@
     "db:generate": "turbo db:generate",
     "db:migrate": "turbo db:migrate",
     "db:push": "turbo db:push",
+    "db:sql:apply": "pnpm exec tsx scripts/apply-docs-sql.ts",
+    "db:schema:local": "bash scripts/db-schema-local.sh",
     "db:studio": "pnpm --filter @propieya/database db:studio",
     "infra:test": "bash scripts/infra-test.sh",
     "clean": "turbo clean && rm -rf node_modules",

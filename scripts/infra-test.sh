@@ -85,10 +85,10 @@ pnpm typecheck || fail "Typecheck falló"
 ok "Typecheck OK"
 
 # ---------------------------------------------------------------------------
-step "7. Migrar schema (db:push)"
+step "7. Schema local (db:push + parches docs/sql)"
 # ---------------------------------------------------------------------------
-pnpm db:push || fail "db:push falló"
-ok "Schema aplicado"
+pnpm db:schema:local || fail "db:schema:local falló"
+ok "Schema Drizzle + parches SQL aplicados"
 
 # ---------------------------------------------------------------------------
 step "8. Build de apps"

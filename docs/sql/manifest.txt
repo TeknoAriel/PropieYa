@@ -1,0 +1,9 @@
+# Orden de aplicación de parches idempotentes (docs/sql/*.sql).
+# Tras `pnpm db:push` contra Postgres local o tras un baseline equivalente en Neon.
+# Líneas vacías o que empiezan con # se ignoran.
+
+add-listing-lifecycle-and-content-at.sql
+add-import-source-updated-at.sql
+add-dedup-canonical-id.sql
+add-portal-stats-events.sql
+add-leads-access-monetization.sql
