@@ -188,8 +188,8 @@ export default function NuevaPropiedadPage() {
       <div>
         <h1 className="text-2xl font-bold text-text-primary">Nueva propiedad</h1>
         <p className="text-text-secondary">
-          Carga inicial rápida. Después te llevamos a la ficha para completar
-          dirección, fotos y publicar.
+          Cargá un borrador inicial. Después vas a poder completar datos, revisar
+          faltantes y publicarlo desde la ficha.
         </p>
       </div>
 
@@ -480,7 +480,9 @@ export default function NuevaPropiedadPage() {
               type="submit"
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? 'Guardando...' : 'Crear propiedad'}
+              {createMutation.isPending
+                ? 'Guardando...'
+                : 'Guardar borrador y continuar'}
             </Button>
             <Button type="button" variant="outline" onClick={() => router.push('/propiedades')}>
               Cancelar

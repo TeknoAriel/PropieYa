@@ -7,12 +7,19 @@ import {
   formatTrpcUserMessage,
   type CreateListingInput,
   type Currency,
+  LISTING_STATUS_LABELS,
+  type ListingStatus,
 } from '@propieya/shared'
-import { Button, Card, Input } from '@propieya/ui'
+import { Button, Card, Input, Badge } from '@propieya/ui'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Star, Trash2 } from 'lucide-react'
 
+import {
+  publicationChecklist,
+  statusOperationalCopy,
+} from '@/lib/listing-publication'
+import { formatListingVigencia } from '@/lib/vigencia'
 import { trpc } from '@/lib/trpc'
 
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -72,9 +79,17 @@ export default function EditarPropiedadPage() {
   })
   const publishMutation = trpc.listing.publish.useMutation({
     onSuccess: () => utils.listing.getMineById.invalidate({ id }),
+    onError: (err) =>
+      setEditError(
+        formatTrpcUserMessage(err) || 'No se pudo publicar este aviso todavía.'
+      ),
   })
   const renewMutation = trpc.listing.renew.useMutation({
     onSuccess: () => utils.listing.getMineById.invalidate({ id }),
+    onError: (err) =>
+      setEditError(
+        formatTrpcUserMessage(err) || 'No se pudo renovar este aviso todavía.'
+      ),
   })
 
   const handleFileSelect = useCallback(
@@ -269,6 +284,14 @@ export default function EditarPropiedadPage() {
     orientation?: string | null
   }
   const media = (current as { media?: { id: string; url: string; isPrimary: boolean; order: number }[] }).media ?? []
+  const status = current.status as ListingStatus
+  const operational = statusOperationalCopy(status, Boolean(current.canPublish))
+  const checklist = publicationChecklist(current.publishability?.issues ?? [])
+  const lastLifecycleReason = current.lastLifecycleEvent?.reasonMessage ?? null
+  const vigencia = formatListingVigencia(current.expiresAt, current.status)
+  const showRenew = Boolean(current.canRenew)
+  const isDraft = current.status === 'draft'
+  const canPublishNow = Boolean(current.canPublish)
 
   return (
     <div className="space-y-6">
@@ -280,16 +303,19 @@ export default function EditarPropiedadPage() {
           <p className="text-text-secondary mt-1">{addr?.city as string}</p>
         </div>
         <div className="flex gap-2">
-          {current.status === 'draft' && (
+          {isDraft && (
             <Button
               onClick={() => publishMutation.mutate({ id })}
-              disabled={publishMutation.isPending}
+              disabled={publishMutation.isPending || !canPublishNow}
             >
-              {publishMutation.isPending ? 'Publicando...' : 'Publicar'}
+              {publishMutation.isPending
+                ? 'Publicando...'
+                : canPublishNow
+                  ? 'Publicar aviso'
+                  : 'Completá requisitos'}
             </Button>
           )}
-          {(current.status === 'expiring_soon' ||
-            current.status === 'suspended') && (
+          {showRenew && (
             <Button
               onClick={() => renewMutation.mutate({ id })}
               disabled={renewMutation.isPending}
@@ -302,6 +328,89 @@ export default function EditarPropiedadPage() {
           </Button>
         </div>
       </div>
+
+      <Card className="p-6 space-y-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-lg font-semibold text-text-primary">
+              Estado del aviso
+            </h2>
+            <p className="text-sm text-text-secondary">{operational.help}</p>
+          </div>
+          <Badge
+            variant={
+              canPublishNow || status === 'active'
+                ? 'default'
+                : status === 'expiring_soon' || status === 'expired'
+                  ? 'secondary'
+                  : status === 'suspended' || status === 'rejected'
+                    ? 'error'
+                    : 'secondary'
+            }
+          >
+            {isDraft
+              ? operational.label
+              : LISTING_STATUS_LABELS[status] ?? operational.label}
+          </Badge>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-md border border-border p-3">
+            <p className="text-xs uppercase tracking-wide text-text-tertiary">
+              Publicación
+            </p>
+            {canPublishNow ? (
+              <p className="text-sm text-semantic-success mt-1">
+                El aviso está listo para publicar.
+              </p>
+            ) : (
+              <div className="mt-1 space-y-1">
+                <p className="text-sm text-text-primary">
+                  Este aviso no puede publicarse todavía.
+                </p>
+                {checklist.length > 0 ? (
+                  <ul className="text-sm text-text-secondary space-y-1">
+                    {checklist.map((item) => (
+                      <li key={item}>- {item}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-text-secondary">
+                    Revisá los datos básicos, imágenes y ubicación para publicarlo.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="rounded-md border border-border p-3">
+            <p className="text-xs uppercase tracking-wide text-text-tertiary">
+              Vigencia
+            </p>
+            <p
+              className={`mt-1 text-sm ${
+                vigencia === 'Vencido' ? 'text-semantic-error font-medium' : 'text-text-primary'
+              }`}
+            >
+              {vigencia}
+            </p>
+            {showRenew ? (
+              <p className="mt-1 text-sm text-text-secondary">
+                Para volver a publicarlo, actualizá el contenido si hace falta y renová la vigencia.
+              </p>
+            ) : (
+              <p className="mt-1 text-sm text-text-secondary">
+                Última actualización: {new Date(current.updatedAt).toLocaleString('es-AR')}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {lastLifecycleReason ? (
+          <div className="rounded-md border border-border bg-surface-secondary px-3 py-2 text-sm text-text-secondary">
+            {lastLifecycleReason}
+          </div>
+        ) : null}
+      </Card>
 
       <form onSubmit={handleSubmit}>
         <Card className="p-6 space-y-6">
@@ -468,7 +577,7 @@ export default function EditarPropiedadPage() {
             <p className="text-destructive text-sm">{editError}</p>
           )}
           <Button type="submit" disabled={updateMutation.isPending}>
-            {updateMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
+            {updateMutation.isPending ? 'Guardando...' : 'Guardar borrador'}
           </Button>
         </Card>
       </form>

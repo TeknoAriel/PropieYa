@@ -2,6 +2,7 @@
 
 import {
   formatPrice,
+  formatTrpcUserMessage,
   LISTING_STATUS_LABELS,
   type Currency,
   type ListingStatus,
@@ -10,12 +11,17 @@ import { Button, Input, Card, Badge, Plus, Search } from '@propieya/ui'
 import Link from 'next/link'
 import { useState } from 'react'
 
+import {
+  publicationChecklist,
+  statusOperationalCopy,
+} from '@/lib/listing-publication'
 import { formatListingVigencia } from '@/lib/vigencia'
 import { trpc } from '@/lib/trpc'
 
 export default function PropiedadesPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
+  const [actionError, setActionError] = useState('')
   const { data: listings = [], isLoading, refetch } =
     trpc.listing.listMine.useQuery({
       search: search || undefined,
@@ -24,10 +30,24 @@ export default function PropiedadesPage() {
     })
 
   const publishMutation = trpc.listing.publish.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: () => {
+      setActionError('')
+      refetch()
+    },
+    onError: (err) => {
+      setActionError(
+        formatTrpcUserMessage(err) || 'No se pudo publicar este aviso todavía.'
+      )
+    },
   })
   const renewMutation = trpc.listing.renew.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: () => {
+      setActionError('')
+      refetch()
+    },
+    onError: (err) => {
+      setActionError(err.message || 'No se pudo renovar este aviso.')
+    },
   })
 
   return (
@@ -46,6 +66,12 @@ export default function PropiedadesPage() {
           </Link>
         </Button>
       </div>
+
+      {actionError ? (
+        <div className="rounded-md border border-semantic-error/30 bg-semantic-error/10 px-3 py-2 text-sm text-semantic-error">
+          {actionError}
+        </div>
+      ) : null}
 
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4">
@@ -130,7 +156,16 @@ export default function PropiedadesPage() {
                   </td>
                 </tr>
               ) : (
-                listings.map((listing) => (
+                listings.map((listing) => {
+                const operational = statusOperationalCopy(
+                  listing.status as ListingStatus,
+                  Boolean(listing.canPublish)
+                )
+                const missingChecklist =
+                  listing.status === 'draft' && !listing.canPublish
+                    ? publicationChecklist(listing.publishability?.issues ?? [])
+                    : []
+                return (
                 <tr
                   key={listing.id}
                   className="border-b border-border last:border-0 hover:bg-surface-secondary"
@@ -151,7 +186,9 @@ export default function PropiedadesPage() {
                   <td className="p-4">
                     <Badge
                       variant={
-                        listing.status === 'active'
+                        listing.canPublish
+                          ? 'default'
+                          : listing.status === 'active'
                           ? 'default'
                           : listing.status === 'expiring_soon'
                             ? 'secondary'
@@ -160,9 +197,16 @@ export default function PropiedadesPage() {
                               : 'secondary'
                       }
                     >
-                      {LISTING_STATUS_LABELS[listing.status as ListingStatus] ??
-                        listing.status}
+                      {listing.status === 'draft'
+                        ? operational.label
+                        : (LISTING_STATUS_LABELS[listing.status as ListingStatus] ??
+                          listing.status)}
                     </Badge>
+                    {missingChecklist.length > 0 ? (
+                      <p className="mt-1 text-xs text-text-tertiary">
+                        {missingChecklist[0]}
+                      </p>
+                    ) : null}
                   </td>
                   <td className="p-4 text-sm text-text-secondary max-w-[10rem]">
                     <span
@@ -195,9 +239,13 @@ export default function PropiedadesPage() {
                           onClick={() =>
                             publishMutation.mutate({ id: listing.id })
                           }
-                          disabled={publishMutation.isPending}
+                          disabled={publishMutation.isPending || !listing.canPublish}
                         >
-                          {publishMutation.isPending ? 'Publicando...' : 'Publicar'}
+                          {publishMutation.isPending
+                            ? 'Publicando...'
+                            : listing.canPublish
+                              ? 'Publicar'
+                              : 'Completá requisitos'}
                         </Button>
                       ) : null}
                       {(listing.status === 'expiring_soon' ||
@@ -219,7 +267,7 @@ export default function PropiedadesPage() {
                     </div>
                   </td>
                 </tr>
-              ))
+              )})
               )}
             </tbody>
           </table>

@@ -22,6 +22,7 @@ import {
   listings,
   listingMedia,
   listingsSelectPublic,
+  listingLifecycleEvents,
   organizations,
   organizationMemberships,
   recordListingTransitionForKiteprop,
@@ -240,6 +241,24 @@ function defaultSqlSearchUx(sqlTotal: number): ListingSearchUX {
     relaxationStepIds: [],
     disableDeepPagination: false,
   }
+}
+
+function assessListingRowPublishability(
+  row: {
+    operationType: string
+    propertyType: string
+    priceAmount: number
+    priceCurrency: string
+    title: string
+    description: string
+    address: unknown
+  },
+  mediaCount: number
+) {
+  const publishConfig = getListingPublishConfigFromEnv()
+  return assessListingPublishability(
+    listingRowToPublishabilityInput(row, mediaCount, publishConfig)
+  )
 }
 
 /** Listados públicos: más reciente arriba (publicación + desempate). */
@@ -884,8 +903,30 @@ export const listingRouter = createTRPCRouter({
         where: eq(listingMedia.listingId, input.id),
         orderBy: [desc(listingMedia.isPrimary), listingMedia.order],
       })
+      const assessment = assessListingRowPublishability(listing, media.length)
+      const [lastLifecycleEvent] = await ctx.db
+        .select({
+          id: listingLifecycleEvents.id,
+          source: listingLifecycleEvents.source,
+          reasonCode: listingLifecycleEvents.reasonCode,
+          reasonMessage: listingLifecycleEvents.reasonMessage,
+          createdAt: listingLifecycleEvents.createdAt,
+          newStatus: listingLifecycleEvents.newStatus,
+          previousStatus: listingLifecycleEvents.previousStatus,
+        })
+        .from(listingLifecycleEvents)
+        .where(eq(listingLifecycleEvents.listingId, input.id))
+        .orderBy(desc(listingLifecycleEvents.createdAt))
+        .limit(1)
 
-      return { ...listing, media }
+      return {
+        ...listing,
+        media,
+        publishability: assessment,
+        canPublish: listing.status === 'draft' && assessment.ok,
+        canRenew: ['expiring_soon', 'suspended', 'expired'].includes(listing.status),
+        lastLifecycleEvent: lastLifecycleEvent ?? null,
+      }
     }),
 
   listMine: protectedProcedure
@@ -906,12 +947,25 @@ export const listingRouter = createTRPCRouter({
         conditions.push(ilike(listings.title, `%${input.search}%`))
       }
 
-      return ctx.db
+      const rows = await ctx.db
         .select(listingsSelectPublic)
         .from(listings)
         .where(and(...conditions))
         .orderBy(...ORDER_PANEL_RECENCY)
         .limit(input.limit)
+
+      return rows.map((row) => {
+        const assessment = assessListingRowPublishability(
+          row,
+          Number(row.mediaCount ?? 0)
+        )
+        return {
+          ...row,
+          publishability: assessment,
+          canPublish: row.status === 'draft' && assessment.ok,
+          canRenew: ['expiring_soon', 'suspended', 'expired'].includes(row.status),
+        }
+      })
     }),
 
   /** Conteos por estado para el dashboard del panel (avisos del publicador). */
