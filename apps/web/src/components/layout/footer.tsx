@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { PORTAL_BRAND_FOOTER_TAGLINE } from '@propieya/shared'
 
 import { getPanelPublicUrl } from '@/lib/panel-public-url'
+import { BrandLogo } from './brand-logo'
 
 export function Footer() {
   const panelHref = getPanelPublicUrl()
@@ -12,7 +13,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="space-y-4">
-            <span className="text-xl font-bold text-brand-primary">Propieya</span>
+            <BrandLogo compact />
             <p className="text-sm text-text-secondary">
               {PORTAL_BRAND_FOOTER_TAGLINE}
             </p>
@@ -67,7 +68,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-semibold text-text-primary mb-4">Propieya</h4>
+            <h4 className="font-semibold text-text-primary mb-4">PropieYa</h4>
             <ul className="space-y-2 text-sm text-text-secondary">
               <li>
                 <Link href="/nosotros" className="hover:text-text-primary transition-colors">
@@ -90,7 +91,7 @@ export function Footer() {
 
         <div className="mt-8 pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-text-tertiary">
-            © {new Date().getFullYear()} Propieya. Todos los derechos reservados.
+            © {new Date().getFullYear()} PropieYa. Todos los derechos reservados.
           </p>
           <div className="flex gap-4 text-sm text-text-tertiary">
             <Link href="/privacidad" className="hover:text-text-primary transition-colors">

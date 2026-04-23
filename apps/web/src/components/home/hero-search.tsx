@@ -36,14 +36,14 @@ export function HeroSearch() {
         </div>
 
         <div className="mx-auto mt-2.5 max-w-2xl md:mt-3">
-          <div className="rounded-xl border border-border/40 bg-surface-secondary/35 p-2.5 shadow-none md:p-3">
+          <div className="rounded-xl border border-brand-accent/20 bg-surface-secondary/35 p-2.5 shadow-none md:p-3">
             <HeroSearchBar
               value={query}
               onValueChange={setQuery}
               onSubmit={handleSubmit}
               className=""
             />
-            <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2 border-t border-border/25 pt-2.5">
+            <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2 border-t border-brand-accent/20 pt-2.5">
               <Button variant="outline" size="sm" asChild className="h-8 border-border/50 text-xs">
                 <Link href="/buscar">{pack.hero.filterLink}</Link>
               </Button>

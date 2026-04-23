@@ -37,7 +37,7 @@ export function ContactoForm({ contactEmail }: ContactoFormProps) {
 
   return (
     <form
-      className="space-y-4 rounded-lg border border-border bg-surface-secondary/40 p-6"
+      className="space-y-4 rounded-lg border border-brand-accent/20 bg-surface-secondary/40 p-6"
       onSubmit={(e) => {
         e.preventDefault()
         if (mailtoHref) window.location.href = mailtoHref
@@ -97,7 +97,7 @@ export function ContactoForm({ contactEmail }: ContactoFormProps) {
           Mientras tanto podés copiar el texto.
         </p>
       )}
-      <div className="border-t border-border pt-4">
+      <div className="border-t border-brand-accent/20 pt-4">
         <p className="text-xs font-medium text-text-secondary mb-1">Copiar mensaje</p>
         <pre className="max-h-40 overflow-auto rounded-md bg-surface-elevated p-3 text-xs text-text-primary whitespace-pre-wrap">
           {plainBody.trim() || '…'}

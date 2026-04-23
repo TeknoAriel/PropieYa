@@ -85,7 +85,7 @@ export function ContactModal({
           ) : (
             <>
               <DialogDescription>{L.modalDescriptionIdle}</DialogDescription>
-              <p className="mt-2 rounded-lg border border-border/40 bg-surface-secondary/60 px-3 py-2 text-xs leading-relaxed text-text-secondary">
+              <p className="mt-2 rounded-lg border border-brand-accent/25 bg-brand-secondary/40 px-3 py-2 text-xs leading-relaxed text-text-secondary">
                 {L.modalExpectationLine}
               </p>
               <p className="mt-3 text-sm font-medium leading-snug text-text-primary">

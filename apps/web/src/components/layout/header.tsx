@@ -17,6 +17,7 @@ import {
 import { useTheme } from '@/lib/theme-provider'
 import { getPortalPack } from '@/lib/portal-copy'
 import { PORTAL_ACCOUNT, PORTAL_PRIMARY_NAV } from '@/lib/portal-nav'
+import { BrandLogo } from './brand-logo'
 
 const mobileNavClass =
   'rounded-md px-3 py-2.5 text-sm font-medium text-text-primary hover:bg-surface-secondary'
@@ -55,14 +56,11 @@ export function Header() {
   const closeMobile = () => setMobileOpen(false)
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-[rgba(255,252,245,0.7)] shadow-sm backdrop-blur-md dark:bg-[rgba(30,30,32,0.78)]">
+    <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-[rgba(250,250,248,0.78)] shadow-sm backdrop-blur-md dark:bg-[rgba(30,30,32,0.78)]">
       <div className="container mx-auto px-4">
         <div className="flex h-14 items-center justify-between gap-3 md:h-16 md:gap-4">
-          <Link
-            href="/"
-            className="shrink-0 text-xl font-bold tracking-tight text-brand-primary md:text-2xl"
-          >
-            Propieya
+          <Link href="/" className="shrink-0" aria-label="Ir al inicio">
+            <BrandLogo />
           </Link>
 
           <nav

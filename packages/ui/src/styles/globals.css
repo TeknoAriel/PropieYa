@@ -20,11 +20,11 @@
   --color-text-tertiary: #999994;
   --color-text-inverse: #ffffff;
 
-  /* Brand — verde bosque un poco más saturado (misma familia, más presencia) */
-  --color-brand-primary: #186b47;
-  --color-brand-primary-hover: #0f4a31;
-  --color-brand-secondary: #6ec896;
-  --color-brand-accent: #b86f3d;
+  /* Brand — identidad PropieYa (aplicación sutil en acentos, sin tocar superficies base) */
+  --color-brand-primary: #0d1b2a;
+  --color-brand-primary-hover: #163149;
+  --color-brand-secondary: #dfeaf4;
+  --color-brand-accent: #0ba39a;
 
   /* Semantic */
   --color-semantic-success: #2f8f5f;
@@ -35,7 +35,7 @@
   /* Borders */
   --color-border-default: #e0ddd8;
   --color-border-strong: #c4c0ba;
-  --color-border-focus: #2d6a4f;
+  --color-border-focus: #0ba39a;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -84,11 +84,11 @@
   --color-text-tertiary: #a3a3a3;
   --color-text-inverse: #1a1a1a;
 
-  /* Brand — un punto más vivo sin perder contraste */
-  --color-brand-primary: #48c78f;
-  --color-brand-primary-hover: #6ad4a8;
-  --color-brand-secondary: #153d2e;
-  --color-brand-accent: #d4956a;
+  /* Brand dark — mantener legibilidad y acento turquesa */
+  --color-brand-primary: #89b6e6;
+  --color-brand-primary-hover: #a5c8ed;
+  --color-brand-secondary: #173043;
+  --color-brand-accent: #36d0c2;
 
   /* Semantic */
   --color-semantic-success: #52b788;
@@ -99,7 +99,7 @@
   /* Borders */
   --color-border-default: #3a3a3c;
   --color-border-strong: #545456;
-  --color-border-focus: #48c78f;
+  --color-border-focus: #36d0c2;
 }
 
 [data-theme='dark'] select {

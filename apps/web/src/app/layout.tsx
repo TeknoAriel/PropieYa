@@ -18,8 +18,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Propieya — encontrá tu próximo lugar',
-    template: '%s | Propieya',
+    default: 'PropieYa — encontrá tu próximo lugar',
+    template: '%s | PropieYa',
   },
   description: PORTAL_SITE_DESCRIPTION,
   keywords: ['inmobiliaria', 'propiedades', 'departamentos', 'casas', 'alquiler', 'venta'],
