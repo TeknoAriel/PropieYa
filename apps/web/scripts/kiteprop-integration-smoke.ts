@@ -13,6 +13,7 @@
 
 import {
   createContact,
+  createMessage,
   getMessages,
   getProfile,
   getProperties,
@@ -22,6 +23,22 @@ import { queryLeadsFromMCP, queryPropertiesFromMCP } from '../src/lib/integratio
 
 function section(title: string) {
   console.log(`\n--- ${title} ---`)
+}
+
+function parseEnvInt(name: string): number | null {
+  const raw = process.env[name]?.trim()
+  if (!raw) return null
+  const n = Number.parseInt(raw, 10)
+  return Number.isFinite(n) ? n : null
+}
+
+function hasFailureEnvelope(raw: unknown): boolean {
+  return Boolean(
+    raw &&
+      typeof raw === 'object' &&
+      !Array.isArray(raw) &&
+      (raw as { success?: unknown }).success === false
+  )
 }
 
 async function main() {
@@ -70,6 +87,37 @@ async function main() {
     console.log(created.ok ? `OK status=${created.status}` : created.message)
   } else {
     section('6) createContact omitido (definí KITEPROP_SMOKE_CREATE_LEAD=1 para probar)')
+  }
+
+  const propertyId = parseEnvInt('KITEPROP_SMOKE_MESSAGE_PROPERTY_ID')
+  if (process.env.KITEPROP_SMOKE_CREATE_MESSAGE === '1') {
+    section('7) createMessage (contrato auditor)')
+    if (!propertyId) {
+      console.log(
+        'Omitido: definí KITEPROP_SMOKE_MESSAGE_PROPERTY_ID con un ID numérico válido.'
+      )
+    } else {
+      const payload = {
+        body:
+          process.env.KITEPROP_SMOKE_MESSAGE_BODY?.trim() ||
+          `Mensaje smoke PropieYa ${new Date().toISOString()}`,
+        phone: process.env.KITEPROP_SMOKE_MESSAGE_PHONE?.trim() || '+5491100000000',
+        property_id: propertyId,
+        email:
+          process.env.KITEPROP_SMOKE_MESSAGE_EMAIL?.trim() ||
+          `smoke+${Date.now()}@example.invalid`,
+      }
+      const sent = await createMessage(payload)
+      if (!sent.ok) {
+        console.log('ERROR:', sent.message, sent.body ?? '')
+      } else if (hasFailureEnvelope(sent.data)) {
+        console.log('ERROR envelope success:false:', JSON.stringify(sent.data))
+      } else {
+        console.log(`OK status=${sent.status}`, JSON.stringify(sent.data).slice(0, 300))
+      }
+    }
+  } else {
+    section('7) createMessage omitido (definí KITEPROP_SMOKE_CREATE_MESSAGE=1 para probar)')
   }
 
   console.log('\nSmoke terminado.')
