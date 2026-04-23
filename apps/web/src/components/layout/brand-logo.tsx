@@ -12,7 +12,7 @@ export function BrandLogo({ className, compact = false }: BrandLogoProps) {
         viewBox="0 0 38 38"
         role="img"
         aria-hidden="true"
-        className={cn('shrink-0', compact ? 'h-6 w-6' : 'h-7 w-7')}
+        className={cn('shrink-0', compact ? 'h-6 w-6' : 'h-[2.625rem] w-[2.625rem]')}
       >
         <path
           d="M19 3.8 5.4 13.7v20.5l5-3.7V16.4L19 10l8.6 6.4v14.1l5 3.7V13.7L19 3.8Z"
@@ -28,7 +28,7 @@ export function BrandLogo({ className, compact = false }: BrandLogoProps) {
       </svg>
       <span
         className={cn(
-          'text-lg font-bold tracking-tight text-brand-primary md:text-xl',
+          'text-[1.7rem] font-bold tracking-tight text-brand-primary md:text-[1.9rem]',
           compact && 'text-base md:text-lg'
         )}
       >
