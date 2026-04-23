@@ -253,6 +253,103 @@ function extractIdFromCreateContactResponse(raw: unknown): string | null {
   return asString(data.id) ?? asString(data.contact_id)
 }
 
+function normalizePropertyId(
+  propertyId: string | number | null | undefined,
+  propertyCode: string | null | undefined
+): number | null {
+  if (typeof propertyId === 'number' && Number.isFinite(propertyId)) {
+    return propertyId
+  }
+  if (typeof propertyId === 'string') {
+    const n = Number.parseInt(propertyId, 10)
+    if (Number.isFinite(n)) return n
+  }
+  if (typeof propertyCode === 'string') {
+    const n = Number.parseInt(propertyCode, 10)
+    if (Number.isFinite(n)) return n
+  }
+  return null
+}
+
+function stringifyUpstreamError(raw: unknown): string {
+  if (typeof raw === 'string') return raw
+  try {
+    return JSON.stringify(raw)
+  } catch {
+    return 'Respuesta no serializable del upstream'
+  }
+}
+
+function hasFailureEnvelope(raw: unknown): raw is { success: false; errorMessage?: string; details?: unknown } {
+  const r = asRecord(raw)
+  return Boolean(r && r.success === false)
+}
+
+async function postLegacyInquiry(payload: PropertyInquiryPayload): Promise<PropertyInquiryResult | null> {
+  const legacyUrl = process.env.KITEPROP_API_CONSULTA_URL?.trim()
+  if (!legacyUrl) return null
+
+  const apiKey =
+    process.env.KITEPROP_API_KEY?.trim() ||
+    process.env.KITEPROP_API_TOKEN?.trim() ||
+    null
+  if (!apiKey) {
+    return {
+      ok: false,
+      reason: 'not_configured',
+      message: 'KITEPROP_API_KEY no configurada',
+    }
+  }
+
+  const propertyId = normalizePropertyId(payload.property_id, payload.property_code)
+  const legacyPayload = {
+    full_name: payload.name,
+    email: payload.email,
+    phone: payload.phone ?? undefined,
+    body: payload.message,
+    property_id: propertyId ?? undefined,
+    source: payload.source,
+    page_url: payload.page_url ?? undefined,
+    lead_intent_id: payload.lead_intent_id ?? undefined,
+    assigned_user_id: payload.assigned_user_id ?? undefined,
+    assigned_user_name: payload.assigned_user_name ?? undefined,
+  }
+
+  try {
+    const res = await fetch(legacyUrl, {
+      method: 'POST',
+      headers: {
+        'X-API-Key': apiKey,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(legacyPayload),
+      cache: 'no-store',
+    })
+    const text = await res.text()
+    let parsed: unknown = text
+    try {
+      parsed = text.length > 0 ? JSON.parse(text) : {}
+    } catch {
+      // texto plano
+    }
+    if (!res.ok || hasFailureEnvelope(parsed)) {
+      return {
+        ok: false,
+        reason: 'upstream_error',
+        message: stringifyUpstreamError(parsed),
+      }
+    }
+    return { ok: true, mode: 'contacts_and_messages', contactId: null }
+  } catch (err) {
+    return {
+      ok: false,
+      reason: 'upstream_error',
+      message: err instanceof Error ? err.message : String(err),
+    }
+  }
+}
+
 /**
  * El contrato exacto de POST en KiteProp puede variar por cuenta/versión.
  * Para evitar inventar payloads, este adaptador solo se activa con:
@@ -270,31 +367,49 @@ export async function createPropertyInquiryInKiteProp(
       message: 'KITEPROP_API_KEY no configurada',
     }
   }
-  if (process.env.KITEPROP_ENABLE_INQUIRY_POST !== '1') {
-    return {
-      ok: false,
-      reason: 'contract_not_confirmed',
-      message:
-        'POST de inquiry desactivado hasta confirmar contrato final de campos en KiteProp.',
+
+  const legacy = await postLegacyInquiry(payload)
+  if (legacy) return legacy
+
+  // Contrato confirmado por auditor para POST /messages.
+  const propertyId = normalizePropertyId(payload.property_id, payload.property_code)
+  if (propertyId !== null) {
+    const messagePayload: Record<string, unknown> = {
+      body: payload.message,
+      phone: payload.phone ?? undefined,
+      property_id: propertyId,
+      email: payload.email,
     }
+    const createdMessage = await createMessage(messagePayload)
+    if (!createdMessage.ok) {
+      return {
+        ok: false,
+        reason: 'upstream_error',
+        message: createdMessage.message,
+      }
+    }
+    if (hasFailureEnvelope(createdMessage.data)) {
+      return {
+        ok: false,
+        reason: 'upstream_error',
+        message: stringifyUpstreamError(createdMessage.data),
+      }
+    }
+    return { ok: true, mode: 'contacts_and_messages', contactId: null }
   }
 
+  // Sin propiedad, fallback a contacto.
   const contactPayload: Record<string, unknown> = {
-    name: payload.name,
+    first_name: payload.name,
     email: payload.email,
     phone: payload.phone ?? undefined,
+    summary: payload.message,
     source: payload.source,
-    property_id: payload.property_id ?? undefined,
-    property_code: payload.property_code ?? undefined,
-    property_title: payload.property_title ?? undefined,
+    page_url: payload.page_url ?? undefined,
+    lead_intent_id: payload.lead_intent_id ?? undefined,
     assigned_user_id: payload.assigned_user_id ?? undefined,
     assigned_user_name: payload.assigned_user_name ?? undefined,
-    metadata: {
-      page_url: payload.page_url ?? undefined,
-      lead_intent_id: payload.lead_intent_id ?? undefined,
-    },
   }
-
   const createdContact = await createContact(contactPayload)
   if (!createdContact.ok) {
     return {
@@ -303,31 +418,13 @@ export async function createPropertyInquiryInKiteProp(
       message: createdContact.message,
     }
   }
-
-  const contactId = extractIdFromCreateContactResponse(createdContact.data)
-  if (process.env.KITEPROP_ENABLE_MESSAGE_POST !== '1') {
-    return { ok: true, mode: 'contacts_only', contactId }
-  }
-
-  const messagePayload: Record<string, unknown> = {
-    message: payload.message,
-    source: payload.source,
-    contact_id: contactId ?? undefined,
-    property_id: payload.property_id ?? undefined,
-    property_code: payload.property_code ?? undefined,
-    property_title: payload.property_title ?? undefined,
-    assigned_user_id: payload.assigned_user_id ?? undefined,
-    assigned_user_name: payload.assigned_user_name ?? undefined,
-    page_url: payload.page_url ?? undefined,
-    lead_intent_id: payload.lead_intent_id ?? undefined,
-  }
-  const createdMessage = await createMessage(messagePayload)
-  if (!createdMessage.ok) {
+  if (hasFailureEnvelope(createdContact.data)) {
     return {
       ok: false,
       reason: 'upstream_error',
-      message: createdMessage.message,
+      message: stringifyUpstreamError(createdContact.data),
     }
   }
-  return { ok: true, mode: 'contacts_and_messages', contactId }
+  const contactId = extractIdFromCreateContactResponse(createdContact.data)
+  return { ok: true, mode: 'contacts_only', contactId }
 }
