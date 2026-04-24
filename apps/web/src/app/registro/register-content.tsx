@@ -42,6 +42,10 @@ export function RegisterContent() {
   }, [searchParams])
 
   const nextAfterRegister = searchParams.get('next')
+  const loginHref =
+    nextAfterRegister && nextAfterRegister.startsWith('/') && !nextAfterRegister.startsWith('//')
+      ? `/login?next=${encodeURIComponent(nextAfterRegister)}`
+      : '/login'
 
   const registerMutation = trpc.auth.register.useMutation({
     onSuccess: () => {
@@ -193,7 +197,7 @@ export function RegisterContent() {
 
         <p className="mt-6 text-sm text-text-secondary">
           ¿Ya tenés cuenta?{' '}
-          <Link href="/login" className="text-brand-primary hover:underline">
+          <Link href={loginHref} className="text-brand-primary hover:underline">
             {PORTAL_VOICE_CTA.login}
           </Link>
         </p>
