@@ -18,6 +18,10 @@
     {
       "path": "/api/cron/sync-search",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/inventory-audit",
+      "schedule": "15 7 * * *"
     }
   ]
 }

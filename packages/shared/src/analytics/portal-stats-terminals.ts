@@ -67,6 +67,8 @@ export const PORTAL_STATS_TERMINALS = {
   AUTH_LOGIN_SUCCESS: 'auth.login.success',
   /** Fin de pipeline de ingest (payload con counts opcional). */
   INGEST_RUN_COMPLETED: 'ingest.run.completed',
+  /** Snapshot diario de auditoría de inventario (feed + DB + alertas). */
+  INVENTORY_AUDIT_DAILY: 'inventory.audit.daily',
 } as const
 
 export type PortalStatsTerminalId =
@@ -112,6 +114,7 @@ export const PORTAL_STATS_TERMINAL_LABELS: Record<PortalStatsTerminalId, string>
   [PORTAL_STATS_TERMINALS.SEARCH_ALERT_CREATED]: 'Alerta creada',
   [PORTAL_STATS_TERMINALS.AUTH_LOGIN_SUCCESS]: 'Inicio de sesión',
   [PORTAL_STATS_TERMINALS.INGEST_RUN_COMPLETED]: 'Ingesta de catálogo',
+  [PORTAL_STATS_TERMINALS.INVENTORY_AUDIT_DAILY]: 'Auditoría diaria de inventario',
 }
 
 export function portalStatsTerminalLabel(terminalId: string): string {

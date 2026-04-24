@@ -9,3 +9,4 @@ add-portal-stats-events.sql
 add-leads-access-monetization.sql
 add-import-feed-last-trusted-count.sql
 normalize-listings-address-jsonb.sql
+add-inventory-audit-snapshots.sql
