@@ -363,6 +363,14 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Ampliamos cada bloque sin recargar la página (hasta 40 por sección).',
   searchV2LoadMoreAtCap:
     'Ya alcanzaste el máximo por vista (40 por sección). Si querés acotar, refiná mapa o filtros.',
+  searchV2PaginationNext: 'Siguiente página',
+  searchV2PaginationFirst: 'Volver al inicio',
+  searchV2PageSize24: '24 por página',
+  searchV2PageSize30: '30 por página',
+  searchV2AlternativesCta:
+    'Ver sugerencias ampliadas (segunda capa: misma ciudad u operación, criterios más flexibles).',
+  searchV2AlternativesHint:
+    'No se mezclan con el listado exacto de arriba; solo se consultan si pedís esta capa.',
   /** Buscador v2: texto bajo el título del bucket ampliado (colapsable). */
   searchV2WidenedExplainer:
     'Misma operación y tipo que pediste: acá relajamos un solo criterio extra (superficie, dormitorios o precio), sin mezclar resultados fuera de tu ciudad ni precios desorbitados.',

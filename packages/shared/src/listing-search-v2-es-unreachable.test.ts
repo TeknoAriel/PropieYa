@@ -38,6 +38,8 @@ function emptyV2(
     totalsByBucket: { strong: 0, near: 0, widened: 0 },
     strictCatalogTotal: 0,
     orderedListingIds: [],
+    exactNextCursor: null,
+    exactEsOffsetNext: null,
     ...partial,
   } as ListingSearchV2Result
 }
@@ -61,7 +63,27 @@ describe('isSearchV2ElasticsearchUnreachable', () => {
     expect(
       isSearchV2ElasticsearchUnreachable(
         emptyV2({
-          totalsByBucket: { strong: 3, near: 0, widened: 0 },
+          buckets: [
+            {
+              id: 'strong',
+              label: SEARCH_V2_BUCKET_LABELS.strong,
+              items: [{ id: '1' }],
+              totalInBucket: 3,
+            },
+            {
+              id: 'near',
+              label: SEARCH_V2_BUCKET_LABELS.near,
+              items: [],
+              totalInBucket: 0,
+            },
+            {
+              id: 'widened',
+              label: SEARCH_V2_BUCKET_LABELS.widened,
+              items: [],
+              totalInBucket: 0,
+            },
+          ],
+          totalsByBucket: { strong: 1, near: 0, widened: 0 },
         })
       )
     ).toBe(false)

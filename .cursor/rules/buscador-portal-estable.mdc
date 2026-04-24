@@ -22,3 +22,4 @@ alwaysApply: false
 
 - Ajustes de UI compacta en `buscar-*` si no ocultan el listado ni deshabilitan la query sin criterio.
 - Mejoras de relevancia en ES **después** de mantener verde el fallback SQL y los tests compartidos.
+- Si tocás **`isSearchV2ElasticsearchUnreachable`**: debe basarse en **ítems devueltos** en buckets (no en totales de catálogo), y **`pnpm --filter @propieya/shared test`**.

@@ -121,9 +121,9 @@ export async function POST(request: Request) {
     parts.push(slices.kitepropLeads.summary)
   }
   if (slices.portalSearch) {
-    const t = slices.portalSearch.totalsByBucket
+    const p = slices.portalSearch
     parts.push(
-      `Portal Propieya (búsqueda complementaria): fuertes ${t.strong}, cercanos ${t.near}, ampliados ${t.widened}.`
+      `Portal Propieya (búsqueda complementaria): catálogo exacto ~${p.strictCatalogTotal} avisos; en esta página ${p.totalsByBucket.strong} resultados exactos.`
     )
   }
 

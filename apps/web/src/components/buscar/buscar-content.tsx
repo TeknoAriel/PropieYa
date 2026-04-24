@@ -651,7 +651,11 @@ export function BuscarContent({
   const [searchV2WidenedOpen, setSearchV2WidenedOpen] = useState(false)
   const [searchV2NearOpen, setSearchV2NearOpen] = useState(false)
   /** Tamaño de página v2 (1–40 por bucket); solo UI + input existente a tRPC. */
-  const [listLimitPerBucket, setListLimitPerBucket] = useState(24)
+  const [listPageSize, setListPageSize] = useState(24)
+  const [exactPageCursor, setExactPageCursor] = useState<string | null>(null)
+  const [exactEsOffset, setExactEsOffset] = useState(0)
+  const [includeAlternativeBuckets, setIncludeAlternativeBuckets] =
+    useState(false)
   const [polygonDrawMode, setPolygonDrawMode] = useState(false)
   /** Sprint 40 — rectángulo del mapa se aplica al listado al panear (debounce). */
   const [mapLiveViewport, setMapLiveViewport] = useState(false)
@@ -964,13 +968,16 @@ export function BuscarContent({
   ])
 
   const v2SessionFingerprint = JSON.stringify(searchSessionMVP)
-  const v2QueryPlaceholderKey = `${v2SessionFingerprint}::l${listLimitPerBucket}`
+  const v2QueryPlaceholderKey = `${v2SessionFingerprint}::p${listPageSize}::c${exactPageCursor ?? ''}::o${exactEsOffset}::a${includeAlternativeBuckets ? 1 : 0}`
 
   const { data: dataV2, isLoading, isError } =
     trpc.listing.searchV2.useQuery(
       {
         session: normalizeSearchSessionMVP(searchSessionMVP),
-        limitPerBucket: listLimitPerBucket,
+        limitPerBucket: listPageSize,
+        exactPageCursor: exactPageCursor ?? undefined,
+        exactEsOffset: exactPageCursor ? 0 : exactEsOffset,
+        includeAlternativeBuckets,
       },
       {
         placeholderData: (previousData) => {
@@ -1014,24 +1021,18 @@ export function BuscarContent({
   }, [dataV2Ui])
 
   const shortSearchUxMessages = useMemo(() => {
-    if (!dataV2Ui?.totalsByBucket) return []
-    const total =
-      (dataV2Ui.totalsByBucket.strong ?? 0) +
-      (dataV2Ui.totalsByBucket.near ?? 0) +
-      (dataV2Ui.totalsByBucket.widened ?? 0)
-    if (total > 0) return []
+    if (!dataV2Ui?.buckets) return []
+    const itemCount = dataV2Ui.buckets.reduce((n, b) => n + b.items.length, 0)
+    if (itemCount > 0) return []
     return (dataV2Ui.messages ?? [])
       .filter((m) => typeof m === 'string' && m.length <= 220)
       .slice(0, 1)
-  }, [dataV2Ui?.messages, dataV2Ui?.totalsByBucket])
+  }, [dataV2Ui?.messages, dataV2Ui?.buckets])
 
   const data =
     dataV2Ui != null
       ? {
-          total:
-            dataV2Ui.totalsByBucket.strong +
-            dataV2Ui.totalsByBucket.near +
-            dataV2Ui.totalsByBucket.widened,
+          total: dataV2Ui.strictCatalogTotal,
           items: listingsAll,
           searchUX: { messages: dataV2Ui.messages as string[] },
           nextCursor: null as string | null,
@@ -1039,14 +1040,9 @@ export function BuscarContent({
       : null
 
   const strictCatalogTotal = dataV2Ui?.strictCatalogTotal ?? 0
-  const strongBucketShown = dataV2Ui?.totalsByBucket?.strong ?? 0
-  const nearBucketShown = dataV2Ui?.totalsByBucket?.near ?? 0
-  const widenedBucketShown = dataV2Ui?.totalsByBucket?.widened ?? 0
+  const strongItemsCount =
+    dataV2Ui?.buckets?.find((b) => b.id === 'strong')?.items.length ?? 0
   const visibleListingsTotal = data?.total ?? 0
-  const visibleListNow =
-    strongBucketShown +
-    (searchV2NearOpen ? nearBucketShown : 0) +
-    (searchV2WidenedOpen ? widenedBucketShown : 0)
   const appliedLocationLabel = formatAppliedLocation({
     city: dataV2Ui?.sessionNormalized?.city ?? city,
     neighborhood: dataV2Ui?.sessionNormalized?.neighborhood ?? neighborhood,
@@ -1060,8 +1056,12 @@ export function BuscarContent({
       ((dataV2Ui?.sessionNormalized?.bbox != null) ||
         (dataV2Ui?.sessionNormalized?.polygon?.length ?? 0) >= 3)
   )
-  const canLoadMoreResults =
-    listLimitPerBucket < 40 && strictCatalogTotal > strongBucketShown
+  const canExactNextPage = Boolean(
+    (dataV2Ui?.exactNextCursor != null &&
+      dataV2Ui.exactNextCursor.length > 0) ||
+      dataV2Ui?.exactEsOffsetNext != null
+  )
+  const canResetExactPaging = Boolean(exactPageCursor != null || exactEsOffset > 0)
   const showSearchVolumeCard =
     Boolean(dataV2Ui && data && visibleListingsTotal > 0 && !isLoading)
 
@@ -1073,7 +1073,10 @@ export function BuscarContent({
   useEffect(() => {
     setSearchV2WidenedOpen(false)
     setSearchV2NearOpen(false)
-    setListLimitPerBucket(24)
+    setListPageSize(24)
+    setExactPageCursor(null)
+    setExactEsOffset(0)
+    setIncludeAlternativeBuckets(false)
   }, [v2SessionFingerprint])
 
   useEffect(() => {
@@ -1697,7 +1700,11 @@ export function BuscarContent({
                   : `${formatResultCountEsAr(strictCatalogTotal)} propiedades encontradas`}
               </p>
               <span className="text-xs text-text-tertiary">
-                {`Mostrando ${formatResultCountEsAr(visibleListNow)} ahora`}
+                {strictCatalogTotal > strongItemsCount
+                  ? `Mostrando ${formatResultCountEsAr(strongItemsCount)} en esta página`
+                  : strongItemsCount > 0
+                    ? `Mostrando ${formatResultCountEsAr(strongItemsCount)}`
+                    : ''}
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -2307,24 +2314,95 @@ export function BuscarContent({
                   </>
                 )
               })()}
+              {!isLoading &&
+              strictCatalogTotal > 0 &&
+              !includeAlternativeBuckets &&
+              hasActiveSearchCriteria ? (
+                <Card className="border-dashed border-border/35 bg-surface-secondary/10 p-3.5 shadow-none md:p-4">
+                  <p className="text-xs leading-snug text-text-secondary">
+                    {S.searchV2AlternativesHint}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 h-9"
+                    onClick={() => setIncludeAlternativeBuckets(true)}
+                  >
+                    {S.searchV2AlternativesCta}
+                  </Button>
+                </Card>
+              ) : null}
               {!isLoading && data && data.total > 0 ? (
                 <Card className="border-border/25 bg-surface-secondary/15 p-3.5 shadow-none md:p-4">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm leading-snug text-text-secondary">
-                      Seguí explorando más propiedades de esta búsqueda o ajustá filtros.
+                      Navegá el catálogo completo con los mismos filtros, o ajustá
+                      criterios.
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
-                      {canLoadMoreResults ? (
+                      <div className="flex items-center gap-1 rounded-md border border-border/30 p-0.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={listPageSize === 24 ? 'secondary' : 'ghost'}
+                          className="h-8 px-2 text-xs"
+                          onClick={() => {
+                            setListPageSize(24)
+                            setExactPageCursor(null)
+                            setExactEsOffset(0)
+                          }}
+                        >
+                          {S.searchV2PageSize24}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={listPageSize === 30 ? 'secondary' : 'ghost'}
+                          className="h-8 px-2 text-xs"
+                          onClick={() => {
+                            setListPageSize(30)
+                            setExactPageCursor(null)
+                            setExactEsOffset(0)
+                          }}
+                        >
+                          {S.searchV2PageSize30}
+                        </Button>
+                      </div>
+                      {canExactNextPage ? (
                         <Button
                           type="button"
                           size="sm"
                           variant="secondary"
                           className="h-9"
-                          onClick={() =>
-                            setListLimitPerBucket((n) => Math.min(40, n + 6))
-                          }
+                          onClick={() => {
+                            if (
+                              dataV2Ui?.exactNextCursor != null &&
+                              dataV2Ui.exactNextCursor.length > 0
+                            ) {
+                              setExactPageCursor(dataV2Ui.exactNextCursor)
+                              setExactEsOffset(0)
+                            } else if (dataV2Ui?.exactEsOffsetNext != null) {
+                              setExactPageCursor(null)
+                              setExactEsOffset(dataV2Ui.exactEsOffsetNext)
+                            }
+                          }}
                         >
-                          {S.searchV2LoadMore}
+                          {S.searchV2PaginationNext}
+                        </Button>
+                      ) : null}
+                      {canResetExactPaging ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-9"
+                          onClick={() => {
+                            setExactPageCursor(null)
+                            setExactEsOffset(0)
+                          }}
+                        >
+                          {S.searchV2PaginationFirst}
                         </Button>
                       ) : null}
                       <Button
@@ -2338,13 +2416,6 @@ export function BuscarContent({
                       </Button>
                     </div>
                   </div>
-                  {!canLoadMoreResults &&
-                  listLimitPerBucket >= 40 &&
-                  strictCatalogTotal > strongBucketShown ? (
-                    <p className="mt-2 border-t border-border/15 pt-2 text-xs leading-snug text-text-tertiary">
-                      {S.searchV2LoadMoreAtCap}
-                    </p>
-                  ) : null}
                 </Card>
               ) : null}
             </div>

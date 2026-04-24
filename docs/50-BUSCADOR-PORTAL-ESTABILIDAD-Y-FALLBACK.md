@@ -60,3 +60,11 @@ Un detector que solo miraba **`messages`** y buscaba la frase del índice **nunc
 ## 6. Regla Cursor
 
 Ver `.cursor/rules/buscador-portal-estable.mdc` (no romper buscador; cambios mínimos y verificados).
+
+---
+
+## 7. Inventario completo y capas (abril 2026)
+
+- **`listing.searchV2`** devuelve primero solo el bucket **exacto** (`strong`) paginado: `strictCatalogTotal` es el total real en índice/SQL para los filtros elegidos; `exactNextCursor` / `exactEsOffsetNext` permiten recorrer todo el catálogo (24 o 30 por página).
+- Los buckets **near** y **widened** solo se calculan si el cliente envía **`includeAlternativeBuckets: true`** (segunda capa explícita; no se mezclan con el listado exacto).
+- **`isSearchV2ElasticsearchUnreachable`** usa la **cantidad de ítems** en los buckets (no `totalsByBucket` acumulado contra el catálogo), para no bloquear el fallback SQL cuando el total global es alto pero la página actual está vacía por post-filtros.

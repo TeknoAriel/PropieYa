@@ -10,7 +10,7 @@
 
 | Camino | Entrada típica | Procedimiento | Relajación |
 |--------|----------------|---------------|------------|
-| **A. Listado público** (`/buscar`, `/venta`, `/alquiler`) | Chips, mapa, filtros, `q` en URL | `trpc.listing.searchV2` → `runListingSearchV2` (+ `trySearchV2SqlFallback` si ES cae con 0 hits) | Buckets **strong / near / widened** (reglas fijas en `search-v2-executor.ts`) |
+| **A. Listado público** (`/buscar`, `/venta`, `/alquiler`) | Chips, mapa, filtros, `q` en URL | `trpc.listing.searchV2` → `runListingSearchV2` (+ `trySearchV2SqlFallback` si ES cae con 0 hits) | **Strong** siempre (exacto, paginado). **Near / widened** solo si el cliente pide `includeAlternativeBuckets` (segunda capa explícita). |
 | **B. Asistente conversacional** (bloque “Contanos qué buscás”) | Texto libre + contexto previo | `trpc.listing.searchConversational` → `runConversationalSearchOrchestrator` → `searchListingsLayered` → SQL si hace falta | Secuencia `ZERO_RESULTS_RELAXATION_SEQUENCE` + pasos extra (amenities → operación) en `listing.ts` |
 
 **El buscador principal (A) no usa MCP.** El asistente en UI (B) tampoco llama MCP: solo motor portal + ES/SQL.

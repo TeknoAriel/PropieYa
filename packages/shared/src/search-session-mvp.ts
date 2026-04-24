@@ -62,7 +62,20 @@ export type SearchV2Action = z.infer<typeof searchV2ActionSchema>
 
 export const listingSearchV2InputSchema = z.object({
   session: searchSessionMVPSchema,
-  limitPerBucket: z.number().int().min(1).max(40).optional().default(20),
+  /** Tamaño de página del bloque exacto (12–50). */
+  limitPerBucket: z.number().int().min(12).max(50).optional().default(24),
+  /** Paginación ES profunda (`search_after`); opaco (base64url). */
+  exactPageCursor: z.string().max(6000).optional(),
+  /**
+   * Desplazamiento para la página actual: en ES es `from` (máx. 500 en query builder);
+   * en fallback SQL es `OFFSET`. Ignorado si `exactPageCursor` decodifica bien.
+   */
+  exactEsOffset: z.number().int().min(0).max(500_000).optional().default(0),
+  /**
+   * Si true, se calculan buckets «near» y «widened» (criterios relajados).
+   * Por defecto false: solo resultados exactos en la primera capa.
+   */
+  includeAlternativeBuckets: z.boolean().optional().default(false),
 })
 
 export type ListingSearchV2Input = z.infer<typeof listingSearchV2InputSchema>
@@ -245,7 +258,7 @@ export const SEARCH_V2_BUCKET_LABELS: Record<SearchV2BucketId, string> = {
   widened: 'Opciones ampliadas',
 }
 
-/** Totales por bucket (hits ES devueltos en esta página). */
+/** Conteos de ítems devueltos por bucket en esta respuesta (página actual). */
 export type SearchV2BucketTotals = Record<SearchV2BucketId, number>
 
 /**
@@ -256,6 +269,10 @@ export type ListingSearchV2Bucket = {
   id: SearchV2BucketId
   label: string
   items: unknown[]
+  /**
+   * Para `strong`: total elegible en índice/SQL (≥ `items.length`).
+   * Para `near`/`widened`: total en índice para esa pasada relajada, o longitud de `items` si no aplica.
+   */
   totalInBucket: number
 }
 
@@ -274,4 +291,11 @@ export type ListingSearchV2Result = {
   strictCatalogTotal: number
   /** Ids en orden de lista global (strong → near → widened) para mapa/lista alineados. */
   orderedListingIds: string[]
+  /** Siguiente página del bloque exacto vía ES (`search_after`). */
+  exactNextCursor: string | null
+  /**
+   * Siguiente offset para páginas sin cursor (ES `from` ≤ 500 o fallback SQL).
+   * Null si no hay página siguiente.
+   */
+  exactEsOffsetNext: number | null
 }

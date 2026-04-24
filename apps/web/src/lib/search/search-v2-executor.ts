@@ -22,6 +22,7 @@ import {
 } from '@propieya/shared'
 
 import type { SearchFilters } from './types'
+import { decodeListingSearchCursor } from './search-cursor'
 import { searchListings, type SearchHit } from './search'
 
 const BUCKET_ORDER: SearchV2BucketId[] = ['strong', 'near', 'widened']
@@ -417,46 +418,21 @@ function takeFiltered(
   return filtered.slice(0, limit)
 }
 
-export async function runListingSearchV2(opts: {
-  session: SearchSessionMVP
-  limitPerBucket: number
-}): Promise<ListingSearchV2Result> {
-  const limit = Math.min(40, Math.max(1, opts.limitPerBucket))
-  const normalized = normalizeSearchSessionMVP(opts.session)
-
-  const baseMessages: string[] = []
-  const hadGeoDrawn =
-    opts.session.bbox != null || (opts.session.polygon?.length ?? 0) >= 3
-  if (!opts.session.mapCommitted && hadGeoDrawn) {
-    baseMessages.push(
-      'El mapa se muestra como referencia. Para filtrar por zona, usá «Buscar en esta zona».'
-    )
-  }
-
-  const fStrong = filtersStrong(normalized)
+async function loadAlternativeBuckets(
+  normalized: SearchSessionMVP,
+  pageSize: number,
+  fStrong: SearchFilters,
+  strongHits: SearchHit[]
+): Promise<{
+  nearHits: SearchHit[]
+  wideHits: SearchHit[]
+  widenedExplainUsed: ExplainMatchFilters
+  nearTotal: number
+  widenedTotal: number
+}> {
+  const previewCap = Math.min(24, pageSize)
   const fNear = filtersNear(normalized)
-
-  const resStrong = await searchListings({ ...fStrong, limit: limit * 2, offset: 0 })
-  if (!resStrong.fromEs) {
-    return {
-      sessionNormalized: normalized,
-      buckets: emptyBuckets(),
-      messages: [
-        ...baseMessages,
-        'El buscador no está disponible en este momento. Probá de nuevo en unos segundos.',
-      ],
-      emptyExplanation:
-        'No pudimos consultar el índice de búsqueda. Los resultados aparecerán cuando el servicio vuelva a responder.',
-      actions: [],
-      totalsByBucket: { strong: 0, near: 0, widened: 0 },
-      strictCatalogTotal: 0,
-      orderedListingIds: [],
-    }
-  }
-
-  const seen = new Set<string>()
-  const strongHits = takeFiltered(resStrong.hits, normalized, 'strong', limit)
-  for (const h of strongHits) seen.add(h.id)
+  const seen = new Set<string>(strongHits.map((h) => h.id))
 
   const nearAddsValue = Boolean(
     normalized.city?.trim() ||
@@ -465,26 +441,28 @@ export async function runListingSearchV2(opts: {
   )
 
   let nearHits: SearchHit[] = []
+  let nearTotal = 0
   if (nearAddsValue && !searchFiltersEqual(fNear, fStrong)) {
     const resNear = await searchListings({
       ...fNear,
-      limit: limit * 2 + seen.size,
+      limit: previewCap * 2 + seen.size,
       offset: 0,
     })
-    nearHits =
-      resNear.fromEs && resNear.hits.length > 0
-        ? takeFiltered(
-            resNear.hits.filter((h) => !seen.has(h.id)),
-            normalized,
-            'near',
-            limit
-          )
-        : []
-    for (const h of nearHits) seen.add(h.id)
+    if (resNear.fromEs && resNear.hits.length > 0) {
+      nearTotal = resNear.total
+      nearHits = takeFiltered(
+        resNear.hits.filter((h) => !seen.has(h.id)),
+        normalized,
+        'near',
+        previewCap
+      )
+      for (const h of nearHits) seen.add(h.id)
+    }
   }
 
   const wideHits: SearchHit[] = []
   let widenedExplainUsed: ExplainMatchFilters = explainWidened(normalized)
+  let widenedTotal = 0
 
   const appendWideHits = (
     hits: SearchHit[],
@@ -495,7 +473,7 @@ export async function runListingSearchV2(opts: {
       hits.filter((h) => !seen.has(h.id)),
       normalized,
       'widened',
-      Math.max(0, limit - wideHits.length),
+      Math.max(0, previewCap - wideHits.length),
       skipQ ? { skipFreeTextPostFilter: true } : undefined
     )
     if (slice.length > 0) {
@@ -512,63 +490,120 @@ export async function runListingSearchV2(opts: {
     if (!searchFiltersEqual(fWideNum, fNear)) {
       const resWide = await searchListings({
         ...fWideNum,
-        limit: limit * 2 + seen.size,
+        limit: previewCap * 2 + seen.size,
         offset: 0,
       })
       if (resWide.fromEs && resWide.hits.length > 0) {
+        widenedTotal = resWide.total
         appendWideHits(resWide.hits, fWideNum, false)
       }
     }
   }
 
-  if (wideHits.length < limit && normalized.q?.trim()) {
+  if (wideHits.length < previewCap && normalized.q?.trim()) {
     const fWideText = filtersWidenedDropFreeText(normalized)
     if (!searchFiltersEqual(fWideText, fNear)) {
       const resWideText = await searchListings({
         ...fWideText,
-        limit: limit * 2 + seen.size,
+        limit: previewCap * 2 + seen.size,
         offset: 0,
       })
       if (resWideText.fromEs && resWideText.hits.length > 0) {
+        if (widenedTotal === 0) widenedTotal = resWideText.total
         appendWideHits(resWideText.hits, fWideText, true)
       }
     }
   }
 
-  const buckets: ListingSearchV2Bucket[] = [
-    {
-      id: 'strong',
-      label: SEARCH_V2_BUCKET_LABELS.strong,
-      items: withMatchReasons(
-        explainForBucket('strong', normalized),
-        strongHits
-      ) as unknown[],
-      totalInBucket: strongHits.length,
-    },
-    {
-      id: 'near',
-      label: SEARCH_V2_BUCKET_LABELS.near,
-      items: withMatchReasons(
-        explainForBucket('near', normalized),
-        nearHits
-      ) as unknown[],
-      totalInBucket: nearHits.length,
-    },
-    {
-      id: 'widened',
-      label: SEARCH_V2_BUCKET_LABELS.widened,
-      items: withMatchReasons(widenedExplainUsed, wideHits) as unknown[],
-      totalInBucket: wideHits.length,
-    },
-  ]
+  return { nearHits, wideHits, widenedExplainUsed, nearTotal, widenedTotal }
+}
+
+export async function runListingSearchV2(opts: {
+  session: SearchSessionMVP
+  limitPerBucket: number
+  exactPageCursor?: string | null
+  exactEsOffset?: number
+  includeAlternativeBuckets?: boolean
+}): Promise<ListingSearchV2Result> {
+  const pageSize = Math.min(50, Math.max(12, opts.limitPerBucket))
+  const includeAlternatives = Boolean(opts.includeAlternativeBuckets)
+  const esOffset = Math.max(0, opts.exactEsOffset ?? 0)
+  const normalized = normalizeSearchSessionMVP(opts.session)
+
+  const baseMessages: string[] = []
+  const hadGeoDrawn =
+    opts.session.bbox != null || (opts.session.polygon?.length ?? 0) >= 3
+  if (!opts.session.mapCommitted && hadGeoDrawn) {
+    baseMessages.push(
+      'El mapa se muestra como referencia. Para filtrar por zona, usá «Buscar en esta zona».'
+    )
+  }
+
+  const fStrong = filtersStrong(normalized)
+  const trimmedCursor =
+    typeof opts.exactPageCursor === 'string' && opts.exactPageCursor.trim().length > 0
+      ? opts.exactPageCursor.trim()
+      : null
+  const searchAfter = trimmedCursor ? decodeListingSearchCursor(trimmedCursor) : null
+  const fromOffset = searchAfter && searchAfter.length > 0 ? 0 : Math.min(esOffset, 500)
+
+  const resStrong = await searchListings({
+    ...fStrong,
+    limit: pageSize,
+    offset: fromOffset,
+    searchAfter:
+      searchAfter && searchAfter.length > 0 ? searchAfter : undefined,
+  })
+
+  if (!resStrong.fromEs) {
+    return {
+      sessionNormalized: normalized,
+      buckets: emptyBuckets(),
+      messages: [
+        ...baseMessages,
+        'El buscador no está disponible en este momento. Probá de nuevo en unos segundos.',
+      ],
+      emptyExplanation:
+        'No pudimos consultar el índice de búsqueda. Los resultados aparecerán cuando el servicio vuelva a responder.',
+      actions: [],
+      totalsByBucket: { strong: 0, near: 0, widened: 0 },
+      strictCatalogTotal: 0,
+      orderedListingIds: [],
+      exactNextCursor: null,
+      exactEsOffsetNext: null,
+    }
+  }
+
+  const strongHits = takeFiltered(resStrong.hits, normalized, 'strong', pageSize)
+  const strictCatalogTotal = resStrong.total
+
+  let nearHits: SearchHit[] = []
+  let wideHits: SearchHit[] = []
+  let widenedExplainUsed: ExplainMatchFilters = explainWidened(normalized)
+  let nearTotal = 0
+  let widenedTotal = 0
+
+  if (includeAlternatives) {
+    const alt = await loadAlternativeBuckets(
+      normalized,
+      pageSize,
+      fStrong,
+      strongHits
+    )
+    nearHits = alt.nearHits
+    wideHits = alt.wideHits
+    widenedExplainUsed = alt.widenedExplainUsed
+    nearTotal = alt.nearTotal
+    widenedTotal = alt.widenedTotal
+  }
 
   const messages = [...baseMessages]
-  if (nearHits.length > 0) {
+  if (includeAlternatives && nearHits.length > 0) {
     messages.push(
       '«Muy parecidos» solo amplía a toda la ciudad: mismos números, operación y tipo; el barrio deja de ser obligatorio.'
     )
   }
-  if (wideHits.length > 0) {
+  if (includeAlternatives && wideHits.length > 0) {
     messages.push(
       '«Opciones ampliadas» mantiene operación y tipo; relaja un criterio numérico o, si hace falta, deja de exigir el texto libre en el índice (sigue el filtro por ciudad y amenities como preferencia).'
     )
@@ -587,6 +622,46 @@ export async function runListingSearchV2(opts: {
     ...wideHits.map((h) => h.id),
   ]
 
+  const exactNextCursor: string | null = resStrong.nextCursor
+  let exactEsOffsetNext: number | null = null
+  if (!exactNextCursor && (!searchAfter || searchAfter.length === 0)) {
+    const nextOff = fromOffset + pageSize
+    if (
+      resStrong.hits.length === pageSize &&
+      nextOff < strictCatalogTotal &&
+      nextOff <= 500
+    ) {
+      exactEsOffsetNext = nextOff
+    }
+  }
+
+  const buckets: ListingSearchV2Bucket[] = [
+    {
+      id: 'strong',
+      label: SEARCH_V2_BUCKET_LABELS.strong,
+      items: withMatchReasons(
+        explainForBucket('strong', normalized),
+        strongHits
+      ) as unknown[],
+      totalInBucket: strictCatalogTotal,
+    },
+    {
+      id: 'near',
+      label: SEARCH_V2_BUCKET_LABELS.near,
+      items: withMatchReasons(
+        explainForBucket('near', normalized),
+        nearHits
+      ) as unknown[],
+      totalInBucket: nearTotal > 0 ? nearTotal : nearHits.length,
+    },
+    {
+      id: 'widened',
+      label: SEARCH_V2_BUCKET_LABELS.widened,
+      items: withMatchReasons(widenedExplainUsed, wideHits) as unknown[],
+      totalInBucket: widenedTotal > 0 ? widenedTotal : wideHits.length,
+    },
+  ]
+
   return {
     sessionNormalized: normalized,
     buckets,
@@ -598,8 +673,10 @@ export async function runListingSearchV2(opts: {
       near: nearHits.length,
       widened: wideHits.length,
     },
-    strictCatalogTotal: resStrong.total,
+    strictCatalogTotal,
     orderedListingIds,
+    exactNextCursor,
+    exactEsOffsetNext,
   }
 }
 

@@ -11,11 +11,8 @@ import type { ListingSearchV2Result } from './search-session-mvp'
 export function isSearchV2ElasticsearchUnreachable(
   out: ListingSearchV2Result
 ): boolean {
-  const sum =
-    out.totalsByBucket.strong +
-    out.totalsByBucket.near +
-    out.totalsByBucket.widened
-  if (sum > 0) return false
+  const itemsOnPage = out.buckets.reduce((n, b) => n + b.items.length, 0)
+  if (itemsOnPage > 0) return false
   const blob = [...out.messages, out.emptyExplanation ?? '']
     .join('\n')
     .toLowerCase()

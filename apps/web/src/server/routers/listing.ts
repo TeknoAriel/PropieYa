@@ -587,26 +587,30 @@ const ORDER_PANEL_RECENCY = [
 async function trySearchV2SqlFallback(
   db: Database,
   session: SearchSessionMVP,
-  limitPerBucket: number,
+  pageSize: number,
+  exactEsOffset: number,
   esOut: ListingSearchV2Result
 ): Promise<ListingSearchV2Result | null> {
   if (!isSearchV2ElasticsearchUnreachable(esOut)) return null
 
   const f = searchV2StrongListingSearchFilters(session)
-  const fetchLimit = Math.min(50, Math.max(1, limitPerBucket * 3))
+  const lim = Math.min(50, Math.max(12, pageSize))
+  const off = Math.max(0, exactEsOffset)
   const seed = searchFiltersToListingInputOverlay(
-    { limit: fetchLimit, offset: 0 } as ListingSearchInput,
+    { limit: lim, offset: off } as ListingSearchInput,
     f
   )
   const prep = buildListingSearchSqlFromSeed(seed)
   const sqlTotal = await countListingSearchSql(db, prep)
-  const rows = await selectListingSearchSqlPage(db, prep, fetchLimit, 0)
+  const rows = await selectListingSearchSqlPage(db, prep, lim, off)
   const explainFilters = seed as unknown as ExplainMatchFilters
   const decorated = withMatchReasons(
     explainFilters,
     rows as ExplainMatchListing[]
   )
-  const strongSlice = decorated.slice(0, limitPerBucket)
+  const strongSlice = decorated
+  const exactEsOffsetNext =
+    rows.length === lim && off + lim < sqlTotal ? off + lim : null
 
   return {
     sessionNormalized: esOut.sessionNormalized,
@@ -615,7 +619,7 @@ async function trySearchV2SqlFallback(
         id: 'strong',
         label: SEARCH_V2_BUCKET_LABELS.strong,
         items: strongSlice,
-        totalInBucket: strongSlice.length,
+        totalInBucket: sqlTotal,
       },
       {
         id: 'near',
@@ -646,6 +650,8 @@ async function trySearchV2SqlFallback(
     orderedListingIds: strongSlice.map((row) =>
       String((row as unknown as { id: string }).id)
     ),
+    exactNextCursor: null,
+    exactEsOffsetNext,
   }
 }
 
@@ -1976,16 +1982,20 @@ export const listingRouter = createTRPCRouter({
     .input(listingSearchV2InputSchema)
     .query(async ({ input, ctx }) => {
       const perfStart = Date.now()
-      const limitPerBucket = input.limitPerBucket ?? 20
+      const limitPerBucket = input.limitPerBucket ?? 24
       let out = await runListingSearchV2({
         session: input.session,
         limitPerBucket,
+        exactPageCursor: input.exactPageCursor ?? null,
+        exactEsOffset: input.exactEsOffset ?? 0,
+        includeAlternativeBuckets: input.includeAlternativeBuckets ?? false,
       })
 
       const fallback = await trySearchV2SqlFallback(
         ctx.db,
         input.session,
         limitPerBucket,
+        input.exactEsOffset ?? 0,
         out
       )
       if (fallback) {
@@ -2008,10 +2018,7 @@ export const listingRouter = createTRPCRouter({
         terminalId: PORTAL_STATS_TERMINALS.LISTING_SEARCH_EXECUTED,
         userId: ctx.session?.userId ?? null,
         payload: {
-          total:
-            out.totalsByBucket.strong +
-            out.totalsByBucket.near +
-            out.totalsByBucket.widened,
+          total: out.strictCatalogTotal,
           source: fallback ? 'search_v2_sql_fallback' : 'search_v2',
         },
       })
