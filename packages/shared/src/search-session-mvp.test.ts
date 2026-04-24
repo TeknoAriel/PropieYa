@@ -20,10 +20,58 @@ describe('normalizeSearchSessionMVP + parsing en sesión', () => {
     expect(n.city).toBe('Funes')
   })
 
+  it('casa ibarlucea: ciudad Ibarlucea inferida por token', () => {
+    const n = normalizeSearchSessionMVP({ q: 'casa ibarlucea' })
+    expect(n.city).toBe('Ibarlucea')
+    expect(n.propertyType).toBe('house')
+  })
+
+  it('ibarlucea: ciudad inferida', () => {
+    const n = normalizeSearchSessionMVP({ q: 'ibarlucea' })
+    expect(n.city).toBe('Ibarlucea')
+  })
+
+  it('KP486622: código estructurado y sin ruido en q', () => {
+    const n = normalizeSearchSessionMVP({ q: 'KP486622' })
+    expect(n.publicListingCode).toBe('KP486622')
+    expect(n.q === null || n.q === '').toBe(true)
+  })
+
+  it('kp 486622: mismo código normalizado', () => {
+    const n = normalizeSearchSessionMVP({ q: 'kp 486622' })
+    expect(n.publicListingCode).toBe('KP486622')
+  })
+
+  it('depto centro rosario: barrio Centro + Rosario', () => {
+    const n = normalizeSearchSessionMVP({ q: 'depto centro rosario' })
+    expect(n.propertyType).toBe('apartment')
+    expect(n.city).toBe('Rosario')
+    expect(n.neighborhood).toBe('Centro')
+  })
+
   it('venta rosario: venta + ciudad', () => {
     const n = normalizeSearchSessionMVP({ q: 'venta rosario' })
     expect(n.operationType).toBe('sale')
     expect(n.city).toBe('Rosario')
+  })
+
+  it('venta centro rosario: venta + barrio Centro + Rosario', () => {
+    const n = normalizeSearchSessionMVP({ q: 'venta centro rosario' })
+    expect(n.operationType).toBe('sale')
+    expect(n.city).toBe('Rosario')
+    expect(n.neighborhood).toBe('Centro')
+  })
+
+  it('alquiler rosario: alquiler + ciudad', () => {
+    const n = normalizeSearchSessionMVP({ q: 'alquiler rosario' })
+    expect(n.operationType).toBe('rent')
+    expect(n.city).toBe('Rosario')
+  })
+
+  it('lote funes: terreno/lote + ciudad Funes', () => {
+    const n = normalizeSearchSessionMVP({ q: 'lote funes' })
+    expect(n.propertyType).toBe('land')
+    expect(n.city).toBe('Funes')
   })
 
   it('casa con jardín funes: garden en amenityIds y ciudad', () => {
@@ -39,11 +87,12 @@ describe('normalizeSearchSessionMVP + parsing en sesión', () => {
     expect(n.neighborhood).toBe('Palermo')
   })
 
-  it('local comercial rosario centro: tipo commercial y ciudad Rosario', () => {
+  it('local comercial rosario centro: tipo commercial, Rosario y barrio Centro', () => {
     const n = normalizeSearchSessionMVP({ q: 'local comercial rosario centro' })
     expect(n.propertyType).toBe('commercial')
     expect(n.city).toBe('Rosario')
-    expect(n.q?.toLowerCase()).toContain('centro')
+    expect(n.neighborhood).toBe('Centro')
+    expect(n.q === null || n.q === '').toBe(true)
   })
 
   it('no pisa ciudad explícita en sesión', () => {
@@ -73,5 +122,13 @@ describe('searchSessionHasAnchor', () => {
 
   it('sin operación ni localidad ni mapa ni q: no hay ancla', () => {
     expect(searchSessionHasAnchor(normalizeSearchSessionMVP({}))).toBe(false)
+  })
+
+  it('código público cuenta como ancla', () => {
+    expect(
+      searchSessionHasAnchor(
+        normalizeSearchSessionMVP({ publicListingCode: 'KP486622' })
+      )
+    ).toBe(true)
   })
 })

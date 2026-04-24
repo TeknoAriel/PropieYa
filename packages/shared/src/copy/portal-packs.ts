@@ -371,6 +371,9 @@ export const PORTAL_SEARCH_UX_COPY = {
     'Ver sugerencias ampliadas (segunda capa: misma ciudad u operación, criterios más flexibles).',
   searchV2AlternativesHint:
     'No se mezclan con el listado exacto de arriba; solo se consultan si pedís esta capa.',
+  searchV2InterpretedPrefix: 'Interpretamos:',
+  searchV2InterpretedCode: 'código {code}',
+  searchV2InterpretedSingleMatchCta: 'Ver aviso',
   /** Buscador v2: texto bajo el título del bucket ampliado (colapsable). */
   searchV2WidenedExplainer:
     'Misma operación y tipo que pediste: acá relajamos un solo criterio extra (superficie, dormitorios o precio), sin mezclar resultados fuera de tu ciudad ni precios desorbitados.',

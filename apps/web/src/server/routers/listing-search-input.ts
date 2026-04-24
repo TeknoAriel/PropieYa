@@ -43,6 +43,8 @@ export const listingSearchFiltersBaseSchema = z.object({
   minTotalRooms: z.number().int().min(0).max(50).optional(),
   city: z.string().max(120).optional(),
   neighborhood: z.string().max(120).optional(),
+  /** Código público (Properstar/Kiteprop). Filtro duro junto al resto de criterios. */
+  publicListingCode: z.string().max(24).optional(),
   /** Con ciudad/barrio: orden por cercanía a este punto (no filtra). Ignorado sin localidad. */
   sortNearLat: z.number().gte(-90).lte(90).optional(),
   sortNearLng: z.number().gte(-180).lte(180).optional(),

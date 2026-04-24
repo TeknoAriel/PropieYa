@@ -55,6 +55,8 @@ export interface SearchFilters {
   minTotalRooms?: number
   city?: string
   neighborhood?: string
+  /** Código público de aviso (p. ej. KP486622); filtro duro en título/descripción (y externalId en SQL). */
+  publicListingCode?: string
   amenities?: string[]
   /**
    * `preferred` (default): amenities y facets.flags suman score, no excluyen.

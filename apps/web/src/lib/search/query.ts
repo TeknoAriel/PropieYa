@@ -278,6 +278,22 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
     }
   }
 
+  const codeRaw = rest.publicListingCode?.trim()
+  if (codeRaw) {
+    const code = sanitize(codeRaw).toUpperCase()
+    if (code.length >= 4) {
+      must.push({
+        bool: {
+          should: [
+            { match_phrase: { title: code } },
+            { match_phrase: { description: code } },
+          ],
+          minimum_should_match: 1,
+        },
+      })
+    }
+  }
+
   const textQ = sanitize(residualTextQuery)
   if (textQ.length > 0) {
     must.push({

@@ -1065,6 +1065,40 @@ export function BuscarContent({
   const showSearchVolumeCard =
     Boolean(dataV2Ui && data && visibleListingsTotal > 0 && !isLoading)
 
+  const searchInterpretationLine = useMemo(() => {
+    const sn = dataV2Ui?.sessionNormalized
+    if (!sn) return null
+    const parts: string[] = []
+    if (sn.publicListingCode) {
+      parts.push(S.searchV2InterpretedCode.replace('{code}', sn.publicListingCode))
+    }
+    if (sn.propertyType) {
+      const pt = sn.propertyType as PropertyType
+      parts.push(PROPERTY_TYPE_LABELS[pt] ?? sn.propertyType)
+    }
+    if (sn.operationType) {
+      const ot = sn.operationType as OperationType
+      parts.push(OPERATION_TYPE_LABELS[ot] ?? sn.operationType)
+    }
+    if (sn.neighborhood?.trim()) parts.push(sn.neighborhood.trim())
+    if (sn.city?.trim()) parts.push(sn.city.trim())
+    if (parts.length === 0) return null
+    return `${S.searchV2InterpretedPrefix} ${parts.join(' · ')}`
+  }, [dataV2Ui?.sessionNormalized])
+
+  const firstStrongListingId = useMemo(() => {
+    const row = dataV2Ui?.buckets?.find((b) => b.id === 'strong')?.items?.[0] as
+      | { id?: string }
+      | undefined
+    return row?.id?.trim() ? row.id.trim() : null
+  }, [dataV2Ui?.buckets])
+
+  const showCodeSingleFichaLink = Boolean(
+    dataV2Ui?.sessionNormalized?.publicListingCode &&
+      strictCatalogTotal === 1 &&
+      firstStrongListingId
+  )
+
   const mapPins = useMemo(
     () => pinsFromListings(listingsForMap),
     [listingsForMap]
@@ -1724,6 +1758,24 @@ export function BuscarContent({
                 </Badge>
               ) : null}
             </div>
+            {searchInterpretationLine ? (
+              <p className="text-xs text-text-secondary" role="status">
+                {searchInterpretationLine}
+              </p>
+            ) : null}
+            {showCodeSingleFichaLink && firstStrongListingId ? (
+              <p className="text-xs">
+                <Link
+                  className="font-medium text-brand-primary underline-offset-2 hover:underline"
+                  href={buildListingHrefWithReturn(
+                    firstStrongListingId,
+                    buscarReturnToEncoded
+                  )}
+                >
+                  {S.searchV2InterpretedSingleMatchCta}
+                </Link>
+              </p>
+            ) : null}
           </Card>
         ) : null}
 

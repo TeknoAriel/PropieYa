@@ -1,6 +1,14 @@
 import { z } from 'zod'
 
-import { inferLocalityFromUserMessage } from './locality-catalog-resolver'
+import {
+  inferLocalityFromUserMessage,
+  inferLocalityFromUserMessageTokens,
+  inferNeighborhoodTokenForParentCity,
+} from './locality-catalog-resolver'
+import {
+  extractPublicListingCodeFromQuery,
+  stripPublicListingCodeFromQuery,
+} from './public-listing-code'
 import { mergePublicSearchWithResidual } from './search-query-merge'
 
 /** Punto WGS84 (mapa / polígono). */
@@ -41,6 +49,11 @@ export const searchSessionMVPSchema = z.object({
   bbox: searchSessionBBoxSchema.nullable().optional(),
   polygon: z.array(searchSessionGeoPointSchema).max(60).nullable().optional(),
   mapCommitted: z.boolean().optional().default(false),
+  /**
+   * Código público de aviso (p. ej. KP486622). Filtro duro en índice/SQL;
+   * se detecta también desde `q` en `enrichSearchSessionMVPFromParsedQuery`.
+   */
+  publicListingCode: z.string().max(24).nullable().optional(),
 })
 
 export type SearchSessionMVP = z.infer<typeof searchSessionMVPSchema>
@@ -91,6 +104,8 @@ const NEIGHBORHOOD_TO_PARENT_CITY: Readonly<Record<string, string>> = {
   Recoleta: 'CABA',
   'San Telmo': 'CABA',
   'Puerto Madero': 'CABA',
+  /** Heurística frecuente en Gran Rosario. */
+  Centro: 'Rosario',
 }
 
 /**
@@ -101,13 +116,26 @@ export function enrichSearchSessionMVPFromParsedQuery(
   s: SearchSessionMVP
 ): SearchSessionMVP {
   const rawQ = s.q?.trim()
-  if (!rawQ) return s
+  let publicListingCode =
+    s.publicListingCode?.trim().replace(/\s+/g, '').toUpperCase() ?? null
+  if (publicListingCode && !/^KP\d{5,14}$/.test(publicListingCode)) {
+    publicListingCode = null
+  }
+
+  let workQ = rawQ ?? ''
+  const extractedFromQ = workQ ? extractPublicListingCodeFromQuery(workQ) : null
+  if (extractedFromQ) {
+    publicListingCode = extractedFromQ
+    workQ = stripPublicListingCodeFromQuery(workQ, extractedFromQ)
+  }
+
+  if (!workQ && !publicListingCode) return s
 
   let city = s.city?.trim() ? s.city.trim() : null
   let neighborhood = s.neighborhood?.trim() ? s.neighborhood.trim() : null
 
-  if (!city && !neighborhood) {
-    const loc = inferLocalityFromUserMessage(rawQ)
+  if (!city && !neighborhood && workQ) {
+    const loc = inferLocalityFromUserMessageTokens(workQ)
     if (loc) {
       if (loc.kind === 'city') {
         city = loc.canonical
@@ -117,13 +145,43 @@ export function enrichSearchSessionMVPFromParsedQuery(
       }
     }
   }
+  if (city && !neighborhood && workQ) {
+    const phraseNb = inferLocalityFromUserMessage(workQ)
+    if (phraseNb?.kind === 'neighborhood') {
+      const parent = NEIGHBORHOOD_TO_PARENT_CITY[phraseNb.canonical]
+      if (!parent || parent === city) {
+        neighborhood = phraseNb.canonical
+      }
+    }
+    if (!neighborhood) {
+      const nbTok = inferNeighborhoodTokenForParentCity(workQ, city)
+      if (nbTok) neighborhood = nbTok
+    }
+  }
+
+  /**
+   * «Casa» suelta no se mapea a `house` en el extractor global (evita ruido en «casa en venta»).
+   * Si ya hay ancla geográfica (inferida o en sesión), el primer token «casa» es tipo + lugar.
+   */
+  let propertyTypeLeadingHint: string | null = null
+  if (
+    !s.fixedPropertyType &&
+    !(s.propertyType?.trim()) &&
+    workQ.trim().length > 0
+  ) {
+    const seg = workQ.trim().split(/\s+/)
+    if (seg[0]?.toLowerCase() === 'casa' && (city || neighborhood)) {
+      propertyTypeLeadingHint = 'house'
+      workQ = seg.slice(1).join(' ').trim()
+    }
+  }
 
   const merged = mergePublicSearchWithResidual({
-    q: rawQ,
+    q: workQ || undefined,
     city: city ?? undefined,
     neighborhood: neighborhood ?? undefined,
     operationType: s.operationType ?? undefined,
-    propertyType: s.propertyType ?? undefined,
+    propertyType: s.propertyType ?? propertyTypeLeadingHint ?? undefined,
     amenities: s.amenityIds?.length ? [...s.amenityIds] : undefined,
     minPrice: s.minPrice ?? undefined,
     maxPrice: s.maxPrice ?? undefined,
@@ -154,6 +212,7 @@ export function enrichSearchSessionMVPFromParsedQuery(
     minBedrooms: merged.minBedrooms ?? s.minBedrooms,
     minSurface: merged.minSurface ?? s.minSurface,
     maxSurface: merged.maxSurface ?? s.maxSurface,
+    publicListingCode,
   }
 }
 
@@ -181,6 +240,9 @@ export function normalizeSearchSessionMVP(raw: unknown): SearchSessionMVP {
   const neighborhood = s.neighborhood?.trim() ? s.neighborhood.trim() : null
   const q = s.q?.trim() ? s.q.trim().slice(0, 200) : null
   const propertyType = s.propertyType?.trim() ? s.propertyType.trim().slice(0, 50) : null
+  const publicListingCode = s.publicListingCode?.trim()
+    ? s.publicListingCode.trim().toUpperCase().slice(0, 24)
+    : null
 
   let bbox = s.bbox ?? null
   let polygon = s.polygon?.length ? s.polygon : null
@@ -220,6 +282,10 @@ export function normalizeSearchSessionMVP(raw: unknown): SearchSessionMVP {
     polygon,
     mapCommitted,
     amenityIds: s.amenityIds ?? [],
+    publicListingCode:
+      publicListingCode && /^KP\d{5,14}$/.test(publicListingCode)
+        ? publicListingCode
+        : null,
   }
   return enrichSearchSessionMVPFromParsedQuery(base)
 }
@@ -233,6 +299,9 @@ export function normalizeSearchSessionMVP(raw: unknown): SearchSessionMVP {
  */
 export function searchSessionHasAnchor(s: SearchSessionMVP): boolean {
   const n = normalizeSearchSessionMVP(s)
+  if (n.publicListingCode?.trim()) {
+    return true
+  }
   if (
     n.operationType === 'sale' ||
     n.operationType === 'rent' ||

@@ -229,6 +229,7 @@ function searchFiltersToListingInputOverlay(
     minTotalRooms: f.minTotalRooms,
     city: f.city,
     neighborhood: f.neighborhood,
+    publicListingCode: f.publicListingCode,
     amenities: f.amenities,
     facets: f.facets,
     geoPoint: f.geoPoint,
@@ -306,6 +307,17 @@ function buildListingSearchSqlFromSeed(
     }) === 'intent'
 
   const conditions = [eq(listings.status, 'active')]
+  const pubCode = sqlInputSeed.publicListingCode?.trim()
+  if (pubCode) {
+    const pat = `%${sanitizeIlikeFragment(pubCode)}%`
+    conditions.push(
+      or(
+        ilike(listings.externalId, pat),
+        ilike(listings.title, pat),
+        ilike(listings.description, pat)
+      )!
+    )
+  }
   if (residualTextQuery.trim()) {
     const frag = sanitizeIlikeFragment(residualTextQuery)
     if (frag.length > 0) {

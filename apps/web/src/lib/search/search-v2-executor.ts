@@ -78,6 +78,7 @@ function filtersStrong(s: SearchSessionMVP): SearchFilters {
   const am = amenitySlice(s)
   return {
     q: s.q ?? undefined,
+    publicListingCode: s.publicListingCode ?? undefined,
     operationType: s.operationType ?? undefined,
     propertyType: s.propertyType ?? undefined,
     city: s.city ?? undefined,
@@ -100,6 +101,7 @@ function filtersNear(s: SearchSessionMVP): SearchFilters {
   const am = amenitySlice(s)
   return {
     q: s.q ?? undefined,
+    publicListingCode: s.publicListingCode ?? undefined,
     operationType: s.operationType ?? undefined,
     propertyType: s.propertyType ?? undefined,
     city: s.city ?? undefined,
@@ -152,6 +154,7 @@ function filtersWidenedDropFreeText(s: SearchSessionMVP): SearchFilters {
   const geo = geoSlice(s)
   const am = amenitySlice(s)
   return {
+    publicListingCode: s.publicListingCode ?? undefined,
     operationType: s.operationType ?? undefined,
     propertyType: s.propertyType ?? undefined,
     city: s.city ?? undefined,

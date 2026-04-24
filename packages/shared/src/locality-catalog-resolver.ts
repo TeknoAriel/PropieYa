@@ -37,6 +37,7 @@ export const LOCALITY_CATALOG_STATIC_SUPPLEMENTS: readonly LocalityCatalogEntry[
     { city: 'Buenos Aires', neighborhood: null, count: 0 },
     { city: 'CABA', neighborhood: null, count: 0 },
     { city: 'Funes', neighborhood: null, count: 0 },
+    { city: 'Ibarlucea', neighborhood: null, count: 0 },
     { city: 'Santa Fe', neighborhood: null, count: 0 },
     { city: 'Mendoza', neighborhood: null, count: 0 },
     { city: 'CABA', neighborhood: 'Palermo', count: 0 },
@@ -91,6 +92,7 @@ const STATIC_ALIAS_ENTRIES: ReadonlyArray<{
     canonical: 'CABA',
   },
   { aliases: ['funes'], kind: 'city', canonical: 'Funes' },
+  { aliases: ['ibarlucea'], kind: 'city', canonical: 'Ibarlucea' },
   { aliases: ['santa fe', 'santa fé'], kind: 'city', canonical: 'Santa Fe' },
   { aliases: ['mendoza'], kind: 'city', canonical: 'Mendoza' },
   { aliases: ['palermo'], kind: 'neighborhood', canonical: 'Palermo' },
@@ -105,6 +107,11 @@ const STATIC_ALIAS_ENTRIES: ReadonlyArray<{
   { aliases: ['caballito'], kind: 'neighborhood', canonical: 'Caballito' },
   { aliases: ['nuñez', 'nunez'], kind: 'neighborhood', canonical: 'Núñez' },
   { aliases: ['recoleta'], kind: 'neighborhood', canonical: 'Recoleta' },
+  {
+    aliases: ['centro'],
+    kind: 'neighborhood',
+    canonical: 'Centro',
+  },
   { aliases: ['san telmo'], kind: 'neighborhood', canonical: 'San Telmo' },
   {
     aliases: ['puerto madero'],
@@ -148,6 +155,82 @@ export function inferLocalityFromUserMessage(message: string): LocalityCatalogHi
     const needle = ` ${foldLocalityKey(alias)} `
     if (needle.length >= 3 && pad.includes(needle)) {
       return { kind, canonical }
+    }
+  }
+  return null
+}
+
+/**
+ * Localidad más robusta: frase completa, luego tokens (p. ej. «casa ibarlucea» → Ibarlucea),
+ * luego ciudades del suplemento estático por subcadena.
+ */
+export function inferLocalityFromUserMessageTokens(
+  message: string
+): LocalityCatalogHit | null {
+  const phrase = inferLocalityFromUserMessage(message)
+  if (phrase) return phrase
+
+  const tokens = message
+    .split(/\s+/)
+    .map((t) => t.replace(/[,;.:]+$/g, ''))
+    .filter((t) => t.length >= 4)
+  const byLen = [...tokens].sort((a, b) => b.length - a.length)
+  for (const t of byLen) {
+    const hit = resolveStaticAlias(t)
+    if (hit) return hit
+  }
+
+  const pad = ` ${foldLocalityKey(message)} `
+  const cityNames = [
+    ...new Set(
+      LOCALITY_CATALOG_STATIC_SUPPLEMENTS.map((e) => e.city.trim()).filter(
+        (c) => c.length > 0 && c !== '—'
+      )
+    ),
+  ].sort((a, b) => b.length - a.length)
+
+  for (const c of cityNames) {
+    const needle = ` ${foldLocalityKey(c)} `
+    if (needle.length >= 3 && pad.includes(needle)) {
+      return { kind: 'city', canonical: c }
+    }
+  }
+  return null
+}
+
+const NEIGHBORHOOD_PARENT_FOR_TOKENS: Readonly<Record<string, string>> = {
+  Palermo: 'CABA',
+  Belgrano: 'CABA',
+  'Nueva Córdoba': 'Córdoba',
+  'Villa Crespo': 'CABA',
+  Almagro: 'CABA',
+  Caballito: 'CABA',
+  Núñez: 'CABA',
+  Recoleta: 'CABA',
+  'San Telmo': 'CABA',
+  'Puerto Madero': 'CABA',
+  Centro: 'Rosario',
+}
+
+/**
+ * Si ya tenemos `cityCanonical`, intenta detectar un barrio por token suelto
+ * coherente con esa ciudad (p. ej. «depto centro rosario»).
+ */
+export function inferNeighborhoodTokenForParentCity(
+  message: string,
+  cityCanonical: string
+): string | null {
+  const tokens = message
+    .split(/\s+/)
+    .map((t) => t.replace(/[,;.:]+$/g, ''))
+    .filter((t) => t.length >= 3)
+  const byLen = [...tokens].sort((a, b) => b.length - a.length)
+  for (const t of byLen) {
+    const hit = resolveStaticAlias(t)
+    if (hit?.kind !== 'neighborhood') continue
+    const parent = NEIGHBORHOOD_PARENT_FOR_TOKENS[hit.canonical]
+    if (parent === cityCanonical) {
+      return hit.canonical
     }
   }
   return null
