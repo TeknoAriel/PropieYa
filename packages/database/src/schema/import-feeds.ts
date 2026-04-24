@@ -1,5 +1,14 @@
 import { relations } from 'drizzle-orm'
-import { index, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core'
+import {
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from 'drizzle-orm/pg-core'
 
 import { organizations } from './organizations'
 
@@ -20,6 +29,11 @@ export const importFeedSources = pgTable(
     /** SHA-256 del cuerpo JSON (cuando no hay ETag fiable en el CDN). */
     lastBodySha256: varchar('last_body_sha256', { length: 64 }),
     lastSuccessfulSyncAt: timestamp('last_successful_sync_at', { withTimezone: true }),
+    /**
+     * Tras un sync completo confiable (sin guard de caída brusca), `max` histórico del tamaño
+     * del feed parseado; evita retiros masivos si una corrida ve un JSON truncado o erróneo.
+     */
+    lastTrustedFullFeedItemCount: integer('last_trusted_full_feed_item_count'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

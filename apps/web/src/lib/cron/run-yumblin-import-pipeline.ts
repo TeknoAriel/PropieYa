@@ -4,7 +4,11 @@
  * Lo usan GET /api/cron/import-yumblin y POST /api/webhooks/kiteprop-ingest.
  */
 
-import { db, runYumblinImportSyncAllSources } from '@propieya/database'
+import {
+  db,
+  runYumblinImportSyncAllSources,
+  type YumblinImportSyncResult,
+} from '@propieya/database'
 import { PORTAL_STATS_TERMINALS } from '@propieya/shared'
 
 import { recordPortalStatsEvent } from '@/lib/analytics/record-portal-stats-event'
@@ -20,6 +24,15 @@ export interface YumblinImportPipelineResult {
     skippedUnchangedBySourceTime: number
     withdrawn: number
   }
+  /** Algún feed omitió bajas masivas por guarda anti-truncado (ver docs/48 §4). */
+  shrinkGuardSkippedWithdraw?: boolean
+  shrinkGuardByFeed?: Array<{
+    feedUrl: string
+    details: NonNullable<YumblinImportSyncResult['shrinkGuardDetails']>
+  }>
+  /** Cron omitió retiros por feed (`IMPORT_CRON_SKIP_WITHDRAW`); las bajas dependen del webhook. */
+  cronWithdrawSkipped?: boolean
+  cronWithdrawSkippedFeeds?: string[]
   resultsCount: number
   /** Siempre false: la publicación masiva de drafts en pipeline quedó deprecada (validación en ingesta). */
   searchIndexDeferred: false
@@ -54,6 +67,19 @@ export async function runYumblinImportPipeline(options: {
     }
   )
 
+  const shrinkGuardByFeed = results
+    .filter((r) => r.withdrawSkippedDueToShrinkGuard && r.shrinkGuardDetails)
+    .map((r) => ({
+      feedUrl: r.feedUrl,
+      details: r.shrinkGuardDetails!,
+    }))
+  const shrinkGuardSkippedWithdraw = shrinkGuardByFeed.length > 0
+
+  const cronWithdrawSkippedFeeds = results
+    .filter((r) => r.withdrawSkippedDueToCronPolicy)
+    .map((r) => r.feedUrl)
+  const cronWithdrawSkipped = cronWithdrawSkippedFeeds.length > 0
+
   const withdrawnIds = results.flatMap((r) => r.withdrawnListingIds)
   const deactivatedIds = results.flatMap((r) => r.deactivatedListingIds)
   const searchRemovalIds = [...new Set([...withdrawnIds, ...deactivatedIds])]
@@ -84,6 +110,10 @@ export async function runYumblinImportPipeline(options: {
       searchIndexDeferred: false,
       lifecycleWebhookFlush,
       feedSources: results.length,
+      shrinkGuardSkippedWithdraw,
+      cronWithdrawSkipped,
+      ...(shrinkGuardByFeed.length > 0 ? { shrinkGuardByFeed } : {}),
+      ...(cronWithdrawSkippedFeeds.length > 0 ? { cronWithdrawSkippedFeeds } : {}),
     },
   })
 
@@ -92,5 +122,14 @@ export async function runYumblinImportPipeline(options: {
     resultsCount: results.length,
     searchIndexDeferred: false,
     lifecycleWebhookFlush,
+    ...(shrinkGuardSkippedWithdraw
+      ? {
+          shrinkGuardSkippedWithdraw,
+          shrinkGuardByFeed,
+        }
+      : {}),
+    ...(cronWithdrawSkipped
+      ? { cronWithdrawSkipped, cronWithdrawSkippedFeeds }
+      : {}),
   }
 }

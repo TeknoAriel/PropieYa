@@ -48,11 +48,17 @@
 
 2. Los registros `listings` con `source = import`, `external_id` no nulo, **pertenecientes al scope de retiro** (`IMPORT_WITHDRAW_SCOPE`, recomendado **`org`** con un solo feed activo) cuyo `external_id` **no** está en ese conjunto pasan a estado **`withdrawn`**.
 
-3. **Elasticsearch:** por cada ID retirado en ese run se llama **`removeListingFromSearch`** (el documento deja el índice).
+3. **Guardas antes de retiros masivos**
+   - **Tamaño vs. histórico:** baseline = `max(last_trusted_full_feed_item_count, count(listings import con external_id))`. Si el baseline ≥ `IMPORT_WITHDRAW_SHRINK_GUARD_MIN_BASELINE` (default 150) y el feed parseado tiene **menos** ítems que el umbral, **no** se retira en bloque. El umbral es `floor(baseline × IMPORT_WITHDRAW_SHRINK_GUARD_FRACTION)` (default 0,2) y, si el baseline ≥ `IMPORT_WITHDRAW_SHRINK_GUARD_LARGE_BASELINE` (default 4000), **no menos** que `IMPORT_WITHDRAW_SHRINK_GUARD_ABS_FLOOR` (default 800), para que catálogos enormes no acepten feeds ridículamente pequeños.
+   - **Ratio de inválidos:** si el feed tiene al menos `IMPORT_WITHDRAW_INVALID_RATIO_MIN_FEED` ítems (default 40) y más del `IMPORT_WITHDRAW_INVALID_RATIO_MAX` (default 0,75) fallan el mapeo, se asume esquema/feed roto y **no** se aplican bajas masivas (`shrinkGuardDetails.reason = invalid_ratio`).
+   - **Cron sin bajas:** con **`IMPORT_CRON_SKIP_WITHDRAW=true`**, las llamadas GET al cron (`enforceInterval` como en `/api/cron/import-yumblin`) **no** ejecutan retiros por feed; siguen valiendo 304 / hash del body (no re-descarga si no cambió el JSON) y se procesan altas/actualizaciones. Las bajas quedan para **`POST /api/webhooks/kiteprop-ingest`** (u operador). Recomendado en producción si Kiteprop notifica cambios por webhook. La respuesta puede incluir `withdrawSkippedDueToCronPolicy` / `cronWithdrawSkipped` en el pipeline.
+   - Para una caída real de inventario por debajo de los umbrales, usar **`IMPORT_WITHDRAW_SHRINK_GUARD_DISABLE=1`** en esa corrida (y volver a quitarlo). La respuesta del sync puede incluir `withdrawSkippedDueToShrinkGuard` y `shrinkGuardDetails` (`reason`: `feed_size` | `invalid_ratio`).
 
-4. **“Todos los feeds o listing”:** en este modelo, “feed” = el JSON de import; los avisos manuales del panel **no** tienen `source=import` y **no** se retiran por esta regla. No hay otro caché de listados en servidor sustituto de DB/ES; **cachés de cliente** (navegador, comparador en `localStorage`, etc.) son eventualmente consistentes al refrescar o al navegar.
+4. **Elasticsearch:** por cada ID retirado en ese run se llama **`removeListingFromSearch`** (el documento deja el índice).
 
-5. Si el índice ES quedara desincronizado tras incidentes: **`pnpm reindex:es`** (o cron `sync-search`) según `docs/37` §4.
+5. **“Todos los feeds o listing”:** en este modelo, “feed” = el JSON de import; los avisos manuales del panel **no** tienen `source=import` y **no** se retiran por esta regla. No hay otro caché de listados en servidor sustituto de DB/ES; **cachés de cliente** (navegador, comparador en `localStorage`, etc.) son eventualmente consistentes al refrescar o al navegar.
+
+6. Si el índice ES quedara desincronizado tras incidentes: **`pnpm reindex:es`** (o cron `sync-search`) según `docs/37` §4.
 
 ---
 
@@ -75,7 +81,7 @@ El pipeline del **import** publica borradores nuevos y elimina de ES los **withd
 
 ## 7. Checklist operativo (agente)
 
-1. Production: `CRON_SECRET` en Vercel si se quiere proteger GET cron/webhook; opcionalmente el mismo secreto en GitHub solo si se usa **workflow_dispatch** manual; `IMPORT_SYNC_INTERVAL_HOURS` según política; feed URL; `IMPORT_WITHDRAW_SCOPE=org` si un solo feed.
+1. Production: `CRON_SECRET` en Vercel si se quiere proteger GET cron/webhook; opcionalmente el mismo secreto en GitHub solo si se usa **workflow_dispatch** manual; `IMPORT_SYNC_INTERVAL_HOURS` según política; feed URL; `IMPORT_WITHDRAW_SCOPE=org` si un solo feed. Aplicar en Neon (o `pnpm db:push`) la columna `import_feed_sources.last_trusted_full_feed_item_count` (`docs/sql/add-import-feed-last-trusted-count.sql` en el manifest de `pnpm db:sql:apply`).
 2. Webhook: definir `KITEPROP_INGEST_WEBHOOK_SECRET` y configurar en Kiteprop la URL POST del dominio canónico.
 3. Contrato JSON: documentar el **campo del código de tipo de aviso** y la clave en `features` donde se guardará hasta tener columna dedicada.
 4. Tras cambiar `vercel.json` (crons): referencia en `docs/DEPLOY-CONTEXTO-AGENTES.md` (excepción autorizada por propietario 2026-03-31).

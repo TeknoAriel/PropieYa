@@ -12,7 +12,7 @@ import {
   peekFeedExternalId,
   sha256HexFromString,
 } from '@propieya/shared'
-import { and, eq, inArray, isNull, isNotNull, ne, notInArray, or } from 'drizzle-orm'
+import { and, count, eq, inArray, isNull, isNotNull, ne, notInArray, or } from 'drizzle-orm'
 
 import { db } from './client'
 import {
@@ -173,12 +173,101 @@ export interface YumblinImportSyncResult {
   withdrawnListingIds: string[]
   /** Avisos que dejaron de estar publicados por validación en este sync (quitar de ES en pipeline). */
   deactivatedListingIds: string[]
+  /**
+   * Si true, se omitió el retiro masivo porque el feed tenía muy pocos ítems respecto al histórico
+   * (evita marcar miles como `withdrawn` ante un JSON truncado).
+   */
+  withdrawSkippedDueToShrinkGuard?: boolean
+  /** Contexto opcional para logs / telemetría cuando actúa la guarda. */
+  shrinkGuardDetails?: {
+    baseline: number
+    threshold: number
+    feedItemCount: number
+    fraction: number
+    reason?: 'feed_size' | 'invalid_ratio'
+    /** Conteos usados para `invalid_ratio` cuando aplica. */
+    skippedInvalid?: number
+  }
+  /**
+   * GET cron omitió bajas (`IMPORT_CRON_SKIP_WITHDRAW`); el feed igual se procesó (altas/updates).
+   * Las bajas quedan para el webhook o una corrida sin esta política.
+   */
+  withdrawSkippedDueToCronPolicy?: boolean
 }
 
 function resolveWithdrawOrgWideExplicit(options: YumblinImportSyncOptions): boolean {
   if (options.withdrawOrgWide !== undefined) return options.withdrawOrgWide
   const s = (process.env.IMPORT_WITHDRAW_SCOPE ?? 'org').toLowerCase().trim()
   return s !== 'source' && s !== 'feed'
+}
+
+/** Si el feed parseado tiene muchos menos ítems que el histórico, no ejecutar bajas masivas (JSON truncado / URL incorrecta). */
+function resolveWithdrawShrinkGuardDisabled(): boolean {
+  const v = (process.env.IMPORT_WITHDRAW_SHRINK_GUARD_DISABLE ?? '').trim().toLowerCase()
+  return v === '1' || v === 'true' || v === 'yes'
+}
+
+/** Fracción mínima del baseline bajo la cual no se aplica retiro (default 0.2 = 20%). */
+function resolveWithdrawShrinkGuardFraction(): number {
+  const raw = (process.env.IMPORT_WITHDRAW_SHRINK_GUARD_FRACTION ?? '0.2').trim()
+  const n = parseFloat(raw)
+  if (!Number.isFinite(n) || n <= 0 || n > 1) return 0.2
+  return n
+}
+
+/** Solo aplica la guarda si el baseline (DB + último feed confiable) es al menos este valor. */
+function resolveWithdrawShrinkGuardMinBaseline(): number {
+  const raw = (process.env.IMPORT_WITHDRAW_SHRINK_GUARD_MIN_BASELINE ?? '150').trim()
+  const n = parseInt(raw, 10)
+  return Number.isFinite(n) && n >= 0 ? n : 150
+}
+
+/**
+ * Si el baseline supera este valor, el umbral de retiro no puede ser menor que `absFloor`
+ * (evita que un catálogo enorme acepte un feed ridículamente pequeño solo por el % relativo).
+ */
+function resolveWithdrawShrinkGuardLargeBaseline(): number {
+  const raw = (process.env.IMPORT_WITHDRAW_SHRINK_GUARD_LARGE_BASELINE ?? '4000').trim()
+  const n = parseInt(raw, 10)
+  return Number.isFinite(n) && n > 0 ? n : 4000
+}
+
+function resolveWithdrawShrinkGuardAbsFloor(): number {
+  const raw = (process.env.IMPORT_WITHDRAW_SHRINK_GUARD_ABS_FLOOR ?? '800').trim()
+  const n = parseInt(raw, 10)
+  return Number.isFinite(n) && n > 0 ? n : 800
+}
+
+/** Mínimo de ítems en el feed para evaluar ratio de inválidos (mapeo roto / esquema cambiado). */
+function resolveWithdrawInvalidRatioMinFeed(): number {
+  const raw = (process.env.IMPORT_WITHDRAW_INVALID_RATIO_MIN_FEED ?? '40').trim()
+  const n = parseInt(raw, 10)
+  return Number.isFinite(n) && n > 0 ? n : 40
+}
+
+/** Si más de esta fracción de ítems fallan el map, no retirar masivamente (0.75 = 75%). */
+function resolveWithdrawInvalidRatioMax(): number {
+  const raw = (process.env.IMPORT_WITHDRAW_INVALID_RATIO_MAX ?? '0.75').trim()
+  const n = parseFloat(raw)
+  if (!Number.isFinite(n) || n <= 0 || n > 1) return 0.75
+  return n
+}
+
+/** GET `/api/cron/import-yumblin` con `enforceInterval`: no ejecutar bajas por feed (solo webhook u operador). */
+function resolveCronSkipWithdraw(): boolean {
+  const v = (process.env.IMPORT_CRON_SKIP_WITHDRAW ?? '').trim().toLowerCase()
+  return v === '1' || v === 'true' || v === 'yes'
+}
+
+/** Tamaño mínimo del feed parseado para permitir retiros masivos cuando el baseline es grande (ver `LARGE_BASELINE` + `ABS_FLOOR`). */
+function computeShrinkGuardMinFeedSize(baseline: number, fraction: number): number {
+  const rel = Math.floor(baseline * fraction)
+  const large = resolveWithdrawShrinkGuardLargeBaseline()
+  const absFloor = resolveWithdrawShrinkGuardAbsFloor()
+  if (baseline >= large) {
+    return Math.max(rel, absFloor)
+  }
+  return rel
 }
 
 function sourceTimesMatch(
@@ -794,56 +883,113 @@ export async function runYumblinImportSync(
   }
 
   let withdrawnListingIds: string[] = []
+  let withdrawSkippedDueToShrinkGuard = false
+  let withdrawSkippedDueToCronPolicy = false
+  let shrinkGuardDetails: YumblinImportSyncResult['shrinkGuardDetails']
 
   if (!isPartialImport && fullFeedLength > 0 && feedExternalIds.size > 0) {
-    const idList = [...feedExternalIds]
-    const sourceScope =
-      withdrawOrgWide
-        ? null
-        : includeUnassigned
-          ? or(
-              eq(listings.importFeedSourceId, source.id),
-              isNull(listings.importFeedSourceId)
-            )
-          : eq(listings.importFeedSourceId, source.id)
+    const fraction = resolveWithdrawShrinkGuardFraction()
+    const minBaseline = resolveWithdrawShrinkGuardMinBaseline()
+    let runWithdraw = true
 
-    const toWithdraw = await db
-      .select({
-        id: listings.id,
-        externalId: listings.externalId,
-        status: listings.status,
-      })
-      .from(listings)
-      .where(
-        and(
-          eq(listings.organizationId, organizationId),
-          eq(listings.source, 'import'),
-          isNotNull(listings.externalId),
-          notInArray(listings.externalId, idList),
-          ne(listings.status, 'withdrawn'),
-          ...(sourceScope ? [sourceScope] : [])
+    if (resolveCronSkipWithdraw() && enforceInterval) {
+      runWithdraw = false
+      withdrawSkippedDueToCronPolicy = true
+    } else if (!resolveWithdrawShrinkGuardDisabled()) {
+      const [importCountRow] = await db
+        .select({ n: count() })
+        .from(listings)
+        .where(
+          and(
+            eq(listings.organizationId, organizationId),
+            eq(listings.source, 'import'),
+            isNotNull(listings.externalId)
+          )
         )
-      )
+      const dbImportTotal = Number(importCountRow?.n ?? 0)
+      const baseline = Math.max(source.lastTrustedFullFeedItemCount ?? 0, dbImportTotal)
+      const guardApplies = baseline >= minBaseline
+      const threshold = computeShrinkGuardMinFeedSize(baseline, fraction)
+      const minFeedForInvalid = resolveWithdrawInvalidRatioMinFeed()
+      const maxInvalidRatio = resolveWithdrawInvalidRatioMax()
+      const invalidRatioSuspicious =
+        fullFeedLength >= minFeedForInvalid &&
+        counts.skippedInvalid > fullFeedLength * maxInvalidRatio
 
-    if (toWithdraw.length > 0) {
-      withdrawnListingIds = toWithdraw.map((r) => r.id)
-      for (const row of toWithdraw) {
-        await recordListingTransitionForKiteprop({
-          listingId: row.id,
-          externalId: row.externalId,
-          previousStatus: row.status,
-          newStatus: 'withdrawn',
-          source: 'import_withdraw',
-          reasonCode: 'IMPORT_FEED_WITHDRAWN',
-          reasonMessage: LISTING_REASON_MESSAGES_ES.IMPORT_FEED_WITHDRAWN,
-          details: {},
-        })
+      if (invalidRatioSuspicious) {
+        runWithdraw = false
+        withdrawSkippedDueToShrinkGuard = true
+        shrinkGuardDetails = {
+          baseline,
+          threshold,
+          feedItemCount: fullFeedLength,
+          fraction: maxInvalidRatio,
+          reason: 'invalid_ratio',
+          skippedInvalid: counts.skippedInvalid,
+        }
+      } else if (guardApplies && fullFeedLength < threshold) {
+        runWithdraw = false
+        withdrawSkippedDueToShrinkGuard = true
+        shrinkGuardDetails = {
+          baseline,
+          threshold,
+          feedItemCount: fullFeedLength,
+          fraction,
+          reason: 'feed_size',
+        }
       }
-      await db
-        .update(listings)
-        .set({ status: 'withdrawn', updatedAt: now })
-        .where(inArray(listings.id, withdrawnListingIds))
-      counts.withdrawn = toWithdraw.length
+    }
+
+    if (runWithdraw) {
+      const idList = [...feedExternalIds]
+      const sourceScope =
+        withdrawOrgWide
+          ? null
+          : includeUnassigned
+            ? or(
+                eq(listings.importFeedSourceId, source.id),
+                isNull(listings.importFeedSourceId)
+              )
+            : eq(listings.importFeedSourceId, source.id)
+
+      const toWithdraw = await db
+        .select({
+          id: listings.id,
+          externalId: listings.externalId,
+          status: listings.status,
+        })
+        .from(listings)
+        .where(
+          and(
+            eq(listings.organizationId, organizationId),
+            eq(listings.source, 'import'),
+            isNotNull(listings.externalId),
+            notInArray(listings.externalId, idList),
+            ne(listings.status, 'withdrawn'),
+            ...(sourceScope ? [sourceScope] : [])
+          )
+        )
+
+      if (toWithdraw.length > 0) {
+        withdrawnListingIds = toWithdraw.map((r) => r.id)
+        for (const row of toWithdraw) {
+          await recordListingTransitionForKiteprop({
+            listingId: row.id,
+            externalId: row.externalId,
+            previousStatus: row.status,
+            newStatus: 'withdrawn',
+            source: 'import_withdraw',
+            reasonCode: 'IMPORT_FEED_WITHDRAWN',
+            reasonMessage: LISTING_REASON_MESSAGES_ES.IMPORT_FEED_WITHDRAWN,
+            details: {},
+          })
+        }
+        await db
+          .update(listings)
+          .set({ status: 'withdrawn', updatedAt: now })
+          .where(inArray(listings.id, withdrawnListingIds))
+        counts.withdrawn = toWithdraw.length
+      }
     }
   }
 
@@ -908,6 +1054,12 @@ export async function runYumblinImportSync(
     }
   }
 
+  const trustedFeedSnapshot =
+    !isPartialImport &&
+    !withdrawSkippedDueToShrinkGuard &&
+    fullFeedLength > 0 &&
+    feedExternalIds.size > 0
+
   await db
     .update(importFeedSources)
     .set({
@@ -916,6 +1068,7 @@ export async function runYumblinImportSync(
       lastBodySha256: bodySha256 ?? source.lastBodySha256,
       lastSuccessfulSyncAt: now,
       updatedAt: now,
+      ...(trustedFeedSnapshot ? { lastTrustedFullFeedItemCount: fullFeedLength } : {}),
     })
     .where(eq(importFeedSources.id, source.id))
 
@@ -927,6 +1080,10 @@ export async function runYumblinImportSync(
     counts,
     withdrawnListingIds,
     deactivatedListingIds,
+    ...(withdrawSkippedDueToShrinkGuard
+      ? { withdrawSkippedDueToShrinkGuard: true, shrinkGuardDetails }
+      : {}),
+    ...(withdrawSkippedDueToCronPolicy ? { withdrawSkippedDueToCronPolicy: true } : {}),
   }
 }
 

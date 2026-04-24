@@ -7,3 +7,4 @@ add-import-source-updated-at.sql
 add-dedup-canonical-id.sql
 add-portal-stats-events.sql
 add-leads-access-monetization.sql
+add-import-feed-last-trusted-count.sql
