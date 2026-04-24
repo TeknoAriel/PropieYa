@@ -93,3 +93,77 @@ export function statusOperationalCopy(
     help: 'Revisá el estado del aviso y completá los datos necesarios.',
   }
 }
+
+export function statusActionCopy(
+  status: ListingStatus,
+  canPublish: boolean,
+  canRenew: boolean
+): { title: string; description: string; nextAction: string } {
+  if (status === 'draft' && canPublish) {
+    return {
+      title: 'Este aviso está listo para publicar',
+      description: 'Ya cumple los requisitos de publicación.',
+      nextAction: 'Próxima acción: publicalo cuando quieras.',
+    }
+  }
+  if (status === 'draft') {
+    return {
+      title: 'Este aviso está en borrador',
+      description: 'Todavía no cumple todo lo necesario para publicarse.',
+      nextAction: 'Próxima acción: completá los faltantes y guardá cambios.',
+    }
+  }
+  if (status === 'active') {
+    return {
+      title: 'Este aviso ya está publicado',
+      description: 'Está visible para los usuarios del portal.',
+      nextAction: 'Próxima acción: mantené el contenido actualizado.',
+    }
+  }
+  if (status === 'rejected' && canPublish) {
+    return {
+      title: 'Este aviso estaba bloqueado y ya puede publicarse',
+      description: 'Las correcciones necesarias ya están completas.',
+      nextAction: 'Próxima acción: reintentá la publicación.',
+    }
+  }
+  if (status === 'rejected') {
+    return {
+      title: 'Este aviso no puede publicarse todavía',
+      description: 'Quedó rechazado por validación de contenido.',
+      nextAction: 'Próxima acción: corregí los faltantes y reintentá publicar.',
+    }
+  }
+  if (status === 'expired') {
+    return {
+      title: 'Este aviso está vencido',
+      description: 'Se dio de baja por falta de actualización de contenido.',
+      nextAction: canRenew
+        ? 'Próxima acción: actualizá el contenido y renová la vigencia.'
+        : 'Próxima acción: corregí los requisitos de publicación y luego renová.',
+    }
+  }
+  if (status === 'expiring_soon') {
+    return {
+      title: 'Este aviso está por vencer',
+      description: 'Su vigencia está cerca de finalizar.',
+      nextAction: canRenew
+        ? 'Próxima acción: renovalo para mantenerlo publicado.'
+        : 'Próxima acción: revisá el aviso antes de renovar.',
+    }
+  }
+  if (status === 'suspended') {
+    return {
+      title: 'Este aviso está suspendido',
+      description: 'No está visible hasta regularizar su estado.',
+      nextAction: canRenew
+        ? 'Próxima acción: renová el aviso para volver a publicarlo.'
+        : 'Próxima acción: corregí datos y reintentá la publicación.',
+    }
+  }
+  return {
+    title: 'Estado del aviso',
+    description: 'Revisá el estado y los requisitos para seguir.',
+    nextAction: 'Próxima acción: corregí los datos pendientes.',
+  }
+}

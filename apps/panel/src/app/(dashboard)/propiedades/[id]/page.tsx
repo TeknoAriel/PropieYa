@@ -17,6 +17,7 @@ import { Star, Trash2 } from 'lucide-react'
 
 import {
   publicationChecklist,
+  statusActionCopy,
   statusOperationalCopy,
 } from '@/lib/listing-publication'
 import { formatListingVigencia } from '@/lib/vigencia'
@@ -286,12 +287,19 @@ export default function EditarPropiedadPage() {
   const media = (current as { media?: { id: string; url: string; isPrimary: boolean; order: number }[] }).media ?? []
   const status = current.status as ListingStatus
   const operational = statusOperationalCopy(status, Boolean(current.canPublish))
+  const actionCopy = statusActionCopy(
+    status,
+    Boolean(current.canPublish),
+    Boolean(current.canRenew)
+  )
   const checklist = publicationChecklist(current.publishability?.issues ?? [])
   const lastLifecycleReason = current.lastLifecycleEvent?.reasonMessage ?? null
   const vigencia = formatListingVigencia(current.expiresAt, current.status)
   const showRenew = Boolean(current.canRenew)
   const isDraft = current.status === 'draft'
+  const isRejected = current.status === 'rejected'
   const canPublishNow = Boolean(current.canPublish)
+  const showPublishAction = isDraft || isRejected
 
   return (
     <div className="space-y-6">
@@ -303,7 +311,7 @@ export default function EditarPropiedadPage() {
           <p className="text-text-secondary mt-1">{addr?.city as string}</p>
         </div>
         <div className="flex gap-2">
-          {isDraft && (
+          {showPublishAction && (
             <Button
               onClick={() => publishMutation.mutate({ id })}
               disabled={publishMutation.isPending || !canPublishNow}
@@ -311,7 +319,9 @@ export default function EditarPropiedadPage() {
               {publishMutation.isPending
                 ? 'Publicando...'
                 : canPublishNow
-                  ? 'Publicar aviso'
+                  ? isRejected
+                    ? 'Reintentar publicación'
+                    : 'Publicar aviso'
                   : 'Completá requisitos'}
             </Button>
           )}
@@ -335,7 +345,7 @@ export default function EditarPropiedadPage() {
             <h2 className="text-lg font-semibold text-text-primary">
               Estado del aviso
             </h2>
-            <p className="text-sm text-text-secondary">{operational.help}</p>
+            <p className="text-sm text-text-secondary">{actionCopy.description}</p>
           </div>
           <Badge
             variant={
@@ -357,16 +367,16 @@ export default function EditarPropiedadPage() {
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-md border border-border p-3">
             <p className="text-xs uppercase tracking-wide text-text-tertiary">
-              Publicación
+              Estado operativo
             </p>
-            {canPublishNow ? (
-              <p className="text-sm text-semantic-success mt-1">
-                El aviso está listo para publicar.
-              </p>
-            ) : (
-              <div className="mt-1 space-y-1">
-                <p className="text-sm text-text-primary">
-                  Este aviso no puede publicarse todavía.
+            <p className="mt-1 text-sm font-medium text-text-primary">
+              {actionCopy.title}
+            </p>
+            <p className="mt-1 text-sm text-text-secondary">{actionCopy.nextAction}</p>
+            {!canPublishNow ? (
+              <div className="mt-2 space-y-1">
+                <p className="text-xs uppercase tracking-wide text-text-tertiary">
+                  Qué falta corregir
                 </p>
                 {checklist.length > 0 ? (
                   <ul className="text-sm text-text-secondary space-y-1">
@@ -376,11 +386,11 @@ export default function EditarPropiedadPage() {
                   </ul>
                 ) : (
                   <p className="text-sm text-text-secondary">
-                    Revisá los datos básicos, imágenes y ubicación para publicarlo.
+                    Revisá datos obligatorios, ubicación, precio e imágenes.
                   </p>
                 )}
               </div>
-            )}
+            ) : null}
           </div>
           <div className="rounded-md border border-border p-3">
             <p className="text-xs uppercase tracking-wide text-text-tertiary">

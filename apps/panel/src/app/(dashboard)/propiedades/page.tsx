@@ -13,6 +13,7 @@ import { useState } from 'react'
 
 import {
   publicationChecklist,
+  statusActionCopy,
   statusOperationalCopy,
 } from '@/lib/listing-publication'
 import { formatListingVigencia } from '@/lib/vigencia'
@@ -161,10 +162,18 @@ export default function PropiedadesPage() {
                   listing.status as ListingStatus,
                   Boolean(listing.canPublish)
                 )
+                const actionCopy = statusActionCopy(
+                  listing.status as ListingStatus,
+                  Boolean(listing.canPublish),
+                  Boolean(listing.canRenew)
+                )
                 const missingChecklist =
-                  listing.status === 'draft' && !listing.canPublish
+                  (listing.status === 'draft' || listing.status === 'rejected') &&
+                  !listing.canPublish
                     ? publicationChecklist(listing.publishability?.issues ?? [])
                     : []
+                const showPublish =
+                  listing.status === 'draft' || listing.status === 'rejected'
                 return (
                 <tr
                   key={listing.id}
@@ -206,7 +215,11 @@ export default function PropiedadesPage() {
                       <p className="mt-1 text-xs text-text-tertiary">
                         {missingChecklist[0]}
                       </p>
-                    ) : null}
+                    ) : (
+                      <p className="mt-1 text-xs text-text-tertiary">
+                        {actionCopy.nextAction}
+                      </p>
+                    )}
                   </td>
                   <td className="p-4 text-sm text-text-secondary max-w-[10rem]">
                     <span
@@ -232,7 +245,7 @@ export default function PropiedadesPage() {
                   <td className="p-4 text-text-secondary">{listing.contactCount}</td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {listing.status === 'draft' ? (
+                      {showPublish ? (
                         <Button
                           variant="outline"
                           size="sm"
@@ -244,12 +257,15 @@ export default function PropiedadesPage() {
                           {publishMutation.isPending
                             ? 'Publicando...'
                             : listing.canPublish
-                              ? 'Publicar'
+                              ? listing.status === 'rejected'
+                                ? 'Reintentar'
+                                : 'Publicar'
                               : 'Completá requisitos'}
                         </Button>
                       ) : null}
                       {(listing.status === 'expiring_soon' ||
-                        listing.status === 'suspended') ? (
+                        listing.status === 'suspended' ||
+                        listing.status === 'expired') ? (
                         <Button
                           variant="outline"
                           size="sm"
