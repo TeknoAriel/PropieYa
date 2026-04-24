@@ -256,7 +256,81 @@ function resolveWithdrawInvalidRatioMax(): number {
 /** GET `/api/cron/import-yumblin` con `enforceInterval`: no ejecutar bajas por feed (solo webhook u operador). */
 function resolveCronSkipWithdraw(): boolean {
   const v = (process.env.IMPORT_CRON_SKIP_WITHDRAW ?? '').trim().toLowerCase()
-  return v === '1' || v === 'true' || v === 'yes'
+  if (!v) return true
+  if (v === '0' || v === 'false' || v === 'no') return false
+  return true
+}
+
+/** Modo lanzamiento: para import no baja publicación por reglas blandas de calidad. */
+function resolveImportPublishSafeMode(): boolean {
+  const v = (process.env.IMPORT_PUBLISH_SAFE_MODE ?? '').trim().toLowerCase()
+  if (!v) return true
+  if (v === '0' || v === 'false' || v === 'no') return false
+  return true
+}
+
+function isNonEmptyText(v: unknown): boolean {
+  return typeof v === 'string' && v.trim().length > 0
+}
+
+function assessMappedImportForSafeMode(
+  mapped: {
+    externalId: string | null
+    operationType: string
+    propertyType: string
+    title: string
+    description: string
+    address: unknown
+    locationLat: number | null
+    locationLng: number | null
+  }
+): ReturnType<typeof assessListingPublishability> {
+  type PublishabilityIssue = ReturnType<typeof assessListingPublishability>['issues'][number]
+  const issues: PublishabilityIssue[] = []
+
+  if (!isNonEmptyText(mapped.externalId)) {
+    issues.push({
+      code: 'MISSING_REQUIRED_FIELDS',
+      message: 'El aviso no tiene identificador externo.',
+      details: { field: 'externalId' },
+    })
+  }
+  if (!isNonEmptyText(mapped.operationType) || !isNonEmptyText(mapped.propertyType)) {
+    issues.push({
+      code: 'MISSING_REQUIRED_FIELDS',
+      message: 'Faltan tipo de operación o tipo de propiedad.',
+      details: { field: 'operationType/propertyType' },
+    })
+  }
+  if (!isNonEmptyText(mapped.title) || !isNonEmptyText(mapped.description)) {
+    issues.push({
+      code: 'MISSING_REQUIRED_FIELDS',
+      message: 'Faltan datos mínimos de contenido (título o descripción).',
+      details: { field: 'title/description' },
+    })
+  }
+
+  const addr = mapped.address as Record<string, unknown> | null
+  const hasLocality =
+    addr != null &&
+    (isNonEmptyText(addr.city) ||
+      isNonEmptyText(addr.neighborhood) ||
+      isNonEmptyText(addr.state))
+  const hasGeo =
+    mapped.locationLat != null &&
+    mapped.locationLng != null &&
+    Number.isFinite(mapped.locationLat) &&
+    Number.isFinite(mapped.locationLng)
+  if (!hasLocality && !hasGeo) {
+    issues.push({
+      code: 'INVALID_LOCATION',
+      message: 'Falta ubicación mínima para publicar el aviso.',
+      details: {},
+    })
+  }
+
+  const primaryIssue: PublishabilityIssue | null = issues.length > 0 ? issues[0]! : null
+  return { ok: issues.length === 0, issues, primaryIssue }
 }
 
 /** Tamaño mínimo del feed parseado para permitir retiros masivos cuando el baseline es grande (ver `LARGE_BASELINE` + `ABS_FLOOR`). */
@@ -339,6 +413,20 @@ async function replaceListingMedia(listingId: string, urls: string[]) {
   }
 }
 
+function normalizeMappedAddress(address: unknown): unknown {
+  if (typeof address !== 'string') return address
+  const trimmed = address.trim()
+  if (!trimmed) return address
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    try {
+      return JSON.parse(trimmed) as unknown
+    } catch {
+      return address
+    }
+  }
+  return address
+}
+
 export async function runYumblinImportSync(
   options: YumblinImportSyncOptions = {}
 ): Promise<YumblinImportSyncResult> {
@@ -381,6 +469,7 @@ export async function runYumblinImportSync(
   const includeUnassigned = options.assumeUnassignedBelongsToThisSource === true
   const now = new Date()
   const ingestAsDraft = resolveIngestAsDraft()
+  const importPublishSafeMode = resolveImportPublishSafeMode()
   const publishConfig = getListingPublishConfigFromEnv()
   const deactivatedListingIds: string[] = []
 
@@ -601,7 +690,9 @@ export async function runYumblinImportSync(
     }
 
     const hash = computeImportContentHash(mapped)
-    const assessment = assessMappedImport(mapped, publishConfig)
+    const assessment = importPublishSafeMode
+      ? assessMappedImportForSafeMode(mapped)
+      : assessMappedImport(mapped, publishConfig)
     const pub = importPublicationSet(now, ingestAsDraft, assessment)
 
     if (!mapped.externalId) {
@@ -617,7 +708,7 @@ export async function runYumblinImportSync(
           propertyType: mapped.propertyType,
           operationType: mapped.operationType,
           source: 'import',
-          address: mapped.address,
+          address: normalizeMappedAddress(mapped.address),
           title: mapped.title,
           description: mapped.description,
           priceAmount: mapped.priceAmount,
@@ -685,7 +776,7 @@ export async function runYumblinImportSync(
           propertyType: mapped.propertyType,
           operationType: mapped.operationType,
           source: 'import',
-          address: mapped.address,
+          address: normalizeMappedAddress(mapped.address),
           title: mapped.title,
           description: mapped.description,
           priceAmount: mapped.priceAmount,
@@ -775,7 +866,7 @@ export async function runYumblinImportSync(
       importSourceUpdatedAt: feedUpdated ?? null,
       propertyType: mapped.propertyType,
       operationType: mapped.operationType,
-      address: mapped.address,
+      address: normalizeMappedAddress(mapped.address),
       title: mapped.title,
       description: mapped.description,
       priceAmount: mapped.priceAmount,

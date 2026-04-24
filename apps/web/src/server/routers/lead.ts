@@ -7,6 +7,7 @@ import { PORTAL_STATS_TERMINALS } from '@propieya/shared'
 
 import { recordPortalStatsEvent } from '../../lib/analytics/record-portal-stats-event'
 import { scheduleKitepropLeadSync } from '../../lib/integrations/kiteprop-lead-sync'
+import { resolveAssignedContactForListing } from '../../lib/integrations/kiteprop-listing-contact'
 import { buildListingPreviewForLead, isLeadRecent } from '../lib/listing-lead-preview'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
 import { sendNewLeadEmail } from '../../lib/email'
@@ -59,6 +60,9 @@ export const leadRouter = createTRPCRouter({
           listingId: listings.id,
           organizationId: listings.organizationId,
           title: listings.title,
+          source: listings.source,
+          externalId: listings.externalId,
+          features: listings.features,
           publisherEmail: users.email,
           planType: organizations.planType,
         })
@@ -74,6 +78,15 @@ export const leadRouter = createTRPCRouter({
 
       const paid = isPaidPlan(row.planType)
       const now = new Date()
+      const assignedContact = await resolveAssignedContactForListing({
+        source: row.source,
+        externalId: row.externalId,
+        features: row.features,
+      })
+      const assignedUserId =
+        input.assignedUserId ?? assignedContact?.id ?? undefined
+      const assignedUserName =
+        input.assignedUserName ?? assignedContact?.full_name ?? undefined
 
       const [created] = await ctx.db
         .insert(leads)
@@ -84,7 +97,7 @@ export const leadRouter = createTRPCRouter({
           contactEmail: input.contactEmail.trim().toLowerCase(),
           contactPhone: input.contactPhone?.trim() || null,
           message: input.message.trim(),
-          source: 'listing_contact',
+          source: 'Propieya',
           status: 'new',
           accessStatus: paid ? 'activated' : 'pending',
           activatedAt: paid ? now : null,
@@ -92,8 +105,8 @@ export const leadRouter = createTRPCRouter({
           enrichment: {
             pageUrl: input.pageUrl ?? null,
             propertyCode: input.propertyCode ?? null,
-            assignedUserId: input.assignedUserId ?? null,
-            assignedUserName: input.assignedUserName ?? null,
+            assignedUserId: assignedUserId ?? null,
+            assignedUserName: assignedUserName ?? null,
           },
         })
         .returning()
@@ -117,7 +130,7 @@ export const leadRouter = createTRPCRouter({
         listingId: input.listingId,
         organizationId: row.organizationId,
         userId: ctx.session?.userId ?? null,
-        payload: { source: 'listing_contact', accessStatus: paid ? 'activated' : 'pending' },
+        payload: { source: 'Propieya', accessStatus: paid ? 'activated' : 'pending' },
       })
 
       if (!paid) {

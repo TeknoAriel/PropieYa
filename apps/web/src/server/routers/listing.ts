@@ -168,14 +168,25 @@ function sanitizeIlikeFragment(raw: string): string {
   return raw.trim().slice(0, 120).replace(/[%_\\]/g, ' ').replace(/\s+/g, ' ')
 }
 
+function sqlAddressFieldText(field: 'city' | 'neighborhood' | 'state'): SQL {
+  return sql`COALESCE(
+    CASE
+      WHEN jsonb_typeof(${listings.address}) = 'object' THEN ${listings.address}->>${field}
+      WHEN jsonb_typeof(${listings.address}) = 'string' THEN (${listings.address} #>> '{}')::jsonb->>${field}
+      ELSE NULL
+    END,
+    ''
+  )`
+}
+
 /** Ciudad/barrio: misma semántica amplia que ES (query.ts), para no quedar en 0 si el feed no llenó `address.city`. */
 function buildSqlLocalityPlaceOrCondition(placeRaw: string | undefined): SQL | null {
   const frag = sanitizeIlikeFragment(placeRaw ?? '')
   if (frag.length === 0) return null
   const pat = `%${frag}%`
   return or(
-    sql`COALESCE(${listings.address}->>'city', '') ILIKE ${pat}`,
-    sql`COALESCE(${listings.address}->>'neighborhood', '') ILIKE ${pat}`,
+    sql`${sqlAddressFieldText('city')} ILIKE ${pat}`,
+    sql`${sqlAddressFieldText('neighborhood')} ILIKE ${pat}`,
     ilike(listings.title, pat),
     ilike(listings.description, pat)
   )!

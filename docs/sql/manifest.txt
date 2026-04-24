@@ -8,3 +8,4 @@ add-dedup-canonical-id.sql
 add-portal-stats-events.sql
 add-leads-access-monetization.sql
 add-import-feed-last-trusted-count.sql
+normalize-listings-address-jsonb.sql
