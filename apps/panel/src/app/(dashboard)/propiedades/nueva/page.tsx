@@ -3,6 +3,7 @@
 import {
   formatTrpcUserMessage,
   OPERATION_TYPE_LABELS,
+  PUBLISHER_UX_COPY,
   PROPERTY_TYPE_LABELS,
 } from '@propieya/shared'
 import { Button, Card, Input } from '@propieya/ui'
@@ -19,6 +20,7 @@ import { useState } from 'react'
 
 
 import { trpc } from '@/lib/trpc'
+import Link from 'next/link'
 
 function normalizeNullable(s: string): string | null {
   const v = s.trim()
@@ -27,6 +29,11 @@ function normalizeNullable(s: string): string | null {
 
 export default function NuevaPropiedadPage() {
   const router = useRouter()
+  const { data: me } = trpc.auth.me.useQuery()
+  const pub = me?.publisher
+  const blockCreate = Boolean(
+    pub && !pub.canCreateListing
+  )
 
   const [propertyType, setPropertyType] = useState<PropertyType>('apartment')
   const [operationType, setOperationType] = useState<OperationType>('sale')
@@ -192,6 +199,23 @@ export default function NuevaPropiedadPage() {
           faltantes y publicarlo desde la ficha.
         </p>
       </div>
+
+      {blockCreate ? (
+        <div className="rounded-md border border-semantic-warning/40 bg-semantic-warning/10 px-3 py-3 text-sm text-text-secondary">
+          {pub?.isSuspended ? (
+            <p>{PUBLISHER_UX_COPY.orgSuspended}</p>
+          ) : pub?.atLimit ? (
+            <p>{PUBLISHER_UX_COPY.atLimitBody}</p>
+          ) : (
+            <p>{PUBLISHER_UX_COPY.orgPending}</p>
+          )}
+          <p className="mt-2">
+            <Link href="/propiedades" className="text-brand-primary underline">
+              Volver a mis avisos
+            </Link>
+          </p>
+        </div>
+      ) : null}
 
       <Card className="p-6">
         {error ? (
@@ -478,7 +502,7 @@ export default function NuevaPropiedadPage() {
           <div className="flex gap-3">
             <Button
               type="submit"
-              disabled={createMutation.isPending}
+              disabled={createMutation.isPending || blockCreate}
             >
               {createMutation.isPending
                 ? 'Guardando...'

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { eq, and, isNull, gt } from 'drizzle-orm'
+import { eq, and, isNull, gt, count, notInArray } from 'drizzle-orm'
 import { randomBytes } from 'crypto'
 import { TRPCError } from '@trpc/server'
 
@@ -10,9 +10,18 @@ import {
   organizations,
   organizationMemberships,
   userTokens,
+  listings,
   type Database,
 } from '@propieya/database'
-import { registerSchema, loginSchema, humanizeDbError } from '@propieya/shared'
+import {
+  registerSchema,
+  loginSchema,
+  humanizeDbError,
+  getListingPublishConfigFromEnv,
+  effectiveListingLimit,
+  nearListingQuota,
+  isPublisherOrganizationStatusBlocked,
+} from '@propieya/shared'
 import type { UserRole } from '@propieya/shared'
 
 import {
@@ -385,6 +394,61 @@ export const authRouter = createTRPCRouter({
       where: eq(userPreferences.userId, user.id),
     })
 
+    const publishConfig = getListingPublishConfigFromEnv()
+    const orgId = ctx.session.organizationId
+    let publisher: {
+      organizationName: string
+      organizationType: string
+      organizationStatus: string
+      verifiedAt: Date | null
+      effectiveListingLimit: number | null
+      listingCount: number
+      atLimit: boolean
+      nearLimit: boolean
+      canCreateListing: boolean
+      isSuspended: boolean
+      isPending: boolean
+    } | null = null
+
+    if (orgId) {
+      const org = await ctx.db.query.organizations.findFirst({
+        where: eq(organizations.id, orgId),
+      })
+      if (org) {
+        const [cRow] = await ctx.db
+          .select({ c: count() })
+          .from(listings)
+          .where(
+            and(
+              eq(listings.organizationId, orgId),
+              notInArray(listings.status, ['archived', 'withdrawn'])
+            )
+          )
+        const listingCount = Number(cRow?.c ?? 0)
+        const cap = effectiveListingLimit({
+          orgType: org.type,
+          listingLimit: org.listingLimit,
+        })
+        const isSuspended = isPublisherOrganizationStatusBlocked(org.status)
+        const isPending = org.status === 'pending'
+        const atLimit = cap != null && listingCount >= cap
+        publisher = {
+          organizationName: org.name,
+          organizationType: org.type,
+          organizationStatus: org.status,
+          verifiedAt: org.verifiedAt,
+          effectiveListingLimit: cap,
+          listingCount,
+          atLimit,
+          nearLimit: nearListingQuota(listingCount, cap),
+          isSuspended,
+          isPending,
+          canCreateListing:
+            org.status === 'active' && !isSuspended && !atLimit,
+        }
+      }
+    }
+
     return {
       id: user.id,
       email: user.email,
@@ -395,9 +459,17 @@ export const authRouter = createTRPCRouter({
       timezone: user.timezone,
       portalMonetizationTier: user.portalMonetizationTier,
       lastLoginAt: user.lastLoginAt,
+      accountIntent: user.accountIntent,
       role: ctx.session.role,
       organizationId: ctx.session.organizationId,
       permissions: ctx.session.permissions,
+      publisher,
+      qualityRules: {
+        minPhotos: publishConfig.minImages,
+        minTitleLength: publishConfig.minTitleLength,
+        minDescriptionLength: publishConfig.minDescriptionLength,
+        staleContentDays: publishConfig.staleContentDays,
+      },
       memberships: memberships.map((m) => ({
         organizationId: m.organizationId,
         role: m.role,

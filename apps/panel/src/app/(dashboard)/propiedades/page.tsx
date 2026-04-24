@@ -4,6 +4,7 @@ import {
   formatPrice,
   formatTrpcUserMessage,
   LISTING_STATUS_LABELS,
+  PUBLISHER_UX_COPY,
   type Currency,
   type ListingStatus,
 } from '@propieya/shared'
@@ -23,6 +24,12 @@ export default function PropiedadesPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [actionError, setActionError] = useState('')
+  const { data: me } = trpc.auth.me.useQuery()
+  const pub = me?.publisher
+  const cannotNewListing = Boolean(
+    pub && !pub.canCreateListing
+  )
+
   const { data: listings = [], isLoading, refetch } =
     trpc.listing.listMine.useQuery({
       search: search || undefined,
@@ -60,13 +67,31 @@ export default function PropiedadesPage() {
             Gestioná tus publicaciones
           </p>
         </div>
-        <Button asChild>
-          <Link href="/propiedades/nueva">
+        {cannotNewListing ? (
+          <Button disabled title="No podés crear otro aviso ahora (cupo o cuenta)">
             <Plus className="h-4 w-4 mr-2" />
             Nueva propiedad
-          </Link>
-        </Button>
+          </Button>
+        ) : (
+          <Button asChild>
+            <Link href="/propiedades/nueva">
+              <Plus className="h-4 w-4 mr-2" />
+              Nueva propiedad
+            </Link>
+          </Button>
+        )}
       </div>
+
+      {pub?.nearLimit && !pub?.atLimit ? (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm text-text-secondary">
+          {PUBLISHER_UX_COPY.nearLimit}
+        </div>
+      ) : null}
+      {pub?.atLimit ? (
+        <div className="rounded-md border border-semantic-warning/40 bg-semantic-warning/5 px-3 py-2 text-sm text-text-secondary">
+          {PUBLISHER_UX_COPY.atLimitBody}
+        </div>
+      ) : null}
 
       {actionError ? (
         <div className="rounded-md border border-semantic-error/30 bg-semantic-error/10 px-3 py-2 text-sm text-semantic-error">

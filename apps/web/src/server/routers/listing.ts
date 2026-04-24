@@ -13,6 +13,7 @@ import {
   count,
   ne,
   inArray,
+  notInArray,
   type SQL,
 } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
@@ -46,6 +47,8 @@ import {
   listingSearchV2InputSchema,
   SEARCH_V2_BUCKET_LABELS,
   isSearchV2ElasticsearchUnreachable,
+  effectiveListingLimit,
+  isPublisherOrganizationStatusBlocked,
   type ExplainMatchFilters,
   type ExplainMatchListing,
   type ListingSearchV2Result,
@@ -679,6 +682,7 @@ export const listingRouter = createTRPCRouter({
           .insert(organizations)
           .values({
             type: 'real_estate_agency',
+            status: 'active',
             name: `${ctx.session.name} Propiedades`,
             email: ctx.session.email,
           })
@@ -695,6 +699,52 @@ export const listingRouter = createTRPCRouter({
           organizationId,
           role: 'org_admin',
         })
+      }
+
+      const orgRow = await ctx.db.query.organizations.findFirst({
+        where: eq(organizations.id, organizationId!),
+      })
+      if (!orgRow) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'No encontramos la cuenta publicadora. Volvé a iniciar sesión.',
+        })
+      }
+      if (isPublisherOrganizationStatusBlocked(orgRow.status)) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message:
+            'Tu cuenta publicadora está suspendida. No podés crear avisos nuevos por ahora.',
+        })
+      }
+      if (orgRow.status !== 'active') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message:
+            'Tu cuenta publicadora aún no está activa. Si recién te registraste, esperá unos minutos o contactá soporte.',
+        })
+      }
+      const cap = effectiveListingLimit({
+        orgType: orgRow.type,
+        listingLimit: orgRow.listingLimit,
+      })
+      if (cap != null) {
+        const [quotaRow] = await ctx.db
+          .select({ c: count() })
+          .from(listings)
+          .where(
+            and(
+              eq(listings.organizationId, organizationId!),
+              notInArray(listings.status, ['archived', 'withdrawn'])
+            )
+          )
+        if (Number(quotaRow?.c ?? 0) >= cap) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message:
+              'Alcanzaste el cupo de avisos. Archivá o dá de baja uno, o contactanos para ampliar (inmobiliarias).',
+          })
+        }
       }
 
       const pricePerM2 =

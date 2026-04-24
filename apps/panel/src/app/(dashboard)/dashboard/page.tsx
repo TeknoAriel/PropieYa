@@ -14,7 +14,7 @@ import {
 } from '@propieya/ui'
 import Link from 'next/link'
 
-import { portalStatsTerminalLabel } from '@propieya/shared'
+import { PUBLISHER_UX_COPY, portalStatsTerminalLabel } from '@propieya/shared'
 
 import { trpc } from '@/lib/trpc'
 
@@ -29,6 +29,7 @@ function relativeTime(iso: Date | string) {
 
 export default function DashboardPage() {
   const { data: me } = trpc.auth.me.useQuery()
+  const pub = me?.publisher
   const canPlatformAnalytics = Boolean(
     me?.permissions?.includes('analytics:platform')
   )
@@ -98,6 +99,62 @@ export default function DashboardPage() {
           ) : null}
         </p>
       </div>
+
+      {pub && me?.organizationId ? (
+        <Card
+          className={
+            pub.atLimit
+              ? 'border-semantic-warning/40 bg-semantic-warning/5 p-4'
+              : pub.nearLimit
+                ? 'border-amber-500/30 bg-amber-500/5 p-4'
+                : 'p-4'
+          }
+        >
+          <h2 className="font-semibold text-text-primary">Cupo y acceso a publicar</h2>
+          {pub.isSuspended ? (
+            <p className="mt-2 text-sm text-text-secondary">
+              {PUBLISHER_UX_COPY.orgSuspended}
+            </p>
+          ) : null}
+          {pub.isPending ? (
+            <p className="mt-2 text-sm text-text-secondary">
+              {PUBLISHER_UX_COPY.orgPending}
+            </p>
+          ) : null}
+          {pub.effectiveListingLimit == null ? (
+            <p className="mt-2 text-sm text-text-secondary">
+              {PUBLISHER_UX_COPY.quotaUnlimited}
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-text-secondary">
+              {PUBLISHER_UX_COPY.quotaLine(
+                pub.listingCount,
+                pub.effectiveListingLimit
+              )}
+            </p>
+          )}
+          {pub.nearLimit && !pub.atLimit ? (
+            <p className="mt-2 text-sm text-amber-900 dark:text-amber-100/90">
+              {PUBLISHER_UX_COPY.nearLimit}
+            </p>
+          ) : null}
+          {pub.atLimit ? (
+            <p className="mt-2 text-sm text-text-secondary">
+              {PUBLISHER_UX_COPY.atLimitBody}
+            </p>
+          ) : null}
+          {me?.qualityRules ? (
+            <p className="mt-3 text-xs text-text-tertiary">
+              {PUBLISHER_UX_COPY.qualityLine({
+                minPhotos: me.qualityRules.minPhotos,
+                minTitle: me.qualityRules.minTitleLength,
+                minDesc: me.qualityRules.minDescriptionLength,
+                staleDays: me.qualityRules.staleContentDays,
+              })}
+            </p>
+          ) : null}
+        </Card>
+      ) : null}
 
       {showPublisherOnboarding ? (
         <Card className="border-brand-primary/30 bg-brand-primary/5 p-5">
