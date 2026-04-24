@@ -193,6 +193,8 @@ export interface YumblinImportSyncResult {
    * Las bajas quedan para el webhook o una corrida sin esta política.
    */
   withdrawSkippedDueToCronPolicy?: boolean
+  /** Retiros desactivados por política global de estabilidad. */
+  withdrawSkippedDueToPolicy?: boolean
 }
 
 function resolveWithdrawOrgWideExplicit(options: YumblinImportSyncOptions): boolean {
@@ -259,6 +261,22 @@ function resolveCronSkipWithdraw(): boolean {
   if (!v) return true
   if (v === '0' || v === 'false' || v === 'no') return false
   return true
+}
+
+/** Modo estabilidad: desactiva retiros por feed (cron/webhook/manual) hasta consolidar ingest. */
+function resolveWithdrawDisabled(): boolean {
+  const v = (process.env.IMPORT_WITHDRAW_DISABLE ?? '').trim().toLowerCase()
+  if (!v) return true
+  if (v === '0' || v === 'false' || v === 'no') return false
+  return true
+}
+
+/** En fase posterior: no permitir retiros > X% del catálogo importado en una corrida. */
+function resolveWithdrawMaxPercentOfCatalog(): number {
+  const raw = (process.env.IMPORT_WITHDRAW_MAX_PERCENT_OF_CATALOG ?? '0.05').trim()
+  const n = parseFloat(raw)
+  if (!Number.isFinite(n) || n <= 0 || n > 1) return 0.05
+  return n
 }
 
 /** Modo lanzamiento: para import no baja publicación por reglas blandas de calidad. */
@@ -976,6 +994,7 @@ export async function runYumblinImportSync(
   let withdrawnListingIds: string[] = []
   let withdrawSkippedDueToShrinkGuard = false
   let withdrawSkippedDueToCronPolicy = false
+  let withdrawSkippedDueToPolicy = false
   let shrinkGuardDetails: YumblinImportSyncResult['shrinkGuardDetails']
 
   if (!isPartialImport && fullFeedLength > 0 && feedExternalIds.size > 0) {
@@ -983,7 +1002,10 @@ export async function runYumblinImportSync(
     const minBaseline = resolveWithdrawShrinkGuardMinBaseline()
     let runWithdraw = true
 
-    if (resolveCronSkipWithdraw() && enforceInterval) {
+    if (resolveWithdrawDisabled()) {
+      runWithdraw = false
+      withdrawSkippedDueToPolicy = true
+    } else if (resolveCronSkipWithdraw() && enforceInterval) {
       runWithdraw = false
       withdrawSkippedDueToCronPolicy = true
     } else if (!resolveWithdrawShrinkGuardDisabled()) {
@@ -1062,24 +1084,42 @@ export async function runYumblinImportSync(
         )
 
       if (toWithdraw.length > 0) {
-        withdrawnListingIds = toWithdraw.map((r) => r.id)
-        for (const row of toWithdraw) {
-          await recordListingTransitionForKiteprop({
-            listingId: row.id,
-            externalId: row.externalId,
-            previousStatus: row.status,
-            newStatus: 'withdrawn',
-            source: 'import_withdraw',
-            reasonCode: 'IMPORT_FEED_WITHDRAWN',
-            reasonMessage: LISTING_REASON_MESSAGES_ES.IMPORT_FEED_WITHDRAWN,
-            details: {},
-          })
+        const [importCountRowForCap] = await db
+          .select({ n: count() })
+          .from(listings)
+          .where(
+            and(
+              eq(listings.organizationId, organizationId),
+              eq(listings.source, 'import'),
+              isNotNull(listings.externalId)
+            )
+          )
+        const importBaseline = Number(importCountRowForCap?.n ?? 0)
+        const maxWithdrawAllowed = Math.floor(
+          importBaseline * resolveWithdrawMaxPercentOfCatalog()
+        )
+        if (importBaseline > 0 && toWithdraw.length > maxWithdrawAllowed) {
+          withdrawSkippedDueToPolicy = true
+        } else {
+          withdrawnListingIds = toWithdraw.map((r) => r.id)
+          for (const row of toWithdraw) {
+            await recordListingTransitionForKiteprop({
+              listingId: row.id,
+              externalId: row.externalId,
+              previousStatus: row.status,
+              newStatus: 'withdrawn',
+              source: 'import_withdraw',
+              reasonCode: 'IMPORT_FEED_WITHDRAWN',
+              reasonMessage: LISTING_REASON_MESSAGES_ES.IMPORT_FEED_WITHDRAWN,
+              details: {},
+            })
+          }
+          await db
+            .update(listings)
+            .set({ status: 'withdrawn', updatedAt: now })
+            .where(inArray(listings.id, withdrawnListingIds))
+          counts.withdrawn = toWithdraw.length
         }
-        await db
-          .update(listings)
-          .set({ status: 'withdrawn', updatedAt: now })
-          .where(inArray(listings.id, withdrawnListingIds))
-        counts.withdrawn = toWithdraw.length
       }
     }
   }
@@ -1174,6 +1214,7 @@ export async function runYumblinImportSync(
     ...(withdrawSkippedDueToShrinkGuard
       ? { withdrawSkippedDueToShrinkGuard: true, shrinkGuardDetails }
       : {}),
+    ...(withdrawSkippedDueToPolicy ? { withdrawSkippedDueToPolicy: true } : {}),
     ...(withdrawSkippedDueToCronPolicy ? { withdrawSkippedDueToCronPolicy: true } : {}),
   }
 }
