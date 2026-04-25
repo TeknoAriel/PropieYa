@@ -2410,15 +2410,28 @@ export function BuscarContent({
                         <Button
                           type="button"
                           size="sm"
-                          variant={listPageSize === 30 ? 'secondary' : 'ghost'}
+                          variant={listPageSize === 48 ? 'secondary' : 'ghost'}
                           className="h-8 px-2 text-xs"
                           onClick={() => {
-                            setListPageSize(30)
+                            setListPageSize(48)
                             setExactPageCursor(null)
                             setExactEsOffset(0)
                           }}
                         >
-                          {S.searchV2PageSize30}
+                          {S.searchV2PageSize48}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={listPageSize === 96 ? 'secondary' : 'ghost'}
+                          className="h-8 px-2 text-xs"
+                          onClick={() => {
+                            setListPageSize(96)
+                            setExactPageCursor(null)
+                            setExactEsOffset(0)
+                          }}
+                        >
+                          {S.searchV2PageSize96}
                         </Button>
                       </div>
                       {canExactNextPage ? (

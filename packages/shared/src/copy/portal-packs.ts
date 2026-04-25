@@ -366,7 +366,8 @@ export const PORTAL_SEARCH_UX_COPY = {
   searchV2PaginationNext: 'Siguiente página',
   searchV2PaginationFirst: 'Volver al inicio',
   searchV2PageSize24: '24 por página',
-  searchV2PageSize30: '30 por página',
+  searchV2PageSize48: '48 por página',
+  searchV2PageSize96: '96 por página',
   searchV2AlternativesCta:
     'Ver sugerencias ampliadas (segunda capa: misma ciudad u operación, criterios más flexibles).',
   searchV2AlternativesHint:
