@@ -1,14 +1,19 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
+  defaultPortalProductsForTier,
   formatTrpcUserMessage,
+  PORTAL_VISIBILITY_PRODUCT_IDS,
+  portalVisibilityPanelStatusShort,
   type CreateListingInput,
   type Currency,
   LISTING_STATUS_LABELS,
+  type ListingPortalVisibility,
   type ListingStatus,
+  type PortalVisibilityTier,
 } from '@propieya/shared'
 import { Button, Card, Input, Badge } from '@propieya/ui'
 import Image from 'next/image'
@@ -36,6 +41,31 @@ const ORIENTATION_VALUES = [
   'SW',
 ] as const
 
+function portalTierFromFeatures(
+  features: unknown
+): PortalVisibilityTier {
+  const pv = (features as { portalVisibility?: { tier?: string } } | null)
+    ?.portalVisibility
+  const t = pv?.tier
+  if (
+    t === 'highlight' ||
+    t === 'boost' ||
+    t === 'premium_ficha' ||
+    t === 'standard'
+  ) {
+    return t
+  }
+  return 'standard'
+}
+
+function untilToDatetimeLocalValue(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 export default function EditarPropiedadPage() {
   const params = useParams()
   const id = params.id as string
@@ -44,6 +74,7 @@ export default function EditarPropiedadPage() {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [editError, setEditError] = useState('')
+  const [portalTierUi, setPortalTierUi] = useState<PortalVisibilityTier>('standard')
 
   const { data: current, isLoading } = trpc.listing.getMineById.useQuery(
     { id },
@@ -132,6 +163,13 @@ export default function EditarPropiedadPage() {
     [id, current?.primaryImageUrl, presignMutation, addMediaMutation]
   )
 
+  useEffect(() => {
+    if (!current) return
+    setPortalTierUi(portalTierFromFeatures(current.features))
+    // Sincronizar con servidor tras guardar; `id` + `updatedAt` identifican nueva versión persistida.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.id, current?.updatedAt])
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!current) return
@@ -198,10 +236,24 @@ export default function EditarPropiedadPage() {
       ? (featOrientation as (typeof ORIENTATION_VALUES)[number])
       : null
 
-    const featBase =
+    const featBaseRaw =
       prevFeats && typeof prevFeats === 'object' && !Array.isArray(prevFeats)
         ? { ...prevFeats }
         : {}
+    const { portalVisibility: _prevPortal, ...featBaseNoPortal } =
+      featBaseRaw as Record<string, unknown>
+
+    const portalTierRaw = (
+      form.elements.namedItem('portalVisibilityTier') as HTMLSelectElement
+    ).value
+    const portalTier = portalTierRaw as PortalVisibilityTier
+    const zoneEl = form.elements.namedItem(
+      'portalProductZone'
+    ) as HTMLInputElement | null
+    const zoneChecked = Boolean(zoneEl?.checked)
+    const untilRaw = (
+      form.elements.namedItem('portalVisibilityUntil') as HTMLInputElement
+    )?.value?.trim()
 
     const mergedFeatures: CreateListingInput['features'] = {
       disposition: null,
@@ -210,11 +262,29 @@ export default function EditarPropiedadPage() {
       extras: {},
       commercialSub: null,
       field: null,
-      ...(featBase as Partial<CreateListingInput['features']>),
+      ...(featBaseNoPortal as Partial<CreateListingInput['features']>),
       floor: floorFeat,
       totalFloors: totalFloorsFeat,
       escalera: featEscalera === '' ? null : featEscalera.toUpperCase(),
       orientation: orientationVal,
+    }
+
+    if (portalTier !== 'standard') {
+      let products = [...defaultPortalProductsForTier(portalTier)]
+      const prevPv = _prevPortal as ListingPortalVisibility | undefined
+      const devExtras =
+        prevPv?.products?.filter((id) => id.startsWith('developments_')) ?? []
+      for (const id of devExtras) {
+        if (!products.includes(id)) products.push(id)
+      }
+      if (zoneChecked && !products.includes(PORTAL_VISIBILITY_PRODUCT_IDS.zonePriority)) {
+        products = [...products, PORTAL_VISIBILITY_PRODUCT_IDS.zonePriority]
+      }
+      mergedFeatures.portalVisibility = {
+        tier: portalTier,
+        products,
+        until: untilRaw ? new Date(untilRaw).toISOString() : null,
+      }
     }
 
     updateMutation.mutate({
@@ -283,7 +353,14 @@ export default function EditarPropiedadPage() {
     totalFloors?: number | null
     escalera?: string | null
     orientation?: string | null
+    portalVisibility?: ListingPortalVisibility | null
   }
+  const portalPv = feats.portalVisibility
+  const portalSavedLabel = portalVisibilityPanelStatusShort(portalPv?.tier)
+  const zoneProductActive = Boolean(
+    portalPv?.products?.includes(PORTAL_VISIBILITY_PRODUCT_IDS.zonePriority)
+  )
+  const untilDefault = untilToDatetimeLocalValue(portalPv?.until ?? undefined)
   const media = (current as { media?: { id: string; url: string; isPrimary: boolean; order: number }[] }).media ?? []
   const status = current.status as ListingStatus
   const operational = statusOperationalCopy(status, Boolean(current.canPublish))
@@ -309,6 +386,12 @@ export default function EditarPropiedadPage() {
             Editar: {current.title}
           </h1>
           <p className="text-text-secondary mt-1">{addr?.city as string}</p>
+          <p className="text-sm text-text-tertiary mt-2">
+            Visibilidad en portal (guardada):{' '}
+            <span className="text-text-secondary font-medium">
+              {portalSavedLabel}
+            </span>
+          </p>
         </div>
         <div className="flex gap-2">
           {showPublishAction && (
@@ -583,6 +666,69 @@ export default function EditarPropiedadPage() {
               placeholder="Descripción detallada de la propiedad..."
             />
           </div>
+
+          <div className="border-t border-border pt-6 space-y-4">
+            <h3 className="text-sm font-semibold text-text-primary">
+              Visibilidad del aviso
+            </h3>
+            <p className="text-sm text-text-secondary max-w-2xl">
+              Configurá cómo se muestra el aviso en la ficha pública. Por ahora no
+              cambia el orden en el buscador ni implica cobro.
+            </p>
+            <div className="grid gap-4 md:grid-cols-2 max-w-2xl">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Nivel
+                </label>
+                <select
+                  name="portalVisibilityTier"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={portalTierUi}
+                  onChange={(e) =>
+                    setPortalTierUi(e.target.value as PortalVisibilityTier)
+                  }
+                >
+                  <option value="standard">Sin visibilidad especial</option>
+                  <option value="highlight">Destacado</option>
+                  <option value="boost">Impulso</option>
+                  <option value="premium_ficha">Ficha premium</option>
+                </select>
+              </div>
+              {portalTierUi !== 'standard' ? (
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
+                    Vigencia hasta (opcional)
+                  </label>
+                  <input
+                    name="portalVisibilityUntil"
+                    type="datetime-local"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    defaultValue={untilDefault}
+                  />
+                </div>
+              ) : null}
+            </div>
+            {portalTierUi !== 'standard' ? (
+              <div className="rounded-md border border-border bg-surface-secondary/40 px-3 py-3 space-y-2 max-w-2xl">
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
+                  Opciones adicionales
+                </p>
+                <label className="flex items-start gap-2 text-sm text-text-primary cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="portalProductZone"
+                    defaultChecked={zoneProductActive}
+                    className="mt-1 rounded border-border"
+                  />
+                  <span>
+                    Prioridad por zona o ciudad (producto técnico; el orden en
+                    resultados se definirá cuando esté activo en el buscador).
+                  </span>
+                </label>
+              </div>
+            ) : null}
+          </div>
+
           {editError && (
             <p className="text-destructive text-sm">{editError}</p>
           )}

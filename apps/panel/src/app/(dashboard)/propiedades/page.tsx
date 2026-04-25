@@ -4,9 +4,11 @@ import {
   formatPrice,
   formatTrpcUserMessage,
   LISTING_STATUS_LABELS,
+  portalVisibilityPanelStatusShort,
   PUBLISHER_UX_COPY,
   type Currency,
   type ListingStatus,
+  type PortalVisibilityTier,
 } from '@propieya/shared'
 import { Button, Input, Card, Badge, Plus, Search } from '@propieya/ui'
 import Link from 'next/link'
@@ -142,6 +144,9 @@ export default function PropiedadesPage() {
                   Estado
                 </th>
                 <th className="text-left p-4 text-sm font-medium text-text-secondary">
+                  Visibilidad
+                </th>
+                <th className="text-left p-4 text-sm font-medium text-text-secondary">
                   Vigencia
                 </th>
                 <th className="text-left p-4 text-sm font-medium text-text-secondary">
@@ -161,13 +166,13 @@ export default function PropiedadesPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td className="p-4 text-text-secondary" colSpan={7}>
+                  <td className="p-4 text-text-secondary" colSpan={8}>
                     Cargando propiedades...
                   </td>
                 </tr>
               ) : listings.length === 0 ? (
                 <tr>
-                  <td className="p-8 text-center text-text-secondary" colSpan={7}>
+                  <td className="p-8 text-center text-text-secondary" colSpan={8}>
                     <p className="mb-4 max-w-md mx-auto">
                       Aún no tenés avisos. Creá el primero con datos básicos; después
                       podés cargar fotos, ajustar la dirección y publicar desde la
@@ -199,6 +204,14 @@ export default function PropiedadesPage() {
                     : []
                 const showPublish =
                   listing.status === 'draft' || listing.status === 'rejected'
+                const portalTier = (
+                  listing.features as
+                    | { portalVisibility?: { tier?: string } }
+                    | null
+                    | undefined
+                )?.portalVisibility?.tier as PortalVisibilityTier | undefined
+                const visibilityShort =
+                  portalVisibilityPanelStatusShort(portalTier)
                 return (
                 <tr
                   key={listing.id}
@@ -245,6 +258,9 @@ export default function PropiedadesPage() {
                         {actionCopy.nextAction}
                       </p>
                     )}
+                  </td>
+                  <td className="p-4 text-sm text-text-secondary">
+                    {visibilityShort}
                   </td>
                   <td className="p-4 text-sm text-text-secondary max-w-[10rem]">
                     <span

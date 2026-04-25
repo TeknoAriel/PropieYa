@@ -41,18 +41,43 @@ export interface ListingPortalVisibility {
 
 export const PORTAL_VISIBILITY_UX = {
   highlight: {
-    title: 'Mayor visibilidad en resultados',
-    sub: 'Este aviso tiene prioridad de exposición en el listado, sin cambiar el precio anunciado.',
+    title: 'Aviso destacado',
+    sub: 'Refuerzo visible en la ficha del portal. El orden en el buscador sigue el criterio habitual del sitio.',
   },
   boost: {
-    title: 'Aviso impulsado',
-    sub: 'Impulso de visibilidad en curso: más oportunidades de ser visto mientras aplica el beneficio.',
+    title: 'Impulso',
+    sub: 'Mayor presencia en la ficha mientras aplica. No modifica el orden de resultados.',
   },
   premium_ficha: {
-    title: 'Ficha con detalle reforzado',
-    sub: 'Presentación ampliada en el portal: pensada para quienes buscan pasar a la oferta con más contexto.',
+    title: 'Ficha premium',
+    sub: 'Presentación ampliada en la ficha. El listado de búsqueda no cambia por este beneficio.',
   },
 } as const
+
+/** Etiqueta corta para panel y tablas (sin prometer ranking). */
+export function portalVisibilityPanelStatusShort(
+  tier: PortalVisibilityTier | undefined | null
+): 'Normal' | 'Destacado' | 'Impulso' | 'Ficha premium' {
+  if (!tier || tier === 'standard') return 'Normal'
+  if (tier === 'highlight') return 'Destacado'
+  if (tier === 'boost') return 'Impulso'
+  if (tier === 'premium_ficha') return 'Ficha premium'
+  return 'Normal'
+}
+
+/** Productos por defecto según tier (analítica / extensión futura). */
+export function defaultPortalProductsForTier(tier: PortalVisibilityTier): string[] {
+  switch (tier) {
+    case 'highlight':
+      return [PORTAL_VISIBILITY_PRODUCT_IDS.highlight]
+    case 'boost':
+      return [PORTAL_VISIBILITY_PRODUCT_IDS.boost]
+    case 'premium_ficha':
+      return [PORTAL_VISIBILITY_PRODUCT_IDS.premiumFicha]
+    default:
+      return []
+  }
+}
 
 function isTierWithUi(t: string): t is keyof typeof PORTAL_VISIBILITY_UX {
   return t === 'highlight' || t === 'boost' || t === 'premium_ficha'

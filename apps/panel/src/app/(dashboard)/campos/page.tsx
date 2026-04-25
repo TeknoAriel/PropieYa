@@ -1,7 +1,11 @@
 'use client'
 
-import { formatPrice } from '@propieya/shared'
-import type { Currency } from '@propieya/shared'
+import {
+  formatPrice,
+  portalVisibilityPanelStatusShort,
+  type Currency,
+  type PortalVisibilityTier,
+} from '@propieya/shared'
 import { Badge, Button, Card, Plus, Search, Filter } from '@propieya/ui'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
@@ -75,6 +79,9 @@ export default function CamposPage() {
                   Estado
                 </th>
                 <th className="text-left p-4 text-sm font-medium text-text-secondary">
+                  Visibilidad
+                </th>
+                <th className="text-left p-4 text-sm font-medium text-text-secondary">
                   Precio
                 </th>
                 <th className="text-left p-4 text-sm font-medium text-text-secondary">
@@ -91,18 +98,27 @@ export default function CamposPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td className="p-4 text-text-secondary" colSpan={6}>
+                  <td className="p-4 text-text-secondary" colSpan={7}>
                     Cargando campos...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td className="p-4 text-text-secondary" colSpan={6}>
+                  <td className="p-4 text-text-secondary" colSpan={7}>
                     Aún no tenés campos. Creá el primero desde &quot;Nuevo campo&quot;.
                   </td>
                 </tr>
               ) : (
-                filtered.map((listing) => (
+                filtered.map((listing) => {
+                  const portalTier = (
+                    listing.features as
+                      | { portalVisibility?: { tier?: string } }
+                      | null
+                      | undefined
+                  )?.portalVisibility?.tier as PortalVisibilityTier | undefined
+                  const visibilityShort =
+                    portalVisibilityPanelStatusShort(portalTier)
+                  return (
                   <tr
                     key={listing.id}
                     className="border-b border-border last:border-0 hover:bg-surface-secondary"
@@ -126,6 +142,9 @@ export default function CamposPage() {
                       >
                         {listing.status === 'active' ? 'Activa' : listing.status}
                       </Badge>
+                    </td>
+                    <td className="p-4 text-sm text-text-secondary">
+                      {visibilityShort}
                     </td>
                     <td className="p-4 text-text-primary">
                     {formatPrice(
@@ -157,7 +176,7 @@ export default function CamposPage() {
                       </div>
                     </td>
                   </tr>
-                ))
+                )})
               )}
             </tbody>
           </table>

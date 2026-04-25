@@ -23,7 +23,13 @@
 Definido en `PORTAL_VISIBILITY_PRODUCT_IDS`: `visibility_highlight`, `visibility_boost`, `visibility_zone_priority`, `visibility_premium_ficha`, y para emprendimientos `developments_*`.  
 **Tiers** en UI: `standard` | `highlight` | `boost` | `premium_ficha`.
 
-Ingestión: panel o job escribe en `listings.features.portalVisibility` sin migración SQL.
+Ingestión: **panel** (ficha de edición del aviso) o job escribe en `listings.features.portalVisibility` sin migración SQL.
+
+### Panel (operativo)
+
+- **Edición:** `apps/panel/src/app/(dashboard)/propiedades/[id]/page.tsx` — bloque «Visibilidad del aviso» (nivel, vigencia opcional, checkbox prioridad por zona). Se persiste con **Guardar borrador** (`listing.update`).
+- **Listados:** columna «Visibilidad» en `propiedades/page.tsx` y `campos/page.tsx` (texto: Normal / Destacado / Impulso / Ficha premium).
+- **Validación wire:** `listingPortalVisibilitySchema` en `packages/shared/src/schemas/listing.ts` (evita que Zod elimine el campo en tRPC).
 
 ---
 

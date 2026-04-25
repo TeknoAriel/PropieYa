@@ -138,6 +138,13 @@ const roomsSchema = z.object({
   total: z.number().int().min(1).nullable(),
 })
 
+/** Visibilidad comercial en portal (JSONB `features.portalVisibility`). */
+export const listingPortalVisibilitySchema = z.object({
+  tier: z.enum(['standard', 'highlight', 'boost', 'premium_ficha']),
+  products: z.array(z.string().max(120)).max(25).optional(),
+  until: z.union([z.string().max(40), z.null()]).optional(),
+})
+
 export const createListingSchema = z.object({
   propertyType: z.enum(propertyTypes),
   operationType: z.enum(operationTypes),
@@ -177,6 +184,9 @@ export const createListingSchema = z.object({
 
     // Campos rurales (opcional). Se guarda dentro de `features` (JSONB) sin migración adicional.
     field: fieldSchema.optional().nullable(),
+
+    /** Capa comercial: tier + productos; sin cobro ni ranking hasta que se cablee ES. */
+    portalVisibility: listingPortalVisibilitySchema.optional().nullable(),
   }),
 })
 
