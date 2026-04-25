@@ -46,6 +46,7 @@ const BuscarSearchMap = dynamic(
 )
 import {
   formatPrice,
+  formatTrpcUserMessage,
   getBuscarContextualBlock,
   getFacetFlagDefinitions,
   parseBuscarMapGeoFromParams,
@@ -76,6 +77,7 @@ import { getAccessToken } from '@/lib/auth-storage'
 import { sanitizeListingCoordinates } from '@/lib/map-geo'
 import { canAppendPolygonVertex } from '@/lib/map-polygon'
 import { encodeBuscarReturnPath, buildListingHrefWithReturn } from '@/lib/listing-flow-return-url'
+import { portalLoginHref, portalRegistroHref } from '@/lib/portal-auth-return'
 import { trpc } from '@/lib/trpc'
 
 export type BuscarContentProps = {
@@ -631,6 +633,7 @@ export function BuscarContent({
   const [canAuth, setCanAuth] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
   const [alertSaved, setAlertSaved] = useState(false)
+  const [searchAccountError, setSearchAccountError] = useState('')
 
   useEffect(() => {
     setCanAuth(!!getAccessToken())
@@ -1227,18 +1230,30 @@ export function BuscarContent({
   const alertPayload = useMemo(() => coreSearchFilters, [coreSearchFilters])
 
   const saveProfile = trpc.demand.upsertFromSearchFilters.useMutation({
+    onMutate: () => {
+      setSearchAccountError('')
+    },
     onSuccess: () => {
       setProfileSaved(true)
       void utils.demand.getMyProfile.invalidate()
       window.setTimeout(() => setProfileSaved(false), 4000)
     },
+    onError: (err) => {
+      setSearchAccountError(formatTrpcUserMessage(err) || 'No pudimos guardar tu búsqueda.')
+    },
   })
 
   const createAlert = trpc.searchAlert.create.useMutation({
+    onMutate: () => {
+      setSearchAccountError('')
+    },
     onSuccess: () => {
       setAlertSaved(true)
       void utils.searchAlert.getMyFeed.invalidate()
       window.setTimeout(() => setAlertSaved(false), 4000)
+    },
+    onError: (err) => {
+      setSearchAccountError(formatTrpcUserMessage(err) || 'No pudimos crear la alerta.')
     },
   })
 
@@ -1796,23 +1811,47 @@ export function BuscarContent({
           {!canAuth ? (
             <p className="text-[11px] leading-relaxed text-text-secondary">
               <Link
-                href="/login"
+                href={portalLoginHref(pathname, searchParams.toString())}
                 className="font-medium text-brand-primary underline-offset-2 hover:underline"
               >
                 {S.buscarPersistLoginCta}
               </Link>
-              {S.buscarPersistLoginHint}
+              {S.buscarPersistLoginHint}{' '}
+              <Link
+                href={portalRegistroHref(pathname, searchParams.toString())}
+                className="font-medium text-brand-primary underline-offset-2 hover:underline"
+              >
+                {S.buscarPersistRegisterCta}
+              </Link>
+              {S.buscarPersistRegisterHint}
             </p>
           ) : null}
         </div>
+        {searchAccountError ? (
+          <p className="text-sm text-semantic-error" role="alert">
+            {searchAccountError}
+          </p>
+        ) : null}
         {profileSaved ? (
           <p className="text-sm text-semantic-success">
-            {S.profileSaved}
+            {S.profileSaved}{' '}
+            <Link
+              href="/perfil-demanda"
+              className="font-medium text-brand-primary underline-offset-2 hover:underline"
+            >
+              {S.accountMenuProfile}
+            </Link>
           </p>
         ) : null}
         {alertSaved ? (
           <p className="text-sm text-semantic-success">
-            {S.alertSaved}
+            {S.alertSaved}{' '}
+            <Link
+              href="/mis-alertas"
+              className="font-medium text-brand-primary underline-offset-2 hover:underline"
+            >
+              {S.accountMenuAlerts}
+            </Link>
           </p>
         ) : null}
 

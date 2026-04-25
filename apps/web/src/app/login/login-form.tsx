@@ -4,10 +4,15 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
-import { formatTrpcUserMessage, PORTAL_VOICE_CTA } from '@propieya/shared'
+import {
+  formatTrpcUserMessage,
+  PORTAL_SEARCH_UX_COPY,
+  PORTAL_VOICE_CTA,
+} from '@propieya/shared'
 import { Button, Card, Input } from '@propieya/ui'
 
 import { setAccessToken } from '@/lib/auth-storage'
+import { portalRegistroHref } from '@/lib/portal-auth-return'
 import { trpc } from '@/lib/trpc'
 
 function safeNext(raw: string | null): string {
@@ -25,9 +30,14 @@ export function LoginForm() {
   const [error, setError] = useState('')
 
   const nextParam = searchParams.get('next')
-  const registroHref = nextParam
-    ? `/registro?next=${encodeURIComponent(nextParam)}`
-    : '/registro'
+  const registeredJustNow = searchParams.get('registered') === '1'
+
+  const registroDest =
+    nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//')
+      ? nextParam
+      : '/buscar'
+  const [registroPath, ...registroQsParts] = registroDest.split('?')
+  const registroHref = portalRegistroHref(registroPath || '/buscar', registroQsParts.join('?'))
 
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: (data) => {
@@ -54,6 +64,12 @@ export function LoginForm() {
         <p className="text-sm text-text-secondary mb-6">
           Accedé a tu cuenta de Propieya.
         </p>
+
+        {registeredJustNow ? (
+          <div className="mb-4 rounded-md border border-semantic-success/25 bg-semantic-success/10 px-3 py-2 text-sm text-text-primary">
+            {PORTAL_SEARCH_UX_COPY.loginAfterRegisterBanner}
+          </div>
+        ) : null}
 
         {error ? (
           <div className="mb-4 rounded-md bg-semantic-error/10 px-3 py-2 text-sm text-semantic-error">

@@ -76,6 +76,7 @@ export function AlertFeedCard({
         <p className="mt-2 line-clamp-3 text-sm text-text-secondary">
           {item.filtersSummary}
         </p>
+        <p className="mt-2 text-xs leading-relaxed text-text-tertiary">{S.savedSearchAlertHint}</p>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Button

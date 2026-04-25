@@ -249,10 +249,26 @@ export const PORTAL_SEARCH_UX_COPY = {
   createAlertPending: 'Creando alerta…',
   /** Mis alertas → búsqueda guardada. */
   savedAlertOpenSearch: 'Abrir búsqueda',
+  /** Tarjeta de búsqueda guardada: cuándo aplica la alerta (sin jerga de backend). */
+  savedSearchAlertHint:
+    'Te avisamos cuando haya avisos nuevos que coincidan con lo que guardaste. Podés pausar o borrar la alerta cuando quieras.',
   /** Debajo del título de /buscar si el usuario no está logueado. */
   buscarPersistLoginCta: 'Ingresá',
   buscarPersistLoginHint:
     'para guardar filtros en tu perfil y recibir alertas con lo que estás buscando.',
+  buscarPersistRegisterCta: 'Crear cuenta',
+  buscarPersistRegisterHint: ' si todavía no tenés usuario.',
+  /** Tras registro exitoso, antes del primer login. */
+  loginAfterRegisterBanner:
+    'Listo: tu cuenta ya está creada. Entrá con el email y la contraseña que elegiste.',
+  /** Menú de cuenta en cabecera (portal). */
+  accountMenuTrigger: 'Tu cuenta',
+  accountMenuProfile: 'Búsqueda guardada',
+  accountMenuAlerts: 'Mis alertas',
+  accountMenuLogout: 'Salir',
+  /** Perfil de demanda: borrar lo guardado. */
+  profileClearCta: 'Quitar lo guardado',
+  profileClearPending: 'Quitando…',
 
   allOperations: 'Todas las operaciones',
   homeLink: 'Inicio',
@@ -262,7 +278,7 @@ export const PORTAL_SEARCH_UX_COPY = {
 
   /** Página /mis-alertas (usuario logueado, cabecera). */
   misAlertasPageSubtitle:
-    'Búsquedas guardadas y avisos: retomás donde dejaste, sin rearmar todo a mano.',
+    'Acá ves búsquedas guardadas y coincidencias: activás o pausás alertas, y volvés al buscador con un clic.',
   /** Estado vacío con enlace a /buscar. */
   misAlertasEmptyBody:
     'Creá una alerta desde el buscador (menú «Más» cuando iniciás sesión) y te avisamos si hay avisos nuevos con tus filtros.',

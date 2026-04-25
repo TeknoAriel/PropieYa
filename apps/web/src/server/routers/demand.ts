@@ -121,4 +121,10 @@ export const demandRouter = createTRPCRouter({
       }
       return row
     }),
+
+  /** Borra el perfil de demanda guardado (el usuario puede volver a guardar desde Buscar). */
+  clearMyProfile: protectedProcedure.mutation(async ({ ctx }) => {
+    await ctx.db.delete(demandProfiles).where(eq(demandProfiles.userId, ctx.session.userId))
+    return { ok: true as const }
+  }),
 })
