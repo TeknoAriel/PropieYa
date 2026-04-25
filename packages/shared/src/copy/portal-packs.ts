@@ -394,6 +394,9 @@ export const PORTAL_SEARCH_UX_COPY = {
   searchV2BucketCountStrong: '{n} opciones',
   searchV2BucketCountNear: '{n} en la ciudad',
   searchV2BucketCountWidened: '{n} extra',
+  searchV2FeaturedTitle: 'Destacados en esta búsqueda',
+  searchV2FeaturedHint:
+    'Se muestran solo avisos que ya cumplen tus filtros exactos. No cambia el total ni el orden base.',
   searchV2SmartSuggestionsTitle: '¿Probamos una vuelta de rosca?',
   searchV2SmartSuggestionsHint: 'Solo tocá: ajustamos el filtro por vos.',
   searchV2SmartPool: '¿Querés ver opciones con pileta?',

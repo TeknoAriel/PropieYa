@@ -61,6 +61,7 @@ import {
   type ExplainMatchFilters,
   type FacetFlagDefinition,
   type OperationType,
+  type PortalVisibilityTier,
   type PortalSearchPage,
   type PropertyType,
   type SearchSessionMVP,
@@ -100,6 +101,21 @@ type BuscarListingCardData = {
   locationLat?: number | null
   locationLng?: number | null
   location?: { lat?: number; lon?: number }
+  portalVisibilityTier?: PortalVisibilityTier
+}
+
+function normalizePortalVisibilityTier(
+  tier: unknown
+): PortalVisibilityTier {
+  if (tier === 'highlight' || tier === 'boost' || tier === 'premium_ficha') return tier
+  return 'standard'
+}
+
+function portalVisibilityTierLabel(tier: PortalVisibilityTier): string | null {
+  if (tier === 'highlight') return 'Destacado'
+  if (tier === 'boost') return 'Impulso'
+  if (tier === 'premium_ficha') return 'Ficha premium'
+  return null
 }
 
 function pinsFromListings(list: BuscarListingCardData[]) {
@@ -355,6 +371,8 @@ function ListingCard({
   const emphasizeFromMap = mapSelectedListingId === listing.id
   const visualTier: 'primary' | 'alternate' =
     whyBucketId === 'strong' ? 'primary' : 'alternate'
+  const visibilityTier = normalizePortalVisibilityTier(listing.portalVisibilityTier)
+  const visibilityLabel = portalVisibilityTierLabel(visibilityTier)
 
   const firstReason = listing.matchReasons?.[0]
   const matchOneLine =
@@ -373,10 +391,18 @@ function ListingCard({
       ? ` · ${listing.bathrooms} baño${listing.bathrooms > 1 ? 's' : ''}`
       : ''
 
-  const tierCardClass =
-    visualTier === 'primary'
-      ? 'border-border/45 bg-surface-primary hover:border-border/70'
-      : 'border-border/25 bg-surface-secondary/15 hover:border-border/45'
+  const tierCardClass = (() => {
+    if (visibilityTier === 'boost') {
+      return 'border-brand-primary/40 bg-brand-primary/[0.045] hover:border-brand-primary/60'
+    }
+    if (visibilityTier === 'highlight') {
+      return 'border-brand-primary/25 bg-brand-primary/[0.025] hover:border-brand-primary/45'
+    }
+    if (visualTier === 'primary') {
+      return 'border-border/45 bg-surface-primary hover:border-border/70'
+    }
+    return 'border-border/25 bg-surface-secondary/15 hover:border-border/45'
+  })()
 
   const listingHref = buildListingHrefWithReturn(listing.id, buscarReturnToEncoded)
 
@@ -443,6 +469,11 @@ function ListingCard({
             <p className="text-sm font-medium leading-snug text-text-secondary">
               {locationLine}
             </p>
+            {visibilityLabel ? (
+              <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary">
+                {visibilityLabel}
+              </p>
+            ) : null}
 
             <p className="text-sm leading-snug text-text-primary">
               <span className="text-text-tertiary">{operationLabel}</span>
@@ -1042,6 +1073,32 @@ export function BuscarContent({
   const strictCatalogTotal = dataV2Ui?.strictCatalogTotal ?? 0
   const strongItemsCount =
     dataV2Ui?.buckets?.find((b) => b.id === 'strong')?.items.length ?? 0
+  const strongBucketListings = useMemo(
+    () =>
+      (dataV2Ui?.buckets?.find((b) => b.id === 'strong')?.items ?? []) as BuscarListingCardData[],
+    [dataV2Ui?.buckets]
+  )
+  const featuredExactListings = useMemo(() => {
+    const rank = (tier: PortalVisibilityTier): number => {
+      if (tier === 'boost') return 0
+      if (tier === 'highlight') return 1
+      if (tier === 'premium_ficha') return 2
+      return 3
+    }
+    return [...strongBucketListings]
+      .filter(
+        (row) => normalizePortalVisibilityTier(row.portalVisibilityTier) !== 'standard'
+      )
+      .sort(
+        (a, b) =>
+          rank(normalizePortalVisibilityTier(a.portalVisibilityTier)) -
+          rank(normalizePortalVisibilityTier(b.portalVisibilityTier))
+      )
+      .slice(0, 3)
+  }, [strongBucketListings])
+  const strongPositionByListingId = useMemo(() => {
+    return new Map(strongBucketListings.map((row, idx) => [row.id, idx]))
+  }, [strongBucketListings])
   const visibleListingsTotal = data?.total ?? 0
   const appliedLocationLabel = formatAppliedLocation({
     city: dataV2Ui?.sessionNormalized?.city ?? city,
@@ -2305,6 +2362,61 @@ export function BuscarContent({
                           key={bucket.id}
                           className={bucketStrongNearSectionClass('strong')}
                         >
+                          {featuredExactListings.length > 0 ? (
+                            <Card className="mb-3 border-border/30 bg-surface-secondary/20 p-3 shadow-none md:p-3.5">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                                {S.searchV2FeaturedTitle}
+                              </p>
+                              <p className="mt-1 text-xs leading-snug text-text-tertiary">
+                                {S.searchV2FeaturedHint}
+                              </p>
+                              <div className="mt-2.5 grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+                                {featuredExactListings.map((listing) => {
+                                  const tier = normalizePortalVisibilityTier(
+                                    listing.portalVisibilityTier
+                                  )
+                                  const tierLabel = portalVisibilityTierLabel(tier)
+                                  const itemClass =
+                                    tier === 'boost'
+                                      ? 'border-brand-primary/35 bg-brand-primary/[0.045]'
+                                      : tier === 'highlight'
+                                        ? 'border-brand-primary/25 bg-brand-primary/[0.028]'
+                                        : 'border-border/25 bg-surface-primary'
+                                  return (
+                                    <Link
+                                      key={`featured-strong-${listing.id}`}
+                                      href={buildListingHrefWithReturn(
+                                        listing.id,
+                                        buscarReturnToEncoded
+                                      )}
+                                      className={`rounded-lg border px-2.5 py-2 transition-colors hover:border-border/55 ${itemClass}`}
+                                      onClick={() =>
+                                        onSearchResultNavigate(
+                                          listing.id,
+                                          'list',
+                                          strongPositionByListingId.get(listing.id) ?? 0
+                                        )
+                                      }
+                                    >
+                                      <p className="truncate text-sm font-medium text-text-primary">
+                                        {listing.title}
+                                      </p>
+                                      <p className="mt-0.5 truncate text-xs text-text-tertiary">
+                                        {listing.address?.neighborhood?.trim() ||
+                                          listing.address?.city?.trim() ||
+                                          'Ubicación a confirmar'}
+                                      </p>
+                                      {tierLabel ? (
+                                        <p className="mt-1 text-[11px] uppercase tracking-wide text-text-secondary">
+                                          {tierLabel}
+                                        </p>
+                                      ) : null}
+                                    </Link>
+                                  )
+                                })}
+                              </div>
+                            </Card>
+                          ) : null}
                           <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
                             <h2 className={bucketHeadingClass('strong')}>
                               {displayBucketTitle(bucket.id, bucket.label)}

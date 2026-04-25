@@ -50,3 +50,30 @@ En DB, para un aviso `active`, mergear en `features`:
 ```
 
 Recargar ficha: debe verse la tira bajo el título (sin ruido visual agresivo).
+
+---
+
+## Capa pública en resultados (exact set)
+
+- Implementada en `apps/web/src/components/buscar/buscar-content.tsx`.
+- Intercepta solo el bucket `strong` de `searchV2` (resultados exactos).
+- Muestra bloque discreto **“Destacados en esta búsqueda”** con máximo 3 avisos.
+- Elegibilidad por tier:
+  - `boost`: prioridad visual del bloque.
+  - `highlight`: prioridad visual secundaria.
+  - `premium_ficha`: visible de forma sobria; el foco principal sigue en ficha.
+  - `standard`: sin tratamiento extra.
+- No inyecta avisos fuera de filtros: el bloque toma únicamente IDs que ya están en `strong`.
+- No altera total/paginación: el listado principal sigue intacto y mantiene el mismo conteo.
+
+## Punto de intercepción técnico (sin tocar motor)
+
+- En `apps/web/src/server/routers/listing.ts` (`listing.searchV2`) se enriquece cada item de bucket con `portalVisibilityTier`.
+- El tier se resuelve desde `listings.features.portalVisibility.tier` para los IDs devueltos por el buscador.
+- Esta capa es de observación/presentación y no modifica reglas de matching del motor.
+
+## Extensión futura (sin sobreimplementar)
+
+- `apps/web/src/app/venta/page.tsx` y `apps/web/src/app/alquiler/page.tsx` ya reutilizan `BuscarContent`; heredan este mismo bloque sin cambios de lógica.
+- Landings por ciudad pueden reutilizar el mismo criterio leyendo `bucket strong` antes del grid principal.
+- Emprendimientos queda fuera de esta capa: mantener en su superficie propia para no mezclar inventario residencial con slots comerciales.

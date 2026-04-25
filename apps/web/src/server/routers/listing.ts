@@ -670,6 +670,58 @@ async function trySearchV2SqlFallback(
   }
 }
 
+type SearchV2BucketItemWithVisibility = {
+  id?: string
+  portalVisibilityTier?: 'standard' | 'highlight' | 'boost' | 'premium_ficha'
+}
+
+function portalVisibilityTierFromFeatures(
+  features: unknown
+): 'standard' | 'highlight' | 'boost' | 'premium_ficha' {
+  const raw = (features as { portalVisibility?: { tier?: unknown } } | null)?.portalVisibility
+    ?.tier
+  if (raw === 'highlight' || raw === 'boost' || raw === 'premium_ficha') return raw
+  return 'standard'
+}
+
+async function attachPortalVisibilityToSearchV2Result(
+  db: Database,
+  out: ListingSearchV2Result
+): Promise<ListingSearchV2Result> {
+  const ids = Array.from(
+    new Set(
+      out.buckets.flatMap((bucket) =>
+        bucket.items
+          .map((row) => (row as SearchV2BucketItemWithVisibility).id)
+          .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+      )
+    )
+  )
+  if (ids.length === 0) return out
+
+  const rows = await db
+    .select({ id: listings.id, features: listings.features })
+    .from(listings)
+    .where(inArray(listings.id, ids))
+
+  const tierById = new Map(
+    rows.map((row) => [row.id, portalVisibilityTierFromFeatures(row.features)])
+  )
+
+  return {
+    ...out,
+    buckets: out.buckets.map((bucket) => ({
+      ...bucket,
+      items: bucket.items.map((row) => {
+        const item = row as SearchV2BucketItemWithVisibility
+        const tier =
+          item.id && tierById.has(item.id) ? tierById.get(item.id)! : 'standard'
+        return { ...(row as Record<string, unknown>), portalVisibilityTier: tier }
+      }),
+    })),
+  }
+}
+
 export const listingRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createListingSchema)
@@ -2063,6 +2115,7 @@ export const listingRouter = createTRPCRouter({
       if (fallback) {
         out = fallback
       }
+      out = await attachPortalVisibilityToSearchV2Result(ctx.db, out)
 
       if (process.env.LOG_SEARCH_MS === '1') {
         console.info(
