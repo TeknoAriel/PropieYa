@@ -675,6 +675,11 @@ type SearchV2BucketItemWithVisibility = {
   portalVisibilityTier?: 'standard' | 'highlight' | 'boost' | 'premium_ficha'
 }
 
+type PortalVisibilityAnalyticsMeta = {
+  tier: 'standard' | 'highlight' | 'boost' | 'premium_ficha'
+  products: string[]
+}
+
 function portalVisibilityTierFromFeatures(
   features: unknown
 ): 'standard' | 'highlight' | 'boost' | 'premium_ficha' {
@@ -682,6 +687,24 @@ function portalVisibilityTierFromFeatures(
     ?.tier
   if (raw === 'highlight' || raw === 'boost' || raw === 'premium_ficha') return raw
   return 'standard'
+}
+
+function portalVisibilityAnalyticsMetaFromFeatures(
+  features: unknown
+): PortalVisibilityAnalyticsMeta {
+  const root = features as
+    | { portalVisibility?: { tier?: unknown; products?: unknown } }
+    | null
+    | undefined
+  const tier = portalVisibilityTierFromFeatures(root)
+  const rawProducts = root?.portalVisibility?.products
+  const products = Array.isArray(rawProducts)
+    ? rawProducts
+        .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+        .map((x) => x.trim())
+        .slice(0, 20)
+    : []
+  return { tier, products }
 }
 
 async function attachPortalVisibilityToSearchV2Result(
@@ -1385,6 +1408,7 @@ export const listingRouter = createTRPCRouter({
         listingId: z.string().uuid(),
         from: z.enum(['list', 'map', 'similar']).optional(),
         position: z.number().int().min(0).max(500).optional(),
+        surface: z.string().max(40).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1406,6 +1430,7 @@ export const listingRouter = createTRPCRouter({
       const payload: Record<string, unknown> = {}
       if (input.from !== undefined) payload.from = input.from
       if (input.position !== undefined) payload.position = input.position
+      if (input.surface !== undefined) payload.surface = input.surface
 
       recordPortalStatsEvent(ctx.db, {
         terminalId: PORTAL_STATS_TERMINALS.LISTING_SEARCH_RESULT_CLICK,
@@ -1415,6 +1440,110 @@ export const listingRouter = createTRPCRouter({
         payload,
       })
       return { ok: true as const }
+    }),
+
+  /** PortalVisibility: impresión en superficies comerciales (sin alterar ranking/listado). */
+  recordPortalVisibilityImpression: publicProcedure
+    .input(
+      z.object({
+        listingIds: z.array(z.string().uuid()).min(1).max(20),
+        surface: z.enum(['search_featured', 'listing_strip']),
+        searchContext: z
+          .object({
+            city: z.string().max(120).optional(),
+            neighborhood: z.string().max(120).optional(),
+            operationType: z.string().max(40).optional(),
+            propertyType: z.string().max(40).optional(),
+            session: z.string().max(120).optional(),
+          })
+          .optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const rows = await ctx.db
+        .select({
+          id: listings.id,
+          organizationId: listings.organizationId,
+          features: listings.features,
+        })
+        .from(listings)
+        .where(
+          and(
+            inArray(listings.id, input.listingIds),
+            eq(listings.status, 'active')
+          )
+        )
+
+      let written = 0
+      for (const row of rows) {
+        const vis = portalVisibilityAnalyticsMetaFromFeatures(row.features)
+        if (vis.tier === 'standard') continue
+        recordPortalStatsEvent(ctx.db, {
+          terminalId: PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_IMPRESSION,
+          listingId: row.id,
+          organizationId: row.organizationId,
+          userId: ctx.session?.userId ?? null,
+          payload: {
+            tier: vis.tier,
+            products: vis.products,
+            surface: input.surface,
+            ...(input.searchContext ? { searchContext: input.searchContext } : {}),
+          },
+        })
+        written++
+      }
+      return { ok: true as const, written }
+    }),
+
+  /** PortalVisibility: clic relevante desde superficie comercial. */
+  recordPortalVisibilityClick: publicProcedure
+    .input(
+      z.object({
+        listingId: z.string().uuid(),
+        surface: z.enum(['search_featured', 'listing_strip_cta']),
+        searchContext: z
+          .object({
+            city: z.string().max(120).optional(),
+            neighborhood: z.string().max(120).optional(),
+            operationType: z.string().max(40).optional(),
+            propertyType: z.string().max(40).optional(),
+            session: z.string().max(120).optional(),
+          })
+          .optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const [row] = await ctx.db
+        .select({
+          id: listings.id,
+          organizationId: listings.organizationId,
+          features: listings.features,
+        })
+        .from(listings)
+        .where(
+          and(eq(listings.id, input.listingId), eq(listings.status, 'active'))
+        )
+        .limit(1)
+
+      if (!row) return { ok: false as const }
+
+      const vis = portalVisibilityAnalyticsMetaFromFeatures(row.features)
+      if (vis.tier === 'standard') return { ok: true as const, skipped: true as const }
+
+      recordPortalStatsEvent(ctx.db, {
+        terminalId: PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_CLICK,
+        listingId: row.id,
+        organizationId: row.organizationId,
+        userId: ctx.session?.userId ?? null,
+        payload: {
+          tier: vis.tier,
+          products: vis.products,
+          surface: input.surface,
+          ...(input.searchContext ? { searchContext: input.searchContext } : {}),
+        },
+      })
+
+      return { ok: true as const, skipped: false as const }
     }),
 
   /** Usuario abrió el CTA de contacto (antes de enviar lead). */

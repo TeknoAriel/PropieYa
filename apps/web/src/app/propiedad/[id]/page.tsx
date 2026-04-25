@@ -24,6 +24,7 @@ import {
   PORTAL_LISTING_UX_COPY as L,
   PORTAL_SEARCH_UX_COPY as S,
   PROPERTY_TYPE_LABELS,
+  resolvePortalVisibilityForPublicUi,
 } from '@propieya/shared'
 import type {
   Currency,
@@ -345,6 +346,7 @@ export default function PropiedadPage() {
   const viewRecordedRef = useRef(false)
   const engagementBumpRef = useRef(false)
   const contactPromptLoggedKeyRef = useRef<string | null>(null)
+  const portalVisibilityStripLoggedRef = useRef(false)
   const [contactOpen, setContactOpen] = useState(false)
   const [fichaEngagement, setFichaEngagement] = useState<{
     visitCount: number
@@ -361,19 +363,18 @@ export default function PropiedadPage() {
     trpc.listing.recordPublicView.useMutation()
   const { mutate: recordContactCtaMutate } =
     trpc.listing.recordContactCtaClick.useMutation()
+  const { mutate: recordPortalVisibilityImpressionMutate } =
+    trpc.listing.recordPortalVisibilityImpression.useMutation()
+  const { mutate: recordPortalVisibilityClickMutate } =
+    trpc.listing.recordPortalVisibilityClick.useMutation()
   const { mutate: recordContactPromptShownMutate } =
     trpc.listing.recordContactPromptShown.useMutation()
-
-  const openContactFlow = (surface: ContactSurface) => {
-    if (typeof id !== 'string' || !id) return
-    recordContactCtaMutate({ listingId: id, surface })
-    setContactOpen(true)
-  }
 
   useEffect(() => {
     viewRecordedRef.current = false
     engagementBumpRef.current = false
     contactPromptLoggedKeyRef.current = null
+    portalVisibilityStripLoggedRef.current = false
     setCompareJustAdded(false)
     setFichaEngagement(null)
   }, [id])
@@ -411,6 +412,18 @@ export default function PropiedadPage() {
     contactPromptLoggedKeyRef.current = key
     recordContactPromptShownMutate({ listingId: id, reason: suggestionReason })
   }, [id, suggestionReason, recordContactPromptShownMutate])
+
+  useEffect(() => {
+    if (typeof id !== 'string' || !id || !data?.features) return
+    if (portalVisibilityStripLoggedRef.current) return
+    const showStrip = resolvePortalVisibilityForPublicUi(data.features).showStrip
+    if (!showStrip) return
+    portalVisibilityStripLoggedRef.current = true
+    recordPortalVisibilityImpressionMutate({
+      listingIds: [id],
+      surface: 'listing_strip',
+    })
+  }, [id, data?.features, recordPortalVisibilityImpressionMutate])
 
   if (isLoading) {
     return (
@@ -513,6 +526,8 @@ export default function PropiedadPage() {
       : ''
 
   const features = listing.features ?? {}
+  const portalVisibilityUi = resolvePortalVisibilityForPublicUi(features)
+  const hasPortalVisibilityStrip = portalVisibilityUi.showStrip
   const field = features.field
   const commercialSub = features.commercialSub
   const featureRecord = features as {
@@ -521,6 +536,18 @@ export default function PropiedadPage() {
   const amenityIds = Array.isArray(featureRecord.amenities)
     ? featureRecord.amenities.filter((x): x is string => typeof x === 'string')
     : []
+
+  const openContactFlow = (surface: ContactSurface) => {
+    if (typeof id !== 'string' || !id) return
+    recordContactCtaMutate({ listingId: id, surface })
+    if (hasPortalVisibilityStrip) {
+      recordPortalVisibilityClickMutate({
+        listingId: id,
+        surface: 'listing_strip_cta',
+      })
+    }
+    setContactOpen(true)
+  }
 
   const images: ListingMedia[] = Array.isArray(listing.media)
     ? listing.media

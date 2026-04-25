@@ -6,6 +6,8 @@
  *   LEADS_OPS_BASE_URL=https://propieyaweb.vercel.app LEADS_OPS_TOKEN=... pnpm --filter @propieya/web exec tsx scripts/leads-ops-check.ts --sinceHours=24 --pendingOlderThanHours=24
  */
 
+export {}
+
 function intArg(name: string, fallback: number): number {
   const pref = `--${name}=`
   const arg = process.argv.find((a) => a.startsWith(pref))

@@ -608,16 +608,22 @@ export function BuscarContent({
   const utils = trpc.useUtils()
   const recordSearchResultClick =
     trpc.listing.recordSearchResultClick.useMutation()
+  const recordPortalVisibilityImpression =
+    trpc.listing.recordPortalVisibilityImpression.useMutation()
+  const recordPortalVisibilityClick =
+    trpc.listing.recordPortalVisibilityClick.useMutation()
   const onSearchResultNavigate = useCallback(
     (
       listingId: string,
       from: 'list' | 'map' | 'similar',
-      position?: number
+      position?: number,
+      surface?: string
     ) => {
       recordSearchResultClick.mutate({
         listingId,
         from,
         ...(position !== undefined ? { position } : {}),
+        ...(surface ? { surface } : {}),
       })
     },
     [recordSearchResultClick]
@@ -707,6 +713,7 @@ export function BuscarContent({
   const [polygonDrawHint, setPolygonDrawHint] = useState<string | null>(null)
   const [mapSyncHoverId, setMapSyncHoverId] = useState<string | null>(null)
   const [mapSyncSelectedId, setMapSyncSelectedId] = useState<string | null>(null)
+  const featuredImpressionKeyRef = useRef<string | null>(null)
   /** Regreso desde ficha con `#buscar-listing-{uuid}`: resaltar card y badge temporal. */
   const [returnFocusListingId, setReturnFocusListingId] = useState<string | null>(null)
   const [returnFocusShowBadge, setReturnFocusShowBadge] = useState(false)
@@ -1121,6 +1128,33 @@ export function BuscarContent({
   const canResetExactPaging = Boolean(exactPageCursor != null || exactEsOffset > 0)
   const showSearchVolumeCard =
     Boolean(dataV2Ui && data && visibleListingsTotal > 0 && !isLoading)
+  useEffect(() => {
+    if (featuredExactListings.length === 0) return
+    const listingIds = featuredExactListings.map((row) => row.id)
+    const key = `${v2SessionFingerprint}:${listingIds.join(',')}`
+    if (featuredImpressionKeyRef.current === key) return
+    featuredImpressionKeyRef.current = key
+    recordPortalVisibilityImpression.mutate({
+      listingIds,
+      surface: 'search_featured',
+      searchContext: {
+        city: appliedCityLabel || undefined,
+        neighborhood: appliedNeighborhoodLabel || undefined,
+        operationType: (forcedOperation ?? operationType) || undefined,
+        propertyType: propertyType || undefined,
+        session: v2SessionFingerprint,
+      },
+    })
+  }, [
+    featuredExactListings,
+    recordPortalVisibilityImpression,
+    appliedCityLabel,
+    appliedNeighborhoodLabel,
+    forcedOperation,
+    operationType,
+    propertyType,
+    v2SessionFingerprint,
+  ])
 
   const searchInterpretationLine = useMemo(() => {
     const sn = dataV2Ui?.sessionNormalized
@@ -2390,13 +2424,27 @@ export function BuscarContent({
                                         buscarReturnToEncoded
                                       )}
                                       className={`rounded-lg border px-2.5 py-2 transition-colors hover:border-border/55 ${itemClass}`}
-                                      onClick={() =>
+                                      onClick={() => {
+                                        recordPortalVisibilityClick.mutate({
+                                          listingId: listing.id,
+                                          surface: 'search_featured',
+                                          searchContext: {
+                                            city: appliedCityLabel || undefined,
+                                            neighborhood: appliedNeighborhoodLabel || undefined,
+                                            operationType:
+                                              (forcedOperation ?? operationType) ||
+                                              undefined,
+                                            propertyType: propertyType || undefined,
+                                            session: v2SessionFingerprint,
+                                          },
+                                        })
                                         onSearchResultNavigate(
                                           listing.id,
                                           'list',
-                                          strongPositionByListingId.get(listing.id) ?? 0
+                                          strongPositionByListingId.get(listing.id) ?? 0,
+                                          'search_featured'
                                         )
-                                      }
+                                      }}
                                     >
                                       <p className="truncate text-sm font-medium text-text-primary">
                                         {listing.title}

@@ -69,6 +69,10 @@ export const PORTAL_STATS_TERMINALS = {
   INGEST_RUN_COMPLETED: 'ingest.run.completed',
   /** Snapshot diario de auditoría de inventario (feed + DB + alertas). */
   INVENTORY_AUDIT_DAILY: 'inventory.audit.daily',
+  /** Impresión de capa comercial de visibilidad (bloques/tiras). */
+  LISTING_PORTAL_VISIBILITY_IMPRESSION: 'listing.portal_visibility.impression',
+  /** Clic relevante sobre capa comercial de visibilidad. */
+  LISTING_PORTAL_VISIBILITY_CLICK: 'listing.portal_visibility.click',
 } as const
 
 export type PortalStatsTerminalId =
@@ -115,6 +119,10 @@ export const PORTAL_STATS_TERMINAL_LABELS: Record<PortalStatsTerminalId, string>
   [PORTAL_STATS_TERMINALS.AUTH_LOGIN_SUCCESS]: 'Inicio de sesión',
   [PORTAL_STATS_TERMINALS.INGEST_RUN_COMPLETED]: 'Ingesta de catálogo',
   [PORTAL_STATS_TERMINALS.INVENTORY_AUDIT_DAILY]: 'Auditoría diaria de inventario',
+  [PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_IMPRESSION]:
+    'Visibilidad comercial: impresión',
+  [PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_CLICK]:
+    'Visibilidad comercial: clic',
 }
 
 export function portalStatsTerminalLabel(terminalId: string): string {
