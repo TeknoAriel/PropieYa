@@ -19,6 +19,11 @@ function isPaidPlan(planType: string): boolean {
   return planType !== 'free'
 }
 
+function isUuidLike(v: string | null | undefined): boolean {
+  if (!v) return false
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v)
+}
+
 function forPublisherView<
   T extends {
     accessStatus: string
@@ -63,7 +68,13 @@ export const leadRouter = createTRPCRouter({
           source: listings.source,
           externalId: listings.externalId,
           features: listings.features,
+          publisherId: users.id,
+          publisherName: users.name,
           publisherEmail: users.email,
+          publisherPhone: users.phone,
+          orgName: organizations.name,
+          orgEmail: organizations.email,
+          orgPhone: organizations.phone,
           planType: organizations.planType,
         })
         .from(listings)
@@ -90,12 +101,33 @@ export const leadRouter = createTRPCRouter({
         input.assignedUserId ?? assignedContact?.id ?? undefined
       const assignedUserName =
         input.assignedUserName ?? assignedContact?.full_name ?? undefined
+      const routeTarget =
+        assignedUserId || assignedUserName
+          ? 'assigned_contact'
+          : row.publisherId
+            ? 'publisher_user_fallback'
+            : row.orgEmail || row.orgPhone
+              ? 'organization_fallback'
+              : 'safe_ops_fallback'
+      const fallbackUserId = routeTarget === 'publisher_user_fallback' ? row.publisherId : null
+      const finalAssignedUserId = assignedUserId ?? fallbackUserId ?? undefined
+      const finalAssignedUserName =
+        assignedUserName ??
+        row.publisherName ??
+        row.orgName ??
+        'Equipo comercial'
+      const finalAssignedUserEmail =
+        assignedContact?.email ?? row.publisherEmail ?? row.orgEmail ?? null
+      const finalAssignedUserPhone =
+        assignedContact?.phone ?? row.publisherPhone ?? row.orgPhone ?? null
+      const assignedTo = isUuidLike(finalAssignedUserId) ? finalAssignedUserId : null
 
       const [created] = await ctx.db
         .insert(leads)
         .values({
           organizationId: row.organizationId,
           listingId: input.listingId,
+          assignedTo,
           contactName: input.contactName.trim(),
           contactEmail: input.contactEmail.trim().toLowerCase(),
           contactPhone: input.contactPhone?.trim() || null,
@@ -108,11 +140,38 @@ export const leadRouter = createTRPCRouter({
           enrichment: {
             pageUrl: input.pageUrl ?? null,
             propertyCode: input.propertyCode ?? null,
-            assignedUserId: assignedUserId ?? null,
-            assignedUserName: assignedUserName ?? null,
+            assignedUserId: finalAssignedUserId ?? null,
+            assignedUserName: finalAssignedUserName,
+            assignedUserEmail: finalAssignedUserEmail,
+            assignedUserPhone: finalAssignedUserPhone,
+            assignedBy: routeTarget,
+            listingExternalId: row.externalId ?? null,
+            advertiser: {
+              organizationId: row.organizationId,
+              organizationName: row.orgName,
+              organizationEmail: row.orgEmail ?? null,
+              organizationPhone: row.orgPhone ?? null,
+              publisherId: row.publisherId,
+              publisherName: row.publisherName,
+              publisherEmail: row.publisherEmail ?? null,
+              publisherPhone: row.publisherPhone ?? null,
+            },
+            routing: {
+              routeTarget,
+              assignedContactFound: Boolean(assignedContact),
+              assignedContactId: assignedContact?.id ?? null,
+            },
           },
         })
         .returning()
+
+      await ctx.db
+        .update(listings)
+        .set({
+          contactCount: sql`${listings.contactCount} + 1`,
+          updatedAt: now,
+        })
+        .where(eq(listings.id, input.listingId))
 
       if (row.publisherEmail) {
         sendNewLeadEmail({
@@ -133,7 +192,11 @@ export const leadRouter = createTRPCRouter({
         listingId: input.listingId,
         organizationId: row.organizationId,
         userId: ctx.session?.userId ?? null,
-        payload: { source: 'Propieya', accessStatus: paid ? 'activated' : 'pending' },
+        payload: {
+          source: 'Propieya',
+          accessStatus: paid ? 'activated' : 'pending',
+          routeTarget,
+        },
       })
 
       if (!paid) {

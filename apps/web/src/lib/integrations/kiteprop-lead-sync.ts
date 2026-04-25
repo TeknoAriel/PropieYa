@@ -4,10 +4,7 @@ import type { Database } from '@propieya/database'
 import { leads, listings } from '@propieya/database'
 
 import { isKitepropConfigured } from './kiteprop-client'
-import {
-  createPropertyInquiryInKiteProp,
-  getPropertyAssignedContact,
-} from './kiteprop-properties'
+import { createPropertyInquiryInKiteProp } from './kiteprop-properties'
 
 type KitepropLeadMeta = {
   syncedAt?: string
@@ -18,11 +15,21 @@ type KitepropLeadMeta = {
   responsePreview?: string
 }
 
+type LeadRoutingMeta = {
+  assignedUserId?: string | null
+  assignedUserName?: string | null
+}
+
 function readKitepropMeta(enrichment: unknown): KitepropLeadMeta | undefined {
   if (!enrichment || typeof enrichment !== 'object') return undefined
   const k = (enrichment as Record<string, unknown>).kiteprop
   if (!k || typeof k !== 'object') return undefined
   return k as KitepropLeadMeta
+}
+
+function readRoutingMeta(enrichment: unknown): LeadRoutingMeta | undefined {
+  if (!enrichment || typeof enrichment !== 'object') return undefined
+  return enrichment as LeadRoutingMeta
 }
 
 /**
@@ -50,7 +57,6 @@ export async function syncActivatedLeadToKiteprop(
       listingId: leads.listingId,
       listingTitle: listings.title,
       listingExternalId: listings.externalId,
-      listingFeatures: listings.features,
     })
     .from(leads)
     .innerJoin(listings, eq(leads.listingId, listings.id))
@@ -73,9 +79,7 @@ export async function syncActivatedLeadToKiteprop(
 
   const attemptAt = new Date().toISOString()
 
-  const assignedContact = getPropertyAssignedContact(
-    (row.listingFeatures as Record<string, unknown>) ?? {}
-  )
+  const routing = readRoutingMeta(row.enrichment)
 
   const inquiry = await createPropertyInquiryInKiteProp({
     property_id: row.listingExternalId ?? undefined,
@@ -91,8 +95,8 @@ export async function syncActivatedLeadToKiteprop(
     email: row.contactEmail,
     phone: row.contactPhone ?? undefined,
     message: row.message,
-    assigned_user_id: assignedContact?.id ?? undefined,
-    assigned_user_name: assignedContact?.full_name ?? undefined,
+    assigned_user_id: routing?.assignedUserId ?? undefined,
+    assigned_user_name: routing?.assignedUserName ?? undefined,
   })
 
   if (!inquiry.ok) {
