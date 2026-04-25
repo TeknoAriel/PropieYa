@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import {
   Button,
@@ -12,7 +12,7 @@ import {
   Input,
   Label,
 } from '@propieya/ui'
-import { PORTAL_LISTING_UX_COPY as L } from '@propieya/shared'
+import { formatTrpcUserMessage, PORTAL_LISTING_UX_COPY as L } from '@propieya/shared'
 
 import { trpc } from '@/lib/trpc'
 
@@ -45,8 +45,15 @@ export function ContactModal({
   const [message, setMessage] = useState('')
 
   const [success, setSuccess] = useState(false)
+  const draftKey = `propieya:lead-draft:${listingId}`
+
   const createLead = trpc.lead.create.useMutation({
     onSuccess: () => {
+      try {
+        localStorage.removeItem(draftKey)
+      } catch {
+        /* ignore */
+      }
       setSuccess(true)
       setName('')
       setEmail('')
@@ -58,6 +65,41 @@ export function ContactModal({
       }, 1500)
     },
   })
+
+  useEffect(() => {
+    if (!open) return
+    try {
+      const raw = localStorage.getItem(draftKey)
+      if (!raw) return
+      const p = JSON.parse(raw) as {
+        name?: string
+        email?: string
+        phone?: string
+        message?: string
+      }
+      if (typeof p.name === 'string') setName(p.name)
+      if (typeof p.email === 'string') setEmail(p.email)
+      if (typeof p.phone === 'string') setPhone(p.phone)
+      if (typeof p.message === 'string') setMessage(p.message)
+    } catch {
+      /* ignore */
+    }
+  }, [open, draftKey])
+
+  useEffect(() => {
+    if (!open) return
+    const t = window.setTimeout(() => {
+      try {
+        localStorage.setItem(
+          draftKey,
+          JSON.stringify({ name, email, phone, message })
+        )
+      } catch {
+        /* private mode / quota */
+      }
+    }, 400)
+    return () => window.clearTimeout(t)
+  }, [open, draftKey, name, email, phone, message])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -151,8 +193,11 @@ export function ContactModal({
             />
           </div>
           <p className="text-[11px] leading-relaxed text-text-tertiary">{L.contactModalInternalNote}</p>
+          <p className="text-[11px] leading-relaxed text-text-tertiary">{L.contactModalDraftHint}</p>
           {createLead.error && (
-            <p className="text-sm text-semantic-error">{createLead.error.message}</p>
+            <p className="text-sm text-semantic-error" role="alert">
+              {formatTrpcUserMessage(createLead.error)}
+            </p>
           )}
           <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

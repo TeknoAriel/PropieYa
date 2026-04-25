@@ -73,7 +73,10 @@ export const leadRouter = createTRPCRouter({
         .limit(1)
 
       if (!row) {
-        throw new Error('El aviso no existe o no está activo')
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'El aviso no existe o no está activo. Si lo viste hace un rato, quizá dejó de publicarse.',
+        })
       }
 
       const paid = isPaidPlan(row.planType)

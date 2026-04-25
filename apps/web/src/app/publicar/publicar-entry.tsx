@@ -24,6 +24,9 @@ export function PublicarEntry() {
   const meQuery = trpc.auth.me.useQuery(undefined, {
     enabled: hasToken,
     retry: false,
+    /** Tras login con `next=/publicar`, no usar caché vieja del perfil/cupo. */
+    staleTime: 0,
+    refetchOnMount: true,
   })
 
   const me = meQuery.data

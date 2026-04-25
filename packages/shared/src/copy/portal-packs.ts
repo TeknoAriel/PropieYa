@@ -813,6 +813,9 @@ export const PORTAL_LISTING_UX_COPY = {
     'La respuesta suele llegar por mail; si no ves nada, revisá spam o promociones.',
   contactModalInternalNote:
     'Usamos tu mail solo para esta consulta, sin listas de difusión.',
+  /** Borrador en este navegador (mejora continuidad si cerrás el modal). */
+  contactModalDraftHint:
+    'En este dispositivo guardamos un borrador de lo que escribiste por si interrumpís y volvés a consultar.',
   modalSuccessTitle: 'Listo, enviamos tu consulta',
   modalSuccessBody:
     'El publicador o el equipo de Propieya la va a ver en breve. Mirá tu correo (incluido spam o promociones) para la respuesta.',
