@@ -21,6 +21,11 @@ export default function EmprendimientosPage() {
           resultados explicados. La sección de emprendimientos la sumamos cuando el inventario y las fichas
           estén listos para ofrecer la misma claridad y confianza.
         </p>
+        <p className="text-sm leading-relaxed text-text-tertiary">
+          Más adelante, el módulo podrá reservar formatos de visibilidad (publicación en listado, destaque,
+          espacio tipo banner, prioridad en búsquedas) alineados con el mismo enfoque sobrio del resto del
+          portal, sin mezclar oferta comercial con la búsqueda orgánica.
+        </p>
         <div className="flex flex-wrap gap-3">
           <Button asChild variant="default">
             <Link href="/venta">Ver venta</Link>

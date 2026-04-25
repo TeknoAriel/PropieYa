@@ -16,6 +16,7 @@ import { ListingTrustPanel } from '@/components/property/listing-trust-panel'
 import { ListingRelatedSearches } from '@/components/property/listing-related-searches'
 import { ListingSearchFlowBanner } from '@/components/property/listing-search-flow-banner'
 import { ListingSearchPostBanner } from '@/components/property/listing-search-post-banner'
+import { ListingVisibilityStrip } from '@/components/property/listing-visibility-strip'
 import { PropertyLocationMap } from '@/components/property/property-location-map'
 import {
   formatPrice,
@@ -634,6 +635,7 @@ export default function PropiedadPage() {
               <h1 className="text-lg font-semibold leading-snug text-text-primary line-clamp-3 md:text-xl">
                 {listing.title}
               </h1>
+              <ListingVisibilityStrip features={features} />
             </div>
           </Card>
 

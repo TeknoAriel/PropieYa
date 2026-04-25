@@ -1,3 +1,5 @@
+import type { ListingPortalVisibility } from '../portal-visibility'
+
 import {
   type UUID,
   type Timestamp,
@@ -147,6 +149,13 @@ export interface ListingFeatures {
    * Se usa cuando `propertyType` representa terrenos/espacios rurales.
    */
   field?: ListingField | null
+
+  /**
+   * Visibilidad comercial en el portal (destacado, impulso, ficha premium).
+   * No activa cobro por sí solo; etapas futuras en panel / backoffice.
+   * @see `packages/shared/src/portal-visibility.ts`
+   */
+  portalVisibility?: ListingPortalVisibility | null
 }
 
 /**
