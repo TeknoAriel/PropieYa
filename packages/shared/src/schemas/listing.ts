@@ -142,6 +142,7 @@ const roomsSchema = z.object({
 export const listingPortalVisibilitySchema = z.object({
   tier: z.enum(['standard', 'highlight', 'boost', 'premium_ficha']),
   products: z.array(z.string().max(120)).max(25).optional(),
+  from: z.union([z.string().max(40), z.null()]).optional(),
   until: z.union([z.string().max(40), z.null()]).optional(),
 })
 

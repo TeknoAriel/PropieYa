@@ -35,8 +35,187 @@ export interface ListingPortalVisibility {
   tier: PortalVisibilityTier
   /** Subconjunto de `PORTAL_VISIBILITY_PRODUCT_IDS` o strings de integración. */
   products?: string[]
+  /** Inicio de vigencia (ISO 8601), para programación operativa opcional. */
+  from?: string | null
   /** Fin de vigencia del pack (ISO 8601), si aplica. */
   until?: string | null
+}
+
+export type PortalCommercialPackageId =
+  | 'none'
+  | 'destacado_simple'
+  | 'impulso'
+  | 'ficha_premium'
+  | 'prioridad_zona'
+  | 'combo_impulso_zona'
+  | 'combo_premium_zona'
+
+export type PortalCommercialSurface = 'ficha_publica' | 'resultados_exactos' | 'modulo_zona'
+
+export interface PortalCommercialPackageDefinition {
+  id: PortalCommercialPackageId
+  commercialName: string
+  tier: PortalVisibilityTier
+  defaultDurationDays: number | null
+  surfaces: PortalCommercialSurface[]
+  visibleScope: string
+  operationalSummary: string
+  products: string[]
+}
+
+export const PORTAL_COMMERCIAL_PACKAGES: PortalCommercialPackageDefinition[] = [
+  {
+    id: 'none',
+    commercialName: 'Sin visibilidad especial',
+    tier: 'standard',
+    defaultDurationDays: null,
+    surfaces: [],
+    visibleScope: 'Aviso normal.',
+    operationalSummary: 'No aplica destaque comercial.',
+    products: [],
+  },
+  {
+    id: 'destacado_simple',
+    commercialName: 'Destacado simple',
+    tier: 'highlight',
+    defaultDurationDays: 15,
+    surfaces: ['ficha_publica', 'resultados_exactos'],
+    visibleScope: 'Aviso destacado visualmente en ficha y bloques exactos.',
+    operationalSummary: 'Para ganar visibilidad sin cambiar ranking core.',
+    products: [PORTAL_VISIBILITY_PRODUCT_IDS.highlight],
+  },
+  {
+    id: 'impulso',
+    commercialName: 'Impulso',
+    tier: 'boost',
+    defaultDurationDays: 15,
+    surfaces: ['ficha_publica', 'resultados_exactos'],
+    visibleScope: 'Mayor presencia operativa durante la vigencia.',
+    operationalSummary: 'Pensado para acelerar exposición por tiempo acotado.',
+    products: [PORTAL_VISIBILITY_PRODUCT_IDS.boost],
+  },
+  {
+    id: 'ficha_premium',
+    commercialName: 'Ficha premium',
+    tier: 'premium_ficha',
+    defaultDurationDays: 30,
+    surfaces: ['ficha_publica'],
+    visibleScope: 'Tratamiento premium en ficha pública.',
+    operationalSummary: 'Mejora de presentación sin alterar buscador core.',
+    products: [PORTAL_VISIBILITY_PRODUCT_IDS.premiumFicha],
+  },
+  {
+    id: 'prioridad_zona',
+    commercialName: 'Prioridad por zona',
+    tier: 'highlight',
+    defaultDurationDays: 30,
+    surfaces: ['modulo_zona'],
+    visibleScope: 'Prioridad comercial para módulos por zona/ciudad.',
+    operationalSummary: 'Producto preparado para superficies comerciales por zona.',
+    products: [PORTAL_VISIBILITY_PRODUCT_IDS.highlight, PORTAL_VISIBILITY_PRODUCT_IDS.zonePriority],
+  },
+  {
+    id: 'combo_impulso_zona',
+    commercialName: 'Impulso + zona',
+    tier: 'boost',
+    defaultDurationDays: 30,
+    surfaces: ['ficha_publica', 'resultados_exactos', 'modulo_zona'],
+    visibleScope: 'Impulso con prioridad por zona.',
+    operationalSummary: 'Combo comercial para tracción y foco territorial.',
+    products: [PORTAL_VISIBILITY_PRODUCT_IDS.boost, PORTAL_VISIBILITY_PRODUCT_IDS.zonePriority],
+  },
+  {
+    id: 'combo_premium_zona',
+    commercialName: 'Ficha premium + zona',
+    tier: 'premium_ficha',
+    defaultDurationDays: 30,
+    surfaces: ['ficha_publica', 'modulo_zona'],
+    visibleScope: 'Ficha premium con prioridad comercial por zona.',
+    operationalSummary: 'Combo premium pensado para activos de alto valor.',
+    products: [PORTAL_VISIBILITY_PRODUCT_IDS.premiumFicha, PORTAL_VISIBILITY_PRODUCT_IDS.zonePriority],
+  },
+]
+
+export const PORTAL_DEVELOPMENTS_COMMERCIAL_PRODUCTS = [
+  {
+    id: PORTAL_VISIBILITY_PRODUCT_IDS.devPublish,
+    commercialName: 'Publicación de emprendimiento',
+    operationalSummary: 'Publicación base de unidades y ficha de emprendimiento.',
+  },
+  {
+    id: PORTAL_VISIBILITY_PRODUCT_IDS.devFeature,
+    commercialName: 'Destaque de emprendimiento',
+    operationalSummary: 'Mayor visibilidad comercial para el bloque del emprendimiento.',
+  },
+  {
+    id: PORTAL_VISIBILITY_PRODUCT_IDS.devBanner,
+    commercialName: 'Banner de emprendimiento',
+    operationalSummary: 'Presencia en superficies de banner comercial del portal.',
+  },
+  {
+    id: PORTAL_VISIBILITY_PRODUCT_IDS.devPriority,
+    commercialName: 'Prioridad de emprendimiento',
+    operationalSummary: 'Prioridad comercial para módulos de emprendimientos por zona.',
+  },
+] as const
+
+export function portalCommercialPackageById(
+  id: PortalCommercialPackageId
+): PortalCommercialPackageDefinition {
+  return (
+    PORTAL_COMMERCIAL_PACKAGES.find((pkg) => pkg.id === id) ??
+    PORTAL_COMMERCIAL_PACKAGES[0]!
+  )
+}
+
+export function resolvePortalCommercialPackageId(
+  visibility: ListingPortalVisibility | null | undefined
+): PortalCommercialPackageId {
+  if (!visibility || !visibility.tier || visibility.tier === 'standard') return 'none'
+  const products = Array.isArray(visibility.products) ? visibility.products : []
+  const hasZone = products.includes(PORTAL_VISIBILITY_PRODUCT_IDS.zonePriority)
+  if (visibility.tier === 'premium_ficha') {
+    return hasZone ? 'combo_premium_zona' : 'ficha_premium'
+  }
+  if (visibility.tier === 'boost') {
+    return hasZone ? 'combo_impulso_zona' : 'impulso'
+  }
+  if (visibility.tier === 'highlight') {
+    return hasZone ? 'prioridad_zona' : 'destacado_simple'
+  }
+  return 'none'
+}
+
+export type PortalVisibilityOperationalStatus =
+  | 'none'
+  | 'active'
+  | 'scheduled'
+  | 'expired'
+
+export function resolvePortalVisibilityOperationalStatus(
+  visibility: ListingPortalVisibility | null | undefined,
+  nowInput?: Date
+): PortalVisibilityOperationalStatus {
+  if (!visibility || visibility.tier === 'standard') return 'none'
+  const now = nowInput ?? new Date()
+  const from = visibility.from ? new Date(visibility.from) : null
+  const until = visibility.until ? new Date(visibility.until) : null
+  if (from && !Number.isNaN(from.getTime()) && from.getTime() > now.getTime()) {
+    return 'scheduled'
+  }
+  if (until && !Number.isNaN(until.getTime()) && until.getTime() < now.getTime()) {
+    return 'expired'
+  }
+  return 'active'
+}
+
+export function portalVisibilityOperationalLabel(
+  status: PortalVisibilityOperationalStatus
+): string {
+  if (status === 'none') return 'Sin visibilidad especial'
+  if (status === 'active') return 'Activo'
+  if (status === 'scheduled') return 'Programado'
+  return 'Vencido'
 }
 
 export const PORTAL_VISIBILITY_UX = {
@@ -77,6 +256,18 @@ export function defaultPortalProductsForTier(tier: PortalVisibilityTier): string
     default:
       return []
   }
+}
+
+export function portalVisibilitySurfacesLabel(
+  surfaces: PortalCommercialSurface[]
+): string {
+  if (surfaces.length === 0) return 'Sin impacto comercial'
+  const map: Record<PortalCommercialSurface, string> = {
+    ficha_publica: 'Ficha pública',
+    resultados_exactos: 'Bloques de resultados exactos',
+    modulo_zona: 'Módulos comerciales por zona',
+  }
+  return surfaces.map((s) => map[s]).join(' + ')
 }
 
 function isTierWithUi(t: string): t is keyof typeof PORTAL_VISIBILITY_UX {
