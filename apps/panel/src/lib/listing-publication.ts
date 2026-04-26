@@ -8,20 +8,20 @@ export function publicationIssueMessage(issue: ListingPublishabilityIssue): stri
     case 'MIN_IMAGES_NOT_MET': {
       const minImages = Number(issue.details?.minImages ?? 1)
       const mediaCount = Number(issue.details?.mediaCount ?? 0)
-      return `Faltan imágenes para publicarlo (${mediaCount}/${minImages}).`
+      return `Faltan fotos para publicarlo (${mediaCount}/${minImages}). Sumá imágenes y volvé a intentar.`
     }
     case 'UNSUPPORTED_PRICE':
-      return 'El precio no es válido para publicar este aviso.'
+      return 'El precio no es válido para publicar. Corregilo y guardá el borrador.'
     case 'MISSING_REQUIRED_FIELDS':
       return 'Completá título, descripción y datos obligatorios para poder publicarlo.'
     case 'INVALID_LOCATION':
-      return 'Completá ubicación (ciudad, provincia y barrio) para poder publicarlo.'
+      return 'Completá ciudad, provincia y barrio para poder publicarlo.'
     case 'INVALID_PROPERTY_TYPE':
       return 'El tipo de propiedad no está soportado para publicar este aviso.'
     case 'STALE_CONTENT_EXPIRED':
-      return 'Actualizá el contenido del aviso para volver a publicarlo.'
+      return 'Este aviso venció por desactualización. Actualizalo y publicalo de nuevo.'
     case 'LISTING_VALIDITY_EXPIRED':
-      return 'La vigencia venció. Renová el aviso para mantenerlo publicado.'
+      return 'La vigencia venció. Renová el aviso para volver a publicarlo.'
     default:
       return issue.message
   }

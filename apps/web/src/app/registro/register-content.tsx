@@ -13,6 +13,7 @@ import {
   type AccountIntent,
 } from '@propieya/shared'
 
+import { portalLoginHref } from '@/lib/portal-auth-return'
 import { trpc } from '@/lib/trpc'
 
 function intentFromQuery(raw: string | null): AccountIntent {
@@ -42,10 +43,12 @@ export function RegisterContent() {
   }, [searchParams])
 
   const nextAfterRegister = searchParams.get('next')
-  const loginHref =
+  const loginDest =
     nextAfterRegister && nextAfterRegister.startsWith('/') && !nextAfterRegister.startsWith('//')
-      ? `/login?next=${encodeURIComponent(nextAfterRegister)}`
-      : '/login'
+      ? nextAfterRegister
+      : '/buscar'
+  const [loginPath, ...loginQsParts] = loginDest.split('?')
+  const loginHref = portalLoginHref(loginPath || '/buscar', loginQsParts.join('?'))
 
   const registerMutation = trpc.auth.register.useMutation({
     onSuccess: () => {
