@@ -276,6 +276,7 @@ function isTierWithUi(t: string): t is keyof typeof PORTAL_VISIBILITY_UX {
 
 export function resolvePortalVisibilityForPublicUi(features: unknown): {
   tier: PortalVisibilityTier
+  operationalStatus: PortalVisibilityOperationalStatus
   showStrip: boolean
   stripLabel: string
   stripSub: string
@@ -283,18 +284,47 @@ export function resolvePortalVisibilityForPublicUi(features: unknown): {
   const f = features as { portalVisibility?: ListingPortalVisibility } | null | undefined
   const raw = f?.portalVisibility
   if (!raw || !raw.tier) {
-    return { tier: 'standard', showStrip: false, stripLabel: '', stripSub: '' }
+    return {
+      tier: 'standard',
+      operationalStatus: 'none',
+      showStrip: false,
+      stripLabel: '',
+      stripSub: '',
+    }
   }
   const t = raw.tier
   if (t === 'standard') {
-    return { tier: 'standard', showStrip: false, stripLabel: '', stripSub: '' }
+    return {
+      tier: 'standard',
+      operationalStatus: 'none',
+      showStrip: false,
+      stripLabel: '',
+      stripSub: '',
+    }
   }
   if (!isTierWithUi(t)) {
-    return { tier: 'standard', showStrip: false, stripLabel: '', stripSub: '' }
+    return {
+      tier: 'standard',
+      operationalStatus: 'none',
+      showStrip: false,
+      stripLabel: '',
+      stripSub: '',
+    }
+  }
+  const operationalStatus = resolvePortalVisibilityOperationalStatus(raw)
+  if (operationalStatus !== 'active') {
+    return {
+      tier: t,
+      operationalStatus,
+      showStrip: false,
+      stripLabel: '',
+      stripSub: '',
+    }
   }
   const copy = PORTAL_VISIBILITY_UX[t]
   return {
     tier: t,
+    operationalStatus,
     showStrip: true,
     stripLabel: copy.title,
     stripSub: copy.sub,

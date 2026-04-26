@@ -49,6 +49,8 @@ import {
   isSearchV2ElasticsearchUnreachable,
   effectiveListingLimit,
   isPublisherOrganizationStatusBlocked,
+  resolvePortalVisibilityOperationalStatus,
+  type PortalVisibilityOperationalStatus,
   type ExplainMatchFilters,
   type ExplainMatchListing,
   type ListingSearchV2Result,
@@ -673,11 +675,13 @@ async function trySearchV2SqlFallback(
 type SearchV2BucketItemWithVisibility = {
   id?: string
   portalVisibilityTier?: 'standard' | 'highlight' | 'boost' | 'premium_ficha'
+  portalVisibilityOperationalStatus?: PortalVisibilityOperationalStatus
 }
 
 type PortalVisibilityAnalyticsMeta = {
   tier: 'standard' | 'highlight' | 'boost' | 'premium_ficha'
   products: string[]
+  operationalStatus: PortalVisibilityOperationalStatus
 }
 
 function portalVisibilityTierFromFeatures(
@@ -693,9 +697,10 @@ function portalVisibilityAnalyticsMetaFromFeatures(
   features: unknown
 ): PortalVisibilityAnalyticsMeta {
   const root = features as
-    | { portalVisibility?: { tier?: unknown; products?: unknown } }
+    | { portalVisibility?: { tier?: unknown; products?: unknown; from?: unknown; until?: unknown } }
     | null
     | undefined
+  const portalVisibility = root?.portalVisibility
   const tier = portalVisibilityTierFromFeatures(root)
   const rawProducts = root?.portalVisibility?.products
   const products = Array.isArray(rawProducts)
@@ -704,7 +709,13 @@ function portalVisibilityAnalyticsMetaFromFeatures(
         .map((x) => x.trim())
         .slice(0, 20)
     : []
-  return { tier, products }
+  const operationalStatus = resolvePortalVisibilityOperationalStatus({
+    tier,
+    products,
+    from: typeof portalVisibility?.from === 'string' ? portalVisibility.from : null,
+    until: typeof portalVisibility?.until === 'string' ? portalVisibility.until : null,
+  })
+  return { tier, products, operationalStatus }
 }
 
 async function attachPortalVisibilityToSearchV2Result(
@@ -727,8 +738,8 @@ async function attachPortalVisibilityToSearchV2Result(
     .from(listings)
     .where(inArray(listings.id, ids))
 
-  const tierById = new Map(
-    rows.map((row) => [row.id, portalVisibilityTierFromFeatures(row.features)])
+  const visById = new Map(
+    rows.map((row) => [row.id, portalVisibilityAnalyticsMetaFromFeatures(row.features)])
   )
 
   return {
@@ -737,9 +748,19 @@ async function attachPortalVisibilityToSearchV2Result(
       ...bucket,
       items: bucket.items.map((row) => {
         const item = row as SearchV2BucketItemWithVisibility
-        const tier =
-          item.id && tierById.has(item.id) ? tierById.get(item.id)! : 'standard'
-        return { ...(row as Record<string, unknown>), portalVisibilityTier: tier }
+        const vis =
+          item.id && visById.has(item.id)
+            ? visById.get(item.id)!
+            : ({
+                tier: 'standard',
+                products: [],
+                operationalStatus: 'none',
+              } satisfies PortalVisibilityAnalyticsMeta)
+        return {
+          ...(row as Record<string, unknown>),
+          portalVisibilityTier: vis.tier,
+          portalVisibilityOperationalStatus: vis.operationalStatus,
+        }
       }),
     })),
   }
@@ -1477,7 +1498,7 @@ export const listingRouter = createTRPCRouter({
       let written = 0
       for (const row of rows) {
         const vis = portalVisibilityAnalyticsMetaFromFeatures(row.features)
-        if (vis.tier === 'standard') continue
+        if (vis.tier === 'standard' || vis.operationalStatus !== 'active') continue
         recordPortalStatsEvent(ctx.db, {
           terminalId: PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_IMPRESSION,
           listingId: row.id,
@@ -1528,7 +1549,9 @@ export const listingRouter = createTRPCRouter({
       if (!row) return { ok: false as const }
 
       const vis = portalVisibilityAnalyticsMetaFromFeatures(row.features)
-      if (vis.tier === 'standard') return { ok: true as const, skipped: true as const }
+      if (vis.tier === 'standard' || vis.operationalStatus !== 'active') {
+        return { ok: true as const, skipped: true as const }
+      }
 
       recordPortalStatsEvent(ctx.db, {
         terminalId: PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_CLICK,

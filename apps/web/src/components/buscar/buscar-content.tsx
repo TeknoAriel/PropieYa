@@ -62,6 +62,7 @@ import {
   type ExplainMatchFilters,
   type FacetFlagDefinition,
   type OperationType,
+  type PortalVisibilityOperationalStatus,
   type PortalVisibilityTier,
   type PortalSearchPage,
   type PropertyType,
@@ -104,6 +105,7 @@ type BuscarListingCardData = {
   locationLng?: number | null
   location?: { lat?: number; lon?: number }
   portalVisibilityTier?: PortalVisibilityTier
+  portalVisibilityOperationalStatus?: PortalVisibilityOperationalStatus
 }
 
 function normalizePortalVisibilityTier(
@@ -111,6 +113,13 @@ function normalizePortalVisibilityTier(
 ): PortalVisibilityTier {
   if (tier === 'highlight' || tier === 'boost' || tier === 'premium_ficha') return tier
   return 'standard'
+}
+
+function normalizePortalVisibilityOperationalStatus(
+  status: unknown
+): PortalVisibilityOperationalStatus {
+  if (status === 'active' || status === 'scheduled' || status === 'expired') return status
+  return 'none'
 }
 
 function portalVisibilityTierLabel(tier: PortalVisibilityTier): string | null {
@@ -1097,7 +1106,11 @@ export function BuscarContent({
     }
     return [...strongBucketListings]
       .filter(
-        (row) => normalizePortalVisibilityTier(row.portalVisibilityTier) !== 'standard'
+        (row) =>
+          normalizePortalVisibilityTier(row.portalVisibilityTier) !== 'standard' &&
+          normalizePortalVisibilityOperationalStatus(
+            row.portalVisibilityOperationalStatus
+          ) === 'active'
       )
       .sort(
         (a, b) =>
