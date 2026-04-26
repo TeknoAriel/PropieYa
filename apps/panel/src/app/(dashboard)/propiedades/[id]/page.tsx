@@ -276,7 +276,7 @@ export default function EditarPropiedadPage() {
 
     if (commercialPackage !== 'none') {
       const pkg = portalCommercialPackageById(commercialPackage)
-      let products = [...pkg.products]
+      const products = [...pkg.products]
       const prevPv = _prevPortal as ListingPortalVisibility | undefined
       const devExtras =
         prevPv?.products?.filter((id) => id.startsWith('developments_')) ?? []
