@@ -21,6 +21,7 @@ import { TRPCError } from '@trpc/server'
 import type { Database } from '@propieya/database'
 import {
   listings,
+  portalStatsEvents,
   listingMedia,
   listingsSelectPublic,
   listingLifecycleEvents,
@@ -1009,13 +1010,72 @@ export const listingRouter = createTRPCRouter({
       }))
     )
 
+    const upgradedListingIds = Array.from(
+      new Set(
+        listingUpgrades
+          .map((u) => u.listingId)
+          .filter((id): id is string => typeof id === 'string' && id.length > 0)
+      )
+    )
+
+    let totalImpressions = 0
+    let totalClicks = 0
+    let metricsByListing: Array<{ listingId: string; impressions: number; clicks: number; ctr: number }> = []
+
+    if (upgradedListingIds.length > 0) {
+      const metricsSince = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      const events = await ctx.db
+        .select({
+          listingId: portalStatsEvents.listingId,
+          terminalId: portalStatsEvents.terminalId,
+        })
+        .from(portalStatsEvents)
+        .where(
+          and(
+            inArray(portalStatsEvents.listingId, upgradedListingIds),
+            inArray(portalStatsEvents.terminalId, [
+              PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_IMPRESSION,
+              PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_CLICK,
+            ]),
+            gte(portalStatsEvents.createdAt, metricsSince)
+          )
+        )
+
+      const byListing = new Map<string, { impressions: number; clicks: number }>()
+      for (const ev of events) {
+        if (!ev.listingId) continue
+        const agg = byListing.get(ev.listingId) ?? { impressions: 0, clicks: 0 }
+        if (ev.terminalId === PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_IMPRESSION) {
+          agg.impressions += 1
+          totalImpressions += 1
+        } else if (ev.terminalId === PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_CLICK) {
+          agg.clicks += 1
+          totalClicks += 1
+        }
+        byListing.set(ev.listingId, agg)
+      }
+      metricsByListing = Array.from(byListing.entries()).map(([listingId, m]) => ({
+        listingId,
+        impressions: m.impressions,
+        clicks: m.clicks,
+        ctr: m.impressions > 0 ? m.clicks / m.impressions : 0,
+      }))
+    }
+
     return {
       canPurchase: true,
       reason: null as string | null,
+      organizationName: org.name,
       eligibleListings,
       listingUpgrades,
       packagePurchases: parseOrganizationPackagePurchases(org.settings),
       availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
+      metricsSummary: {
+        impressions: totalImpressions,
+        clicks: totalClicks,
+        ctr: totalImpressions > 0 ? totalClicks / totalImpressions : 0,
+      },
+      metricsByListing,
     }
   }),
 
