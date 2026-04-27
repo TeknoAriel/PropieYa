@@ -1,13 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import {
+  PORTAL_COMMERCIAL_PROFILE_KEYS,
   formatTrpcUserMessage,
   portalUpgradeStatusLabel,
-  PORTAL_UPGRADE_CHANNELS,
   PORTAL_UPGRADE_STATUSES,
+  type PortalUpgradeChannel,
   type PortalUpgradeStatus,
 } from '@propieya/shared'
 import { Badge, Button, Card, Input } from '@propieya/ui'
@@ -38,19 +39,36 @@ export default function UpgradesPage() {
   const [listingId, setListingId] = useState('')
   const [packageId, setPackageId] = useState('destacado_simple')
   const [durationDays, setDurationDays] = useState('15')
-  const [listingChannel, setListingChannel] = useState<(typeof PORTAL_UPGRADE_CHANNELS)[number]>('on_demand')
+  const [listingChannel, setListingChannel] = useState<PortalUpgradeChannel>('on_demand')
   const [listingStatus, setListingStatus] = useState<(typeof PORTAL_UPGRADE_STATUSES)[number]>('pending_activation')
   const [listingStartsAt, setListingStartsAt] = useState('')
   const [listingNotes, setListingNotes] = useState('')
-  const [packageCode, setPackageCode] = useState<'pack_5' | 'pack_10' | 'pack_25'>('pack_5')
+  const [packageCode, setPackageCode] = useState('pack_5')
   const [packageName, setPackageName] = useState('Pack visibilidad')
   const [packageCredits, setPackageCredits] = useState('5')
-  const [packageChannel, setPackageChannel] = useState<(typeof PORTAL_UPGRADE_CHANNELS)[number]>('on_demand')
+  const [packageChannel, setPackageChannel] = useState<PortalUpgradeChannel>('on_demand')
   const [packageStatus, setPackageStatus] = useState<(typeof PORTAL_UPGRADE_STATUSES)[number]>('pending_activation')
   const [globalError, setGlobalError] = useState('')
+  const [selectedCatalogId, setSelectedCatalogId] = useState('')
+  const [catalogName, setCatalogName] = useState('')
+  const [catalogType, setCatalogType] = useState<'listing' | 'package'>('listing')
+  const [catalogTier, setCatalogTier] = useState<'standard' | 'highlight' | 'boost' | 'premium_ficha'>(
+    'highlight'
+  )
+  const [catalogProducts, setCatalogProducts] = useState('')
+  const [catalogDuration, setCatalogDuration] = useState('')
+  const [catalogPriceBand, setCatalogPriceBand] = useState('')
+  const [catalogEnabledProfiles, setCatalogEnabledProfiles] = useState<string[]>([
+    'owner',
+    'agent',
+    'agency',
+  ])
+  const [catalogShortCopy, setCatalogShortCopy] = useState('')
+  const [catalogSurfaces, setCatalogSurfaces] = useState('')
+  const [catalogIsActive, setCatalogIsActive] = useState(true)
 
   const [statusFilter, setStatusFilter] = useState<'all' | PortalUpgradeStatus>('all')
-  const [channelFilter, setChannelFilter] = useState<'all' | (typeof PORTAL_UPGRADE_CHANNELS)[number]>('all')
+  const [channelFilter, setChannelFilter] = useState<'all' | PortalUpgradeChannel>('all')
   const [typeFilter, setTypeFilter] = useState<'all' | PurchaseType>('all')
   const [productFilter, setProductFilter] = useState<'all' | string>('all')
   const [vigenciaFilter, setVigenciaFilter] = useState<VigenciaFilter>('all')
@@ -76,6 +94,14 @@ export default function UpgradesPage() {
     onError: (err) =>
       setGlobalError(formatTrpcUserMessage(err) || 'No se pudo registrar el paquete.'),
   })
+  const upsertCatalogMutation = trpc.listing.upsertCommercialCatalogItem.useMutation({
+    onSuccess: () => {
+      setGlobalError('')
+      void utils.listing.upgradesOverview.invalidate()
+    },
+    onError: (err) =>
+      setGlobalError(formatTrpcUserMessage(err) || 'No se pudo guardar el producto comercial.'),
+  })
 
   const listingsById = useMemo(
     () => new Map((overview.data?.eligibleListings ?? []).map((l) => [l.id, l])),
@@ -87,6 +113,7 @@ export default function UpgradesPage() {
   )
 
   const rows = useMemo(() => {
+    const catalogById = new Map((overview.data?.commercialCatalog ?? []).map((i) => [i.id, i]))
     const listingRows = (overview.data?.listingUpgrades ?? []).map((u) => {
       const listing = listingsById.get(u.listingId ?? '')
       const metric = u.listingId ? metricsByListing.get(u.listingId) : undefined
@@ -94,7 +121,7 @@ export default function UpgradesPage() {
         id: u.id,
         reference: listing?.title ?? 'Aviso',
         customer: overview.data?.organizationName ?? 'Publicador',
-        product: u.packageId,
+        product: catalogById.get(u.packageId)?.commercialName ?? u.packageId,
         channel: u.channel,
         status: u.status,
         startsAt: u.startsAt ?? null,
@@ -108,7 +135,7 @@ export default function UpgradesPage() {
       id: p.id,
       reference: p.packageName,
       customer: overview.data?.organizationName ?? 'Publicador',
-      product: p.packageCode,
+      product: catalogById.get(p.packageCode)?.commercialName ?? p.packageName ?? p.packageCode,
       channel: p.channel,
       status: p.status,
       startsAt: p.startsAt ?? null,
@@ -119,6 +146,52 @@ export default function UpgradesPage() {
     }))
     return [...listingRows, ...packageRows]
   }, [overview.data, listingsById, metricsByListing])
+
+  const catalogItems = useMemo(() => overview.data?.commercialCatalog ?? [], [overview.data?.commercialCatalog])
+  const listingCatalog = useMemo(
+    () => catalogItems.filter((item) => item.type === 'listing' && item.id !== 'none'),
+    [catalogItems]
+  )
+  const packageCatalog = useMemo(
+    () => catalogItems.filter((item) => item.type === 'package'),
+    [catalogItems]
+  )
+
+  useEffect(() => {
+    if (!selectedCatalogId && catalogItems.length > 0) {
+      setSelectedCatalogId(catalogItems[0]!.id)
+    }
+  }, [selectedCatalogId, catalogItems])
+
+  useEffect(() => {
+    const item = catalogItems.find((i) => i.id === selectedCatalogId)
+    if (!item) return
+    setCatalogName(item.commercialName)
+    setCatalogType(item.type)
+    setCatalogTier(item.tier)
+    setCatalogProducts(item.technicalProducts.join(', '))
+    setCatalogDuration(item.suggestedDurationDays ? String(item.suggestedDurationDays) : '')
+    setCatalogPriceBand(item.priceBand ?? '')
+    setCatalogEnabledProfiles(item.enabledProfiles)
+    setCatalogShortCopy(item.shortCopy)
+    setCatalogSurfaces(item.surfaces.join(', '))
+    setCatalogIsActive(item.isActive)
+  }, [selectedCatalogId, catalogItems])
+
+  useEffect(() => {
+    if (listingCatalog.length > 0 && !listingCatalog.some((item) => item.id === packageId)) {
+      setPackageId(listingCatalog[0]!.id)
+    }
+  }, [listingCatalog, packageId])
+
+  useEffect(() => {
+    if (!packageCode && packageCatalog.length > 0) setPackageCode(packageCatalog[0]!.id)
+  }, [packageCode, packageCatalog])
+
+  useEffect(() => {
+    const selected = packageCatalog.find((item) => item.id === packageCode)
+    if (selected && !packageName.trim()) setPackageName(selected.commercialName)
+  }, [packageCode, packageCatalog, packageName])
 
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
@@ -278,9 +351,7 @@ export default function UpgradesPage() {
             className="rounded-md border border-border bg-background px-3 py-2 text-sm"
             value={channelFilter}
             onChange={(e) =>
-              setChannelFilter(
-                e.target.value as 'all' | (typeof PORTAL_UPGRADE_CHANNELS)[number]
-              )
+              setChannelFilter(e.target.value as 'all' | PortalUpgradeChannel)
             }
           >
             <option value="all">Canal: todos</option>
@@ -319,6 +390,163 @@ export default function UpgradesPage() {
             <option value="scheduled">Programados</option>
             <option value="expired">Vencidos</option>
           </select>
+        </div>
+      </Card>
+
+      <Card className="p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-text-primary">Catálogo comercial editable</h2>
+          <span className="text-sm text-text-tertiary">{catalogItems.length} productos</span>
+        </div>
+        <p className="mt-1 text-sm text-text-secondary">
+          Definí qué se vende, a quién aplica, duración sugerida, banda de precio y mapeo técnico sin
+          tocar código.
+        </p>
+        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+          <div className="overflow-x-auto rounded-md border border-border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-tertiary">
+                  <th className="px-3 py-2">Producto</th>
+                  <th className="px-3 py-2">Tipo</th>
+                  <th className="px-3 py-2">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {catalogItems.map((item) => (
+                  <tr
+                    key={item.id}
+                    className={`cursor-pointer border-b border-border/60 ${selectedCatalogId === item.id ? 'bg-muted/40' : ''}`}
+                    onClick={() => setSelectedCatalogId(item.id)}
+                  >
+                    <td className="px-3 py-2">
+                      <p className="font-medium text-text-primary">{item.commercialName}</p>
+                      <p className="text-xs text-text-tertiary">{item.id}</p>
+                    </td>
+                    <td className="px-3 py-2 text-text-secondary">
+                      {item.type === 'listing' ? 'Por aviso' : 'Por paquete'}
+                    </td>
+                    <td className="px-3 py-2">
+                      <Badge variant={item.isActive ? 'default' : 'secondary'}>
+                        {item.isActive ? 'Activo' : 'Inactivo'}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="space-y-3 rounded-md border border-border p-4">
+            <p className="text-sm font-medium text-text-primary">Editar producto seleccionado</p>
+            <Input value={catalogName} onChange={(e) => setCatalogName(e.target.value)} placeholder="Nombre comercial" />
+            <div className="grid grid-cols-2 gap-3">
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={catalogType}
+                onChange={(e) => setCatalogType(e.target.value as 'listing' | 'package')}
+              >
+                <option value="listing">Tipo: por aviso</option>
+                <option value="package">Tipo: por paquete</option>
+              </select>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={catalogTier}
+                onChange={(e) =>
+                  setCatalogTier(e.target.value as 'standard' | 'highlight' | 'boost' | 'premium_ficha')
+                }
+              >
+                <option value="standard">Tier: estándar</option>
+                <option value="highlight">Tier: destacado</option>
+                <option value="boost">Tier: impulso</option>
+                <option value="premium_ficha">Tier: ficha premium</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                type="number"
+                min={1}
+                max={365}
+                value={catalogDuration}
+                onChange={(e) => setCatalogDuration(e.target.value)}
+                placeholder="Duración sugerida (días)"
+              />
+              <Input
+                value={catalogPriceBand}
+                onChange={(e) => setCatalogPriceBand(e.target.value)}
+                placeholder="Precio base o banda"
+              />
+            </div>
+            <Input
+              value={catalogProducts}
+              onChange={(e) => setCatalogProducts(e.target.value)}
+              placeholder="Productos técnicos (coma)"
+            />
+            <Input
+              value={catalogSurfaces}
+              onChange={(e) => setCatalogSurfaces(e.target.value)}
+              placeholder="Superficies (coma)"
+            />
+            <Input
+              value={catalogShortCopy}
+              onChange={(e) => setCatalogShortCopy(e.target.value)}
+              placeholder="Copy corto operativo"
+            />
+            <div className="flex flex-wrap items-center gap-3 text-sm text-text-secondary">
+              {PORTAL_COMMERCIAL_PROFILE_KEYS.map((profile) => (
+                <label key={profile} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={catalogEnabledProfiles.includes(profile)}
+                    onChange={(e) =>
+                      setCatalogEnabledProfiles((current) =>
+                        e.target.checked
+                          ? Array.from(new Set([...current, profile]))
+                          : current.filter((p) => p !== profile)
+                      )
+                    }
+                  />
+                  {profile === 'owner' ? 'Dueño' : profile === 'agent' ? 'Agente' : 'Inmobiliaria'}
+                </label>
+              ))}
+              <label className="ml-auto flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={catalogIsActive}
+                  onChange={(e) => setCatalogIsActive(e.target.checked)}
+                />
+                Activo
+              </label>
+            </div>
+            <Button
+              disabled={upsertCatalogMutation.isPending || !selectedCatalogId || !catalogName.trim()}
+              onClick={() =>
+                upsertCatalogMutation.mutate({
+                  id: selectedCatalogId,
+                  commercialName: catalogName.trim(),
+                  type: catalogType,
+                  tier: catalogTier,
+                  technicalProducts: catalogProducts
+                    .split(',')
+                    .map((v) => v.trim())
+                    .filter(Boolean),
+                  suggestedDurationDays: catalogDuration ? Number(catalogDuration) : null,
+                  priceBand: catalogPriceBand.trim() || null,
+                  isActive: catalogIsActive,
+                  enabledProfiles: (catalogEnabledProfiles.length > 0
+                    ? catalogEnabledProfiles
+                    : ['owner']) as Array<'owner' | 'agent' | 'agency'>,
+                  shortCopy: catalogShortCopy.trim(),
+                  surfaces: catalogSurfaces
+                    .split(',')
+                    .map((v) => v.trim())
+                    .filter(Boolean),
+                  updatedAt: new Date().toISOString(),
+                })
+              }
+            >
+              {upsertCatalogMutation.isPending ? 'Guardando catálogo…' : 'Guardar producto'}
+            </Button>
+          </div>
         </div>
       </Card>
 
@@ -465,13 +693,11 @@ export default function UpgradesPage() {
               value={packageId}
               onChange={(e) => setPackageId(e.target.value)}
             >
-              {(overview.data?.availableCommercialPackages ?? [])
-                .filter((p) => p.id !== 'none')
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.commercialName}
-                  </option>
-                ))}
+              {listingCatalog.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.commercialName}
+                </option>
+              ))}
             </select>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -486,7 +712,7 @@ export default function UpgradesPage() {
             <select
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
               value={listingChannel}
-              onChange={(e) => setListingChannel(e.target.value as (typeof PORTAL_UPGRADE_CHANNELS)[number])}
+              onChange={(e) => setListingChannel(e.target.value as PortalUpgradeChannel)}
             >
               <option value="online">Online</option>
               <option value="on_demand">On demand</option>
@@ -521,13 +747,7 @@ export default function UpgradesPage() {
             onClick={() =>
               listingUpgradeMutation.mutate({
                 listingId,
-                packageId: packageId as
-                  | 'destacado_simple'
-                  | 'impulso'
-                  | 'ficha_premium'
-                  | 'prioridad_zona'
-                  | 'combo_impulso_zona'
-                  | 'combo_premium_zona',
+                packageId,
                 durationDays: Number(durationDays || '0'),
                 channel: listingChannel,
                 status: listingStatus,
@@ -546,11 +766,17 @@ export default function UpgradesPage() {
             <select
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
               value={packageCode}
-              onChange={(e) => setPackageCode(e.target.value as 'pack_5' | 'pack_10' | 'pack_25')}
+              onChange={(e) => {
+                setPackageCode(e.target.value)
+                const selected = packageCatalog.find((item) => item.id === e.target.value)
+                if (selected) setPackageName(selected.commercialName)
+              }}
             >
-              <option value="pack_5">Pack 5</option>
-              <option value="pack_10">Pack 10</option>
-              <option value="pack_25">Pack 25</option>
+              {packageCatalog.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.commercialName}
+                </option>
+              ))}
             </select>
             <Input
               type="number"
@@ -566,7 +792,7 @@ export default function UpgradesPage() {
             <select
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
               value={packageChannel}
-              onChange={(e) => setPackageChannel(e.target.value as (typeof PORTAL_UPGRADE_CHANNELS)[number])}
+              onChange={(e) => setPackageChannel(e.target.value as PortalUpgradeChannel)}
             >
               <option value="online">Online</option>
               <option value="on_demand">On demand</option>

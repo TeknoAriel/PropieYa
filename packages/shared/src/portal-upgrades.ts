@@ -1,7 +1,10 @@
 import { z } from 'zod'
 
 import {
+  PORTAL_COMMERCIAL_PACKAGES,
   portalCommercialPackageById,
+  type PortalCommercialSurface,
+  type PortalVisibilityTier,
   type ListingPortalVisibility,
   type PortalCommercialPackageId,
 } from './portal-visibility'
@@ -57,6 +60,104 @@ export const portalPackagePurchaseSchema = z.object({
 })
 
 export type PortalPackagePurchase = z.infer<typeof portalPackagePurchaseSchema>
+
+export const PORTAL_COMMERCIAL_PRODUCT_TYPES = ['listing', 'package'] as const
+export type PortalCommercialProductType = (typeof PORTAL_COMMERCIAL_PRODUCT_TYPES)[number]
+
+export const PORTAL_COMMERCIAL_PROFILE_KEYS = ['owner', 'agent', 'agency'] as const
+export type PortalCommercialProfileKey = (typeof PORTAL_COMMERCIAL_PROFILE_KEYS)[number]
+
+export const portalCommercialCatalogItemSchema = z.object({
+  id: z.string().max(80),
+  commercialName: z.string().min(2).max(120),
+  type: z.enum(PORTAL_COMMERCIAL_PRODUCT_TYPES),
+  tier: z.enum(['standard', 'highlight', 'boost', 'premium_ficha']),
+  technicalProducts: z.array(z.string().max(120)).max(30).default([]),
+  suggestedDurationDays: z.number().int().min(1).max(365).nullable().optional(),
+  priceBand: z.string().max(120).nullable().optional(),
+  isActive: z.boolean().default(true),
+  enabledProfiles: z.array(z.enum(PORTAL_COMMERCIAL_PROFILE_KEYS)).max(3).default([
+    'owner',
+    'agent',
+    'agency',
+  ]),
+  shortCopy: z.string().max(220).default(''),
+  surfaces: z.array(z.string().max(80)).max(10).default([]),
+  updatedAt: z.string().datetime(),
+})
+
+export type PortalCommercialCatalogItem = z.infer<typeof portalCommercialCatalogItemSchema>
+
+export function defaultPortalCommercialCatalog(nowInput?: Date): PortalCommercialCatalogItem[] {
+  const now = (nowInput ?? new Date()).toISOString()
+  const listingItems = PORTAL_COMMERCIAL_PACKAGES.map((p) => ({
+    id: p.id,
+    commercialName: p.commercialName,
+    type: 'listing' as const,
+    tier: p.tier as PortalVisibilityTier,
+    technicalProducts: p.products,
+    suggestedDurationDays: p.defaultDurationDays,
+    priceBand: null,
+    isActive: p.id !== 'none',
+    enabledProfiles: ['owner', 'agent', 'agency'] as PortalCommercialProfileKey[],
+    shortCopy: p.operationalSummary,
+    surfaces: p.surfaces as unknown as PortalCommercialSurface[],
+    updatedAt: now,
+  }))
+  const packageItems: PortalCommercialCatalogItem[] = [
+    {
+      id: 'pack_5',
+      commercialName: 'Pack 5 activaciones',
+      type: 'package',
+      tier: 'standard',
+      technicalProducts: [],
+      suggestedDurationDays: 30,
+      priceBand: null,
+      isActive: true,
+      enabledProfiles: ['owner', 'agent', 'agency'],
+      shortCopy: 'Pack base para activar upgrades por aviso.',
+      surfaces: [],
+      updatedAt: now,
+    },
+    {
+      id: 'pack_10',
+      commercialName: 'Pack 10 activaciones',
+      type: 'package',
+      tier: 'standard',
+      technicalProducts: [],
+      suggestedDurationDays: 30,
+      priceBand: null,
+      isActive: true,
+      enabledProfiles: ['owner', 'agent', 'agency'],
+      shortCopy: 'Pack intermedio para operación comercial continua.',
+      surfaces: [],
+      updatedAt: now,
+    },
+    {
+      id: 'pack_25',
+      commercialName: 'Pack 25 activaciones',
+      type: 'package',
+      tier: 'standard',
+      technicalProducts: [],
+      suggestedDurationDays: 30,
+      priceBand: null,
+      isActive: true,
+      enabledProfiles: ['owner', 'agent', 'agency'],
+      shortCopy: 'Pack volumen para equipos comerciales.',
+      surfaces: [],
+      updatedAt: now,
+    },
+  ]
+  return [...listingItems, ...packageItems]
+}
+
+export function parsePortalCommercialCatalog(raw: unknown): PortalCommercialCatalogItem[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((item) => portalCommercialCatalogItemSchema.safeParse(item))
+    .filter((r): r is { success: true; data: PortalCommercialCatalogItem } => r.success)
+    .map((r) => r.data)
+}
 
 export function normalizePortalUpgradeStatus(
   status: string | null | undefined

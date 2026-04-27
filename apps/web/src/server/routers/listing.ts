@@ -50,6 +50,9 @@ import {
   isSearchV2ElasticsearchUnreachable,
   effectiveListingLimit,
   isPublisherOrganizationStatusBlocked,
+  defaultPortalCommercialCatalog,
+  parsePortalCommercialCatalog,
+  portalCommercialCatalogItemSchema,
   resolvePortalVisibilityOperationalStatus,
   PORTAL_COMMERCIAL_PACKAGES,
   PORTAL_UPGRADE_CHANNELS,
@@ -57,8 +60,8 @@ import {
   portalPackagePurchaseSchema,
   portalUpgradeRecordSchema,
   resolveTemporalUpgradeStatus,
-  listingPortalVisibilityFromUpgrade,
-  type PortalCommercialPackageId,
+  type PortalCommercialCatalogItem,
+  type PortalCommercialProfileKey,
   type PortalPackagePurchase,
   type PortalUpgradeChannel,
   type PortalUpgradeStatus,
@@ -814,6 +817,27 @@ function parseOrganizationPackagePurchases(settings: unknown): PortalPackagePurc
     }))
 }
 
+function parseOrganizationCommercialCatalog(settings: unknown): PortalCommercialCatalogItem[] {
+  const raw = (settings as { portalCommercialCatalog?: unknown } | null | undefined)
+    ?.portalCommercialCatalog
+  return parsePortalCommercialCatalog(raw)
+}
+
+function effectiveCommercialCatalog(settings: unknown): PortalCommercialCatalogItem[] {
+  const defaults = defaultPortalCommercialCatalog()
+  const overrides = parseOrganizationCommercialCatalog(settings)
+  if (overrides.length === 0) return defaults
+  const byId = new Map<string, PortalCommercialCatalogItem>(defaults.map((item) => [item.id, item]))
+  for (const item of overrides) byId.set(item.id, item)
+  return Array.from(byId.values())
+}
+
+function organizationCommercialProfileKey(orgType: string | null | undefined): PortalCommercialProfileKey {
+  if (orgType === 'real_estate_agency') return 'agency'
+  if (orgType === 'agent') return 'agent'
+  return 'owner'
+}
+
 export const listingRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createListingSchema)
@@ -942,6 +966,7 @@ export const listingRouter = createTRPCRouter({
         listingUpgrades: [] as Array<z.infer<typeof portalUpgradeRecordSchema>>,
         packagePurchases: [] as PortalPackagePurchase[],
         availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
+        commercialCatalog: defaultPortalCommercialCatalog(),
       }
     }
 
@@ -956,8 +981,11 @@ export const listingRouter = createTRPCRouter({
         listingUpgrades: [] as Array<z.infer<typeof portalUpgradeRecordSchema>>,
         packagePurchases: [] as PortalPackagePurchase[],
         availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
+        commercialCatalog: defaultPortalCommercialCatalog(),
       }
     }
+
+    const catalog = effectiveCommercialCatalog(org.settings)
 
     if (isPublisherOrganizationStatusBlocked(org.status)) {
       return {
@@ -967,6 +995,7 @@ export const listingRouter = createTRPCRouter({
         listingUpgrades: [] as Array<z.infer<typeof portalUpgradeRecordSchema>>,
         packagePurchases: parseOrganizationPackagePurchases(org.settings),
         availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
+        commercialCatalog: catalog,
       }
     }
     if (org.status !== 'active') {
@@ -977,6 +1006,7 @@ export const listingRouter = createTRPCRouter({
         listingUpgrades: [] as Array<z.infer<typeof portalUpgradeRecordSchema>>,
         packagePurchases: parseOrganizationPackagePurchases(org.settings),
         availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
+        commercialCatalog: catalog,
       }
     }
 
@@ -1070,6 +1100,7 @@ export const listingRouter = createTRPCRouter({
       listingUpgrades,
       packagePurchases: parseOrganizationPackagePurchases(org.settings),
       availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
+      commercialCatalog: catalog,
       metricsSummary: {
         impressions: totalImpressions,
         clicks: totalClicks,
@@ -1083,12 +1114,7 @@ export const listingRouter = createTRPCRouter({
     .input(
       z.object({
         listingId: z.string().uuid(),
-        packageId: z.enum(
-          PORTAL_COMMERCIAL_PACKAGES.map((p) => p.id).filter((id) => id !== 'none') as [
-            PortalCommercialPackageId,
-            ...PortalCommercialPackageId[]
-          ]
-        ),
+        packageId: z.string().min(2).max(80),
         durationDays: z.number().int().min(1).max(365),
         channel: z.enum(PORTAL_UPGRADE_CHANNELS),
         status: z.enum(PORTAL_UPGRADE_STATUSES).default('pending_activation'),
@@ -1128,6 +1154,21 @@ export const listingRouter = createTRPCRouter({
           message: 'La cuenta publicadora no está habilitada para comprar upgrades.',
         })
       }
+      const catalog = effectiveCommercialCatalog(org.settings)
+      const orgProfile = organizationCommercialProfileKey(org.type)
+      const selectedProduct = catalog.find(
+        (item) =>
+          item.id === input.packageId &&
+          item.type === 'listing' &&
+          item.isActive &&
+          item.enabledProfiles.includes(orgProfile)
+      )
+      if (!selectedProduct) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'El producto comercial no está disponible para esta cuenta.',
+        })
+      }
 
       const now = new Date()
       const startsAt = input.startsAt ? new Date(input.startsAt) : now
@@ -1164,11 +1205,12 @@ export const listingRouter = createTRPCRouter({
       featuresObj.visibilityUpgrades = nextUpgrades
 
       if (temporalStatus === 'active' || temporalStatus === 'scheduled') {
-        featuresObj.portalVisibility = listingPortalVisibilityFromUpgrade(
-          input.packageId,
-          startsAt.toISOString(),
-          endsAt.toISOString()
-        )
+        featuresObj.portalVisibility = {
+          tier: selectedProduct.tier,
+          products: selectedProduct.technicalProducts,
+          from: startsAt.toISOString(),
+          until: endsAt.toISOString(),
+        }
       }
 
       await ctx.db
@@ -1184,7 +1226,7 @@ export const listingRouter = createTRPCRouter({
   createPackageUpgradePurchase: protectedProcedure
     .input(
       z.object({
-        packageCode: z.enum(['pack_5', 'pack_10', 'pack_25']),
+        packageCode: z.string().min(2).max(80),
         packageName: z.string().min(3).max(120),
         creditsTotal: z.number().int().min(1).max(1000),
         channel: z.enum(PORTAL_UPGRADE_CHANNELS),
@@ -1211,6 +1253,21 @@ export const listingRouter = createTRPCRouter({
           message: 'La cuenta publicadora no está habilitada para comprar paquetes.',
         })
       }
+      const catalog = effectiveCommercialCatalog(org.settings)
+      const orgProfile = organizationCommercialProfileKey(org.type)
+      const selectedPackage = catalog.find(
+        (item) =>
+          item.id === input.packageCode &&
+          item.type === 'package' &&
+          item.isActive &&
+          item.enabledProfiles.includes(orgProfile)
+      )
+      if (!selectedPackage) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'El paquete comercial no está disponible para esta cuenta.',
+        })
+      }
 
       const nowIso = new Date().toISOString()
       const startsAtIso = input.startsAt ?? null
@@ -1224,7 +1281,7 @@ export const listingRouter = createTRPCRouter({
           endsAtIso
         ),
         packageCode: input.packageCode,
-        packageName: input.packageName,
+        packageName: input.packageName || selectedPackage.commercialName,
         creditsTotal: input.creditsTotal,
         creditsRemaining: input.creditsTotal,
         startsAt: startsAtIso,
@@ -1249,6 +1306,43 @@ export const listingRouter = createTRPCRouter({
         })
         .where(eq(organizations.id, orgId))
       return purchase
+    }),
+  upsertCommercialCatalogItem: protectedProcedure
+    .input(portalCommercialCatalogItemSchema)
+    .mutation(async ({ input, ctx }) => {
+      const orgId = ctx.session.organizationId
+      if (!orgId) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Necesitás una cuenta publicadora para editar el catálogo comercial.',
+        })
+      }
+      const org = await ctx.db.query.organizations.findFirst({
+        where: eq(organizations.id, orgId),
+      })
+      if (!org || isPublisherOrganizationStatusBlocked(org.status)) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'La cuenta publicadora no está habilitada para editar el catálogo.',
+        })
+      }
+      const current = parseOrganizationCommercialCatalog(org.settings)
+      const byId = new Map(current.map((item) => [item.id, item]))
+      byId.set(input.id, { ...input, updatedAt: new Date().toISOString() })
+      const nextCatalog = Array.from(byId.values())
+      const settingsObj =
+        org.settings && typeof org.settings === 'object' && !Array.isArray(org.settings)
+          ? { ...(org.settings as Record<string, unknown>) }
+          : {}
+      settingsObj.portalCommercialCatalog = nextCatalog
+      await ctx.db
+        .update(organizations)
+        .set({
+          settings: settingsObj,
+          updatedAt: new Date(),
+        })
+        .where(eq(organizations.id, orgId))
+      return { ok: true, items: nextCatalog.length }
     }),
 
   publish: protectedProcedure
