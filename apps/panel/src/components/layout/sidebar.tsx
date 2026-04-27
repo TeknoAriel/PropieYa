@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
   UserPlus,
+  Sparkles,
 } from '@propieya/ui'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { href: '/propiedades', label: 'Propiedades', icon: Building2 },
   { href: '/campos', label: 'Campos', icon: Building2 },
   { href: '/equipo', label: 'Equipo', icon: UserPlus },
+  { href: '/upgrades', label: 'Upgrades', icon: Sparkles },
   { href: '/leads', label: 'Leads', icon: Users },
   { href: '/mensajes', label: 'Mensajes', icon: MessageSquare },
   { href: '/configuracion', label: 'Configuración', icon: Settings },
