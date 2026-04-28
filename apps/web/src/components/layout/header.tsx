@@ -16,8 +16,9 @@ import {
 } from '@propieya/ui'
 import { useTheme } from '@/lib/theme-provider'
 import { getPortalPack } from '@/lib/portal-copy'
-import { PORTAL_ACCOUNT, PORTAL_PRIMARY_NAV } from '@/lib/portal-nav'
+import { PORTAL_PRIMARY_NAV } from '@/lib/portal-nav'
 import { BrandLogo } from './brand-logo'
+import { HeaderAuthControls } from './header-auth-controls'
 
 const mobileNavClass =
   'rounded-md px-3 py-2.5 text-sm font-medium text-text-primary hover:bg-surface-secondary'
@@ -94,27 +95,11 @@ export function Header() {
               )}
             </Button>
 
-            <div className="hidden items-center gap-0.5 lg:flex">
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className="text-xs font-normal text-text-tertiary hover:text-text-secondary"
-              >
-                <Link href={PORTAL_ACCOUNT.compare.href}>{PORTAL_ACCOUNT.compare.label}</Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className="text-xs font-normal text-text-tertiary hover:text-text-secondary"
-              >
-                <Link href={PORTAL_ACCOUNT.alerts.href}>{PORTAL_ACCOUNT.alerts.label}</Link>
-              </Button>
-              <Button variant="ghost" size="sm" asChild className="text-sm font-medium">
-                <Link href={PORTAL_ACCOUNT.login.href}>{PORTAL_ACCOUNT.login.label}</Link>
-              </Button>
-            </div>
+            <HeaderAuthControls
+              variant="toolbar"
+              mobileNavClass={mobileNavClass}
+              closeMobile={closeMobile}
+            />
 
             <Button size="sm" className="hidden sm:inline-flex md:px-4" asChild>
               <Link href="/publicar">{pack.cta.publish}</Link>
@@ -155,15 +140,11 @@ export function Header() {
               </Link>
             ))}
             <Separator className="my-2" />
-            <Link href={PORTAL_ACCOUNT.compare.href} className={mobileNavClass} onClick={closeMobile}>
-              {PORTAL_ACCOUNT.compare.label}
-            </Link>
-            <Link href={PORTAL_ACCOUNT.alerts.href} className={mobileNavClass} onClick={closeMobile}>
-              {PORTAL_ACCOUNT.alerts.label}
-            </Link>
-            <Link href={PORTAL_ACCOUNT.login.href} className={mobileNavClass} onClick={closeMobile}>
-              {PORTAL_ACCOUNT.login.label}
-            </Link>
+            <HeaderAuthControls
+              variant="drawer"
+              mobileNavClass={mobileNavClass}
+              closeMobile={closeMobile}
+            />
             <Link href="/nosotros" className={mobileNavClass} onClick={closeMobile}>
               Sobre nosotros
             </Link>

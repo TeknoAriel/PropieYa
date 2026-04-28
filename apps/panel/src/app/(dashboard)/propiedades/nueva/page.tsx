@@ -22,6 +22,11 @@ import { useState } from 'react'
 import { trpc } from '@/lib/trpc'
 import Link from 'next/link'
 
+const WEB_APP_URL = (process.env.NEXT_PUBLIC_WEB_APP_URL || 'https://propieyaweb.vercel.app').replace(
+  /\/$/,
+  ''
+)
+
 function normalizeNullable(s: string): string | null {
   const v = s.trim()
   return v.length ? v : null
@@ -31,9 +36,8 @@ export default function NuevaPropiedadPage() {
   const router = useRouter()
   const { data: me } = trpc.auth.me.useQuery()
   const pub = me?.publisher
-  const blockCreate = Boolean(
-    pub && !pub.canCreateListing
-  )
+  const noPublisherProfile = !pub
+  const blockCreate = Boolean(noPublisherProfile || (pub && !pub.canCreateListing))
 
   const [propertyType, setPropertyType] = useState<PropertyType>('apartment')
   const [operationType, setOperationType] = useState<OperationType>('sale')
@@ -202,7 +206,19 @@ export default function NuevaPropiedadPage() {
 
       {blockCreate ? (
         <div className="rounded-md border border-semantic-warning/40 bg-semantic-warning/10 px-3 py-3 text-sm text-text-secondary">
-          {pub?.isSuspended ? (
+          {noPublisherProfile ? (
+            <p>
+              Esta cuenta no está habilitada para publicar. Completá el alta de publicador
+              desde{' '}
+              <Link
+                href={`${WEB_APP_URL}/publicar`}
+                className="text-brand-primary underline"
+              >
+                /publicar
+              </Link>
+              .
+            </p>
+          ) : pub?.isSuspended ? (
             <p>{PUBLISHER_UX_COPY.orgSuspended}</p>
           ) : pub?.atLimit ? (
             <p>{PUBLISHER_UX_COPY.atLimitBody}</p>

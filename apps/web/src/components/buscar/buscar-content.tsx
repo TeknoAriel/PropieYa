@@ -46,6 +46,7 @@ const BuscarSearchMap = dynamic(
 )
 import {
   formatPrice,
+  formatTrpcUserMessage,
   getBuscarContextualBlock,
   getFacetFlagDefinitions,
   parseBuscarMapGeoFromParams,
@@ -61,6 +62,8 @@ import {
   type ExplainMatchFilters,
   type FacetFlagDefinition,
   type OperationType,
+  type PortalVisibilityOperationalStatus,
+  type PortalVisibilityTier,
   type PortalSearchPage,
   type PropertyType,
   type SearchSessionMVP,
@@ -75,6 +78,7 @@ import { getAccessToken } from '@/lib/auth-storage'
 import { sanitizeListingCoordinates } from '@/lib/map-geo'
 import { canAppendPolygonVertex } from '@/lib/map-polygon'
 import { encodeBuscarReturnPath, buildListingHrefWithReturn } from '@/lib/listing-flow-return-url'
+import { portalLoginHref, portalRegistroHref } from '@/lib/portal-auth-return'
 import { trpc } from '@/lib/trpc'
 
 export type BuscarContentProps = {
@@ -100,6 +104,29 @@ type BuscarListingCardData = {
   locationLat?: number | null
   locationLng?: number | null
   location?: { lat?: number; lon?: number }
+  portalVisibilityTier?: PortalVisibilityTier
+  portalVisibilityOperationalStatus?: PortalVisibilityOperationalStatus
+}
+
+function normalizePortalVisibilityTier(
+  tier: unknown
+): PortalVisibilityTier {
+  if (tier === 'highlight' || tier === 'boost' || tier === 'premium_ficha') return tier
+  return 'standard'
+}
+
+function normalizePortalVisibilityOperationalStatus(
+  status: unknown
+): PortalVisibilityOperationalStatus {
+  if (status === 'active' || status === 'scheduled' || status === 'expired') return status
+  return 'none'
+}
+
+function portalVisibilityTierLabel(tier: PortalVisibilityTier): string | null {
+  if (tier === 'highlight') return 'Destacado'
+  if (tier === 'boost') return 'Impulso'
+  if (tier === 'premium_ficha') return 'Ficha premium'
+  return null
 }
 
 function pinsFromListings(list: BuscarListingCardData[]) {
@@ -355,6 +382,8 @@ function ListingCard({
   const emphasizeFromMap = mapSelectedListingId === listing.id
   const visualTier: 'primary' | 'alternate' =
     whyBucketId === 'strong' ? 'primary' : 'alternate'
+  const visibilityTier = normalizePortalVisibilityTier(listing.portalVisibilityTier)
+  const visibilityLabel = portalVisibilityTierLabel(visibilityTier)
 
   const firstReason = listing.matchReasons?.[0]
   const matchOneLine =
@@ -373,10 +402,18 @@ function ListingCard({
       ? ` · ${listing.bathrooms} baño${listing.bathrooms > 1 ? 's' : ''}`
       : ''
 
-  const tierCardClass =
-    visualTier === 'primary'
-      ? 'border-border/45 bg-surface-primary hover:border-border/70'
-      : 'border-border/25 bg-surface-secondary/15 hover:border-border/45'
+  const tierCardClass = (() => {
+    if (visibilityTier === 'boost') {
+      return 'border-brand-primary/40 bg-brand-primary/[0.045] hover:border-brand-primary/60'
+    }
+    if (visibilityTier === 'highlight') {
+      return 'border-brand-primary/25 bg-brand-primary/[0.025] hover:border-brand-primary/45'
+    }
+    if (visualTier === 'primary') {
+      return 'border-border/45 bg-surface-primary hover:border-border/70'
+    }
+    return 'border-border/25 bg-surface-secondary/15 hover:border-border/45'
+  })()
 
   const listingHref = buildListingHrefWithReturn(listing.id, buscarReturnToEncoded)
 
@@ -443,6 +480,11 @@ function ListingCard({
             <p className="text-sm font-medium leading-snug text-text-secondary">
               {locationLine}
             </p>
+            {visibilityLabel ? (
+              <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary">
+                {visibilityLabel}
+              </p>
+            ) : null}
 
             <p className="text-sm leading-snug text-text-primary">
               <span className="text-text-tertiary">{operationLabel}</span>
@@ -577,16 +619,22 @@ export function BuscarContent({
   const utils = trpc.useUtils()
   const recordSearchResultClick =
     trpc.listing.recordSearchResultClick.useMutation()
+  const recordPortalVisibilityImpression =
+    trpc.listing.recordPortalVisibilityImpression.useMutation()
+  const recordPortalVisibilityClick =
+    trpc.listing.recordPortalVisibilityClick.useMutation()
   const onSearchResultNavigate = useCallback(
     (
       listingId: string,
       from: 'list' | 'map' | 'similar',
-      position?: number
+      position?: number,
+      surface?: string
     ) => {
       recordSearchResultClick.mutate({
         listingId,
         from,
         ...(position !== undefined ? { position } : {}),
+        ...(surface ? { surface } : {}),
       })
     },
     [recordSearchResultClick]
@@ -594,6 +642,7 @@ export function BuscarContent({
   const [canAuth, setCanAuth] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
   const [alertSaved, setAlertSaved] = useState(false)
+  const [searchAccountError, setSearchAccountError] = useState('')
 
   useEffect(() => {
     setCanAuth(!!getAccessToken())
@@ -676,6 +725,7 @@ export function BuscarContent({
   const [polygonDrawHint, setPolygonDrawHint] = useState<string | null>(null)
   const [mapSyncHoverId, setMapSyncHoverId] = useState<string | null>(null)
   const [mapSyncSelectedId, setMapSyncSelectedId] = useState<string | null>(null)
+  const featuredImpressionKeyRef = useRef<string | null>(null)
   /** Regreso desde ficha con `#buscar-listing-{uuid}`: resaltar card y badge temporal. */
   const [returnFocusListingId, setReturnFocusListingId] = useState<string | null>(null)
   const [returnFocusShowBadge, setReturnFocusShowBadge] = useState(false)
@@ -1042,6 +1092,36 @@ export function BuscarContent({
   const strictCatalogTotal = dataV2Ui?.strictCatalogTotal ?? 0
   const strongItemsCount =
     dataV2Ui?.buckets?.find((b) => b.id === 'strong')?.items.length ?? 0
+  const strongBucketListings = useMemo(
+    () =>
+      (dataV2Ui?.buckets?.find((b) => b.id === 'strong')?.items ?? []) as BuscarListingCardData[],
+    [dataV2Ui?.buckets]
+  )
+  const featuredExactListings = useMemo(() => {
+    const rank = (tier: PortalVisibilityTier): number => {
+      if (tier === 'boost') return 0
+      if (tier === 'highlight') return 1
+      if (tier === 'premium_ficha') return 2
+      return 3
+    }
+    return [...strongBucketListings]
+      .filter(
+        (row) =>
+          normalizePortalVisibilityTier(row.portalVisibilityTier) !== 'standard' &&
+          normalizePortalVisibilityOperationalStatus(
+            row.portalVisibilityOperationalStatus
+          ) === 'active'
+      )
+      .sort(
+        (a, b) =>
+          rank(normalizePortalVisibilityTier(a.portalVisibilityTier)) -
+          rank(normalizePortalVisibilityTier(b.portalVisibilityTier))
+      )
+      .slice(0, 3)
+  }, [strongBucketListings])
+  const strongPositionByListingId = useMemo(() => {
+    return new Map(strongBucketListings.map((row, idx) => [row.id, idx]))
+  }, [strongBucketListings])
   const visibleListingsTotal = data?.total ?? 0
   const appliedLocationLabel = formatAppliedLocation({
     city: dataV2Ui?.sessionNormalized?.city ?? city,
@@ -1064,6 +1144,33 @@ export function BuscarContent({
   const canResetExactPaging = Boolean(exactPageCursor != null || exactEsOffset > 0)
   const showSearchVolumeCard =
     Boolean(dataV2Ui && data && visibleListingsTotal > 0 && !isLoading)
+  useEffect(() => {
+    if (featuredExactListings.length === 0) return
+    const listingIds = featuredExactListings.map((row) => row.id)
+    const key = `${v2SessionFingerprint}:${listingIds.join(',')}`
+    if (featuredImpressionKeyRef.current === key) return
+    featuredImpressionKeyRef.current = key
+    recordPortalVisibilityImpression.mutate({
+      listingIds,
+      surface: 'search_featured',
+      searchContext: {
+        city: appliedCityLabel || undefined,
+        neighborhood: appliedNeighborhoodLabel || undefined,
+        operationType: (forcedOperation ?? operationType) || undefined,
+        propertyType: propertyType || undefined,
+        session: v2SessionFingerprint,
+      },
+    })
+  }, [
+    featuredExactListings,
+    recordPortalVisibilityImpression,
+    appliedCityLabel,
+    appliedNeighborhoodLabel,
+    forcedOperation,
+    operationType,
+    propertyType,
+    v2SessionFingerprint,
+  ])
 
   const searchInterpretationLine = useMemo(() => {
     const sn = dataV2Ui?.sessionNormalized
@@ -1136,18 +1243,30 @@ export function BuscarContent({
   const alertPayload = useMemo(() => coreSearchFilters, [coreSearchFilters])
 
   const saveProfile = trpc.demand.upsertFromSearchFilters.useMutation({
+    onMutate: () => {
+      setSearchAccountError('')
+    },
     onSuccess: () => {
       setProfileSaved(true)
       void utils.demand.getMyProfile.invalidate()
       window.setTimeout(() => setProfileSaved(false), 4000)
     },
+    onError: (err) => {
+      setSearchAccountError(formatTrpcUserMessage(err) || 'No pudimos guardar tu búsqueda.')
+    },
   })
 
   const createAlert = trpc.searchAlert.create.useMutation({
+    onMutate: () => {
+      setSearchAccountError('')
+    },
     onSuccess: () => {
       setAlertSaved(true)
       void utils.searchAlert.getMyFeed.invalidate()
       window.setTimeout(() => setAlertSaved(false), 4000)
+    },
+    onError: (err) => {
+      setSearchAccountError(formatTrpcUserMessage(err) || 'No pudimos crear la alerta.')
     },
   })
 
@@ -1705,23 +1824,47 @@ export function BuscarContent({
           {!canAuth ? (
             <p className="text-[11px] leading-relaxed text-text-secondary">
               <Link
-                href="/login"
+                href={portalLoginHref(pathname, searchParams.toString())}
                 className="font-medium text-brand-primary underline-offset-2 hover:underline"
               >
                 {S.buscarPersistLoginCta}
               </Link>
-              {S.buscarPersistLoginHint}
+              {S.buscarPersistLoginHint}{' '}
+              <Link
+                href={portalRegistroHref(pathname, searchParams.toString())}
+                className="font-medium text-brand-primary underline-offset-2 hover:underline"
+              >
+                {S.buscarPersistRegisterCta}
+              </Link>
+              {S.buscarPersistRegisterHint}
             </p>
           ) : null}
         </div>
+        {searchAccountError ? (
+          <p className="text-sm text-semantic-error" role="alert">
+            {searchAccountError}
+          </p>
+        ) : null}
         {profileSaved ? (
           <p className="text-sm text-semantic-success">
-            {S.profileSaved}
+            {S.profileSaved}{' '}
+            <Link
+              href="/perfil-demanda"
+              className="font-medium text-brand-primary underline-offset-2 hover:underline"
+            >
+              {S.accountMenuProfile}
+            </Link>
           </p>
         ) : null}
         {alertSaved ? (
           <p className="text-sm text-semantic-success">
-            {S.alertSaved}
+            {S.alertSaved}{' '}
+            <Link
+              href="/mis-alertas"
+              className="font-medium text-brand-primary underline-offset-2 hover:underline"
+            >
+              {S.accountMenuAlerts}
+            </Link>
           </p>
         ) : null}
 
@@ -2305,6 +2448,75 @@ export function BuscarContent({
                           key={bucket.id}
                           className={bucketStrongNearSectionClass('strong')}
                         >
+                          {featuredExactListings.length > 0 ? (
+                            <Card className="mb-3 border-border/30 bg-surface-secondary/20 p-3 shadow-none md:p-3.5">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                                {S.searchV2FeaturedTitle}
+                              </p>
+                              <p className="mt-1 text-xs leading-snug text-text-tertiary">
+                                {S.searchV2FeaturedHint}
+                              </p>
+                              <div className="mt-2.5 grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+                                {featuredExactListings.map((listing) => {
+                                  const tier = normalizePortalVisibilityTier(
+                                    listing.portalVisibilityTier
+                                  )
+                                  const tierLabel = portalVisibilityTierLabel(tier)
+                                  const itemClass =
+                                    tier === 'boost'
+                                      ? 'border-brand-primary/35 bg-brand-primary/[0.045]'
+                                      : tier === 'highlight'
+                                        ? 'border-brand-primary/25 bg-brand-primary/[0.028]'
+                                        : 'border-border/25 bg-surface-primary'
+                                  return (
+                                    <Link
+                                      key={`featured-strong-${listing.id}`}
+                                      href={buildListingHrefWithReturn(
+                                        listing.id,
+                                        buscarReturnToEncoded
+                                      )}
+                                      className={`rounded-lg border px-2.5 py-2 transition-colors hover:border-border/55 ${itemClass}`}
+                                      onClick={() => {
+                                        recordPortalVisibilityClick.mutate({
+                                          listingId: listing.id,
+                                          surface: 'search_featured',
+                                          searchContext: {
+                                            city: appliedCityLabel || undefined,
+                                            neighborhood: appliedNeighborhoodLabel || undefined,
+                                            operationType:
+                                              (forcedOperation ?? operationType) ||
+                                              undefined,
+                                            propertyType: propertyType || undefined,
+                                            session: v2SessionFingerprint,
+                                          },
+                                        })
+                                        onSearchResultNavigate(
+                                          listing.id,
+                                          'list',
+                                          strongPositionByListingId.get(listing.id) ?? 0,
+                                          'search_featured'
+                                        )
+                                      }}
+                                    >
+                                      <p className="truncate text-sm font-medium text-text-primary">
+                                        {listing.title}
+                                      </p>
+                                      <p className="mt-0.5 truncate text-xs text-text-tertiary">
+                                        {listing.address?.neighborhood?.trim() ||
+                                          listing.address?.city?.trim() ||
+                                          'Ubicación a confirmar'}
+                                      </p>
+                                      {tierLabel ? (
+                                        <p className="mt-1 text-[11px] uppercase tracking-wide text-text-secondary">
+                                          {tierLabel}
+                                        </p>
+                                      ) : null}
+                                    </Link>
+                                  )
+                                })}
+                              </div>
+                            </Card>
+                          ) : null}
                           <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
                             <h2 className={bucketHeadingClass('strong')}>
                               {displayBucketTitle(bucket.id, bucket.label)}

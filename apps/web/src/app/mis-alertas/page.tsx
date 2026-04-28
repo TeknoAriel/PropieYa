@@ -10,7 +10,10 @@ import { AlertFeedCard } from '@/components/alertas/feed-card'
 import { Footer } from '@/components/layout/footer'
 import { Header } from '@/components/layout/header'
 import { getAccessToken } from '@/lib/auth-storage'
+import { portalLoginHref, portalRegistroHref } from '@/lib/portal-auth-return'
 import { trpc } from '@/lib/trpc'
+
+const RETURN_PATH = '/mis-alertas'
 
 export default function MisAlertasPage() {
   const [canAuth, setCanAuth] = useState(false)
@@ -34,6 +37,9 @@ export default function MisAlertasPage() {
 
   const actionsBusy = setActive.isPending || remove.isPending
 
+  const loginHref = portalLoginHref(RETURN_PATH, '')
+  const registroHref = portalRegistroHref(RETURN_PATH, '')
+
   if (!canAuth) {
     return (
       <div className="flex min-h-screen flex-col">
@@ -47,10 +53,10 @@ export default function MisAlertasPage() {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button asChild>
-              <Link href="/login">{PORTAL_VOICE_CTA.login}</Link>
+              <Link href={loginHref}>{PORTAL_VOICE_CTA.login}</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/registro">Crear cuenta</Link>
+              <Link href={registroHref}>Crear cuenta</Link>
             </Button>
           </div>
         </Card>
@@ -84,7 +90,7 @@ export default function MisAlertasPage() {
             No se pudieron cargar las alertas. Intentá de nuevo más tarde.
           </p>
           <Button asChild className="mt-4">
-            <Link href="/login">Volver a iniciar sesión</Link>
+            <Link href={loginHref}>Volver a iniciar sesión</Link>
           </Button>
         </Card>
         </main>

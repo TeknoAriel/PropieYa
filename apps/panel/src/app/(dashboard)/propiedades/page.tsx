@@ -22,15 +22,19 @@ import {
 import { formatListingVigencia } from '@/lib/vigencia'
 import { trpc } from '@/lib/trpc'
 
+const WEB_APP_URL = (process.env.NEXT_PUBLIC_WEB_APP_URL || 'https://propieyaweb.vercel.app').replace(
+  /\/$/,
+  ''
+)
+
 export default function PropiedadesPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [actionError, setActionError] = useState('')
   const { data: me } = trpc.auth.me.useQuery()
   const pub = me?.publisher
-  const cannotNewListing = Boolean(
-    pub && !pub.canCreateListing
-  )
+  const noPublisherProfile = !pub
+  const cannotNewListing = Boolean(noPublisherProfile || (pub && !pub.canCreateListing))
 
   const { data: listings = [], isLoading, refetch } =
     trpc.listing.listMine.useQuery({
@@ -56,7 +60,9 @@ export default function PropiedadesPage() {
       refetch()
     },
     onError: (err) => {
-      setActionError(err.message || 'No se pudo renovar este aviso.')
+      setActionError(
+        formatTrpcUserMessage(err) || 'No se pudo renovar este aviso todavía.'
+      )
     },
   })
 
@@ -89,9 +95,23 @@ export default function PropiedadesPage() {
           {PUBLISHER_UX_COPY.nearLimit}
         </div>
       ) : null}
+      {noPublisherProfile ? (
+        <div className="rounded-md border border-semantic-warning/40 bg-semantic-warning/5 px-3 py-2 text-sm text-text-secondary">
+          Esta cuenta no tiene perfil publicador activo. Para crear avisos, abrí{' '}
+          <Link href={`${WEB_APP_URL}/publicar`} className="text-brand-primary underline">
+            /publicar
+          </Link>{' '}
+          y seguí el alta como dueño directo o inmobiliaria.
+        </div>
+      ) : null}
       {pub?.atLimit ? (
         <div className="rounded-md border border-semantic-warning/40 bg-semantic-warning/5 px-3 py-2 text-sm text-text-secondary">
           {PUBLISHER_UX_COPY.atLimitBody}
+        </div>
+      ) : null}
+      {pub?.isSuspended ? (
+        <div className="rounded-md border border-semantic-error/30 bg-semantic-error/10 px-3 py-2 text-sm text-semantic-error">
+          Tu cuenta publicadora está suspendida. Contactá soporte para reactivarla.
         </div>
       ) : null}
 

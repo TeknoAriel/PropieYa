@@ -4,16 +4,20 @@ import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
-  defaultPortalProductsForTier,
   formatTrpcUserMessage,
-  PORTAL_VISIBILITY_PRODUCT_IDS,
+  PORTAL_COMMERCIAL_PACKAGES,
+  portalCommercialPackageById,
+  portalVisibilityOperationalLabel,
   portalVisibilityPanelStatusShort,
+  portalVisibilitySurfacesLabel,
+  resolvePortalCommercialPackageId,
+  resolvePortalVisibilityOperationalStatus,
   type CreateListingInput,
   type Currency,
   LISTING_STATUS_LABELS,
   type ListingPortalVisibility,
+  type PortalCommercialPackageId,
   type ListingStatus,
-  type PortalVisibilityTier,
 } from '@propieya/shared'
 import { Button, Card, Input, Badge } from '@propieya/ui'
 import Image from 'next/image'
@@ -41,23 +45,6 @@ const ORIENTATION_VALUES = [
   'SW',
 ] as const
 
-function portalTierFromFeatures(
-  features: unknown
-): PortalVisibilityTier {
-  const pv = (features as { portalVisibility?: { tier?: string } } | null)
-    ?.portalVisibility
-  const t = pv?.tier
-  if (
-    t === 'highlight' ||
-    t === 'boost' ||
-    t === 'premium_ficha' ||
-    t === 'standard'
-  ) {
-    return t
-  }
-  return 'standard'
-}
-
 function untilToDatetimeLocalValue(iso: string | null | undefined): string {
   if (!iso) return ''
   const d = new Date(iso)
@@ -74,7 +61,9 @@ export default function EditarPropiedadPage() {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [editError, setEditError] = useState('')
-  const [portalTierUi, setPortalTierUi] = useState<PortalVisibilityTier>('standard')
+  const [portalPackageUi, setPortalPackageUi] = useState<PortalCommercialPackageId>('none')
+  const [portalDurationUi, setPortalDurationUi] = useState<'15' | '30' | '60' | 'custom'>('30')
+  const [portalScheduleEnabled, setPortalScheduleEnabled] = useState(false)
 
   const { data: current, isLoading } = trpc.listing.getMineById.useQuery(
     { id },
@@ -165,7 +154,22 @@ export default function EditarPropiedadPage() {
 
   useEffect(() => {
     if (!current) return
-    setPortalTierUi(portalTierFromFeatures(current.features))
+    const pv = (current.features as { portalVisibility?: ListingPortalVisibility } | null | undefined)
+      ?.portalVisibility
+    const pkg = resolvePortalCommercialPackageId(pv)
+    setPortalPackageUi(pkg)
+    setPortalScheduleEnabled(Boolean(pv?.from))
+    if (pv?.until) {
+      const until = new Date(pv.until)
+      const ms = until.getTime() - Date.now()
+      const days = Math.round(ms / (24 * 60 * 60 * 1000))
+      if (days <= 17) setPortalDurationUi('15')
+      else if (days <= 35) setPortalDurationUi('30')
+      else if (days <= 65) setPortalDurationUi('60')
+      else setPortalDurationUi('custom')
+    } else {
+      setPortalDurationUi('30')
+    }
     // Sincronizar con servidor tras guardar; `id` + `updatedAt` identifican nueva versión persistida.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, current?.updatedAt])
@@ -243,16 +247,17 @@ export default function EditarPropiedadPage() {
     const { portalVisibility: _prevPortal, ...featBaseNoPortal } =
       featBaseRaw as Record<string, unknown>
 
-    const portalTierRaw = (
-      form.elements.namedItem('portalVisibilityTier') as HTMLSelectElement
-    ).value
-    const portalTier = portalTierRaw as PortalVisibilityTier
-    const zoneEl = form.elements.namedItem(
-      'portalProductZone'
-    ) as HTMLInputElement | null
-    const zoneChecked = Boolean(zoneEl?.checked)
+    const commercialPackage = (
+      form.elements.namedItem('portalCommercialPackage') as HTMLSelectElement
+    ).value as PortalCommercialPackageId
+    const durationMode = (
+      form.elements.namedItem('portalDurationMode') as HTMLSelectElement | null
+    )?.value as '15' | '30' | '60' | 'custom' | undefined
     const untilRaw = (
-      form.elements.namedItem('portalVisibilityUntil') as HTMLInputElement
+      form.elements.namedItem('portalVisibilityUntil') as HTMLInputElement | null
+    )?.value?.trim()
+    const fromRaw = (
+      form.elements.namedItem('portalVisibilityFrom') as HTMLInputElement | null
     )?.value?.trim()
 
     const mergedFeatures: CreateListingInput['features'] = {
@@ -269,21 +274,31 @@ export default function EditarPropiedadPage() {
       orientation: orientationVal,
     }
 
-    if (portalTier !== 'standard') {
-      let products = [...defaultPortalProductsForTier(portalTier)]
+    if (commercialPackage !== 'none') {
+      const pkg = portalCommercialPackageById(commercialPackage)
+      const products = [...pkg.products]
       const prevPv = _prevPortal as ListingPortalVisibility | undefined
       const devExtras =
         prevPv?.products?.filter((id) => id.startsWith('developments_')) ?? []
       for (const id of devExtras) {
         if (!products.includes(id)) products.push(id)
       }
-      if (zoneChecked && !products.includes(PORTAL_VISIBILITY_PRODUCT_IDS.zonePriority)) {
-        products = [...products, PORTAL_VISIBILITY_PRODUCT_IDS.zonePriority]
+
+      let untilIso: string | null = null
+      if (durationMode === 'custom') {
+        untilIso = untilRaw ? new Date(untilRaw).toISOString() : null
+      } else {
+        const days = Number(durationMode ?? pkg.defaultDurationDays ?? 30)
+        const d = new Date()
+        d.setDate(d.getDate() + Math.max(1, days))
+        untilIso = d.toISOString()
       }
+
       mergedFeatures.portalVisibility = {
-        tier: portalTier,
+        tier: pkg.tier,
         products,
-        until: untilRaw ? new Date(untilRaw).toISOString() : null,
+        from: fromRaw ? new Date(fromRaw).toISOString() : null,
+        until: untilIso,
       }
     }
 
@@ -356,10 +371,12 @@ export default function EditarPropiedadPage() {
     portalVisibility?: ListingPortalVisibility | null
   }
   const portalPv = feats.portalVisibility
+  const portalPackageCurrent = resolvePortalCommercialPackageId(portalPv)
+  const portalPackageDef = portalCommercialPackageById(portalPackageCurrent)
   const portalSavedLabel = portalVisibilityPanelStatusShort(portalPv?.tier)
-  const zoneProductActive = Boolean(
-    portalPv?.products?.includes(PORTAL_VISIBILITY_PRODUCT_IDS.zonePriority)
-  )
+  const portalOperational = resolvePortalVisibilityOperationalStatus(portalPv)
+  const portalOperationalLabel = portalVisibilityOperationalLabel(portalOperational)
+  const portalFromDefault = untilToDatetimeLocalValue(portalPv?.from ?? undefined)
   const untilDefault = untilToDatetimeLocalValue(portalPv?.until ?? undefined)
   const media = (current as { media?: { id: string; url: string; isPrimary: boolean; order: number }[] }).media ?? []
   const status = current.status as ListingStatus
@@ -391,6 +408,10 @@ export default function EditarPropiedadPage() {
             <span className="text-text-secondary font-medium">
               {portalSavedLabel}
             </span>
+          </p>
+          <p className="text-sm text-text-tertiary mt-1">
+            Paquete: <span className="font-medium text-text-secondary">{portalPackageDef.commercialName}</span>{' '}
+            · Estado: <span className="font-medium text-text-secondary">{portalOperationalLabel}</span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -669,64 +690,130 @@ export default function EditarPropiedadPage() {
 
           <div className="border-t border-border pt-6 space-y-4">
             <h3 className="text-sm font-semibold text-text-primary">
-              Visibilidad del aviso
+              Paquete comercial de visibilidad
             </h3>
             <p className="text-sm text-text-secondary max-w-2xl">
-              Configurá cómo se muestra el aviso en la ficha pública. Por ahora no
-              cambia el orden en el buscador ni implica cobro.
+              Configurá el producto comercial sin activar cobro automático. Este bloque no
+              cambia el ranking core del buscador.
             </p>
             <div className="grid gap-4 md:grid-cols-2 max-w-2xl">
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">
-                  Nivel
+                  Paquete
                 </label>
                 <select
-                  name="portalVisibilityTier"
+                  name="portalCommercialPackage"
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                  value={portalTierUi}
+                  value={portalPackageUi}
                   onChange={(e) =>
-                    setPortalTierUi(e.target.value as PortalVisibilityTier)
+                    setPortalPackageUi(e.target.value as PortalCommercialPackageId)
                   }
                 >
-                  <option value="standard">Sin visibilidad especial</option>
-                  <option value="highlight">Destacado</option>
-                  <option value="boost">Impulso</option>
-                  <option value="premium_ficha">Ficha premium</option>
+                  {PORTAL_COMMERCIAL_PACKAGES.map((pkg) => (
+                    <option key={pkg.id} value={pkg.id}>
+                      {pkg.commercialName}
+                    </option>
+                  ))}
                 </select>
               </div>
-              {portalTierUi !== 'standard' ? (
+              {portalPackageUi !== 'none' ? (
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">
-                    Vigencia hasta (opcional)
+                    Duración sugerida
                   </label>
-                  <input
-                    name="portalVisibilityUntil"
-                    type="datetime-local"
+                  <select
+                    name="portalDurationMode"
                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                    defaultValue={untilDefault}
-                  />
+                    value={portalDurationUi}
+                    onChange={(e) =>
+                      setPortalDurationUi(e.target.value as '15' | '30' | '60' | 'custom')
+                    }
+                  >
+                    <option value="15">15 días</option>
+                    <option value="30">30 días</option>
+                    <option value="60">60 días</option>
+                    <option value="custom">Fecha personalizada</option>
+                  </select>
                 </div>
               ) : null}
             </div>
-            {portalTierUi !== 'standard' ? (
+            {portalPackageUi !== 'none' ? (
               <div className="rounded-md border border-border bg-surface-secondary/40 px-3 py-3 space-y-2 max-w-2xl">
                 <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
-                  Opciones adicionales
+                  Qué incluye
                 </p>
+                <p className="text-sm text-text-primary">
+                  {portalCommercialPackageById(portalPackageUi).operationalSummary}
+                </p>
+                <p className="text-xs text-text-secondary">
+                  Impacta en:{' '}
+                  {portalVisibilitySurfacesLabel(
+                    portalCommercialPackageById(portalPackageUi).surfaces
+                  )}
+                  .
+                </p>
+                <p className="text-xs text-text-secondary">
+                  Alcance visible: {portalCommercialPackageById(portalPackageUi).visibleScope}
+                </p>
+                <p className="text-xs text-text-tertiary">
+                  Preparado para extender a productos de emprendimientos (publicación, destaque,
+                  banner y prioridad) sin cambiar este modelo.
+                </p>
+              </div>
+            ) : null}
+            {portalPackageUi !== 'none' && portalDurationUi === 'custom' ? (
+              <div className="max-w-2xl">
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Vigencia hasta
+                </label>
+                <input
+                  name="portalVisibilityUntil"
+                  type="datetime-local"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  defaultValue={untilDefault}
+                />
+              </div>
+            ) : null}
+            {portalPackageUi !== 'none' ? (
+              <div className="max-w-2xl space-y-2 rounded-md border border-border bg-surface-secondary/40 px-3 py-3">
                 <label className="flex items-start gap-2 text-sm text-text-primary cursor-pointer">
                   <input
                     type="checkbox"
-                    name="portalProductZone"
-                    defaultChecked={zoneProductActive}
+                    checked={portalScheduleEnabled}
+                    onChange={(e) => setPortalScheduleEnabled(e.target.checked)}
                     className="mt-1 rounded border-border"
                   />
-                  <span>
-                    Prioridad por zona o ciudad (producto técnico; el orden en
-                    resultados se definirá cuando esté activo en el buscador).
-                  </span>
+                  <span>Programar inicio</span>
                 </label>
+                {portalScheduleEnabled ? (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">
+                      Inicia el
+                    </label>
+                    <input
+                      name="portalVisibilityFrom"
+                      type="datetime-local"
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                      defaultValue={portalFromDefault}
+                    />
+                  </div>
+                ) : null}
               </div>
             ) : null}
+            <div className="rounded-md border border-border bg-surface-secondary/40 px-3 py-3 space-y-1 max-w-2xl">
+              <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
+                Estado comercial actual
+              </p>
+              <p className="text-sm text-text-primary">
+                {portalPackageDef.commercialName} · {portalOperationalLabel}
+              </p>
+              <p className="text-xs text-text-secondary">
+                {portalPv?.from ? `Desde ${new Date(portalPv.from).toLocaleString('es-AR')}` : 'Inicio inmediato'} ·{' '}
+                {portalPv?.until
+                  ? `Hasta ${new Date(portalPv.until).toLocaleString('es-AR')}`
+                  : 'Sin fecha de fin'}
+              </p>
+            </div>
           </div>
 
           {editError && (

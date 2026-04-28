@@ -21,6 +21,7 @@ import { TRPCError } from '@trpc/server'
 import type { Database } from '@propieya/database'
 import {
   listings,
+  portalStatsEvents,
   listingMedia,
   listingsSelectPublic,
   listingLifecycleEvents,
@@ -49,6 +50,22 @@ import {
   isSearchV2ElasticsearchUnreachable,
   effectiveListingLimit,
   isPublisherOrganizationStatusBlocked,
+  defaultPortalCommercialCatalog,
+  parsePortalCommercialCatalog,
+  portalCommercialCatalogItemSchema,
+  resolvePortalVisibilityOperationalStatus,
+  PORTAL_COMMERCIAL_PACKAGES,
+  PORTAL_UPGRADE_CHANNELS,
+  PORTAL_UPGRADE_STATUSES,
+  portalPackagePurchaseSchema,
+  portalUpgradeRecordSchema,
+  resolveTemporalUpgradeStatus,
+  type PortalCommercialCatalogItem,
+  type PortalCommercialProfileKey,
+  type PortalPackagePurchase,
+  type PortalUpgradeChannel,
+  type PortalUpgradeStatus,
+  type PortalVisibilityOperationalStatus,
   type ExplainMatchFilters,
   type ExplainMatchListing,
   type ListingSearchV2Result,
@@ -670,6 +687,167 @@ async function trySearchV2SqlFallback(
   }
 }
 
+type SearchV2BucketItemWithVisibility = {
+  id?: string
+  portalVisibilityTier?: 'standard' | 'highlight' | 'boost' | 'premium_ficha'
+  portalVisibilityOperationalStatus?: PortalVisibilityOperationalStatus
+}
+
+type PortalVisibilityAnalyticsMeta = {
+  tier: 'standard' | 'highlight' | 'boost' | 'premium_ficha'
+  products: string[]
+  operationalStatus: PortalVisibilityOperationalStatus
+}
+
+function portalVisibilityTierFromFeatures(
+  features: unknown
+): 'standard' | 'highlight' | 'boost' | 'premium_ficha' {
+  const raw = (features as { portalVisibility?: { tier?: unknown } } | null)?.portalVisibility
+    ?.tier
+  if (raw === 'highlight' || raw === 'boost' || raw === 'premium_ficha') return raw
+  return 'standard'
+}
+
+function portalVisibilityAnalyticsMetaFromFeatures(
+  features: unknown
+): PortalVisibilityAnalyticsMeta {
+  const root = features as
+    | { portalVisibility?: { tier?: unknown; products?: unknown; from?: unknown; until?: unknown } }
+    | null
+    | undefined
+  const portalVisibility = root?.portalVisibility
+  const tier = portalVisibilityTierFromFeatures(root)
+  const rawProducts = root?.portalVisibility?.products
+  const products = Array.isArray(rawProducts)
+    ? rawProducts
+        .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+        .map((x) => x.trim())
+        .slice(0, 20)
+    : []
+  const operationalStatus = resolvePortalVisibilityOperationalStatus({
+    tier,
+    products,
+    from: typeof portalVisibility?.from === 'string' ? portalVisibility.from : null,
+    until: typeof portalVisibility?.until === 'string' ? portalVisibility.until : null,
+  })
+  return { tier, products, operationalStatus }
+}
+
+async function attachPortalVisibilityToSearchV2Result(
+  db: Database,
+  out: ListingSearchV2Result
+): Promise<ListingSearchV2Result> {
+  const ids = Array.from(
+    new Set(
+      out.buckets.flatMap((bucket) =>
+        bucket.items
+          .map((row) => (row as SearchV2BucketItemWithVisibility).id)
+          .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+      )
+    )
+  )
+  if (ids.length === 0) return out
+
+  const rows = await db
+    .select({ id: listings.id, features: listings.features })
+    .from(listings)
+    .where(inArray(listings.id, ids))
+
+  const visById = new Map(
+    rows.map((row) => [row.id, portalVisibilityAnalyticsMetaFromFeatures(row.features)])
+  )
+
+  return {
+    ...out,
+    buckets: out.buckets.map((bucket) => ({
+      ...bucket,
+      items: bucket.items.map((row) => {
+        const item = row as SearchV2BucketItemWithVisibility
+        const vis =
+          item.id && visById.has(item.id)
+            ? visById.get(item.id)!
+            : ({
+                tier: 'standard',
+                products: [],
+                operationalStatus: 'none',
+              } satisfies PortalVisibilityAnalyticsMeta)
+        return {
+          ...(row as Record<string, unknown>),
+          portalVisibilityTier: vis.tier,
+          portalVisibilityOperationalStatus: vis.operationalStatus,
+        }
+      }),
+    })),
+  }
+}
+
+function parseListingUpgradesFromFeatures(features: unknown) {
+  const list = (features as { visibilityUpgrades?: unknown } | null | undefined)
+    ?.visibilityUpgrades
+  if (!Array.isArray(list)) return []
+  return list
+    .map((item) => portalUpgradeRecordSchema.safeParse(item))
+    .filter((r): r is { success: true; data: z.infer<typeof portalUpgradeRecordSchema> } =>
+      r.success
+    )
+    .map((r) => ({
+      ...r.data,
+      status: resolveTemporalUpgradeStatus(
+        r.data.status,
+        r.data.startsAt ?? null,
+        r.data.endsAt ?? null
+      ),
+    }))
+}
+
+function parseOrganizationPackagePurchases(settings: unknown): PortalPackagePurchase[] {
+  const list = (settings as { portalUpgradePackages?: unknown } | null | undefined)
+    ?.portalUpgradePackages
+  if (!Array.isArray(list)) return []
+  return list
+    .map((item) => portalPackagePurchaseSchema.safeParse(item))
+    .filter((r): r is { success: true; data: PortalPackagePurchase } => r.success)
+    .map((r) => ({
+      ...r.data,
+      status: resolveTemporalUpgradeStatus(
+        r.data.status,
+        r.data.startsAt ?? null,
+        r.data.endsAt ?? null
+      ),
+    }))
+}
+
+function parseOrganizationCommercialCatalog(settings: unknown): PortalCommercialCatalogItem[] {
+  const raw = (settings as { portalCommercialCatalog?: unknown } | null | undefined)
+    ?.portalCommercialCatalog
+  return parsePortalCommercialCatalog(raw)
+}
+
+function effectiveCommercialCatalog(settings: unknown): PortalCommercialCatalogItem[] {
+  const defaults = defaultPortalCommercialCatalog()
+  const overrides = parseOrganizationCommercialCatalog(settings)
+  if (overrides.length === 0) return defaults
+  const byId = new Map<string, PortalCommercialCatalogItem>(defaults.map((item) => [item.id, item]))
+  for (const item of overrides) byId.set(item.id, item)
+  return Array.from(byId.values())
+}
+
+function organizationCommercialProfileKey(orgType: string | null | undefined): PortalCommercialProfileKey {
+  if (orgType === 'real_estate_agency') return 'agency'
+  if (orgType === 'agent') return 'agent'
+  return 'owner'
+}
+
+function normalizePublisherType(input: {
+  organizationType: string | null | undefined
+  accountIntent: string | null | undefined
+  role: string | null | undefined
+}): 'owner' | 'agent' | 'agency' {
+  if (input.organizationType === 'real_estate_agency') return 'agency'
+  if (input.role === 'agent' || input.accountIntent === 'agency_publisher') return 'agent'
+  return 'owner'
+}
+
 export const listingRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createListingSchema)
@@ -786,6 +964,674 @@ export const listingRouter = createTRPCRouter({
         .returning()
 
       return created
+    }),
+
+  upgradesOverview: protectedProcedure.query(async ({ ctx }) => {
+    const orgId = ctx.session.organizationId
+    if (!orgId) {
+      return {
+        canPurchase: false,
+        reason: 'Tu cuenta no tiene perfil publicador.',
+        eligibleListings: [] as Array<{ id: string; title: string; status: string }>,
+        listingUpgrades: [] as Array<z.infer<typeof portalUpgradeRecordSchema>>,
+        packagePurchases: [] as PortalPackagePurchase[],
+        availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
+        commercialCatalog: defaultPortalCommercialCatalog(),
+      }
+    }
+
+    const org = await ctx.db.query.organizations.findFirst({
+      where: eq(organizations.id, orgId),
+    })
+    if (!org) {
+      return {
+        canPurchase: false,
+        reason: 'No encontramos la organización publicadora.',
+        eligibleListings: [] as Array<{ id: string; title: string; status: string }>,
+        listingUpgrades: [] as Array<z.infer<typeof portalUpgradeRecordSchema>>,
+        packagePurchases: [] as PortalPackagePurchase[],
+        availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
+        commercialCatalog: defaultPortalCommercialCatalog(),
+      }
+    }
+
+    const catalog = effectiveCommercialCatalog(org.settings)
+
+    if (isPublisherOrganizationStatusBlocked(org.status)) {
+      return {
+        canPurchase: false,
+        reason: 'Tu cuenta publicadora está suspendida.',
+        eligibleListings: [] as Array<{ id: string; title: string; status: string }>,
+        listingUpgrades: [] as Array<z.infer<typeof portalUpgradeRecordSchema>>,
+        packagePurchases: parseOrganizationPackagePurchases(org.settings),
+        availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
+        commercialCatalog: catalog,
+      }
+    }
+    if (org.status !== 'active') {
+      return {
+        canPurchase: false,
+        reason: 'Tu cuenta publicadora todavía no está activa.',
+        eligibleListings: [] as Array<{ id: string; title: string; status: string }>,
+        listingUpgrades: [] as Array<z.infer<typeof portalUpgradeRecordSchema>>,
+        packagePurchases: parseOrganizationPackagePurchases(org.settings),
+        availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
+        commercialCatalog: catalog,
+      }
+    }
+
+    const rows = await ctx.db
+      .select({
+        id: listings.id,
+        title: listings.title,
+        status: listings.status,
+        features: listings.features,
+      })
+      .from(listings)
+      .where(
+        and(
+          eq(listings.organizationId, orgId),
+          notInArray(listings.status, ['archived', 'withdrawn'])
+        )
+      )
+      .orderBy(...ORDER_PANEL_RECENCY)
+      .limit(200)
+
+    const eligibleListings = rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      status: r.status,
+    }))
+
+    const listingUpgrades = rows.flatMap((r) =>
+      parseListingUpgradesFromFeatures(r.features).map((u) => ({
+        ...u,
+        listingId: r.id,
+      }))
+    )
+
+    const upgradedListingIds = Array.from(
+      new Set(
+        listingUpgrades
+          .map((u) => u.listingId)
+          .filter((id): id is string => typeof id === 'string' && id.length > 0)
+      )
+    )
+
+    let totalImpressions = 0
+    let totalClicks = 0
+    let metricsByListing: Array<{ listingId: string; impressions: number; clicks: number; ctr: number }> = []
+
+    if (upgradedListingIds.length > 0) {
+      const metricsSince = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      const events = await ctx.db
+        .select({
+          listingId: portalStatsEvents.listingId,
+          terminalId: portalStatsEvents.terminalId,
+        })
+        .from(portalStatsEvents)
+        .where(
+          and(
+            inArray(portalStatsEvents.listingId, upgradedListingIds),
+            inArray(portalStatsEvents.terminalId, [
+              PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_IMPRESSION,
+              PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_CLICK,
+            ]),
+            gte(portalStatsEvents.createdAt, metricsSince)
+          )
+        )
+
+      const byListing = new Map<string, { impressions: number; clicks: number }>()
+      for (const ev of events) {
+        if (!ev.listingId) continue
+        const agg = byListing.get(ev.listingId) ?? { impressions: 0, clicks: 0 }
+        if (ev.terminalId === PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_IMPRESSION) {
+          agg.impressions += 1
+          totalImpressions += 1
+        } else if (ev.terminalId === PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_CLICK) {
+          agg.clicks += 1
+          totalClicks += 1
+        }
+        byListing.set(ev.listingId, agg)
+      }
+      metricsByListing = Array.from(byListing.entries()).map(([listingId, m]) => ({
+        listingId,
+        impressions: m.impressions,
+        clicks: m.clicks,
+        ctr: m.impressions > 0 ? m.clicks / m.impressions : 0,
+      }))
+    }
+
+    return {
+      canPurchase: true,
+      reason: null as string | null,
+      organizationName: org.name,
+      eligibleListings,
+      listingUpgrades,
+      packagePurchases: parseOrganizationPackagePurchases(org.settings),
+      availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
+      commercialCatalog: catalog,
+      metricsSummary: {
+        impressions: totalImpressions,
+        clicks: totalClicks,
+        ctr: totalImpressions > 0 ? totalClicks / totalImpressions : 0,
+      },
+      metricsByListing,
+    }
+  }),
+
+  createListingUpgrade: protectedProcedure
+    .input(
+      z.object({
+        listingId: z.string().uuid(),
+        packageId: z.string().min(2).max(80),
+        durationDays: z.number().int().min(1).max(365),
+        channel: z.enum(PORTAL_UPGRADE_CHANNELS),
+        status: z.enum(PORTAL_UPGRADE_STATUSES).default('pending_activation'),
+        startsAt: z.string().datetime().optional(),
+        notes: z.string().max(500).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const [row] = await ctx.db
+        .select({
+          id: listings.id,
+          organizationId: listings.organizationId,
+          status: listings.status,
+          features: listings.features,
+        })
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, input.listingId),
+            eq(listings.publisherId, ctx.session.userId),
+            notInArray(listings.status, ['archived', 'withdrawn'])
+          )
+        )
+        .limit(1)
+      if (!row) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'No encontramos el aviso para aplicar el upgrade.',
+        })
+      }
+      const org = await ctx.db.query.organizations.findFirst({
+        where: eq(organizations.id, row.organizationId),
+      })
+      if (!org || org.status !== 'active' || isPublisherOrganizationStatusBlocked(org.status)) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'La cuenta publicadora no está habilitada para comprar upgrades.',
+        })
+      }
+      const catalog = effectiveCommercialCatalog(org.settings)
+      const orgProfile = organizationCommercialProfileKey(org.type)
+      const selectedProduct = catalog.find(
+        (item) =>
+          item.id === input.packageId &&
+          item.type === 'listing' &&
+          item.isActive &&
+          item.enabledProfiles.includes(orgProfile)
+      )
+      if (!selectedProduct) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'El producto comercial no está disponible para esta cuenta.',
+        })
+      }
+
+      const now = new Date()
+      const startsAt = input.startsAt ? new Date(input.startsAt) : now
+      const endsAt = new Date(startsAt.getTime())
+      endsAt.setDate(endsAt.getDate() + input.durationDays)
+      const temporalStatus = resolveTemporalUpgradeStatus(
+        input.status,
+        startsAt.toISOString(),
+        endsAt.toISOString(),
+        now
+      )
+
+      const upgrade = {
+        id: randomUUID(),
+        purchaseType: 'listing' as const,
+        channel: input.channel as PortalUpgradeChannel,
+        status: temporalStatus as PortalUpgradeStatus,
+        packageId: input.packageId,
+        listingId: row.id,
+        durationDays: input.durationDays,
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        notes: input.notes ?? null,
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      }
+
+      const previousUpgrades = parseListingUpgradesFromFeatures(row.features)
+      const nextUpgrades = [...previousUpgrades, upgrade]
+      const featuresObj =
+        row.features && typeof row.features === 'object' && !Array.isArray(row.features)
+          ? { ...(row.features as Record<string, unknown>) }
+          : {}
+      featuresObj.visibilityUpgrades = nextUpgrades
+
+      if (temporalStatus === 'active' || temporalStatus === 'scheduled') {
+        featuresObj.portalVisibility = {
+          tier: selectedProduct.tier,
+          products: selectedProduct.technicalProducts,
+          from: startsAt.toISOString(),
+          until: endsAt.toISOString(),
+        }
+      }
+
+      await ctx.db
+        .update(listings)
+        .set({
+          features: featuresObj,
+          updatedAt: new Date(),
+        })
+        .where(eq(listings.id, row.id))
+      return upgrade
+    }),
+
+  createPackageUpgradePurchase: protectedProcedure
+    .input(
+      z.object({
+        packageCode: z.string().min(2).max(80),
+        packageName: z.string().min(3).max(120),
+        creditsTotal: z.number().int().min(1).max(1000),
+        channel: z.enum(PORTAL_UPGRADE_CHANNELS),
+        status: z.enum(PORTAL_UPGRADE_STATUSES).default('pending_activation'),
+        startsAt: z.string().datetime().optional(),
+        endsAt: z.string().datetime().optional(),
+        notes: z.string().max(500).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const orgId = ctx.session.organizationId
+      if (!orgId) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Necesitás una cuenta publicadora para comprar paquetes.',
+        })
+      }
+      const org = await ctx.db.query.organizations.findFirst({
+        where: eq(organizations.id, orgId),
+      })
+      if (!org || org.status !== 'active' || isPublisherOrganizationStatusBlocked(org.status)) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'La cuenta publicadora no está habilitada para comprar paquetes.',
+        })
+      }
+      const catalog = effectiveCommercialCatalog(org.settings)
+      const orgProfile = organizationCommercialProfileKey(org.type)
+      const selectedPackage = catalog.find(
+        (item) =>
+          item.id === input.packageCode &&
+          item.type === 'package' &&
+          item.isActive &&
+          item.enabledProfiles.includes(orgProfile)
+      )
+      if (!selectedPackage) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'El paquete comercial no está disponible para esta cuenta.',
+        })
+      }
+
+      const nowIso = new Date().toISOString()
+      const startsAtIso = input.startsAt ?? null
+      const endsAtIso = input.endsAt ?? null
+      const purchase: PortalPackagePurchase = {
+        id: randomUUID(),
+        channel: input.channel,
+        status: resolveTemporalUpgradeStatus(
+          input.status,
+          startsAtIso,
+          endsAtIso
+        ),
+        packageCode: input.packageCode,
+        packageName: input.packageName || selectedPackage.commercialName,
+        creditsTotal: input.creditsTotal,
+        creditsRemaining: input.creditsTotal,
+        startsAt: startsAtIso,
+        endsAt: endsAtIso,
+        notes: input.notes ?? null,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+
+      const currentPackages = parseOrganizationPackagePurchases(org.settings)
+      const settingsObj =
+        org.settings && typeof org.settings === 'object' && !Array.isArray(org.settings)
+          ? { ...(org.settings as Record<string, unknown>) }
+          : {}
+      settingsObj.portalUpgradePackages = [...currentPackages, purchase]
+
+      await ctx.db
+        .update(organizations)
+        .set({
+          settings: settingsObj,
+          updatedAt: new Date(),
+        })
+        .where(eq(organizations.id, orgId))
+      return purchase
+    }),
+  upsertCommercialCatalogItem: protectedProcedure
+    .input(portalCommercialCatalogItemSchema)
+    .mutation(async ({ input, ctx }) => {
+      const orgId = ctx.session.organizationId
+      if (!orgId) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Necesitás una cuenta publicadora para editar el catálogo comercial.',
+        })
+      }
+      const org = await ctx.db.query.organizations.findFirst({
+        where: eq(organizations.id, orgId),
+      })
+      if (!org || isPublisherOrganizationStatusBlocked(org.status)) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'La cuenta publicadora no está habilitada para editar el catálogo.',
+        })
+      }
+      const current = parseOrganizationCommercialCatalog(org.settings)
+      const byId = new Map(current.map((item) => [item.id, item]))
+      byId.set(input.id, { ...input, updatedAt: new Date().toISOString() })
+      const nextCatalog = Array.from(byId.values())
+      const settingsObj =
+        org.settings && typeof org.settings === 'object' && !Array.isArray(org.settings)
+          ? { ...(org.settings as Record<string, unknown>) }
+          : {}
+      settingsObj.portalCommercialCatalog = nextCatalog
+      await ctx.db
+        .update(organizations)
+        .set({
+          settings: settingsObj,
+          updatedAt: new Date(),
+        })
+        .where(eq(organizations.id, orgId))
+      return { ok: true, items: nextCatalog.length }
+    }),
+  commercialPublishersOverview: protectedProcedure
+    .input(
+      z.object({
+        publisherType: z.enum(['all', 'owner', 'agent', 'agency']).default('all'),
+        status: z.enum(['all', 'active', 'pending', 'suspended', 'inactive']).default('all'),
+        upgrades: z.enum(['all', 'with_active', 'without_active']).default('all'),
+        nearLimitOnly: z.boolean().default(false),
+        q: z.string().max(80).optional(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const canPlatform = ctx.session.permissions.includes('analytics:platform')
+      const memberships = await ctx.db.query.organizationMemberships.findMany({
+        where: canPlatform
+          ? eq(organizationMemberships.isActive, true)
+          : and(
+              eq(organizationMemberships.isActive, true),
+              eq(organizationMemberships.organizationId, ctx.session.organizationId ?? '')
+            ),
+        with: {
+          user: {
+            columns: {
+              id: true,
+              name: true,
+              email: true,
+              accountIntent: true,
+            },
+          },
+          organization: {
+            columns: {
+              id: true,
+              name: true,
+              type: true,
+              status: true,
+              listingLimit: true,
+              settings: true,
+            },
+          },
+        },
+        orderBy: [desc(organizationMemberships.joinedAt)],
+        limit: canPlatform ? 800 : 200,
+      })
+
+      const orgIds = Array.from(
+        new Set(
+          memberships
+            .map((m) => m.organizationId)
+            .filter((id): id is string => typeof id === 'string' && id.length > 0)
+        )
+      )
+      const listingRows =
+        orgIds.length === 0
+          ? []
+          : await ctx.db
+              .select({
+                id: listings.id,
+                organizationId: listings.organizationId,
+                status: listings.status,
+                features: listings.features,
+              })
+              .from(listings)
+              .where(
+                and(
+                  inArray(listings.organizationId, orgIds),
+                  notInArray(listings.status, ['archived', 'withdrawn'])
+                )
+              )
+              .limit(canPlatform ? 5000 : 1200)
+
+      const listingCountByOrg = new Map<string, number>()
+      const activeListingCountByOrg = new Map<string, number>()
+      const activeUpgradesByOrg = new Map<string, number>()
+      const upgradeChannelByOrg = new Map<string, { online: number; onDemand: number }>()
+
+      for (const row of listingRows) {
+        listingCountByOrg.set(row.organizationId, (listingCountByOrg.get(row.organizationId) ?? 0) + 1)
+        if (row.status === 'active') {
+          activeListingCountByOrg.set(
+            row.organizationId,
+            (activeListingCountByOrg.get(row.organizationId) ?? 0) + 1
+          )
+        }
+        for (const u of parseListingUpgradesFromFeatures(row.features)) {
+          const byChannel = upgradeChannelByOrg.get(row.organizationId) ?? { online: 0, onDemand: 0 }
+          if (u.channel === 'online') byChannel.online += 1
+          else byChannel.onDemand += 1
+          upgradeChannelByOrg.set(row.organizationId, byChannel)
+          if (u.status === 'active') {
+            activeUpgradesByOrg.set(row.organizationId, (activeUpgradesByOrg.get(row.organizationId) ?? 0) + 1)
+          }
+        }
+      }
+
+      for (const m of memberships) {
+        const packages = parseOrganizationPackagePurchases(m.organization?.settings)
+        for (const p of packages) {
+          const byChannel = upgradeChannelByOrg.get(m.organizationId) ?? { online: 0, onDemand: 0 }
+          if (p.channel === 'online') byChannel.online += 1
+          else byChannel.onDemand += 1
+          upgradeChannelByOrg.set(m.organizationId, byChannel)
+          if (p.status === 'active') {
+            activeUpgradesByOrg.set(
+              m.organizationId,
+              (activeUpgradesByOrg.get(m.organizationId) ?? 0) + 1
+            )
+          }
+        }
+      }
+
+      const rows = memberships.map((m) => {
+        const publisherType = normalizePublisherType({
+          organizationType: m.organization?.type,
+          accountIntent: m.user?.accountIntent,
+          role: m.role,
+        })
+        const status = m.organization?.status ?? 'inactive'
+        const listingLimit = m.organization?.listingLimit
+        const listingCount = listingCountByOrg.get(m.organizationId) ?? 0
+        const activeListings = activeListingCountByOrg.get(m.organizationId) ?? 0
+        const activeUpgrades = activeUpgradesByOrg.get(m.organizationId) ?? 0
+        const nearLimit = listingLimit != null && listingCount >= Math.max(1, Math.floor(listingLimit * 0.8))
+        const atLimit = listingLimit != null && listingCount >= listingLimit
+        const channelMix = upgradeChannelByOrg.get(m.organizationId) ?? { online: 0, onDemand: 0 }
+        const preferredCommercialChannel =
+          channelMix.online === 0 && channelMix.onDemand === 0
+            ? 'sin_actividad'
+            : channelMix.online > channelMix.onDemand
+              ? 'online'
+              : channelMix.onDemand > channelMix.online
+                ? 'on_demand'
+                : 'mixto'
+        return {
+          membershipId: m.id,
+          userId: m.userId,
+          organizationId: m.organizationId,
+          name: m.user?.name ?? 'Sin nombre',
+          email: m.user?.email ?? '',
+          publisherType,
+          role: m.role,
+          organizationName: m.organization?.name ?? 'Sin organización',
+          status,
+          listingCount,
+          activeListings,
+          listingLimit,
+          nearLimit,
+          atLimit,
+          activeUpgrades,
+          preferredCommercialChannel,
+        }
+      })
+
+      const q = input.q?.trim().toLowerCase() ?? ''
+      const filtered = rows.filter((r) => {
+        if (input.publisherType !== 'all' && r.publisherType !== input.publisherType) return false
+        if (input.status !== 'all' && r.status !== input.status) return false
+        if (input.upgrades === 'with_active' && r.activeUpgrades <= 0) return false
+        if (input.upgrades === 'without_active' && r.activeUpgrades > 0) return false
+        if (input.nearLimitOnly && !r.nearLimit) return false
+        if (q.length > 0) {
+          const haystack = `${r.name} ${r.email} ${r.organizationName}`.toLowerCase()
+          if (!haystack.includes(q)) return false
+        }
+        return true
+      })
+
+      return {
+        canPlatform,
+        rows: filtered,
+      }
+    }),
+  commercialPublisherDetail: protectedProcedure
+    .input(
+      z.object({
+        membershipId: z.string().uuid(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const canPlatform = ctx.session.permissions.includes('analytics:platform')
+      const membership = await ctx.db.query.organizationMemberships.findFirst({
+        where: and(
+          eq(organizationMemberships.id, input.membershipId),
+          eq(organizationMemberships.isActive, true)
+        ),
+        with: {
+          user: {
+            columns: {
+              id: true,
+              name: true,
+              email: true,
+              accountIntent: true,
+            },
+          },
+          organization: {
+            columns: {
+              id: true,
+              name: true,
+              type: true,
+              status: true,
+              listingLimit: true,
+              settings: true,
+            },
+          },
+        },
+      })
+      if (!membership) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'No encontramos el publicador.' })
+      }
+      if (!canPlatform && membership.organizationId !== ctx.session.organizationId) {
+        throw new TRPCError({ code: 'FORBIDDEN' })
+      }
+
+      const listingRows = await ctx.db
+        .select({
+          id: listings.id,
+          title: listings.title,
+          status: listings.status,
+          updatedAt: listings.updatedAt,
+          features: listings.features,
+        })
+        .from(listings)
+        .where(
+          and(
+            eq(listings.organizationId, membership.organizationId),
+            notInArray(listings.status, ['archived', 'withdrawn'])
+          )
+        )
+        .orderBy(...ORDER_PANEL_RECENCY)
+        .limit(250)
+
+      const listingUpgrades = listingRows.flatMap((row) =>
+        parseListingUpgradesFromFeatures(row.features).map((u) => ({
+          ...u,
+          listingId: row.id,
+          listingTitle: row.title,
+        }))
+      )
+      const packagePurchases = parseOrganizationPackagePurchases(membership.organization?.settings)
+      const listingLimit = membership.organization?.listingLimit
+      const listingCount = listingRows.length
+      const activeListings = listingRows.filter((row) => row.status === 'active').length
+      const activeUpgrades = listingUpgrades.filter((u) => u.status === 'active').length
+      const expiredUpgrades = listingUpgrades.filter((u) => u.status === 'expired').length
+      const activePackagePurchases = packagePurchases.filter((p) => p.status === 'active').length
+      const alerts = {
+        suspended: membership.organization?.status === 'suspended',
+        pending: membership.organization?.status === 'pending',
+        atLimit: listingLimit != null && listingCount >= listingLimit,
+        nearLimit:
+          listingLimit != null && listingCount >= Math.max(1, Math.floor(listingLimit * 0.8)),
+        noActiveUpgrades: activeUpgrades + activePackagePurchases === 0,
+      }
+
+      return {
+        membershipId: membership.id,
+        user: membership.user,
+        role: membership.role,
+        joinedAt: membership.joinedAt,
+        publisherType: normalizePublisherType({
+          organizationType: membership.organization?.type,
+          accountIntent: membership.user?.accountIntent,
+          role: membership.role,
+        }),
+        organization: membership.organization,
+        listingSummary: {
+          total: listingCount,
+          active: activeListings,
+          listingLimit,
+        },
+        upgradesSummary: {
+          activeListingUpgrades: activeUpgrades,
+          expiredListingUpgrades: expiredUpgrades,
+          activePackagePurchases,
+        },
+        recentListings: listingRows.slice(0, 12),
+        recentListingUpgrades: listingUpgrades.slice(0, 20),
+        recentPackagePurchases: packagePurchases.slice(0, 12),
+        alerts,
+      }
     }),
 
   publish: protectedProcedure
@@ -1333,6 +2179,7 @@ export const listingRouter = createTRPCRouter({
         listingId: z.string().uuid(),
         from: z.enum(['list', 'map', 'similar']).optional(),
         position: z.number().int().min(0).max(500).optional(),
+        surface: z.string().max(40).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1354,6 +2201,7 @@ export const listingRouter = createTRPCRouter({
       const payload: Record<string, unknown> = {}
       if (input.from !== undefined) payload.from = input.from
       if (input.position !== undefined) payload.position = input.position
+      if (input.surface !== undefined) payload.surface = input.surface
 
       recordPortalStatsEvent(ctx.db, {
         terminalId: PORTAL_STATS_TERMINALS.LISTING_SEARCH_RESULT_CLICK,
@@ -1363,6 +2211,112 @@ export const listingRouter = createTRPCRouter({
         payload,
       })
       return { ok: true as const }
+    }),
+
+  /** PortalVisibility: impresión en superficies comerciales (sin alterar ranking/listado). */
+  recordPortalVisibilityImpression: publicProcedure
+    .input(
+      z.object({
+        listingIds: z.array(z.string().uuid()).min(1).max(20),
+        surface: z.enum(['search_featured', 'listing_strip']),
+        searchContext: z
+          .object({
+            city: z.string().max(120).optional(),
+            neighborhood: z.string().max(120).optional(),
+            operationType: z.string().max(40).optional(),
+            propertyType: z.string().max(40).optional(),
+            session: z.string().max(120).optional(),
+          })
+          .optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const rows = await ctx.db
+        .select({
+          id: listings.id,
+          organizationId: listings.organizationId,
+          features: listings.features,
+        })
+        .from(listings)
+        .where(
+          and(
+            inArray(listings.id, input.listingIds),
+            eq(listings.status, 'active')
+          )
+        )
+
+      let written = 0
+      for (const row of rows) {
+        const vis = portalVisibilityAnalyticsMetaFromFeatures(row.features)
+        if (vis.tier === 'standard' || vis.operationalStatus !== 'active') continue
+        recordPortalStatsEvent(ctx.db, {
+          terminalId: PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_IMPRESSION,
+          listingId: row.id,
+          organizationId: row.organizationId,
+          userId: ctx.session?.userId ?? null,
+          payload: {
+            tier: vis.tier,
+            products: vis.products,
+            surface: input.surface,
+            ...(input.searchContext ? { searchContext: input.searchContext } : {}),
+          },
+        })
+        written++
+      }
+      return { ok: true as const, written }
+    }),
+
+  /** PortalVisibility: clic relevante desde superficie comercial. */
+  recordPortalVisibilityClick: publicProcedure
+    .input(
+      z.object({
+        listingId: z.string().uuid(),
+        surface: z.enum(['search_featured', 'listing_strip_cta']),
+        searchContext: z
+          .object({
+            city: z.string().max(120).optional(),
+            neighborhood: z.string().max(120).optional(),
+            operationType: z.string().max(40).optional(),
+            propertyType: z.string().max(40).optional(),
+            session: z.string().max(120).optional(),
+          })
+          .optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const [row] = await ctx.db
+        .select({
+          id: listings.id,
+          organizationId: listings.organizationId,
+          features: listings.features,
+        })
+        .from(listings)
+        .where(
+          and(eq(listings.id, input.listingId), eq(listings.status, 'active'))
+        )
+        .limit(1)
+
+      if (!row) return { ok: false as const }
+
+      const vis = portalVisibilityAnalyticsMetaFromFeatures(row.features)
+      if (vis.tier === 'standard' || vis.operationalStatus !== 'active') {
+        return { ok: true as const, skipped: true as const }
+      }
+
+      recordPortalStatsEvent(ctx.db, {
+        terminalId: PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_CLICK,
+        listingId: row.id,
+        organizationId: row.organizationId,
+        userId: ctx.session?.userId ?? null,
+        payload: {
+          tier: vis.tier,
+          products: vis.products,
+          surface: input.surface,
+          ...(input.searchContext ? { searchContext: input.searchContext } : {}),
+        },
+      })
+
+      return { ok: true as const, skipped: false as const }
     }),
 
   /** Usuario abrió el CTA de contacto (antes de enviar lead). */
@@ -2063,6 +3017,7 @@ export const listingRouter = createTRPCRouter({
       if (fallback) {
         out = fallback
       }
+      out = await attachPortalVisibilityToSearchV2Result(ctx.db, out)
 
       if (process.env.LOG_SEARCH_MS === '1') {
         console.info(

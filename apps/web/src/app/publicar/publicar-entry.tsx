@@ -182,6 +182,10 @@ export function PublicarEntry() {
             <li>En el panel, creá un aviso o seguí un borrador.</li>
             <li>Completá datos, fotos y ubicación.</li>
             <li>Publicá y controlá el estado (activo, por vencer, etc.).</li>
+            <li>
+              Si aparece un bloqueo, el panel te muestra qué corregir (fotos, precio o datos
+              faltantes) y la próxima acción.
+            </li>
           </ol>
         </div>
 
