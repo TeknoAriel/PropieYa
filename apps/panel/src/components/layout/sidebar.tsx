@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { href: '/campos', label: 'Campos', icon: Building2 },
   { href: '/equipo', label: 'Equipo', icon: UserPlus },
   { href: '/upgrades', label: 'Upgrades', icon: Sparkles },
+  { href: '/pricing', label: 'Pricing', icon: Settings },
   { href: '/clientes', label: 'Clientes', icon: Users },
   { href: '/operaciones', label: 'Operaciones', icon: TrendingUp },
   { href: '/leads', label: 'Leads', icon: Users },

@@ -67,6 +67,37 @@ export type PortalCommercialProductType = (typeof PORTAL_COMMERCIAL_PRODUCT_TYPE
 export const PORTAL_COMMERCIAL_PROFILE_KEYS = ['owner', 'agent', 'agency'] as const
 export type PortalCommercialProfileKey = (typeof PORTAL_COMMERCIAL_PROFILE_KEYS)[number]
 
+export const PORTAL_COMMERCIAL_CHANNELS = ['online', 'on_demand'] as const
+export type PortalCommercialChannel = (typeof PORTAL_COMMERCIAL_CHANNELS)[number]
+
+export const PORTAL_COMMERCIAL_PROMOTION_DISCOUNT_TYPES = ['fixed', 'percent'] as const
+export type PortalCommercialPromotionDiscountType =
+  (typeof PORTAL_COMMERCIAL_PROMOTION_DISCOUNT_TYPES)[number]
+
+export const PORTAL_COMMERCIAL_RENEWAL_MODES = ['manual', 'none'] as const
+export type PortalCommercialRenewalMode = (typeof PORTAL_COMMERCIAL_RENEWAL_MODES)[number]
+
+export const portalCommercialPromotionSchema = z.object({
+  id: z.string().max(80),
+  name: z.string().min(2).max(120),
+  discountType: z.enum(PORTAL_COMMERCIAL_PROMOTION_DISCOUNT_TYPES),
+  discountValue: z.number().min(0).max(1000000),
+  isActive: z.boolean().default(true),
+  startsAt: z.string().datetime().nullable().optional(),
+  endsAt: z.string().datetime().nullable().optional(),
+  enabledProfiles: z.array(z.enum(PORTAL_COMMERCIAL_PROFILE_KEYS)).max(3).default([
+    'owner',
+    'agent',
+    'agency',
+  ]),
+  enabledChannels: z.array(z.enum(PORTAL_COMMERCIAL_CHANNELS)).max(2).default([
+    'online',
+    'on_demand',
+  ]),
+  notes: z.string().max(220).nullable().optional(),
+})
+export type PortalCommercialPromotion = z.infer<typeof portalCommercialPromotionSchema>
+
 export const portalCommercialCatalogItemSchema = z.object({
   id: z.string().max(80),
   commercialName: z.string().min(2).max(120),
@@ -75,14 +106,29 @@ export const portalCommercialCatalogItemSchema = z.object({
   technicalProducts: z.array(z.string().max(120)).max(30).default([]),
   suggestedDurationDays: z.number().int().min(1).max(365).nullable().optional(),
   priceBand: z.string().max(120).nullable().optional(),
+  basePriceAmount: z.number().min(0).max(100000000).nullable().optional(),
+  currency: z.string().min(3).max(3).default('USD'),
+  profilePrices: z
+    .object({
+      owner: z.number().min(0).max(100000000).nullable().optional(),
+      agent: z.number().min(0).max(100000000).nullable().optional(),
+      agency: z.number().min(0).max(100000000).nullable().optional(),
+    })
+    .default({ owner: null, agent: null, agency: null }),
   isActive: z.boolean().default(true),
   enabledProfiles: z.array(z.enum(PORTAL_COMMERCIAL_PROFILE_KEYS)).max(3).default([
     'owner',
     'agent',
     'agency',
   ]),
+  enabledChannels: z.array(z.enum(PORTAL_COMMERCIAL_CHANNELS)).max(2).default([
+    'online',
+    'on_demand',
+  ]),
+  renewalMode: z.enum(PORTAL_COMMERCIAL_RENEWAL_MODES).default('manual'),
   shortCopy: z.string().max(220).default(''),
   surfaces: z.array(z.string().max(80)).max(10).default([]),
+  promotions: z.array(portalCommercialPromotionSchema).max(30).default([]),
   updatedAt: z.string().datetime(),
 })
 
@@ -98,10 +144,16 @@ export function defaultPortalCommercialCatalog(nowInput?: Date): PortalCommercia
     technicalProducts: p.products,
     suggestedDurationDays: p.defaultDurationDays,
     priceBand: null,
+    basePriceAmount: null,
+    currency: 'USD',
+    profilePrices: { owner: null, agent: null, agency: null },
     isActive: p.id !== 'none',
     enabledProfiles: ['owner', 'agent', 'agency'] as PortalCommercialProfileKey[],
+    enabledChannels: ['online', 'on_demand'] as PortalCommercialChannel[],
+    renewalMode: 'manual' as PortalCommercialRenewalMode,
     shortCopy: p.operationalSummary,
     surfaces: p.surfaces as unknown as PortalCommercialSurface[],
+    promotions: [],
     updatedAt: now,
   }))
   const packageItems: PortalCommercialCatalogItem[] = [
@@ -113,10 +165,16 @@ export function defaultPortalCommercialCatalog(nowInput?: Date): PortalCommercia
       technicalProducts: [],
       suggestedDurationDays: 30,
       priceBand: null,
+      basePriceAmount: null,
+      currency: 'USD',
+      profilePrices: { owner: null, agent: null, agency: null },
       isActive: true,
       enabledProfiles: ['owner', 'agent', 'agency'],
+      enabledChannels: ['online', 'on_demand'],
+      renewalMode: 'manual',
       shortCopy: 'Pack base para activar upgrades por aviso.',
       surfaces: [],
+      promotions: [],
       updatedAt: now,
     },
     {
@@ -127,10 +185,16 @@ export function defaultPortalCommercialCatalog(nowInput?: Date): PortalCommercia
       technicalProducts: [],
       suggestedDurationDays: 30,
       priceBand: null,
+      basePriceAmount: null,
+      currency: 'USD',
+      profilePrices: { owner: null, agent: null, agency: null },
       isActive: true,
       enabledProfiles: ['owner', 'agent', 'agency'],
+      enabledChannels: ['online', 'on_demand'],
+      renewalMode: 'manual',
       shortCopy: 'Pack intermedio para operación comercial continua.',
       surfaces: [],
+      promotions: [],
       updatedAt: now,
     },
     {
@@ -141,10 +205,16 @@ export function defaultPortalCommercialCatalog(nowInput?: Date): PortalCommercia
       technicalProducts: [],
       suggestedDurationDays: 30,
       priceBand: null,
+      basePriceAmount: null,
+      currency: 'USD',
+      profilePrices: { owner: null, agent: null, agency: null },
       isActive: true,
       enabledProfiles: ['owner', 'agent', 'agency'],
+      enabledChannels: ['online', 'on_demand'],
+      renewalMode: 'manual',
       shortCopy: 'Pack volumen para equipos comerciales.',
       surfaces: [],
+      promotions: [],
       updatedAt: now,
     },
   ]
@@ -157,6 +227,75 @@ export function parsePortalCommercialCatalog(raw: unknown): PortalCommercialCata
     .map((item) => portalCommercialCatalogItemSchema.safeParse(item))
     .filter((r): r is { success: true; data: PortalCommercialCatalogItem } => r.success)
     .map((r) => r.data)
+}
+
+export function resolvePortalCommercialPricing(
+  item: PortalCommercialCatalogItem,
+  input: {
+    profile: PortalCommercialProfileKey
+    channel: PortalCommercialChannel
+    nowInput?: Date
+  }
+): {
+  baseAmount: number | null
+  finalAmount: number | null
+  discountAmount: number
+  appliedPromotionId: string | null
+  appliedPromotionName: string | null
+  currency: string
+} {
+  const now = input.nowInput ?? new Date()
+  const profilePrice = item.profilePrices?.[input.profile]
+  const baseAmount =
+    typeof profilePrice === 'number'
+      ? profilePrice
+      : typeof item.basePriceAmount === 'number'
+        ? item.basePriceAmount
+        : null
+  if (baseAmount == null) {
+    return {
+      baseAmount: null,
+      finalAmount: null,
+      discountAmount: 0,
+      appliedPromotionId: null,
+      appliedPromotionName: null,
+      currency: item.currency,
+    }
+  }
+
+  let bestDiscount = 0
+  let bestPromo: PortalCommercialPromotion | null = null
+  for (const promo of item.promotions ?? []) {
+    if (!promo.isActive) continue
+    if (!promo.enabledProfiles.includes(input.profile)) continue
+    if (!promo.enabledChannels.includes(input.channel)) continue
+    if (promo.startsAt) {
+      const startsAt = new Date(promo.startsAt)
+      if (!Number.isNaN(startsAt.getTime()) && startsAt.getTime() > now.getTime()) continue
+    }
+    if (promo.endsAt) {
+      const endsAt = new Date(promo.endsAt)
+      if (!Number.isNaN(endsAt.getTime()) && endsAt.getTime() < now.getTime()) continue
+    }
+    const discount =
+      promo.discountType === 'percent'
+        ? Math.max(0, Math.min(baseAmount, (baseAmount * promo.discountValue) / 100))
+        : Math.max(0, Math.min(baseAmount, promo.discountValue))
+    if (discount > bestDiscount) {
+      bestDiscount = discount
+      bestPromo = promo
+    }
+  }
+
+  const finalAmount = Math.max(0, baseAmount - bestDiscount)
+  return {
+    baseAmount,
+    finalAmount,
+    discountAmount: bestDiscount,
+    appliedPromotionId: bestPromo?.id ?? null,
+    appliedPromotionName: bestPromo?.name ?? null,
+    currency: item.currency,
+  }
 }
 
 export function normalizePortalUpgradeStatus(

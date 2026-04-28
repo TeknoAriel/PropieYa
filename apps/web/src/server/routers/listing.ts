@@ -53,6 +53,7 @@ import {
   defaultPortalCommercialCatalog,
   parsePortalCommercialCatalog,
   portalCommercialCatalogItemSchema,
+  resolvePortalCommercialPricing,
   resolvePortalVisibilityOperationalStatus,
   PORTAL_COMMERCIAL_PACKAGES,
   PORTAL_UPGRADE_CHANNELS,
@@ -61,6 +62,7 @@ import {
   portalUpgradeRecordSchema,
   resolveTemporalUpgradeStatus,
   type PortalCommercialCatalogItem,
+  type PortalCommercialChannel,
   type PortalCommercialProfileKey,
   type PortalPackagePurchase,
   type PortalUpgradeChannel,
@@ -1179,6 +1181,16 @@ export const listingRouter = createTRPCRouter({
           message: 'El producto comercial no está disponible para esta cuenta.',
         })
       }
+      if (!selectedProduct.enabledChannels.includes(input.channel as PortalCommercialChannel)) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Este producto no está habilitado para el canal seleccionado.',
+        })
+      }
+      const pricingQuote = resolvePortalCommercialPricing(selectedProduct, {
+        profile: orgProfile,
+        channel: input.channel as PortalCommercialChannel,
+      })
 
       const now = new Date()
       const startsAt = input.startsAt ? new Date(input.startsAt) : now
@@ -1201,7 +1213,11 @@ export const listingRouter = createTRPCRouter({
         durationDays: input.durationDays,
         startsAt: startsAt.toISOString(),
         endsAt: endsAt.toISOString(),
-        notes: input.notes ?? null,
+        notes:
+          input.notes ??
+          (pricingQuote.finalAmount != null
+            ? `Precio referencial: ${pricingQuote.currency} ${pricingQuote.finalAmount}`
+            : null),
         createdAt: now.toISOString(),
         updatedAt: now.toISOString(),
       }
@@ -1278,6 +1294,16 @@ export const listingRouter = createTRPCRouter({
           message: 'El paquete comercial no está disponible para esta cuenta.',
         })
       }
+      if (!selectedPackage.enabledChannels.includes(input.channel as PortalCommercialChannel)) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Este paquete no está habilitado para el canal seleccionado.',
+        })
+      }
+      const pricingQuote = resolvePortalCommercialPricing(selectedPackage, {
+        profile: orgProfile,
+        channel: input.channel as PortalCommercialChannel,
+      })
 
       const nowIso = new Date().toISOString()
       const startsAtIso = input.startsAt ?? null
@@ -1296,7 +1322,11 @@ export const listingRouter = createTRPCRouter({
         creditsRemaining: input.creditsTotal,
         startsAt: startsAtIso,
         endsAt: endsAtIso,
-        notes: input.notes ?? null,
+        notes:
+          input.notes ??
+          (pricingQuote.finalAmount != null
+            ? `Precio referencial: ${pricingQuote.currency} ${pricingQuote.finalAmount}`
+            : null),
         createdAt: nowIso,
         updatedAt: nowIso,
       }
