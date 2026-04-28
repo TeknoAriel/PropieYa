@@ -838,6 +838,16 @@ function organizationCommercialProfileKey(orgType: string | null | undefined): P
   return 'owner'
 }
 
+function normalizePublisherType(input: {
+  organizationType: string | null | undefined
+  accountIntent: string | null | undefined
+  role: string | null | undefined
+}): 'owner' | 'agent' | 'agency' {
+  if (input.organizationType === 'real_estate_agency') return 'agency'
+  if (input.role === 'agent' || input.accountIntent === 'agency_publisher') return 'agent'
+  return 'owner'
+}
+
 export const listingRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createListingSchema)
@@ -1343,6 +1353,285 @@ export const listingRouter = createTRPCRouter({
         })
         .where(eq(organizations.id, orgId))
       return { ok: true, items: nextCatalog.length }
+    }),
+  commercialPublishersOverview: protectedProcedure
+    .input(
+      z.object({
+        publisherType: z.enum(['all', 'owner', 'agent', 'agency']).default('all'),
+        status: z.enum(['all', 'active', 'pending', 'suspended', 'inactive']).default('all'),
+        upgrades: z.enum(['all', 'with_active', 'without_active']).default('all'),
+        nearLimitOnly: z.boolean().default(false),
+        q: z.string().max(80).optional(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const canPlatform = ctx.session.permissions.includes('analytics:platform')
+      const memberships = await ctx.db.query.organizationMemberships.findMany({
+        where: canPlatform
+          ? eq(organizationMemberships.isActive, true)
+          : and(
+              eq(organizationMemberships.isActive, true),
+              eq(organizationMemberships.organizationId, ctx.session.organizationId ?? '')
+            ),
+        with: {
+          user: {
+            columns: {
+              id: true,
+              name: true,
+              email: true,
+              accountIntent: true,
+            },
+          },
+          organization: {
+            columns: {
+              id: true,
+              name: true,
+              type: true,
+              status: true,
+              listingLimit: true,
+              settings: true,
+            },
+          },
+        },
+        orderBy: [desc(organizationMemberships.joinedAt)],
+        limit: canPlatform ? 800 : 200,
+      })
+
+      const orgIds = Array.from(
+        new Set(
+          memberships
+            .map((m) => m.organizationId)
+            .filter((id): id is string => typeof id === 'string' && id.length > 0)
+        )
+      )
+      const listingRows =
+        orgIds.length === 0
+          ? []
+          : await ctx.db
+              .select({
+                id: listings.id,
+                organizationId: listings.organizationId,
+                status: listings.status,
+                features: listings.features,
+              })
+              .from(listings)
+              .where(
+                and(
+                  inArray(listings.organizationId, orgIds),
+                  notInArray(listings.status, ['archived', 'withdrawn'])
+                )
+              )
+              .limit(canPlatform ? 5000 : 1200)
+
+      const listingCountByOrg = new Map<string, number>()
+      const activeListingCountByOrg = new Map<string, number>()
+      const activeUpgradesByOrg = new Map<string, number>()
+      const upgradeChannelByOrg = new Map<string, { online: number; onDemand: number }>()
+
+      for (const row of listingRows) {
+        listingCountByOrg.set(row.organizationId, (listingCountByOrg.get(row.organizationId) ?? 0) + 1)
+        if (row.status === 'active') {
+          activeListingCountByOrg.set(
+            row.organizationId,
+            (activeListingCountByOrg.get(row.organizationId) ?? 0) + 1
+          )
+        }
+        for (const u of parseListingUpgradesFromFeatures(row.features)) {
+          const byChannel = upgradeChannelByOrg.get(row.organizationId) ?? { online: 0, onDemand: 0 }
+          if (u.channel === 'online') byChannel.online += 1
+          else byChannel.onDemand += 1
+          upgradeChannelByOrg.set(row.organizationId, byChannel)
+          if (u.status === 'active') {
+            activeUpgradesByOrg.set(row.organizationId, (activeUpgradesByOrg.get(row.organizationId) ?? 0) + 1)
+          }
+        }
+      }
+
+      for (const m of memberships) {
+        const packages = parseOrganizationPackagePurchases(m.organization?.settings)
+        for (const p of packages) {
+          const byChannel = upgradeChannelByOrg.get(m.organizationId) ?? { online: 0, onDemand: 0 }
+          if (p.channel === 'online') byChannel.online += 1
+          else byChannel.onDemand += 1
+          upgradeChannelByOrg.set(m.organizationId, byChannel)
+          if (p.status === 'active') {
+            activeUpgradesByOrg.set(
+              m.organizationId,
+              (activeUpgradesByOrg.get(m.organizationId) ?? 0) + 1
+            )
+          }
+        }
+      }
+
+      const rows = memberships.map((m) => {
+        const publisherType = normalizePublisherType({
+          organizationType: m.organization?.type,
+          accountIntent: m.user?.accountIntent,
+          role: m.role,
+        })
+        const status = m.organization?.status ?? 'inactive'
+        const listingLimit = m.organization?.listingLimit
+        const listingCount = listingCountByOrg.get(m.organizationId) ?? 0
+        const activeListings = activeListingCountByOrg.get(m.organizationId) ?? 0
+        const activeUpgrades = activeUpgradesByOrg.get(m.organizationId) ?? 0
+        const nearLimit = listingLimit != null && listingCount >= Math.max(1, Math.floor(listingLimit * 0.8))
+        const atLimit = listingLimit != null && listingCount >= listingLimit
+        const channelMix = upgradeChannelByOrg.get(m.organizationId) ?? { online: 0, onDemand: 0 }
+        const preferredCommercialChannel =
+          channelMix.online === 0 && channelMix.onDemand === 0
+            ? 'sin_actividad'
+            : channelMix.online > channelMix.onDemand
+              ? 'online'
+              : channelMix.onDemand > channelMix.online
+                ? 'on_demand'
+                : 'mixto'
+        return {
+          membershipId: m.id,
+          userId: m.userId,
+          organizationId: m.organizationId,
+          name: m.user?.name ?? 'Sin nombre',
+          email: m.user?.email ?? '',
+          publisherType,
+          role: m.role,
+          organizationName: m.organization?.name ?? 'Sin organización',
+          status,
+          listingCount,
+          activeListings,
+          listingLimit,
+          nearLimit,
+          atLimit,
+          activeUpgrades,
+          preferredCommercialChannel,
+        }
+      })
+
+      const q = input.q?.trim().toLowerCase() ?? ''
+      const filtered = rows.filter((r) => {
+        if (input.publisherType !== 'all' && r.publisherType !== input.publisherType) return false
+        if (input.status !== 'all' && r.status !== input.status) return false
+        if (input.upgrades === 'with_active' && r.activeUpgrades <= 0) return false
+        if (input.upgrades === 'without_active' && r.activeUpgrades > 0) return false
+        if (input.nearLimitOnly && !r.nearLimit) return false
+        if (q.length > 0) {
+          const haystack = `${r.name} ${r.email} ${r.organizationName}`.toLowerCase()
+          if (!haystack.includes(q)) return false
+        }
+        return true
+      })
+
+      return {
+        canPlatform,
+        rows: filtered,
+      }
+    }),
+  commercialPublisherDetail: protectedProcedure
+    .input(
+      z.object({
+        membershipId: z.string().uuid(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const canPlatform = ctx.session.permissions.includes('analytics:platform')
+      const membership = await ctx.db.query.organizationMemberships.findFirst({
+        where: and(
+          eq(organizationMemberships.id, input.membershipId),
+          eq(organizationMemberships.isActive, true)
+        ),
+        with: {
+          user: {
+            columns: {
+              id: true,
+              name: true,
+              email: true,
+              accountIntent: true,
+            },
+          },
+          organization: {
+            columns: {
+              id: true,
+              name: true,
+              type: true,
+              status: true,
+              listingLimit: true,
+              settings: true,
+            },
+          },
+        },
+      })
+      if (!membership) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'No encontramos el publicador.' })
+      }
+      if (!canPlatform && membership.organizationId !== ctx.session.organizationId) {
+        throw new TRPCError({ code: 'FORBIDDEN' })
+      }
+
+      const listingRows = await ctx.db
+        .select({
+          id: listings.id,
+          title: listings.title,
+          status: listings.status,
+          updatedAt: listings.updatedAt,
+          features: listings.features,
+        })
+        .from(listings)
+        .where(
+          and(
+            eq(listings.organizationId, membership.organizationId),
+            notInArray(listings.status, ['archived', 'withdrawn'])
+          )
+        )
+        .orderBy(...ORDER_PANEL_RECENCY)
+        .limit(250)
+
+      const listingUpgrades = listingRows.flatMap((row) =>
+        parseListingUpgradesFromFeatures(row.features).map((u) => ({
+          ...u,
+          listingId: row.id,
+          listingTitle: row.title,
+        }))
+      )
+      const packagePurchases = parseOrganizationPackagePurchases(membership.organization?.settings)
+      const listingLimit = membership.organization?.listingLimit
+      const listingCount = listingRows.length
+      const activeListings = listingRows.filter((row) => row.status === 'active').length
+      const activeUpgrades = listingUpgrades.filter((u) => u.status === 'active').length
+      const expiredUpgrades = listingUpgrades.filter((u) => u.status === 'expired').length
+      const activePackagePurchases = packagePurchases.filter((p) => p.status === 'active').length
+      const alerts = {
+        suspended: membership.organization?.status === 'suspended',
+        pending: membership.organization?.status === 'pending',
+        atLimit: listingLimit != null && listingCount >= listingLimit,
+        nearLimit:
+          listingLimit != null && listingCount >= Math.max(1, Math.floor(listingLimit * 0.8)),
+        noActiveUpgrades: activeUpgrades + activePackagePurchases === 0,
+      }
+
+      return {
+        membershipId: membership.id,
+        user: membership.user,
+        role: membership.role,
+        joinedAt: membership.joinedAt,
+        publisherType: normalizePublisherType({
+          organizationType: membership.organization?.type,
+          accountIntent: membership.user?.accountIntent,
+          role: membership.role,
+        }),
+        organization: membership.organization,
+        listingSummary: {
+          total: listingCount,
+          active: activeListings,
+          listingLimit,
+        },
+        upgradesSummary: {
+          activeListingUpgrades: activeUpgrades,
+          expiredListingUpgrades: expiredUpgrades,
+          activePackagePurchases,
+        },
+        recentListings: listingRows.slice(0, 12),
+        recentListingUpgrades: listingUpgrades.slice(0, 20),
+        recentPackagePurchases: packagePurchases.slice(0, 12),
+        alerts,
+      }
     }),
 
   publish: protectedProcedure
