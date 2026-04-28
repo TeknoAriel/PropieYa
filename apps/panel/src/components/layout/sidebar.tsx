@@ -10,6 +10,7 @@ import {
   LogOut,
   UserPlus,
   Sparkles,
+  TrendingUp,
 } from '@propieya/ui'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { href: '/equipo', label: 'Equipo', icon: UserPlus },
   { href: '/upgrades', label: 'Upgrades', icon: Sparkles },
   { href: '/clientes', label: 'Clientes', icon: Users },
+  { href: '/operaciones', label: 'Operaciones', icon: TrendingUp },
   { href: '/leads', label: 'Leads', icon: Users },
   { href: '/mensajes', label: 'Mensajes', icon: MessageSquare },
   { href: '/configuracion', label: 'Configuración', icon: Settings },
