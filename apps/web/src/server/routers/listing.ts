@@ -59,12 +59,14 @@ import {
   PORTAL_UPGRADE_CHANNELS,
   PORTAL_UPGRADE_STATUSES,
   portalPackagePurchaseSchema,
+  portalUpgradeOrderRequestSchema,
   portalUpgradeRecordSchema,
   resolveTemporalUpgradeStatus,
   type PortalCommercialCatalogItem,
   type PortalCommercialChannel,
   type PortalCommercialProfileKey,
   type PortalPackagePurchase,
+  type PortalUpgradeOrderRequest,
   type PortalUpgradeChannel,
   type PortalUpgradeStatus,
   type PortalVisibilityOperationalStatus,
@@ -819,6 +821,23 @@ function parseOrganizationPackagePurchases(settings: unknown): PortalPackagePurc
     }))
 }
 
+function parseOrganizationUpgradeOrderRequests(settings: unknown): PortalUpgradeOrderRequest[] {
+  const list = (settings as { portalUpgradeOrderRequests?: unknown } | null | undefined)
+    ?.portalUpgradeOrderRequests
+  if (!Array.isArray(list)) return []
+  return list
+    .map((item) => portalUpgradeOrderRequestSchema.safeParse(item))
+    .filter((r): r is { success: true; data: PortalUpgradeOrderRequest } => r.success)
+    .map((r) => ({
+      ...r.data,
+      status: resolveTemporalUpgradeStatus(
+        r.data.status,
+        null,
+        null
+      ),
+    }))
+}
+
 function parseOrganizationCommercialCatalog(settings: unknown): PortalCommercialCatalogItem[] {
   const raw = (settings as { portalCommercialCatalog?: unknown } | null | undefined)
     ?.portalCommercialCatalog
@@ -977,6 +996,8 @@ export const listingRouter = createTRPCRouter({
         eligibleListings: [] as Array<{ id: string; title: string; status: string }>,
         listingUpgrades: [] as Array<z.infer<typeof portalUpgradeRecordSchema>>,
         packagePurchases: [] as PortalPackagePurchase[],
+        upgradeOrderRequests: [] as PortalUpgradeOrderRequest[],
+        orgCommercialProfile: null as PortalCommercialProfileKey | null,
         availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
         commercialCatalog: defaultPortalCommercialCatalog(),
       }
@@ -992,12 +1013,15 @@ export const listingRouter = createTRPCRouter({
         eligibleListings: [] as Array<{ id: string; title: string; status: string }>,
         listingUpgrades: [] as Array<z.infer<typeof portalUpgradeRecordSchema>>,
         packagePurchases: [] as PortalPackagePurchase[],
+        upgradeOrderRequests: [] as PortalUpgradeOrderRequest[],
+        orgCommercialProfile: null as PortalCommercialProfileKey | null,
         availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
         commercialCatalog: defaultPortalCommercialCatalog(),
       }
     }
 
     const catalog = effectiveCommercialCatalog(org.settings)
+    const orgProfile = organizationCommercialProfileKey(org.type)
 
     if (isPublisherOrganizationStatusBlocked(org.status)) {
       return {
@@ -1006,6 +1030,8 @@ export const listingRouter = createTRPCRouter({
         eligibleListings: [] as Array<{ id: string; title: string; status: string }>,
         listingUpgrades: [] as Array<z.infer<typeof portalUpgradeRecordSchema>>,
         packagePurchases: parseOrganizationPackagePurchases(org.settings),
+        upgradeOrderRequests: parseOrganizationUpgradeOrderRequests(org.settings),
+        orgCommercialProfile: orgProfile,
         availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
         commercialCatalog: catalog,
       }
@@ -1017,6 +1043,8 @@ export const listingRouter = createTRPCRouter({
         eligibleListings: [] as Array<{ id: string; title: string; status: string }>,
         listingUpgrades: [] as Array<z.infer<typeof portalUpgradeRecordSchema>>,
         packagePurchases: parseOrganizationPackagePurchases(org.settings),
+        upgradeOrderRequests: parseOrganizationUpgradeOrderRequests(org.settings),
+        orgCommercialProfile: orgProfile,
         availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
         commercialCatalog: catalog,
       }
@@ -1111,6 +1139,8 @@ export const listingRouter = createTRPCRouter({
       eligibleListings,
       listingUpgrades,
       packagePurchases: parseOrganizationPackagePurchases(org.settings),
+      upgradeOrderRequests: parseOrganizationUpgradeOrderRequests(org.settings),
+      orgCommercialProfile: orgProfile,
       availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
       commercialCatalog: catalog,
       metricsSummary: {
@@ -1383,6 +1413,247 @@ export const listingRouter = createTRPCRouter({
         })
         .where(eq(organizations.id, orgId))
       return { ok: true, items: nextCatalog.length }
+    }),
+  createOnlineListingUpgradeRequest: protectedProcedure
+    .input(
+      z.object({
+        listingId: z.string().uuid(),
+        productId: z.string().min(2).max(80),
+        durationDays: z.number().int().min(1).max(365).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const [row] = await ctx.db
+        .select({
+          id: listings.id,
+          organizationId: listings.organizationId,
+          status: listings.status,
+          features: listings.features,
+          title: listings.title,
+        })
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, input.listingId),
+            eq(listings.publisherId, ctx.session.userId),
+            notInArray(listings.status, ['archived', 'withdrawn'])
+          )
+        )
+        .limit(1)
+      if (!row) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'No encontramos el aviso para iniciar la solicitud.',
+        })
+      }
+      const org = await ctx.db.query.organizations.findFirst({
+        where: eq(organizations.id, row.organizationId),
+      })
+      if (!org || org.status !== 'active' || isPublisherOrganizationStatusBlocked(org.status)) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'La cuenta publicadora no está habilitada para compras online.',
+        })
+      }
+      const catalog = effectiveCommercialCatalog(org.settings)
+      const orgProfile = organizationCommercialProfileKey(org.type)
+      const selected = catalog.find(
+        (item) =>
+          item.id === input.productId &&
+          item.type === 'listing' &&
+          item.isActive &&
+          item.enabledProfiles.includes(orgProfile) &&
+          item.enabledChannels.includes('online')
+      )
+      if (!selected) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Este producto no está disponible online para tu perfil.',
+        })
+      }
+      const pricing = resolvePortalCommercialPricing(selected, {
+        profile: orgProfile,
+        channel: 'online',
+      })
+      const durationDays = input.durationDays ?? selected.suggestedDurationDays ?? 15
+      const now = new Date()
+      const startsAt = now.toISOString()
+      const endsAtDate = new Date(now.getTime())
+      endsAtDate.setDate(endsAtDate.getDate() + durationDays)
+      const endsAt = endsAtDate.toISOString()
+      const targetStatus: PortalUpgradeStatus = (pricing.finalAmount ?? 0) > 0 ? 'pending_payment' : 'pending_activation'
+
+      const upgrade = {
+        id: randomUUID(),
+        purchaseType: 'listing' as const,
+        channel: 'online' as PortalUpgradeChannel,
+        status: targetStatus,
+        packageId: selected.id,
+        listingId: row.id,
+        durationDays,
+        startsAt,
+        endsAt,
+        notes:
+          pricing.finalAmount != null
+            ? `Solicitud online · ${pricing.currency} ${pricing.finalAmount}`
+            : 'Solicitud online',
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      }
+      const previousUpgrades = parseListingUpgradesFromFeatures(row.features)
+      const nextUpgrades = [...previousUpgrades, upgrade]
+      const featuresObj =
+        row.features && typeof row.features === 'object' && !Array.isArray(row.features)
+          ? { ...(row.features as Record<string, unknown>) }
+          : {}
+      featuresObj.visibilityUpgrades = nextUpgrades
+      await ctx.db
+        .update(listings)
+        .set({
+          features: featuresObj,
+          updatedAt: new Date(),
+        })
+        .where(eq(listings.id, row.id))
+
+      const orderRequest: PortalUpgradeOrderRequest = {
+        id: randomUUID(),
+        buyerUserId: ctx.session.userId,
+        organizationId: org.id,
+        purchaseType: 'listing',
+        channel: 'online',
+        status: targetStatus,
+        productId: selected.id,
+        productName: selected.commercialName,
+        listingId: row.id,
+        durationDays,
+        creditsTotal: null,
+        basePriceAmount: pricing.baseAmount,
+        finalPriceAmount: pricing.finalAmount,
+        discountAmount: pricing.discountAmount,
+        currency: pricing.currency,
+        promotionId: pricing.appliedPromotionId,
+        promotionName: pricing.appliedPromotionName,
+        notes: `Solicitud online desde aviso: ${row.title}`,
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      }
+      const existingOrders = parseOrganizationUpgradeOrderRequests(org.settings)
+      const settingsObj =
+        org.settings && typeof org.settings === 'object' && !Array.isArray(org.settings)
+          ? { ...(org.settings as Record<string, unknown>) }
+          : {}
+      settingsObj.portalUpgradeOrderRequests = [...existingOrders, orderRequest]
+      await ctx.db
+        .update(organizations)
+        .set({
+          settings: settingsObj,
+          updatedAt: new Date(),
+        })
+        .where(eq(organizations.id, org.id))
+      return orderRequest
+    }),
+  createOnlinePackageUpgradeRequest: protectedProcedure
+    .input(
+      z.object({
+        packageCode: z.string().min(2).max(80),
+        creditsTotal: z.number().int().min(1).max(1000).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const orgId = ctx.session.organizationId
+      if (!orgId) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Necesitás una cuenta publicadora para compras online.',
+        })
+      }
+      const org = await ctx.db.query.organizations.findFirst({
+        where: eq(organizations.id, orgId),
+      })
+      if (!org || org.status !== 'active' || isPublisherOrganizationStatusBlocked(org.status)) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'La cuenta publicadora no está habilitada para compras online.',
+        })
+      }
+      const catalog = effectiveCommercialCatalog(org.settings)
+      const orgProfile = organizationCommercialProfileKey(org.type)
+      const selected = catalog.find(
+        (item) =>
+          item.id === input.packageCode &&
+          item.type === 'package' &&
+          item.isActive &&
+          item.enabledProfiles.includes(orgProfile) &&
+          item.enabledChannels.includes('online')
+      )
+      if (!selected) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Este paquete no está disponible online para tu perfil.',
+        })
+      }
+      const pricing = resolvePortalCommercialPricing(selected, {
+        profile: orgProfile,
+        channel: 'online',
+      })
+      const creditsTotal = input.creditsTotal ?? 5
+      const targetStatus: PortalUpgradeStatus = (pricing.finalAmount ?? 0) > 0 ? 'pending_payment' : 'pending_activation'
+      const nowIso = new Date().toISOString()
+      const purchase: PortalPackagePurchase = {
+        id: randomUUID(),
+        channel: 'online',
+        status: targetStatus,
+        packageCode: selected.id,
+        packageName: selected.commercialName,
+        creditsTotal,
+        creditsRemaining: creditsTotal,
+        startsAt: null,
+        endsAt: null,
+        notes:
+          pricing.finalAmount != null
+            ? `Solicitud online · ${pricing.currency} ${pricing.finalAmount}`
+            : 'Solicitud online',
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+      const currentPackages = parseOrganizationPackagePurchases(org.settings)
+      const existingOrders = parseOrganizationUpgradeOrderRequests(org.settings)
+      const orderRequest: PortalUpgradeOrderRequest = {
+        id: randomUUID(),
+        buyerUserId: ctx.session.userId,
+        organizationId: org.id,
+        purchaseType: 'package',
+        channel: 'online',
+        status: targetStatus,
+        productId: selected.id,
+        productName: selected.commercialName,
+        listingId: null,
+        durationDays: selected.suggestedDurationDays ?? null,
+        creditsTotal,
+        basePriceAmount: pricing.baseAmount,
+        finalPriceAmount: pricing.finalAmount,
+        discountAmount: pricing.discountAmount,
+        currency: pricing.currency,
+        promotionId: pricing.appliedPromotionId,
+        promotionName: pricing.appliedPromotionName,
+        notes: 'Solicitud online por paquete',
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+      const settingsObj =
+        org.settings && typeof org.settings === 'object' && !Array.isArray(org.settings)
+          ? { ...(org.settings as Record<string, unknown>) }
+          : {}
+      settingsObj.portalUpgradePackages = [...currentPackages, purchase]
+      settingsObj.portalUpgradeOrderRequests = [...existingOrders, orderRequest]
+      await ctx.db
+        .update(organizations)
+        .set({
+          settings: settingsObj,
+          updatedAt: new Date(),
+        })
+        .where(eq(organizations.id, org.id))
+      return orderRequest
     }),
   commercialPublishersOverview: protectedProcedure
     .input(

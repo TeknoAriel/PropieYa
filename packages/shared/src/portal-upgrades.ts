@@ -61,6 +61,30 @@ export const portalPackagePurchaseSchema = z.object({
 
 export type PortalPackagePurchase = z.infer<typeof portalPackagePurchaseSchema>
 
+export const portalUpgradeOrderRequestSchema = z.object({
+  id: z.string().uuid(),
+  buyerUserId: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  purchaseType: z.enum(PORTAL_UPGRADE_PURCHASE_TYPES),
+  channel: z.enum(PORTAL_UPGRADE_CHANNELS),
+  status: z.enum(PORTAL_UPGRADE_STATUSES),
+  productId: z.string().max(80),
+  productName: z.string().max(120),
+  listingId: z.string().uuid().nullable().optional(),
+  durationDays: z.number().int().min(1).max(365).nullable().optional(),
+  creditsTotal: z.number().int().min(1).max(1000).nullable().optional(),
+  basePriceAmount: z.number().min(0).max(100000000).nullable().optional(),
+  finalPriceAmount: z.number().min(0).max(100000000).nullable().optional(),
+  discountAmount: z.number().min(0).max(100000000).default(0),
+  currency: z.string().min(3).max(3).default('USD'),
+  promotionId: z.string().max(80).nullable().optional(),
+  promotionName: z.string().max(120).nullable().optional(),
+  notes: z.string().max(500).nullable().optional(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+})
+export type PortalUpgradeOrderRequest = z.infer<typeof portalUpgradeOrderRequestSchema>
+
 export const PORTAL_COMMERCIAL_PRODUCT_TYPES = ['listing', 'package'] as const
 export type PortalCommercialProductType = (typeof PORTAL_COMMERCIAL_PRODUCT_TYPES)[number]
 

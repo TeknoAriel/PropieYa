@@ -8,7 +8,9 @@ import {
   formatTrpcUserMessage,
   portalUpgradeStatusLabel,
   PORTAL_UPGRADE_STATUSES,
+  resolvePortalCommercialPricing,
   type PortalUpgradeChannel,
+  type PortalCommercialProfileKey,
   type PortalUpgradeStatus,
 } from '@propieya/shared'
 import { Badge, Button, Card, Input } from '@propieya/ui'
@@ -49,6 +51,11 @@ export default function UpgradesPage() {
   const [packageChannel, setPackageChannel] = useState<PortalUpgradeChannel>('on_demand')
   const [packageStatus, setPackageStatus] = useState<(typeof PORTAL_UPGRADE_STATUSES)[number]>('pending_activation')
   const [globalError, setGlobalError] = useState('')
+  const [onlineListingId, setOnlineListingId] = useState('')
+  const [onlineListingProductId, setOnlineListingProductId] = useState('')
+  const [onlineListingDuration, setOnlineListingDuration] = useState('15')
+  const [onlinePackageCode, setOnlinePackageCode] = useState('')
+  const [onlinePackageCredits, setOnlinePackageCredits] = useState('5')
   const [selectedCatalogId, setSelectedCatalogId] = useState('')
   const [catalogName, setCatalogName] = useState('')
   const [catalogType, setCatalogType] = useState<'listing' | 'package'>('listing')
@@ -101,6 +108,22 @@ export default function UpgradesPage() {
     },
     onError: (err) =>
       setGlobalError(formatTrpcUserMessage(err) || 'No se pudo guardar el producto comercial.'),
+  })
+  const onlineListingRequestMutation = trpc.listing.createOnlineListingUpgradeRequest.useMutation({
+    onSuccess: () => {
+      setGlobalError('')
+      void utils.listing.upgradesOverview.invalidate()
+    },
+    onError: (err) =>
+      setGlobalError(formatTrpcUserMessage(err) || 'No se pudo iniciar la solicitud online por aviso.'),
+  })
+  const onlinePackageRequestMutation = trpc.listing.createOnlinePackageUpgradeRequest.useMutation({
+    onSuccess: () => {
+      setGlobalError('')
+      void utils.listing.upgradesOverview.invalidate()
+    },
+    onError: (err) =>
+      setGlobalError(formatTrpcUserMessage(err) || 'No se pudo iniciar la solicitud online por paquete.'),
   })
 
   const listingsById = useMemo(
@@ -183,10 +206,18 @@ export default function UpgradesPage() {
       setPackageId(listingCatalog[0]!.id)
     }
   }, [listingCatalog, packageId])
+  useEffect(() => {
+    if (listingCatalog.length > 0 && !onlineListingProductId) {
+      setOnlineListingProductId(listingCatalog[0]!.id)
+    }
+  }, [listingCatalog, onlineListingProductId])
 
   useEffect(() => {
     if (!packageCode && packageCatalog.length > 0) setPackageCode(packageCatalog[0]!.id)
   }, [packageCode, packageCatalog])
+  useEffect(() => {
+    if (!onlinePackageCode && packageCatalog.length > 0) setOnlinePackageCode(packageCatalog[0]!.id)
+  }, [onlinePackageCode, packageCatalog])
 
   useEffect(() => {
     const selected = packageCatalog.find((item) => item.id === packageCode)
@@ -251,6 +282,35 @@ export default function UpgradesPage() {
   const productsForFilter = useMemo(
     () => Array.from(new Set(rows.map((r) => r.product))).sort(),
     [rows]
+  )
+  const currentProfile = (overview.data?.orgCommercialProfile ?? 'owner') as PortalCommercialProfileKey
+  const onlineListingProduct = useMemo(
+    () => listingCatalog.find((item) => item.id === onlineListingProductId) ?? null,
+    [listingCatalog, onlineListingProductId]
+  )
+  const onlinePackageProduct = useMemo(
+    () => packageCatalog.find((item) => item.id === onlinePackageCode) ?? null,
+    [packageCatalog, onlinePackageCode]
+  )
+  const onlineListingQuote = useMemo(
+    () =>
+      onlineListingProduct
+        ? resolvePortalCommercialPricing(onlineListingProduct, {
+            profile: currentProfile,
+            channel: 'online',
+          })
+        : null,
+    [onlineListingProduct, currentProfile]
+  )
+  const onlinePackageQuote = useMemo(
+    () =>
+      onlinePackageProduct
+        ? resolvePortalCommercialPricing(onlinePackageProduct, {
+            profile: currentProfile,
+            channel: 'online',
+          })
+        : null,
+    [onlinePackageProduct, currentProfile]
   )
 
   if (overview.isLoading) {
@@ -568,6 +628,124 @@ export default function UpgradesPage() {
           <div className="rounded-md border border-border p-3">
             <p className="text-xs uppercase tracking-wide text-text-tertiary">Vencidos</p>
             <p className="mt-1 text-xl font-semibold text-text-primary">{alerts.expired.length}</p>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="text-lg font-semibold text-text-primary">Compra / solicitud online</h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          Iniciá la solicitud desde el sistema. Si corresponde pago, queda en pendiente de pago; si no,
+          pasa a pendiente de activación.
+        </p>
+        <div className="mt-4 grid gap-6 xl:grid-cols-2">
+          <div className="space-y-3 rounded-md border border-border p-4">
+            <p className="text-sm font-medium text-text-primary">Solicitud por aviso</p>
+            <select
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              value={onlineListingId}
+              onChange={(e) => setOnlineListingId(e.target.value)}
+            >
+              <option value="">Elegí un aviso</option>
+              {(overview.data?.eligibleListings ?? []).map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.title} · {item.status}
+                </option>
+              ))}
+            </select>
+            <select
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              value={onlineListingProductId}
+              onChange={(e) => {
+                setOnlineListingProductId(e.target.value)
+                const item = listingCatalog.find((p) => p.id === e.target.value)
+                if (item?.suggestedDurationDays) {
+                  setOnlineListingDuration(String(item.suggestedDurationDays))
+                }
+              }}
+            >
+              {listingCatalog.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.commercialName}
+                </option>
+              ))}
+            </select>
+            <Input
+              type="number"
+              min={1}
+              max={365}
+              value={onlineListingDuration}
+              onChange={(e) => setOnlineListingDuration(e.target.value)}
+              placeholder="Duración (días)"
+            />
+            <p className="text-xs text-text-tertiary">
+              Precio final:{' '}
+              {onlineListingQuote?.finalAmount != null
+                ? `${onlineListingQuote.currency} ${onlineListingQuote.finalAmount}`
+                : 'a confirmar'}
+              {onlineListingQuote?.appliedPromotionName
+                ? ` · Promo: ${onlineListingQuote.appliedPromotionName}`
+                : ''}
+            </p>
+            <Button
+              disabled={onlineListingRequestMutation.isPending || !onlineListingId || !onlineListingProductId}
+              onClick={() =>
+                onlineListingRequestMutation.mutate({
+                  listingId: onlineListingId,
+                  productId: onlineListingProductId,
+                  durationDays: Number(onlineListingDuration || '0'),
+                })
+              }
+            >
+              {onlineListingRequestMutation.isPending
+                ? 'Enviando solicitud…'
+                : 'Iniciar compra/solicitud online por aviso'}
+            </Button>
+          </div>
+
+          <div className="space-y-3 rounded-md border border-border p-4">
+            <p className="text-sm font-medium text-text-primary">Solicitud por paquete</p>
+            <select
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              value={onlinePackageCode}
+              onChange={(e) => setOnlinePackageCode(e.target.value)}
+            >
+              {packageCatalog.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.commercialName}
+                </option>
+              ))}
+            </select>
+            <Input
+              type="number"
+              min={1}
+              max={1000}
+              value={onlinePackageCredits}
+              onChange={(e) => setOnlinePackageCredits(e.target.value)}
+              placeholder="Créditos"
+            />
+            <p className="text-xs text-text-tertiary">
+              Precio final:{' '}
+              {onlinePackageQuote?.finalAmount != null
+                ? `${onlinePackageQuote.currency} ${onlinePackageQuote.finalAmount}`
+                : 'a confirmar'}
+              {onlinePackageQuote?.appliedPromotionName
+                ? ` · Promo: ${onlinePackageQuote.appliedPromotionName}`
+                : ''}
+            </p>
+            <Button
+              disabled={onlinePackageRequestMutation.isPending || !onlinePackageCode}
+              onClick={() =>
+                onlinePackageRequestMutation.mutate({
+                  packageCode: onlinePackageCode,
+                  creditsTotal: Number(onlinePackageCredits || '0'),
+                })
+              }
+            >
+              {onlinePackageRequestMutation.isPending
+                ? 'Enviando solicitud…'
+                : 'Iniciar compra/solicitud online por paquete'}
+            </Button>
           </div>
         </div>
       </Card>
