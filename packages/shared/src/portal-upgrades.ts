@@ -61,6 +61,19 @@ export const portalPackagePurchaseSchema = z.object({
 
 export type PortalPackagePurchase = z.infer<typeof portalPackagePurchaseSchema>
 
+export const PORTAL_UPGRADE_PAYMENT_STATUSES = [
+  'pending_payment',
+  'payment_processing',
+  'paid',
+  'payment_failed',
+  'cancelled',
+  'refunded',
+] as const
+export type PortalUpgradePaymentStatus = (typeof PORTAL_UPGRADE_PAYMENT_STATUSES)[number]
+
+export const PORTAL_UPGRADE_PAYMENT_PROVIDERS = ['mercadopago'] as const
+export type PortalUpgradePaymentProvider = (typeof PORTAL_UPGRADE_PAYMENT_PROVIDERS)[number]
+
 export const portalUpgradeOrderRequestSchema = z.object({
   id: z.string().uuid(),
   buyerUserId: z.string().uuid(),
@@ -80,10 +93,43 @@ export const portalUpgradeOrderRequestSchema = z.object({
   promotionId: z.string().max(80).nullable().optional(),
   promotionName: z.string().max(120).nullable().optional(),
   notes: z.string().max(500).nullable().optional(),
+  relatedUpgradeId: z.string().uuid().nullable().optional(),
+  relatedPackagePurchaseId: z.string().uuid().nullable().optional(),
+  latestPaymentId: z.string().uuid().nullable().optional(),
+  checkoutUrl: z.string().url().nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 })
 export type PortalUpgradeOrderRequest = z.infer<typeof portalUpgradeOrderRequestSchema>
+
+export const portalUpgradePaymentRecordSchema = z.object({
+  id: z.string().uuid(),
+  orderRequestId: z.string().uuid(),
+  buyerUserId: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  purchaseType: z.enum(PORTAL_UPGRADE_PURCHASE_TYPES),
+  productId: z.string().max(80),
+  productName: z.string().max(120),
+  listingId: z.string().uuid().nullable().optional(),
+  provider: z.enum(PORTAL_UPGRADE_PAYMENT_PROVIDERS),
+  providerMethod: z.string().max(60).nullable().optional(),
+  providerPaymentId: z.string().max(120).nullable().optional(),
+  providerPreferenceId: z.string().max(120).nullable().optional(),
+  checkoutUrl: z.string().url().nullable().optional(),
+  externalReference: z.string().max(180).nullable().optional(),
+  amount: z.number().min(0).max(100000000),
+  currency: z.string().min(3).max(3),
+  status: z.enum(PORTAL_UPGRADE_PAYMENT_STATUSES),
+  statusDetail: z.string().max(160).nullable().optional(),
+  rawProviderPayload: z.unknown().optional(),
+  paidAt: z.string().datetime().nullable().optional(),
+  failedAt: z.string().datetime().nullable().optional(),
+  cancelledAt: z.string().datetime().nullable().optional(),
+  refundedAt: z.string().datetime().nullable().optional(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+})
+export type PortalUpgradePaymentRecord = z.infer<typeof portalUpgradePaymentRecordSchema>
 
 export const PORTAL_COMMERCIAL_PRODUCT_TYPES = ['listing', 'package'] as const
 export type PortalCommercialProductType = (typeof PORTAL_COMMERCIAL_PRODUCT_TYPES)[number]

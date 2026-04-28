@@ -59,6 +59,7 @@ import {
   PORTAL_UPGRADE_CHANNELS,
   PORTAL_UPGRADE_STATUSES,
   portalPackagePurchaseSchema,
+  portalUpgradePaymentRecordSchema,
   portalUpgradeOrderRequestSchema,
   portalUpgradeRecordSchema,
   resolveTemporalUpgradeStatus,
@@ -66,6 +67,7 @@ import {
   type PortalCommercialChannel,
   type PortalCommercialProfileKey,
   type PortalPackagePurchase,
+  type PortalUpgradePaymentRecord,
   type PortalUpgradeOrderRequest,
   type PortalUpgradeChannel,
   type PortalUpgradeStatus,
@@ -76,6 +78,9 @@ import {
   type LocalityCatalogEntry,
   type SearchSessionMVP,
 } from '@propieya/shared'
+import {
+  createMercadoPagoUpgradeCheckout,
+} from '../../lib/payments/mercadopago-upgrade-checkout'
 
 import {
   getPresignedPutUrl,
@@ -838,6 +843,16 @@ function parseOrganizationUpgradeOrderRequests(settings: unknown): PortalUpgrade
     }))
 }
 
+function parseOrganizationUpgradePayments(settings: unknown): PortalUpgradePaymentRecord[] {
+  const list = (settings as { portalUpgradePayments?: unknown } | null | undefined)
+    ?.portalUpgradePayments
+  if (!Array.isArray(list)) return []
+  return list
+    .map((item) => portalUpgradePaymentRecordSchema.safeParse(item))
+    .filter((r): r is { success: true; data: PortalUpgradePaymentRecord } => r.success)
+    .map((r) => r.data)
+}
+
 function parseOrganizationCommercialCatalog(settings: unknown): PortalCommercialCatalogItem[] {
   const raw = (settings as { portalCommercialCatalog?: unknown } | null | undefined)
     ?.portalCommercialCatalog
@@ -857,6 +872,18 @@ function organizationCommercialProfileKey(orgType: string | null | undefined): P
   if (orgType === 'real_estate_agency') return 'agency'
   if (orgType === 'agent') return 'agent'
   return 'owner'
+}
+
+function appendUpgradePaymentsToSettings(
+  settings: unknown,
+  payments: PortalUpgradePaymentRecord[]
+): Record<string, unknown> {
+  const base =
+    settings && typeof settings === 'object' && !Array.isArray(settings)
+      ? { ...(settings as Record<string, unknown>) }
+      : {}
+  base.portalUpgradePayments = payments
+  return base
 }
 
 function normalizePublisherType(input: {
@@ -997,6 +1024,7 @@ export const listingRouter = createTRPCRouter({
         listingUpgrades: [] as Array<z.infer<typeof portalUpgradeRecordSchema>>,
         packagePurchases: [] as PortalPackagePurchase[],
         upgradeOrderRequests: [] as PortalUpgradeOrderRequest[],
+        upgradePayments: [] as PortalUpgradePaymentRecord[],
         orgCommercialProfile: null as PortalCommercialProfileKey | null,
         availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
         commercialCatalog: defaultPortalCommercialCatalog(),
@@ -1014,6 +1042,7 @@ export const listingRouter = createTRPCRouter({
         listingUpgrades: [] as Array<z.infer<typeof portalUpgradeRecordSchema>>,
         packagePurchases: [] as PortalPackagePurchase[],
         upgradeOrderRequests: [] as PortalUpgradeOrderRequest[],
+        upgradePayments: [] as PortalUpgradePaymentRecord[],
         orgCommercialProfile: null as PortalCommercialProfileKey | null,
         availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
         commercialCatalog: defaultPortalCommercialCatalog(),
@@ -1031,6 +1060,7 @@ export const listingRouter = createTRPCRouter({
         listingUpgrades: [] as Array<z.infer<typeof portalUpgradeRecordSchema>>,
         packagePurchases: parseOrganizationPackagePurchases(org.settings),
         upgradeOrderRequests: parseOrganizationUpgradeOrderRequests(org.settings),
+        upgradePayments: parseOrganizationUpgradePayments(org.settings),
         orgCommercialProfile: orgProfile,
         availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
         commercialCatalog: catalog,
@@ -1044,6 +1074,7 @@ export const listingRouter = createTRPCRouter({
         listingUpgrades: [] as Array<z.infer<typeof portalUpgradeRecordSchema>>,
         packagePurchases: parseOrganizationPackagePurchases(org.settings),
         upgradeOrderRequests: parseOrganizationUpgradeOrderRequests(org.settings),
+        upgradePayments: parseOrganizationUpgradePayments(org.settings),
         orgCommercialProfile: orgProfile,
         availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
         commercialCatalog: catalog,
@@ -1140,6 +1171,7 @@ export const listingRouter = createTRPCRouter({
       listingUpgrades,
       packagePurchases: parseOrganizationPackagePurchases(org.settings),
       upgradeOrderRequests: parseOrganizationUpgradeOrderRequests(org.settings),
+      upgradePayments: parseOrganizationUpgradePayments(org.settings),
       orgCommercialProfile: orgProfile,
       availableCommercialPackages: PORTAL_COMMERCIAL_PACKAGES,
       commercialCatalog: catalog,
@@ -1534,6 +1566,10 @@ export const listingRouter = createTRPCRouter({
         promotionId: pricing.appliedPromotionId,
         promotionName: pricing.appliedPromotionName,
         notes: `Solicitud online desde aviso: ${row.title}`,
+        relatedUpgradeId: upgrade.id,
+        relatedPackagePurchaseId: null,
+        latestPaymentId: null,
+        checkoutUrl: null,
         createdAt: now.toISOString(),
         updatedAt: now.toISOString(),
       }
@@ -1637,6 +1673,10 @@ export const listingRouter = createTRPCRouter({
         promotionId: pricing.appliedPromotionId,
         promotionName: pricing.appliedPromotionName,
         notes: 'Solicitud online por paquete',
+        relatedUpgradeId: null,
+        relatedPackagePurchaseId: purchase.id,
+        latestPaymentId: null,
+        checkoutUrl: null,
         createdAt: nowIso,
         updatedAt: nowIso,
       }
@@ -1654,6 +1694,184 @@ export const listingRouter = createTRPCRouter({
         })
         .where(eq(organizations.id, org.id))
       return orderRequest
+    }),
+  startOnlineUpgradePaymentCheckout: protectedProcedure
+    .input(
+      z.object({
+        orderRequestId: z.string().uuid(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const orgId = ctx.session.organizationId
+      if (!orgId) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Necesitás una cuenta publicadora para iniciar el pago.',
+        })
+      }
+      const org = await ctx.db.query.organizations.findFirst({
+        where: eq(organizations.id, orgId),
+      })
+      if (!org) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'No encontramos la organización publicadora.',
+        })
+      }
+      const nowIso = new Date().toISOString()
+      const orders = parseOrganizationUpgradeOrderRequests(org.settings)
+      const orderIndex = orders.findIndex((order) => order.id === input.orderRequestId)
+      if (orderIndex < 0) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'No encontramos la solicitud comercial.',
+        })
+      }
+      const order = orders[orderIndex]!
+      if (order.status !== 'pending_payment') {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Esta solicitud no está pendiente de pago.',
+        })
+      }
+      const amount = order.finalPriceAmount ?? 0
+      if (amount <= 0) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Esta solicitud no requiere pago online.',
+        })
+      }
+      const existingPayments = parseOrganizationUpgradePayments(org.settings)
+      const reusable = existingPayments.find(
+        (payment) =>
+          payment.orderRequestId === order.id &&
+          (payment.status === 'pending_payment' || payment.status === 'payment_processing') &&
+          payment.checkoutUrl != null
+      )
+      if (reusable?.checkoutUrl) {
+        return {
+          ok: true as const,
+          paymentId: reusable.id,
+          checkoutUrl: reusable.checkoutUrl,
+          status: reusable.status,
+        }
+      }
+      const paymentId = randomUUID()
+      const externalReference = `upgrade-order:${order.id}:org:${org.id}:payment:${paymentId}`
+      const checkout = await createMercadoPagoUpgradeCheckout({
+        title: order.productName,
+        amount,
+        currency: order.currency,
+        externalReference,
+        payerEmail: ctx.session.email,
+        metadata: {
+          orderRequestId: order.id,
+          organizationId: org.id,
+          paymentRecordId: paymentId,
+          purchaseType: order.purchaseType,
+          listingId: order.listingId ?? null,
+        },
+      })
+      const paymentRecord: PortalUpgradePaymentRecord = {
+        id: paymentId,
+        orderRequestId: order.id,
+        buyerUserId: ctx.session.userId,
+        organizationId: org.id,
+        purchaseType: order.purchaseType,
+        productId: order.productId,
+        productName: order.productName,
+        listingId: order.listingId ?? null,
+        provider: 'mercadopago',
+        providerMethod: 'checkout_pro',
+        providerPaymentId: null,
+        providerPreferenceId: checkout.preferenceId,
+        checkoutUrl: checkout.checkoutUrl,
+        externalReference,
+        amount,
+        currency: order.currency,
+        status: 'payment_processing',
+        statusDetail: null,
+        rawProviderPayload: null,
+        paidAt: null,
+        failedAt: null,
+        cancelledAt: null,
+        refundedAt: null,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+      const nextPayments = [...existingPayments, paymentRecord]
+      const nextOrders = orders.map((current) =>
+        current.id === order.id
+          ? {
+              ...current,
+              latestPaymentId: paymentId,
+              checkoutUrl: checkout.checkoutUrl,
+              updatedAt: nowIso,
+            }
+          : current
+      )
+      const settingsObj = appendUpgradePaymentsToSettings(org.settings, nextPayments)
+      settingsObj.portalUpgradeOrderRequests = nextOrders
+      await ctx.db
+        .update(organizations)
+        .set({
+          settings: settingsObj,
+          updatedAt: new Date(),
+        })
+        .where(eq(organizations.id, org.id))
+
+      return {
+        ok: true as const,
+        paymentId,
+        checkoutUrl: checkout.checkoutUrl,
+        status: 'payment_processing' as const,
+      }
+    }),
+  cancelUpgradeOrderRequest: protectedProcedure
+    .input(
+      z.object({
+        orderRequestId: z.string().uuid(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const orgId = ctx.session.organizationId
+      if (!orgId) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Necesitás una cuenta publicadora.' })
+      }
+      const org = await ctx.db.query.organizations.findFirst({
+        where: eq(organizations.id, orgId),
+      })
+      if (!org) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'No encontramos la organización.' })
+      }
+      const nowIso = new Date().toISOString()
+      const orders = parseOrganizationUpgradeOrderRequests(org.settings)
+      const target = orders.find((order) => order.id === input.orderRequestId)
+      if (!target) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'No encontramos la solicitud.' })
+      }
+      if (target.status === 'active') {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'No podés cancelar una solicitud ya activada.',
+        })
+      }
+      const nextOrders = orders.map((order) =>
+        order.id === target.id ? { ...order, status: 'cancelled' as PortalUpgradeStatus, updatedAt: nowIso } : order
+      )
+      const settingsObj =
+        org.settings && typeof org.settings === 'object' && !Array.isArray(org.settings)
+          ? { ...(org.settings as Record<string, unknown>) }
+          : {}
+      settingsObj.portalUpgradeOrderRequests = nextOrders
+      await ctx.db
+        .update(organizations)
+        .set({
+          settings: settingsObj,
+          updatedAt: new Date(),
+        })
+        .where(eq(organizations.id, org.id))
+      return { ok: true as const }
     }),
   commercialPublishersOverview: protectedProcedure
     .input(

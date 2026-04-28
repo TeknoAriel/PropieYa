@@ -125,6 +125,25 @@ export default function UpgradesPage() {
     onError: (err) =>
       setGlobalError(formatTrpcUserMessage(err) || 'No se pudo iniciar la solicitud online por paquete.'),
   })
+  const startCheckoutMutation = trpc.listing.startOnlineUpgradePaymentCheckout.useMutation({
+    onSuccess: async (result) => {
+      setGlobalError('')
+      await utils.listing.upgradesOverview.invalidate()
+      if (result.checkoutUrl) {
+        window.open(result.checkoutUrl, '_blank', 'noopener,noreferrer')
+      }
+    },
+    onError: (err) =>
+      setGlobalError(formatTrpcUserMessage(err) || 'No se pudo iniciar el checkout online.'),
+  })
+  const cancelOrderMutation = trpc.listing.cancelUpgradeOrderRequest.useMutation({
+    onSuccess: () => {
+      setGlobalError('')
+      void utils.listing.upgradesOverview.invalidate()
+    },
+    onError: (err) =>
+      setGlobalError(formatTrpcUserMessage(err) || 'No se pudo cancelar la solicitud.'),
+  })
 
   const listingsById = useMemo(
     () => new Map((overview.data?.eligibleListings ?? []).map((l) => [l.id, l])),
@@ -284,6 +303,10 @@ export default function UpgradesPage() {
     [rows]
   )
   const currentProfile = (overview.data?.orgCommercialProfile ?? 'owner') as PortalCommercialProfileKey
+  const paymentById = useMemo(
+    () => new Map((overview.data?.upgradePayments ?? []).map((p) => [p.id, p])),
+    [overview.data?.upgradePayments]
+  )
   const onlineListingProduct = useMemo(
     () => listingCatalog.find((item) => item.id === onlineListingProductId) ?? null,
     [listingCatalog, onlineListingProductId]
@@ -327,8 +350,8 @@ export default function UpgradesPage() {
       <div>
         <h1 className="text-2xl font-bold text-text-primary">Backoffice comercial</h1>
         <p className="text-text-secondary">
-          Operá upgrades por aviso y por paquete, revisá qué requiere acción y seguí rendimiento
-          básico sin pasarela automática.
+          Operá upgrades por aviso y por paquete, incluyendo solicitud online, pago y activación
+          automática con trazabilidad operativa.
         </p>
       </div>
 
@@ -747,6 +770,87 @@ export default function UpgradesPage() {
                 : 'Iniciar compra/solicitud online por paquete'}
             </Button>
           </div>
+        </div>
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="text-lg font-semibold text-text-primary">Solicitudes y pagos online</h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          Seguimiento de solicitud iniciada, estado de pago y activación comercial final.
+        </p>
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="text-left text-xs uppercase tracking-wide text-text-tertiary">
+              <tr>
+                <th className="px-2 py-2">Producto</th>
+                <th className="px-2 py-2">Tipo</th>
+                <th className="px-2 py-2">Solicitud</th>
+                <th className="px-2 py-2">Pago</th>
+                <th className="px-2 py-2">Importe</th>
+                <th className="px-2 py-2 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(overview.data?.upgradeOrderRequests ?? []).length === 0 ? (
+                <tr>
+                  <td className="px-2 py-4 text-text-secondary" colSpan={6}>
+                    Todavía no hay solicitudes online.
+                  </td>
+                </tr>
+              ) : (
+                (overview.data?.upgradeOrderRequests ?? []).map((order) => {
+                  const payment = order.latestPaymentId ? paymentById.get(order.latestPaymentId) : undefined
+                  return (
+                    <tr key={order.id} className="border-t border-border/70">
+                      <td className="px-2 py-3">
+                        <p className="font-medium text-text-primary">{order.productName}</p>
+                        <p className="text-xs text-text-tertiary">{order.id.slice(0, 8)}</p>
+                      </td>
+                      <td className="px-2 py-3">{order.purchaseType === 'listing' ? 'Por aviso' : 'Paquete'}</td>
+                      <td className="px-2 py-3">
+                        <Badge variant={statusBadgeVariant(order.status)}>{portalUpgradeStatusLabel(order.status)}</Badge>
+                      </td>
+                      <td className="px-2 py-3">
+                        {payment ? (
+                          <span className="text-xs text-text-secondary">{payment.status.replaceAll('_', ' ')}</span>
+                        ) : (
+                          <span className="text-xs text-text-tertiary">Sin intento de pago</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-3">
+                        {order.finalPriceAmount != null
+                          ? `${order.currency} ${order.finalPriceAmount}`
+                          : 'A confirmar'}
+                      </td>
+                      <td className="px-2 py-3">
+                        <div className="flex justify-end gap-2">
+                          {order.status === 'pending_payment' ? (
+                            <Button
+                              size="sm"
+                              onClick={() => startCheckoutMutation.mutate({ orderRequestId: order.id })}
+                              disabled={startCheckoutMutation.isPending}
+                            >
+                              Pagar online
+                            </Button>
+                          ) : null}
+                          {order.status !== 'active' && order.status !== 'cancelled' ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => cancelOrderMutation.mutate({ orderRequestId: order.id })}
+                              disabled={cancelOrderMutation.isPending}
+                            >
+                              Cancelar
+                            </Button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </Card>
 
