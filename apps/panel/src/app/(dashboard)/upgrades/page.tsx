@@ -11,6 +11,7 @@ import {
   resolvePortalCommercialPricing,
   type PortalUpgradeChannel,
   type PortalCommercialProfileKey,
+  type PortalUpgradePaymentStatus,
   type PortalUpgradeStatus,
 } from '@propieya/shared'
 import { Badge, Button, Card, Input } from '@propieya/ui'
@@ -35,6 +36,12 @@ function formatDateTime(value?: string | null): string {
 
 function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`
+}
+
+function paymentBadgeVariant(status: PortalUpgradePaymentStatus): 'default' | 'secondary' | 'error' {
+  if (status === 'paid') return 'default'
+  if (status === 'payment_failed' || status === 'cancelled' || status === 'refunded') return 'error'
+  return 'secondary'
 }
 
 export default function UpgradesPage() {
@@ -83,6 +90,7 @@ export default function UpgradesPage() {
 
   const utils = trpc.useUtils()
   const overview = trpc.listing.upgradesOverview.useQuery()
+  const reconciliation = trpc.listing.upgradesReconciliationOverview.useQuery()
 
   const listingUpgradeMutation = trpc.listing.createListingUpgrade.useMutation({
     onSuccess: () => {
@@ -143,6 +151,15 @@ export default function UpgradesPage() {
     },
     onError: (err) =>
       setGlobalError(formatTrpcUserMessage(err) || 'No se pudo cancelar la solicitud.'),
+  })
+  const renewOrderMutation = trpc.listing.renewUpgradeOrderRequest.useMutation({
+    onSuccess: () => {
+      setGlobalError('')
+      void utils.listing.upgradesOverview.invalidate()
+      void reconciliation.refetch()
+    },
+    onError: (err) =>
+      setGlobalError(formatTrpcUserMessage(err) || 'No se pudo generar la renovación.'),
   })
 
   const listingsById = useMemo(
@@ -307,6 +324,56 @@ export default function UpgradesPage() {
     () => new Map((overview.data?.upgradePayments ?? []).map((p) => [p.id, p])),
     [overview.data?.upgradePayments]
   )
+  const listingUpgradeById = useMemo(
+    () => new Map((overview.data?.listingUpgrades ?? []).map((u) => [u.id, u])),
+    [overview.data?.listingUpgrades]
+  )
+  const packagePurchaseById = useMemo(
+    () => new Map((overview.data?.packagePurchases ?? []).map((p) => [p.id, p])),
+    [overview.data?.packagePurchases]
+  )
+  const myPurchasesRows = useMemo(() => {
+    const orders = overview.data?.upgradeOrderRequests ?? []
+    return orders
+      .map((order) => {
+        const payment = order.latestPaymentId ? paymentById.get(order.latestPaymentId) : null
+        const listingUpgrade = order.relatedUpgradeId ? listingUpgradeById.get(order.relatedUpgradeId) : null
+        const packagePurchase = order.relatedPackagePurchaseId
+          ? packagePurchaseById.get(order.relatedPackagePurchaseId)
+          : null
+        const commercialStatus = listingUpgrade?.status ?? packagePurchase?.status ?? order.status
+        const startsAt = listingUpgrade?.startsAt ?? packagePurchase?.startsAt ?? null
+        const endsAt = listingUpgrade?.endsAt ?? packagePurchase?.endsAt ?? null
+        const daysToEnd =
+          endsAt && Number.isFinite(new Date(endsAt).getTime())
+            ? Math.round((new Date(endsAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+            : null
+        const canRenew =
+          commercialStatus === 'expired' ||
+          (commercialStatus === 'active' && daysToEnd != null && daysToEnd <= 7)
+        const canRetryPayment =
+          order.status === 'pending_payment' &&
+          (payment == null ||
+            payment.status === 'payment_failed' ||
+            payment.status === 'cancelled' ||
+            payment.status === 'pending_payment' ||
+            payment.status === 'payment_processing')
+        return {
+          ...order,
+          payment,
+          commercialStatus,
+          startsAt,
+          endsAt,
+          canRenew,
+          canRetryPayment,
+          reference:
+            order.purchaseType === 'listing'
+              ? listingsById.get(order.listingId ?? '')?.title ?? 'Aviso'
+              : `${order.creditsTotal ?? 0} créditos`,
+        }
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }, [overview.data, paymentById, listingUpgradeById, packagePurchaseById, listingsById])
   const onlineListingProduct = useMemo(
     () => listingCatalog.find((item) => item.id === onlineListingProductId) ?? null,
     [listingCatalog, onlineListingProductId]
@@ -652,6 +719,129 @@ export default function UpgradesPage() {
             <p className="text-xs uppercase tracking-wide text-text-tertiary">Vencidos</p>
             <p className="mt-1 text-xl font-semibold text-text-primary">{alerts.expired.length}</p>
           </div>
+        </div>
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="text-lg font-semibold text-text-primary">Mis compras / Mis upgrades</h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          Consultá qué compraste, qué está activo o pendiente y qué acción te conviene ahora.
+        </p>
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="text-left text-xs uppercase tracking-wide text-text-tertiary">
+              <tr>
+                <th className="px-2 py-2">Producto</th>
+                <th className="px-2 py-2">Referencia</th>
+                <th className="px-2 py-2">Importe</th>
+                <th className="px-2 py-2">Pago</th>
+                <th className="px-2 py-2">Estado comercial</th>
+                <th className="px-2 py-2">Inicio / fin</th>
+                <th className="px-2 py-2">Canal</th>
+                <th className="px-2 py-2 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {myPurchasesRows.length === 0 ? (
+                <tr>
+                  <td className="px-2 py-4 text-text-secondary" colSpan={8}>
+                    Aún no tenés compras online registradas.
+                  </td>
+                </tr>
+              ) : (
+                myPurchasesRows.map((row) => (
+                  <tr key={row.id} className="border-t border-border/70">
+                    <td className="px-2 py-3">
+                      <p className="font-medium text-text-primary">{row.productName}</p>
+                      <p className="text-xs text-text-tertiary">{row.purchaseType === 'listing' ? 'Por aviso' : 'Paquete'}</p>
+                    </td>
+                    <td className="px-2 py-3 text-text-secondary">{row.reference}</td>
+                    <td className="px-2 py-3 text-text-secondary">
+                      {row.finalPriceAmount != null ? `${row.currency} ${row.finalPriceAmount}` : 'A confirmar'}
+                    </td>
+                    <td className="px-2 py-3">
+                      {row.payment ? (
+                        <Badge variant={paymentBadgeVariant(row.payment.status)}>
+                          {row.payment.status.replaceAll('_', ' ')}
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">sin pago</Badge>
+                      )}
+                    </td>
+                    <td className="px-2 py-3">
+                      <Badge variant={statusBadgeVariant(row.commercialStatus)}>
+                        {portalUpgradeStatusLabel(row.commercialStatus)}
+                      </Badge>
+                    </td>
+                    <td className="px-2 py-3 text-text-secondary">
+                      {formatDateTime(row.startsAt)} / {formatDateTime(row.endsAt)}
+                    </td>
+                    <td className="px-2 py-3 text-text-secondary">
+                      {row.channel === 'online' ? 'Online' : 'On demand'}
+                    </td>
+                    <td className="px-2 py-3">
+                      <div className="flex justify-end gap-2">
+                        {row.canRetryPayment ? (
+                          <Button
+                            size="sm"
+                            onClick={() => startCheckoutMutation.mutate({ orderRequestId: row.id })}
+                            disabled={startCheckoutMutation.isPending}
+                          >
+                            Reintentar pago
+                          </Button>
+                        ) : null}
+                        {row.status !== 'active' && row.status !== 'cancelled' ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => cancelOrderMutation.mutate({ orderRequestId: row.id })}
+                            disabled={cancelOrderMutation.isPending}
+                          >
+                            Cancelar
+                          </Button>
+                        ) : null}
+                        {row.canRenew ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => renewOrderMutation.mutate({ sourceOrderRequestId: row.id })}
+                            disabled={renewOrderMutation.isPending}
+                          >
+                            Renovar
+                          </Button>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="text-lg font-semibold text-text-primary">Reconciliación operativa</h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          Detecta diferencias entre solicitud, pago y activación para revisión rápida.
+        </p>
+        <div className="mt-4 space-y-2">
+          {(reconciliation.data?.alerts ?? []).length === 0 ? (
+            <p className="text-sm text-text-secondary">Sin discrepancias detectadas en este momento.</p>
+          ) : (
+            (reconciliation.data?.alerts ?? []).map((alert, index) => (
+              <div
+                key={`${alert.type}-${alert.orderId ?? index}`}
+                className={`rounded-md border px-3 py-2 text-sm ${
+                  alert.severity === 'high'
+                    ? 'border-semantic-error/30 bg-semantic-error/10 text-semantic-error'
+                    : 'border-amber-300/40 bg-amber-50 text-amber-900'
+                }`}
+              >
+                {alert.message}
+              </div>
+            ))
+          )}
         </div>
       </Card>
 

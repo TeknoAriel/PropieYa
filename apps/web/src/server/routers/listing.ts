@@ -886,6 +886,13 @@ function appendUpgradePaymentsToSettings(
   return base
 }
 
+function hasPaidPaymentForOrder(
+  orderId: string,
+  payments: PortalUpgradePaymentRecord[]
+): boolean {
+  return payments.some((p) => p.orderRequestId === orderId && p.status === 'paid')
+}
+
 function normalizePublisherType(input: {
   organizationType: string | null | undefined
   accountIntent: string | null | undefined
@@ -1873,6 +1880,310 @@ export const listingRouter = createTRPCRouter({
         .where(eq(organizations.id, org.id))
       return { ok: true as const }
     }),
+  renewUpgradeOrderRequest: protectedProcedure
+    .input(
+      z.object({
+        sourceOrderRequestId: z.string().uuid(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const orgId = ctx.session.organizationId
+      if (!orgId) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Necesitás una cuenta publicadora para renovar upgrades.',
+        })
+      }
+      const org = await ctx.db.query.organizations.findFirst({
+        where: eq(organizations.id, orgId),
+      })
+      if (!org || org.status !== 'active' || isPublisherOrganizationStatusBlocked(org.status)) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'La cuenta publicadora no está habilitada para renovar upgrades.',
+        })
+      }
+      const catalog = effectiveCommercialCatalog(org.settings)
+      const orgProfile = organizationCommercialProfileKey(org.type)
+      const orders = parseOrganizationUpgradeOrderRequests(org.settings)
+      const source = orders.find((item) => item.id === input.sourceOrderRequestId)
+      if (!source) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'No encontramos la compra a renovar.',
+        })
+      }
+      const selected = catalog.find(
+        (item) =>
+          item.id === source.productId &&
+          item.isActive &&
+          item.enabledProfiles.includes(orgProfile) &&
+          item.enabledChannels.includes('online')
+      )
+      if (!selected) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Este producto no está disponible para renovación online.',
+        })
+      }
+      const pricing = resolvePortalCommercialPricing(selected, {
+        profile: orgProfile,
+        channel: 'online',
+      })
+      const now = new Date()
+      const nowIso = now.toISOString()
+      const targetStatus: PortalUpgradeStatus =
+        (pricing.finalAmount ?? 0) > 0 ? 'pending_payment' : 'pending_activation'
+
+      if (source.purchaseType === 'listing') {
+        if (!source.listingId) {
+          throw new TRPCError({
+            code: 'PRECONDITION_FAILED',
+            message: 'Esta compra no tiene un aviso asociado para renovar.',
+          })
+        }
+        const [row] = await ctx.db
+          .select({
+            id: listings.id,
+            features: listings.features,
+            title: listings.title,
+          })
+          .from(listings)
+          .where(
+            and(
+              eq(listings.id, source.listingId),
+              eq(listings.organizationId, org.id),
+              notInArray(listings.status, ['archived', 'withdrawn'])
+            )
+          )
+          .limit(1)
+        if (!row) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'No encontramos el aviso para renovar el upgrade.',
+          })
+        }
+        const durationDays = source.durationDays ?? selected.suggestedDurationDays ?? 15
+        const startsAt = nowIso
+        const endsAtDate = new Date(now.getTime())
+        endsAtDate.setDate(endsAtDate.getDate() + durationDays)
+        const endsAt = endsAtDate.toISOString()
+        const upgrade = {
+          id: randomUUID(),
+          purchaseType: 'listing' as const,
+          channel: 'online' as PortalUpgradeChannel,
+          status: targetStatus,
+          packageId: selected.id,
+          listingId: row.id,
+          durationDays,
+          startsAt,
+          endsAt,
+          notes: 'Renovación online',
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        }
+        const previousUpgrades = parseListingUpgradesFromFeatures(row.features)
+        const nextUpgrades = [...previousUpgrades, upgrade]
+        const featuresObj =
+          row.features && typeof row.features === 'object' && !Array.isArray(row.features)
+            ? { ...(row.features as Record<string, unknown>) }
+            : {}
+        featuresObj.visibilityUpgrades = nextUpgrades
+        await ctx.db
+          .update(listings)
+          .set({
+            features: featuresObj,
+            updatedAt: new Date(),
+          })
+          .where(eq(listings.id, row.id))
+        const order: PortalUpgradeOrderRequest = {
+          id: randomUUID(),
+          buyerUserId: ctx.session.userId,
+          organizationId: org.id,
+          purchaseType: 'listing',
+          channel: 'online',
+          status: targetStatus,
+          productId: selected.id,
+          productName: selected.commercialName,
+          listingId: row.id,
+          durationDays,
+          creditsTotal: null,
+          basePriceAmount: pricing.baseAmount,
+          finalPriceAmount: pricing.finalAmount,
+          discountAmount: pricing.discountAmount,
+          currency: pricing.currency,
+          promotionId: pricing.appliedPromotionId,
+          promotionName: pricing.appliedPromotionName,
+          notes: `Renovación de compra ${source.id}`,
+          relatedUpgradeId: upgrade.id,
+          relatedPackagePurchaseId: null,
+          latestPaymentId: null,
+          checkoutUrl: null,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        }
+        const settingsObj =
+          org.settings && typeof org.settings === 'object' && !Array.isArray(org.settings)
+            ? { ...(org.settings as Record<string, unknown>) }
+            : {}
+        settingsObj.portalUpgradeOrderRequests = [...orders, order]
+        await ctx.db
+          .update(organizations)
+          .set({
+            settings: settingsObj,
+            updatedAt: new Date(),
+          })
+          .where(eq(organizations.id, org.id))
+        return order
+      }
+
+      const creditsTotal = source.creditsTotal ?? 5
+      const purchase: PortalPackagePurchase = {
+        id: randomUUID(),
+        channel: 'online',
+        status: targetStatus,
+        packageCode: selected.id,
+        packageName: selected.commercialName,
+        creditsTotal,
+        creditsRemaining: creditsTotal,
+        startsAt: null,
+        endsAt: null,
+        notes: 'Renovación online',
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+      const order: PortalUpgradeOrderRequest = {
+        id: randomUUID(),
+        buyerUserId: ctx.session.userId,
+        organizationId: org.id,
+        purchaseType: 'package',
+        channel: 'online',
+        status: targetStatus,
+        productId: selected.id,
+        productName: selected.commercialName,
+        listingId: null,
+        durationDays: selected.suggestedDurationDays ?? null,
+        creditsTotal,
+        basePriceAmount: pricing.baseAmount,
+        finalPriceAmount: pricing.finalAmount,
+        discountAmount: pricing.discountAmount,
+        currency: pricing.currency,
+        promotionId: pricing.appliedPromotionId,
+        promotionName: pricing.appliedPromotionName,
+        notes: `Renovación de compra ${source.id}`,
+        relatedUpgradeId: null,
+        relatedPackagePurchaseId: purchase.id,
+        latestPaymentId: null,
+        checkoutUrl: null,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+      const currentPackages = parseOrganizationPackagePurchases(org.settings)
+      const settingsObj =
+        org.settings && typeof org.settings === 'object' && !Array.isArray(org.settings)
+          ? { ...(org.settings as Record<string, unknown>) }
+          : {}
+      settingsObj.portalUpgradePackages = [...currentPackages, purchase]
+      settingsObj.portalUpgradeOrderRequests = [...orders, order]
+      await ctx.db
+        .update(organizations)
+        .set({
+          settings: settingsObj,
+          updatedAt: new Date(),
+        })
+        .where(eq(organizations.id, org.id))
+      return order
+    }),
+  upgradesReconciliationOverview: protectedProcedure.query(async ({ ctx }) => {
+    const orgId = ctx.session.organizationId
+    if (!orgId) {
+      return { alerts: [] as Array<{ type: string; severity: 'high' | 'medium'; message: string; orderId?: string }> }
+    }
+    const org = await ctx.db.query.organizations.findFirst({
+      where: eq(organizations.id, orgId),
+    })
+    if (!org) {
+      return { alerts: [] as Array<{ type: string; severity: 'high' | 'medium'; message: string; orderId?: string }> }
+    }
+    const orders = parseOrganizationUpgradeOrderRequests(org.settings)
+    const payments = parseOrganizationUpgradePayments(org.settings)
+    const packages = parseOrganizationPackagePurchases(org.settings)
+    const listingRows = await ctx.db
+      .select({
+        id: listings.id,
+        features: listings.features,
+      })
+      .from(listings)
+      .where(eq(listings.organizationId, org.id))
+      .limit(400)
+    const upgradesById = new Map<string, PortalUpgradeStatus>()
+    for (const row of listingRows) {
+      for (const up of parseListingUpgradesFromFeatures(row.features)) {
+        upgradesById.set(up.id, up.status)
+      }
+    }
+    const packageById = new Map(packages.map((p) => [p.id, p.status]))
+    const alerts: Array<{ type: string; severity: 'high' | 'medium'; message: string; orderId?: string }> = []
+
+    for (const order of orders) {
+      const orderPayments = payments.filter((p) => p.orderRequestId === order.id)
+      const latest = order.latestPaymentId
+        ? orderPayments.find((p) => p.id === order.latestPaymentId) ?? null
+        : null
+      const hasPaid = hasPaidPaymentForOrder(order.id, orderPayments)
+      if (hasPaid && order.purchaseType === 'listing') {
+        const upStatus = order.relatedUpgradeId ? upgradesById.get(order.relatedUpgradeId) : null
+        if (!upStatus || (upStatus !== 'active' && upStatus !== 'scheduled')) {
+          alerts.push({
+            type: 'paid_not_activated',
+            severity: 'high',
+            message: `Pago confirmado sin activación para ${order.productName}.`,
+            orderId: order.id,
+          })
+        }
+      }
+      if (hasPaid && order.purchaseType === 'package') {
+        const pkgStatus = order.relatedPackagePurchaseId ? packageById.get(order.relatedPackagePurchaseId) : null
+        if (!pkgStatus || (pkgStatus !== 'active' && pkgStatus !== 'scheduled')) {
+          alerts.push({
+            type: 'paid_package_not_active',
+            severity: 'high',
+            message: `Pago confirmado sin paquete activo para ${order.productName}.`,
+            orderId: order.id,
+          })
+        }
+      }
+      if (order.status === 'active' && (order.finalPriceAmount ?? 0) > 0 && !hasPaid) {
+        alerts.push({
+          type: 'active_without_paid',
+          severity: 'high',
+          message: `Orden activa sin pago validado para ${order.productName}.`,
+          orderId: order.id,
+        })
+      }
+      if (latest && latest.status === 'payment_processing') {
+        const ageMs = Date.now() - new Date(latest.createdAt).getTime()
+        if (Number.isFinite(ageMs) && ageMs > 60 * 60 * 1000) {
+          alerts.push({
+            type: 'stale_processing',
+            severity: 'medium',
+            message: `Pago en procesamiento por más de 1h para ${order.productName}.`,
+            orderId: order.id,
+          })
+        }
+      }
+      const paidCount = orderPayments.filter((p) => p.status === 'paid').length
+      if (paidCount > 1) {
+        alerts.push({
+          type: 'duplicate_paid',
+          severity: 'high',
+          message: `Se detectaron pagos aprobados duplicados para ${order.productName}.`,
+          orderId: order.id,
+        })
+      }
+    }
+    return { alerts }
+  }),
   commercialPublishersOverview: protectedProcedure
     .input(
       z.object({
