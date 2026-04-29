@@ -11,6 +11,7 @@ import { AddToCompareButton } from '@/components/compare/add-to-compare-button'
 import { ContactModal } from '@/components/contact-modal'
 import { Footer } from '@/components/layout/footer'
 import { Header } from '@/components/layout/header'
+import { ListingImageGallery } from '@/components/property/listing-image-gallery'
 import { ListingAmenitiesGrid } from '@/components/property/listing-amenities-grid'
 import { ListingTrustPanel } from '@/components/property/listing-trust-panel'
 import { ListingRelatedSearches } from '@/components/property/listing-related-searches'
@@ -560,7 +561,6 @@ export default function PropiedadPage() {
         })
     : []
 
-  const mainImage = images[0]
   const assignedContact = listing.assignedContact ?? null
   const assignedWhatsappOrPhone = preferredWhatsappPhone(assignedContact)
   const canShowWhatsappCta =
@@ -593,40 +593,9 @@ export default function PropiedadPage() {
           <div className="container mx-auto px-4 py-3 lg:py-4">
             <div className="overflow-hidden rounded-xl border border-border/60 bg-surface-primary shadow-sm">
               {images.length ? (
-                <div className="space-y-0">
-                  <div className="relative aspect-[16/10] w-full max-h-[min(56vh,440px)] min-h-[180px] bg-surface-secondary sm:aspect-[21/9] sm:max-h-[min(52vh,400px)]">
-                    <Image
-                      src={mainImage?.url ?? ''}
-                      alt={mainImage?.alt ?? listing.title}
-                      fill
-                      priority
-                      sizes="100vw"
-                      className="object-cover"
-                      unoptimized
-                    />
-                  </div>
-                  {images.length > 1 ? (
-                    <div className="flex gap-1.5 overflow-x-auto border-t border-border/40 bg-surface-primary px-2.5 py-2">
-                      {images.slice(1, 8).map((img, idx) => (
-                        <div
-                          key={img.id ?? idx}
-                          className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md border border-border/50 bg-surface-secondary sm:h-[4.25rem] sm:w-[4.25rem]"
-                        >
-                          <Image
-                            src={img.url}
-                            alt={img.alt ?? listing.title}
-                            fill
-                            sizes="80px"
-                            className="object-cover"
-                            unoptimized
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
+                <ListingImageGallery images={images} listingTitle={listing.title} />
               ) : (
-                <div className="aspect-[16/10] min-h-[200px] bg-surface-secondary" />
+                <div className="aspect-[4/3] min-h-[200px] bg-surface-secondary sm:aspect-[16/9]" />
               )}
             </div>
           </div>
