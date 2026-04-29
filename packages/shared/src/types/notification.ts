@@ -15,6 +15,13 @@ export type NotificationType =
   | 'listing_suspended' // Aviso suspendido
   | 'listing_approved' // Aviso aprobado por moderación
   | 'listing_rejected' // Aviso rechazado por moderación
+  | 'upgrade_order_created' // Orden de upgrade iniciada
+  | 'upgrade_payment_approved' // Pago de upgrade aprobado
+  | 'upgrade_payment_failed' // Pago de upgrade fallido
+  | 'upgrade_activated' // Upgrade activado
+  | 'upgrade_expiring_soon' // Upgrade por vencer
+  | 'upgrade_expired' // Upgrade vencido
+  | 'upgrade_renewal_available' // Renovación disponible
 
   // Para admins
   | 'new_organization' // Nueva organización registrada

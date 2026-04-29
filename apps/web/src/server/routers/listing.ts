@@ -25,6 +25,7 @@ import {
   listingMedia,
   listingsSelectPublic,
   listingLifecycleEvents,
+  notifications,
   organizations,
   organizationMemberships,
   recordListingTransitionForKiteprop,
@@ -81,6 +82,7 @@ import {
 import {
   createMercadoPagoUpgradeCheckout,
 } from '../../lib/payments/mercadopago-upgrade-checkout'
+import { emitUpgradeLifecycleNotification } from '../../lib/notifications/upgrade-lifecycle'
 
 import {
   getPresignedPutUrl,
@@ -893,6 +895,11 @@ function hasPaidPaymentForOrder(
   return payments.some((p) => p.orderRequestId === orderId && p.status === 'paid')
 }
 
+function panelUpgradesUrl(): string {
+  const base = (process.env.NEXT_PUBLIC_PANEL_URL ?? 'http://localhost:3011').replace(/\/$/, '')
+  return `${base}/upgrades`
+}
+
 function normalizePublisherType(input: {
   organizationType: string | null | undefined
   accountIntent: string | null | undefined
@@ -1189,6 +1196,36 @@ export const listingRouter = createTRPCRouter({
       },
       metricsByListing,
     }
+  }),
+  myUpgradeNotifications: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db.query.notifications.findMany({
+      where: and(
+        eq(notifications.userId, ctx.session.userId),
+        inArray(notifications.type, [
+          'upgrade_order_created',
+          'upgrade_payment_approved',
+          'upgrade_payment_failed',
+          'upgrade_activated',
+          'upgrade_expiring_soon',
+          'upgrade_expired',
+          'upgrade_renewal_available',
+        ])
+      ),
+      orderBy: [desc(notifications.createdAt)],
+      limit: 80,
+    })
+    return rows.map((row) => ({
+      id: row.id,
+      type: row.type,
+      channel: row.channel,
+      status: row.status,
+      title: row.title,
+      body: row.body,
+      actionUrl: row.actionUrl,
+      actionLabel: row.actionLabel,
+      sentAt: row.sentAt,
+      createdAt: row.createdAt,
+    }))
   }),
 
   createListingUpgrade: protectedProcedure
@@ -1593,6 +1630,22 @@ export const listingRouter = createTRPCRouter({
           updatedAt: new Date(),
         })
         .where(eq(organizations.id, org.id))
+      await emitUpgradeLifecycleNotification({
+        db: ctx.db,
+        eventType: 'upgrade_order_created',
+        userId: ctx.session.userId,
+        userEmail: ctx.session.email,
+        organizationId: org.id,
+        listingId: row.id,
+        orderRequestId: orderRequest.id,
+        productName: orderRequest.productName,
+        amountLabel:
+          orderRequest.finalPriceAmount != null
+            ? `${orderRequest.currency} ${orderRequest.finalPriceAmount}`
+            : 'Precio a confirmar',
+        actionUrl: panelUpgradesUrl(),
+        actionLabel: 'Ver mis upgrades',
+      })
       return orderRequest
     }),
   createOnlinePackageUpgradeRequest: protectedProcedure
@@ -1700,6 +1753,21 @@ export const listingRouter = createTRPCRouter({
           updatedAt: new Date(),
         })
         .where(eq(organizations.id, org.id))
+      await emitUpgradeLifecycleNotification({
+        db: ctx.db,
+        eventType: 'upgrade_order_created',
+        userId: ctx.session.userId,
+        userEmail: ctx.session.email,
+        organizationId: org.id,
+        orderRequestId: orderRequest.id,
+        productName: orderRequest.productName,
+        amountLabel:
+          orderRequest.finalPriceAmount != null
+            ? `${orderRequest.currency} ${orderRequest.finalPriceAmount}`
+            : 'Precio a confirmar',
+        actionUrl: panelUpgradesUrl(),
+        actionLabel: 'Ver mis upgrades',
+      })
       return orderRequest
     }),
   startOnlineUpgradePaymentCheckout: protectedProcedure
@@ -2034,6 +2102,20 @@ export const listingRouter = createTRPCRouter({
             updatedAt: new Date(),
           })
           .where(eq(organizations.id, org.id))
+        await emitUpgradeLifecycleNotification({
+          db: ctx.db,
+          eventType: 'upgrade_order_created',
+          userId: ctx.session.userId,
+          userEmail: ctx.session.email,
+          organizationId: org.id,
+          listingId: row.id,
+          orderRequestId: order.id,
+          productName: order.productName,
+          amountLabel:
+            order.finalPriceAmount != null ? `${order.currency} ${order.finalPriceAmount}` : 'Precio a confirmar',
+          actionUrl: panelUpgradesUrl(),
+          actionLabel: 'Ver mis upgrades',
+        })
         return order
       }
 
@@ -2092,6 +2174,19 @@ export const listingRouter = createTRPCRouter({
           updatedAt: new Date(),
         })
         .where(eq(organizations.id, org.id))
+      await emitUpgradeLifecycleNotification({
+        db: ctx.db,
+        eventType: 'upgrade_order_created',
+        userId: ctx.session.userId,
+        userEmail: ctx.session.email,
+        organizationId: org.id,
+        orderRequestId: order.id,
+        productName: order.productName,
+        amountLabel:
+          order.finalPriceAmount != null ? `${order.currency} ${order.finalPriceAmount}` : 'Precio a confirmar',
+        actionUrl: panelUpgradesUrl(),
+        actionLabel: 'Ver mis upgrades',
+      })
       return order
     }),
   upgradesReconciliationOverview: protectedProcedure.query(async ({ ctx }) => {

@@ -122,6 +122,55 @@ export async function sendNewLeadEmail(params: {
   }
 }
 
+export async function sendUpgradeLifecycleEmail(params: {
+  to: string
+  subject: string
+  title: string
+  body: string
+  actionUrl?: string | null
+  actionLabel?: string | null
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!resend) {
+    return { ok: false, error: 'Resend no configurado' }
+  }
+  const actionBlock =
+    params.actionUrl && params.actionLabel
+      ? `<p style="margin: 24px 0;">
+    <a href="${escapeHtml(params.actionUrl)}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">${escapeHtml(params.actionLabel)}</a>
+  </p>`
+      : ''
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 560px; margin: 0 auto; padding: 24px;">
+  <h1 style="font-size: 1.25rem; margin-bottom: 16px;">${escapeHtml(params.title)}</h1>
+  <p>${escapeHtml(params.body)}</p>
+  ${actionBlock}
+  <p style="font-size: 0.875rem; color: #666; margin-top: 32px;">— Propieya</p>
+</body>
+</html>
+`.trim()
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: params.to,
+      subject: params.subject,
+      html,
+    })
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Error desconocido',
+    }
+  }
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')

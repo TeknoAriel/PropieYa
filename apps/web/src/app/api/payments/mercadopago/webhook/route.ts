@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm'
 
-import { getDb, listings, organizations, paymentWebhookEvents } from '@propieya/database'
+import { getDb, listings, organizations, paymentWebhookEvents, users } from '@propieya/database'
 import {
   defaultPortalCommercialCatalog,
   portalCommercialCatalogItemSchema,
@@ -21,9 +21,15 @@ import {
   verifyMercadoPagoWebhookSignature,
 } from '@/lib/payments/mercadopago-webhook-verify'
 import { fetchMercadoPagoPaymentById } from '@/lib/payments/mercadopago-upgrade-checkout'
+import { emitUpgradeLifecycleNotification } from '@/lib/notifications/upgrade-lifecycle'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+
+function panelUpgradesUrl(): string {
+  const base = (process.env.NEXT_PUBLIC_PANEL_URL ?? 'http://localhost:3011').replace(/\/$/, '')
+  return `${base}/upgrades`
+}
 
 function parseCatalog(settings: unknown): PortalCommercialCatalogItem[] {
   const list = (settings as { portalCommercialCatalog?: unknown } | null | undefined)
@@ -345,6 +351,63 @@ export async function POST(request: Request) {
         updatedAt: new Date(),
       })
       .where(eq(organizations.id, org.id))
+
+    const buyer = await db.query.users.findFirst({
+      where: eq(users.id, order.buyerUserId),
+      columns: {
+        id: true,
+        email: true,
+      },
+    })
+    const amountLabel =
+      order.finalPriceAmount != null ? `${order.currency} ${order.finalPriceAmount}` : null
+    if (buyer) {
+      if (paymentStatus === 'paid') {
+        await emitUpgradeLifecycleNotification({
+          db,
+          eventType: 'upgrade_payment_approved',
+          userId: buyer.id,
+          userEmail: buyer.email,
+          organizationId: org.id,
+          listingId: order.listingId ?? null,
+          orderRequestId: order.id,
+          productName: order.productName,
+          amountLabel,
+          actionUrl: panelUpgradesUrl(),
+          actionLabel: 'Ver estado del upgrade',
+          dedupeKey: `${order.id}:payment_approved:${payment.id}`,
+        })
+        await emitUpgradeLifecycleNotification({
+          db,
+          eventType: 'upgrade_activated',
+          userId: buyer.id,
+          userEmail: buyer.email,
+          organizationId: org.id,
+          listingId: order.listingId ?? null,
+          orderRequestId: order.id,
+          productName: order.productName,
+          amountLabel,
+          actionUrl: panelUpgradesUrl(),
+          actionLabel: 'Ver upgrade activo',
+          dedupeKey: `${order.id}:activated:${payment.id}`,
+        })
+      } else if (paymentStatus === 'payment_failed' || paymentStatus === 'cancelled') {
+        await emitUpgradeLifecycleNotification({
+          db,
+          eventType: 'upgrade_payment_failed',
+          userId: buyer.id,
+          userEmail: buyer.email,
+          organizationId: org.id,
+          listingId: order.listingId ?? null,
+          orderRequestId: order.id,
+          productName: order.productName,
+          amountLabel,
+          actionUrl: panelUpgradesUrl(),
+          actionLabel: 'Reintentar pago',
+          dedupeKey: `${order.id}:payment_failed:${payment.id}:${paymentStatus}`,
+        })
+      }
+    }
   } catch (err) {
     console.error('[mercadopago webhook] upgrade processing error', err)
   }

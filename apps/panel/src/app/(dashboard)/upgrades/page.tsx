@@ -27,9 +27,9 @@ function statusBadgeVariant(status: PortalUpgradeStatus): 'default' | 'secondary
   return 'secondary'
 }
 
-function formatDateTime(value?: string | null): string {
-  if (!value) return '—'
-  const d = new Date(value)
+function formatDateTime(value?: string | Date | null): string {
+  if (value == null) return '—'
+  const d = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(d.getTime())) return '—'
   return d.toLocaleString('es-AR')
 }
@@ -90,6 +90,7 @@ export default function UpgradesPage() {
 
   const utils = trpc.useUtils()
   const overview = trpc.listing.upgradesOverview.useQuery()
+  const notificationsFeed = trpc.listing.myUpgradeNotifications.useQuery()
   const reconciliation = trpc.listing.upgradesReconciliationOverview.useQuery()
 
   const listingUpgradeMutation = trpc.listing.createListingUpgrade.useMutation({
@@ -839,6 +840,31 @@ export default function UpgradesPage() {
                 }`}
               >
                 {alert.message}
+              </div>
+            ))
+          )}
+        </div>
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="text-lg font-semibold text-text-primary">Notificaciones del ciclo de vida</h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          Registro de lo notificado por panel/email durante solicitud, pago, activación y vencimiento.
+        </p>
+        <div className="mt-4 space-y-2">
+          {(notificationsFeed.data ?? []).length === 0 ? (
+            <p className="text-sm text-text-secondary">Todavía no hay notificaciones de upgrades.</p>
+          ) : (
+            (notificationsFeed.data ?? []).slice(0, 20).map((note) => (
+              <div key={note.id} className="rounded-md border border-border px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-text-primary">{note.title}</p>
+                  <span className="text-xs text-text-tertiary">
+                    {note.channel} · {note.status}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-text-secondary">{note.body}</p>
+                <p className="mt-1 text-xs text-text-tertiary">{formatDateTime(note.sentAt ?? note.createdAt)}</p>
               </div>
             ))
           )}

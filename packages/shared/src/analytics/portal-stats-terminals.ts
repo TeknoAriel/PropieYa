@@ -73,6 +73,20 @@ export const PORTAL_STATS_TERMINALS = {
   LISTING_PORTAL_VISIBILITY_IMPRESSION: 'listing.portal_visibility.impression',
   /** Clic relevante sobre capa comercial de visibilidad. */
   LISTING_PORTAL_VISIBILITY_CLICK: 'listing.portal_visibility.click',
+  /** Notificación: orden de upgrade creada. */
+  UPGRADE_ORDER_CREATED: 'upgrade.order.created',
+  /** Notificación: pago aprobado para upgrade. */
+  UPGRADE_PAYMENT_APPROVED: 'upgrade.payment.approved',
+  /** Notificación: pago fallido para upgrade. */
+  UPGRADE_PAYMENT_FAILED: 'upgrade.payment.failed',
+  /** Notificación: upgrade activado. */
+  UPGRADE_ACTIVATED: 'upgrade.activated',
+  /** Recordatorio: upgrade vence pronto. */
+  UPGRADE_EXPIRING_SOON: 'upgrade.expiring_soon',
+  /** Notificación: upgrade vencido. */
+  UPGRADE_EXPIRED: 'upgrade.expired',
+  /** Notificación: renovación disponible. */
+  UPGRADE_RENEWAL_AVAILABLE: 'upgrade.renewal_available',
 } as const
 
 export type PortalStatsTerminalId =
@@ -123,6 +137,20 @@ export const PORTAL_STATS_TERMINAL_LABELS: Record<PortalStatsTerminalId, string>
     'Visibilidad comercial: impresión',
   [PORTAL_STATS_TERMINALS.LISTING_PORTAL_VISIBILITY_CLICK]:
     'Visibilidad comercial: clic',
+  [PORTAL_STATS_TERMINALS.UPGRADE_ORDER_CREATED]:
+    'Upgrade: orden creada',
+  [PORTAL_STATS_TERMINALS.UPGRADE_PAYMENT_APPROVED]:
+    'Upgrade: pago aprobado',
+  [PORTAL_STATS_TERMINALS.UPGRADE_PAYMENT_FAILED]:
+    'Upgrade: pago fallido',
+  [PORTAL_STATS_TERMINALS.UPGRADE_ACTIVATED]:
+    'Upgrade: activado',
+  [PORTAL_STATS_TERMINALS.UPGRADE_EXPIRING_SOON]:
+    'Upgrade: vence pronto',
+  [PORTAL_STATS_TERMINALS.UPGRADE_EXPIRED]:
+    'Upgrade: vencido',
+  [PORTAL_STATS_TERMINALS.UPGRADE_RENEWAL_AVAILABLE]:
+    'Upgrade: renovación disponible',
 }
 
 export function portalStatsTerminalLabel(terminalId: string): string {
