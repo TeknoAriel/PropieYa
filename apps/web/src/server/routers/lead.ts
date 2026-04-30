@@ -209,7 +209,7 @@ export const leadRouter = createTRPCRouter({
         })
       }
 
-      if (paid && created?.id) {
+      if (created?.id) {
         scheduleKitepropLeadSync(ctx.db, created.id)
       }
 

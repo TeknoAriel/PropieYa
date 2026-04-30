@@ -304,7 +304,8 @@ function hitMatchesTextIntent(h: SearchHit, qRaw: string): boolean {
   const desc = typeof h.description === 'string' ? foldLatin(h.description) : ''
   const addrStr = JSON.stringify(h.address ?? {})
   const hay = `${foldLatin(h.title)} ${desc} ${foldLatin(addrStr)}`
-  return tokens.some((t) => hay.includes(t))
+  if (tokens.length === 1) return hay.includes(tokens[0] ?? '')
+  return tokens.every((t) => hay.includes(t))
 }
 
 function hitInsideCommittedBbox(h: SearchHit, s: SearchSessionMVP): boolean {
@@ -528,7 +529,7 @@ export async function runListingSearchV2(opts: {
   exactEsOffset?: number
   includeAlternativeBuckets?: boolean
 }): Promise<ListingSearchV2Result> {
-  const pageSize = Math.min(50, Math.max(12, opts.limitPerBucket))
+  const pageSize = Math.min(96, Math.max(12, opts.limitPerBucket))
   const includeAlternatives = Boolean(opts.includeAlternativeBuckets)
   const esOffset = Math.max(0, opts.exactEsOffset ?? 0)
   const normalized = normalizeSearchSessionMVP(opts.session)

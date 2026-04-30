@@ -75,8 +75,8 @@ export type SearchV2Action = z.infer<typeof searchV2ActionSchema>
 
 export const listingSearchV2InputSchema = z.object({
   session: searchSessionMVPSchema,
-  /** Tamaño de página del bloque exacto (12–50). */
-  limitPerBucket: z.number().int().min(12).max(50).optional().default(24),
+  /** Tamaño de página del bloque exacto (12–96). */
+  limitPerBucket: z.number().int().min(12).max(96).optional().default(24),
   /** Paginación ES profunda (`search_after`); opaco (base64url). */
   exactPageCursor: z.string().max(6000).optional(),
   /**

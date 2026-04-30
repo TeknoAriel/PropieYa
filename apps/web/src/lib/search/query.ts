@@ -445,7 +445,7 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
     })
   }
 
-  const size = Math.min(rest.limit ?? 24, 50)
+  const size = Math.min(rest.limit ?? 24, 96)
   const from = Math.min(rest.offset ?? 0, 500)
   const searchAfter =
     Array.isArray(rest.searchAfter) && rest.searchAfter.length > 0

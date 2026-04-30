@@ -49,6 +49,7 @@ export async function syncActivatedLeadToKiteprop(
     .select({
       id: leads.id,
       accessStatus: leads.accessStatus,
+      listingSource: listings.source,
       contactName: leads.contactName,
       contactEmail: leads.contactEmail,
       contactPhone: leads.contactPhone,
@@ -63,7 +64,12 @@ export async function syncActivatedLeadToKiteprop(
     .where(eq(leads.id, leadId))
     .limit(1)
 
-  if (!row || row.accessStatus !== 'activated') {
+  if (!row) {
+    return
+  }
+  const shouldSync =
+    row.accessStatus === 'activated' || row.listingSource === 'import'
+  if (!shouldSync) {
     return
   }
 
