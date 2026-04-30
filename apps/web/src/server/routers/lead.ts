@@ -60,6 +60,11 @@ export const leadRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
+      console.info('[lead.create] received', {
+        listingId: input.listingId,
+        hasPhone: Boolean(input.contactPhone?.trim()),
+        hasPageUrl: Boolean(input.pageUrl),
+      })
       const [row] = await ctx.db
         .select({
           listingId: listings.id,
@@ -165,6 +170,15 @@ export const leadRouter = createTRPCRouter({
         })
         .returning()
 
+      console.info('[lead.create] persisted', {
+        leadId: created?.id ?? null,
+        listingId: input.listingId,
+        organizationId: row.organizationId,
+        accessStatus: paid ? 'activated' : 'pending',
+        listingSource: row.source,
+        routeTarget,
+      })
+
       await ctx.db
         .update(listings)
         .set({
@@ -210,6 +224,11 @@ export const leadRouter = createTRPCRouter({
       }
 
       if (created?.id) {
+        console.info('[lead.create] schedule_kiteprop_sync', {
+          leadId: created.id,
+          listingSource: row.source,
+          accessStatus: paid ? 'activated' : 'pending',
+        })
         scheduleKitepropLeadSync(ctx.db, created.id)
       }
 

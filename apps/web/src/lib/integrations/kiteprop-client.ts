@@ -68,6 +68,10 @@ function retryCount(): number {
   return Math.min(3, Math.max(0, n))
 }
 
+function shouldLogKitepropRequests(): boolean {
+  return process.env.LOG_KITEPROP_SYNC === '1'
+}
+
 /** Expuesto para tests y diagnóstico (sin key). */
 export function isKitepropConfigured(): boolean {
   return Boolean(getApiKey())
@@ -146,6 +150,14 @@ async function kitepropRequest<T = unknown>(
           message: `KiteProp HTTP ${res.status}`,
           body: parsed,
         }
+      }
+
+      if (shouldLogKitepropRequests()) {
+        console.info('[kiteprop-client] request_ok', {
+          method,
+          pathSegment,
+          status: res.status,
+        })
       }
 
       return { ok: true, data: parsed as T, status: res.status }

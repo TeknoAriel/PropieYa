@@ -45,6 +45,34 @@ export async function GET() {
     }
   }
 
+  // 2. Esquema mínimo para operar auth/publicar/leads.
+  try {
+    const schemaStart = Date.now()
+    const schemaRows = await getDb().execute(sql`
+      SELECT
+        to_regclass('public.users')::text AS users,
+        to_regclass('public.organizations')::text AS organizations,
+        to_regclass('public.listings')::text AS listings,
+        to_regclass('public.leads')::text AS leads
+    `)
+    const first = (schemaRows as unknown as Array<Record<string, unknown>>)[0] ?? {}
+    const missing = ['users', 'organizations', 'listings', 'leads'].filter((k) => !first[k])
+    if (missing.length === 0) {
+      checks.schema = { status: 'ok', latencyMs: Date.now() - schemaStart }
+    } else {
+      checks.schema = {
+        status: 'error',
+        latencyMs: Date.now() - schemaStart,
+        error: `tablas faltantes: ${missing.join(', ')}`,
+      }
+    }
+  } catch (err) {
+    checks.schema = {
+      status: 'error',
+      error: serializeDbError(err),
+    }
+  }
+
   const allOk = Object.values(checks).every((c) => c.status === 'ok')
   const status = allOk ? 200 : 503
   const body = {

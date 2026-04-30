@@ -189,6 +189,12 @@ export const authRouter = createTRPCRouter({
           accountIntent,
         }
       } catch (e) {
+        console.error('[auth.register] failure', {
+          stage: 'register',
+          message: e instanceof Error ? e.message : String(e),
+          accountIntent: input.accountIntent,
+          hasOrganizationName: Boolean(input.organizationName?.trim()),
+        })
         if (e instanceof TRPCError) throw e
         const msg = e instanceof Error ? e.message : ''
         if (msg.includes('Ya existe')) throw e
@@ -223,6 +229,11 @@ export const authRouter = createTRPCRouter({
 
         return await issueSessionForUser(ctx, user)
       } catch (e) {
+        console.error('[auth.login] failure', {
+          stage: 'login',
+          message: e instanceof Error ? e.message : String(e),
+          emailDomain: input.email.includes('@') ? input.email.split('@')[1] : 'invalid',
+        })
         if (e instanceof TRPCError) throw e
         const msg = e instanceof Error ? e.message : ''
         if (

@@ -41,10 +41,6 @@ export async function syncActivatedLeadToKiteprop(
   db: Database,
   leadId: string
 ): Promise<void> {
-  if (!isKitepropConfigured()) {
-    return
-  }
-
   const [row] = await db
     .select({
       id: leads.id,
@@ -65,16 +61,35 @@ export async function syncActivatedLeadToKiteprop(
     .limit(1)
 
   if (!row) {
+    console.warn('[kiteprop-lead-sync] skip_missing_lead', { leadId })
+    return
+  }
+  const configured = isKitepropConfigured()
+  console.info('[kiteprop-lead-sync] start', {
+    leadId,
+    configured,
+    accessStatus: row.accessStatus,
+    listingSource: row.listingSource,
+    listingExternalId: row.listingExternalId ?? null,
+  })
+  if (!configured) {
+    console.warn('[kiteprop-lead-sync] skip_not_configured', { leadId })
     return
   }
   const shouldSync =
     row.accessStatus === 'activated' || row.listingSource === 'import'
   if (!shouldSync) {
+    console.info('[kiteprop-lead-sync] skip_not_eligible', {
+      leadId,
+      accessStatus: row.accessStatus,
+      listingSource: row.listingSource,
+    })
     return
   }
 
   const meta = readKitepropMeta(row.enrichment)
   if (meta?.syncStatus === 'ok') {
+    console.info('[kiteprop-lead-sync] skip_already_synced', { leadId })
     return
   }
 
