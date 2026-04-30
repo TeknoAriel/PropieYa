@@ -661,6 +661,9 @@ export const PORTAL_SEARCH_UX_COPY = {
   /** Sprint 37 — lista ↔ mapa (hover y clic en pin). */
   buscarMapListSyncHint:
     'Con avisos en el mapa: pasá el mouse por una tarjeta que tenga ubicación para centrar el mapa; tocá un punto azul para resaltar ese aviso en la lista.',
+  /** Listado con más filas que pins (avisos sin coordenadas en esta vista). */
+  buscarMapFewerPinsExplainer:
+    'El mapa solo puede marcar avisos con ubicación guardada. El listado puede mostrar más resultados de la misma búsqueda.',
   polygonSelfIntersectHint:
     'Así el área quedaría cruzada o partida (no es una sola figura cerrada). Tocá otro lugar o borrá el trazo y empezá de nuevo.',
 

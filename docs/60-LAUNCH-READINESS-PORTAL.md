@@ -155,6 +155,23 @@ Si el `commit` en producción **no** coincide con el del repo, el **Promote** / 
 
 ---
 
+## 7. Si no podés registrarte ni publicar (error de base de datos)
+
+Síntoma: en registro o login aparece un error de **tablas faltantes** / `relation does not exist` (o en Vercel un mensaje genérico de servicio no disponible).
+
+**Causa:** el proyecto de Vercel usa un `DATABASE_URL` cuyo PostgreSQL **no tiene el esquema Drizzle aplicado**.
+
+**Acción (quien administra Neon/DB):**
+
+1. Copiar `DATABASE_URL` **exacta** de Vercel → proyecto **web** (y la del **panel** si difiere).
+2. En máquina con el repo: `pnpm db:push` o migraciones documentadas, apuntando a esa URL (o ejecutar el SQL equivalente en el SQL editor de Neon).
+3. Verificar `GET https://propieyaweb.vercel.app/api/health` → `status: "healthy"`.
+4. Reintentar registro y publicar.
+
+Sin este paso, el **panel B2B** tampoco puede operar aunque la UI exista (no es “panel sin terminar” por front: suele ser el mismo bloqueo de datos).
+
+---
+
 ## Referencias
 
 - `AGENTS.md` — CI, deploy, `verificar:deploy`  

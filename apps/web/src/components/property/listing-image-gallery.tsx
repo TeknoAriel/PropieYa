@@ -7,6 +7,15 @@ import { createPortal } from 'react-dom'
 import type { ListingMedia } from '@propieya/shared'
 
 const SWIPE_PX = 48
+const IMAGE_FALLBACK =
+  'https://placehold.co/1200x800/e0ddd8/666660?text=Imagen+no+disponible'
+
+function imageSrc(img: ListingMedia, broken: Set<string>): string {
+  const u = img.url?.trim()
+  if (!u) return IMAGE_FALLBACK
+  if (broken.has(img.id)) return IMAGE_FALLBACK
+  return u
+}
 
 function NavChevron({ dir }: { dir: 'left' | 'right' }) {
   return (
@@ -44,6 +53,16 @@ export function ListingImageGallery({ images, listingTitle }: ListingImageGaller
   const closeBtnRef = useRef<HTMLButtonElement>(null)
   const lastInteractionWasSwipe = useRef(false)
   const labelId = useId()
+  const [brokenImageIds, setBrokenImageIds] = useState<Set<string>>(() => new Set())
+
+  const markImageBroken = useCallback((id: string) => {
+    setBrokenImageIds((prev) => {
+      if (prev.has(id)) return prev
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+  }, [])
 
   const safeIndex = n > 0 ? Math.min(activeIndex, n - 1) : 0
   const current = n > 0 ? images[safeIndex] : null
@@ -156,6 +175,8 @@ export function ListingImageGallery({ images, listingTitle }: ListingImageGaller
 
   if (!n || !current) return null
 
+  const mainSrc = imageSrc(current, brokenImageIds)
+
   return (
     <>
       <div className="space-y-0">
@@ -165,13 +186,14 @@ export function ListingImageGallery({ images, listingTitle }: ListingImageGaller
           onTouchEnd={onMainTouchEnd}
         >
           <Image
-            src={current.url}
+            src={mainSrc}
             alt={current.alt ?? listingTitle}
             fill
             priority={safeIndex === 0}
             sizes="(max-width: 1024px) 100vw, min(1200px, 100vw)"
             className="object-cover"
             unoptimized
+            onError={() => markImageBroken(current.id)}
           />
           {n > 1 ? (
             <>
@@ -240,12 +262,13 @@ export function ListingImageGallery({ images, listingTitle }: ListingImageGaller
                   } `}
                 >
                   <Image
-                    src={img.url}
+                    src={imageSrc(img, brokenImageIds)}
                     alt={img.alt ?? `${listingTitle} — foto ${idx + 1}`}
                     fill
                     sizes="(max-width: 640px) 72px, 80px"
                     className="object-cover"
                     unoptimized
+                    onError={() => markImageBroken(img.id)}
                   />
                 </button>
               )
@@ -318,12 +341,13 @@ export function ListingImageGallery({ images, listingTitle }: ListingImageGaller
                 onClick={(e) => e.stopPropagation()}
               >
                 <Image
-                  src={current.url}
+                  src={mainSrc}
                   alt={current.alt ?? listingTitle}
                   fill
                   sizes="100vw"
                   className="object-contain"
                   unoptimized
+                  onError={() => markImageBroken(current.id)}
                 />
               </div>
             </div>
@@ -344,12 +368,13 @@ export function ListingImageGallery({ images, listingTitle }: ListingImageGaller
                         aria-current={isActive}
                       >
                         <Image
-                          src={img.url}
+                          src={imageSrc(img, brokenImageIds)}
                           alt=""
                           fill
                           sizes="64px"
                           className="object-cover"
                           unoptimized
+                          onError={() => markImageBroken(img.id)}
                         />
                       </button>
                     )

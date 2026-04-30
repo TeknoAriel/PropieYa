@@ -3109,6 +3109,9 @@ export function BuscarContent({
                   {mapPins.length > 0 ? (
                     <p className="text-xs text-text-tertiary">{S.buscarMapListSyncHint}</p>
                   ) : null}
+                  {mapPins.length > 0 && listingsForMap.length > mapPins.length ? (
+                    <p className="text-xs text-text-tertiary">{S.buscarMapFewerPinsExplainer}</p>
+                  ) : null}
                 </div>
                 {mapPins.length === 0 && !isLoading ? (
                   <p className="text-sm text-text-secondary">{S.mapNoPins}</p>
