@@ -263,10 +263,20 @@ function normalizePropertyId(
   if (typeof propertyId === 'string') {
     const n = Number.parseInt(propertyId, 10)
     if (Number.isFinite(n)) return n
+    const tailDigits = propertyId.match(/(\d{3,})$/)?.[1]
+    if (tailDigits) {
+      const parsed = Number.parseInt(tailDigits, 10)
+      if (Number.isFinite(parsed)) return parsed
+    }
   }
   if (typeof propertyCode === 'string') {
     const n = Number.parseInt(propertyCode, 10)
     if (Number.isFinite(n)) return n
+    const tailDigits = propertyCode.match(/(\d{3,})$/)?.[1]
+    if (tailDigits) {
+      const parsed = Number.parseInt(tailDigits, 10)
+      if (Number.isFinite(parsed)) return parsed
+    }
   }
   return null
 }
