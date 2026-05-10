@@ -384,11 +384,14 @@ export async function createPropertyInquiryInKiteProp(
   // Contrato confirmado por auditor para POST /messages.
   const propertyId = normalizePropertyId(payload.property_id, payload.property_code)
   if (propertyId !== null) {
+    // Mismo contrato que AvalonWeb `attachPropertyInquiry` → POST …/messages:
+    // name, email, body, property_id, phone (docs/KITEPROP.md en Avalon).
     const messagePayload: Record<string, unknown> = {
+      name: payload.name.trim(),
+      email: payload.email.trim(),
       body: payload.message,
-      phone: payload.phone ?? undefined,
       property_id: propertyId,
-      email: payload.email,
+      phone: (payload.phone ?? '').trim() || undefined,
     }
     const createdMessage = await createMessage(messagePayload)
     if (!createdMessage.ok) {
