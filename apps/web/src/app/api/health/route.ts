@@ -86,13 +86,25 @@ export async function GET() {
           SELECT 1 FROM information_schema.columns
           WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'portal_monetization_tier'
         ) AS users_portal_monetization_tier,
-        (to_regclass('public.user_preferences') IS NOT NULL) AS user_preferences
+        (to_regclass('public.user_preferences') IS NOT NULL) AS user_preferences,
+        EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'organizations' AND column_name = 'lead_credits_balance'
+        ) AS org_lead_credits_balance,
+        EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'organizations' AND column_name = 'search_boost_points'
+        ) AS org_search_boost_points
     `)
     const row = (authRows as unknown as Array<Record<string, unknown>>)[0] ?? {}
     const missingBits: string[] = []
     if (!row.users_account_intent) missingBits.push('users.account_intent')
     if (!row.users_portal_monetization_tier) missingBits.push('users.portal_monetization_tier')
     if (!row.user_preferences) missingBits.push('public.user_preferences')
+    if (!row.org_lead_credits_balance)
+      missingBits.push('organizations.lead_credits_balance')
+    if (!row.org_search_boost_points)
+      missingBits.push('organizations.search_boost_points')
     if (missingBits.length === 0) {
       checks.authSchema = { status: 'ok', latencyMs: Date.now() - authStart }
     } else {
