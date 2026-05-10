@@ -73,6 +73,42 @@ export async function GET() {
     }
   }
 
+  // 3. Auth: tablas/columnas que usa registro/login (evita "healthy" con users sin columnas nuevas).
+  try {
+    const authStart = Date.now()
+    const authRows = await getDb().execute(sql`
+      SELECT
+        EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'account_intent'
+        ) AS users_account_intent,
+        EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'portal_monetization_tier'
+        ) AS users_portal_monetization_tier,
+        (to_regclass('public.user_preferences') IS NOT NULL) AS user_preferences
+    `)
+    const row = (authRows as unknown as Array<Record<string, unknown>>)[0] ?? {}
+    const missingBits: string[] = []
+    if (!row.users_account_intent) missingBits.push('users.account_intent')
+    if (!row.users_portal_monetization_tier) missingBits.push('users.portal_monetization_tier')
+    if (!row.user_preferences) missingBits.push('public.user_preferences')
+    if (missingBits.length === 0) {
+      checks.authSchema = { status: 'ok', latencyMs: Date.now() - authStart }
+    } else {
+      checks.authSchema = {
+        status: 'error',
+        latencyMs: Date.now() - authStart,
+        error: `auth schema incompleto: ${missingBits.join(', ')}`,
+      }
+    }
+  } catch (err) {
+    checks.authSchema = {
+      status: 'error',
+      error: serializeDbError(err),
+    }
+  }
+
   const allOk = Object.values(checks).every((c) => c.status === 'ok')
   const status = allOk ? 200 : 503
   const body = {

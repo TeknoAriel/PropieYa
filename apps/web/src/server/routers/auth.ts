@@ -114,7 +114,14 @@ export const authRouter = createTRPCRouter({
   register: publicProcedure
     .input(registerSchema)
     .mutation(async ({ input, ctx }) => {
+      const emailDomain = input.email.includes('@')
+        ? input.email.split('@')[1]!.toLowerCase()
+        : 'invalid'
       try {
+        console.info('[auth.register] attempt', {
+          emailDomain,
+          accountIntent: input.accountIntent,
+        })
         const existing = await ctx.db.query.users.findFirst({
           where: eq(users.email, input.email.toLowerCase()),
         })
@@ -182,6 +189,12 @@ export const authRouter = createTRPCRouter({
           }
         }
 
+        console.info('[auth.register] ok', {
+          userId: user.id,
+          emailDomain,
+          accountIntent,
+        })
+
         return {
           id: user.id,
           email: user.email,
@@ -192,6 +205,10 @@ export const authRouter = createTRPCRouter({
         console.error('[auth.register] failure', {
           stage: 'register',
           message: e instanceof Error ? e.message : String(e),
+          pgCode:
+            typeof e === 'object' && e !== null && 'code' in e
+              ? String((e as { code?: unknown }).code ?? '')
+              : undefined,
           accountIntent: input.accountIntent,
           hasOrganizationName: Boolean(input.organizationName?.trim()),
         })
@@ -209,7 +226,12 @@ export const authRouter = createTRPCRouter({
   login: publicProcedure
     .input(loginSchema)
     .mutation(async ({ input, ctx }) => {
+      const emailDomain = input.email.includes('@')
+        ? input.email.split('@')[1]!.toLowerCase()
+        : 'invalid'
       try {
+        console.info('[auth.login] attempt', { emailDomain })
+
         const user = await ctx.db.query.users.findFirst({
           where: eq(users.email, input.email.toLowerCase()),
         })
@@ -227,12 +249,22 @@ export const authRouter = createTRPCRouter({
           throw new Error('Cuenta desactivada')
         }
 
-        return await issueSessionForUser(ctx, user)
+        const session = await issueSessionForUser(ctx, user)
+        console.info('[auth.login] ok', {
+          userId: user.id,
+          emailDomain,
+          role: session.user.role,
+        })
+        return session
       } catch (e) {
         console.error('[auth.login] failure', {
           stage: 'login',
           message: e instanceof Error ? e.message : String(e),
-          emailDomain: input.email.includes('@') ? input.email.split('@')[1] : 'invalid',
+          pgCode:
+            typeof e === 'object' && e !== null && 'code' in e
+              ? String((e as { code?: unknown }).code ?? '')
+              : undefined,
+          emailDomain,
         })
         if (e instanceof TRPCError) throw e
         const msg = e instanceof Error ? e.message : ''
