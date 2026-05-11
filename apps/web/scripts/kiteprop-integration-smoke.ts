@@ -19,6 +19,7 @@ import {
   getProperties,
   isKitepropConfigured,
 } from '../src/lib/integrations/kiteprop-client'
+import { resolveKitepropMessageName } from '../src/lib/integrations/kiteprop-properties'
 import { queryLeadsFromMCP, queryPropertiesFromMCP } from '../src/lib/integrations/kiteprop-mcp'
 
 function section(title: string) {
@@ -97,15 +98,23 @@ async function main() {
         'Omitido: definí KITEPROP_SMOKE_MESSAGE_PROPERTY_ID con un ID numérico válido.'
       )
     } else {
+      const email =
+        process.env.KITEPROP_SMOKE_MESSAGE_EMAIL?.trim() ||
+        `smoke+${Date.now()}@example.invalid`
+      const phone =
+        process.env.KITEPROP_SMOKE_MESSAGE_PHONE?.trim() || '+5491100000000'
       const payload = {
+        name: resolveKitepropMessageName({
+          name: process.env.KITEPROP_SMOKE_MESSAGE_NAME,
+          email,
+          phone,
+        }),
         body:
           process.env.KITEPROP_SMOKE_MESSAGE_BODY?.trim() ||
           `Mensaje smoke PropieYa ${new Date().toISOString()}`,
-        phone: process.env.KITEPROP_SMOKE_MESSAGE_PHONE?.trim() || '+5491100000000',
+        phone,
         property_id: propertyId,
-        email:
-          process.env.KITEPROP_SMOKE_MESSAGE_EMAIL?.trim() ||
-          `smoke+${Date.now()}@example.invalid`,
+        email,
       }
       const sent = await createMessage(payload)
       if (!sent.ok) {

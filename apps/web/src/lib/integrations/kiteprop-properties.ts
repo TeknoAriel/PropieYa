@@ -253,6 +253,26 @@ function extractIdFromCreateContactResponse(raw: unknown): string | null {
   return asString(data.id) ?? asString(data.contact_id)
 }
 
+export type KitepropMessageNameInput = {
+  name?: string | null
+  email?: string | null
+  phone?: string | null
+}
+
+/**
+ * POST /api/v1/messages: `name` obligatorio y nunca vacío.
+ * Orden: nombre del lead → email → teléfono → literal fijo.
+ */
+export function resolveKitepropMessageName(input: KitepropMessageNameInput): string {
+  const fromName = (input.name ?? '').trim()
+  if (fromName.length > 0) return fromName
+  const fromEmail = (input.email ?? '').trim()
+  if (fromEmail.length > 0) return fromEmail
+  const fromPhone = (input.phone ?? '').trim()
+  if (fromPhone.length > 0) return fromPhone
+  return 'Contacto Propieya'
+}
+
 function normalizePropertyId(
   propertyId: string | number | null | undefined,
   propertyCode: string | null | undefined
@@ -387,8 +407,8 @@ export async function createPropertyInquiryInKiteProp(
     // Mismo contrato que AvalonWeb `attachPropertyInquiry` → POST …/messages:
     // name, email, body, property_id, phone (docs/KITEPROP.md en Avalon).
     const messagePayload: Record<string, unknown> = {
-      name: payload.name.trim(),
-      email: payload.email.trim(),
+      name: resolveKitepropMessageName(payload),
+      email: (payload.email ?? '').trim() || undefined,
       body: payload.message,
       property_id: propertyId,
       phone: (payload.phone ?? '').trim() || undefined,
