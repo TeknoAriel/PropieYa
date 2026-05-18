@@ -30,6 +30,7 @@ import {
   organizationMemberships,
   recordListingTransitionForKiteprop,
   searchHistory,
+  users,
 } from '@propieya/database'
 import {
   assessListingPublishability,
@@ -2750,6 +2751,23 @@ export const listingRouter = createTRPCRouter({
         return null
       }
 
+      const [publisherUser, organization] = await Promise.all([
+        ctx.db.query.users.findFirst({
+          where: eq(users.id, listing.publisherId),
+          columns: { id: true, name: true, email: true, phone: true },
+        }),
+        ctx.db.query.organizations.findFirst({
+          where: eq(organizations.id, listing.organizationId),
+          columns: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            type: true,
+          },
+        }),
+      ])
+
       const media = await ctx.db.query.listingMedia.findMany({
         where: eq(listingMedia.listingId, input.id),
         orderBy: [desc(listingMedia.isPrimary), listingMedia.order],
@@ -2777,6 +2795,16 @@ export const listingRouter = createTRPCRouter({
         canPublish: listing.status === 'draft' && assessment.ok,
         canRenew: ['expiring_soon', 'suspended', 'expired'].includes(listing.status),
         lastLifecycleEvent: lastLifecycleEvent ?? null,
+        advertiser: {
+          listingSource: listing.source,
+          publisherDisplayName: publisherUser?.name ?? null,
+          publisherEmail: publisherUser?.email ?? null,
+          publisherPhone: publisherUser?.phone ?? null,
+          organizationName: organization?.name ?? null,
+          organizationType: organization?.type ?? null,
+          organizationEmail: organization?.email ?? null,
+          organizationPhone: organization?.phone ?? null,
+        },
       }
     }),
 
@@ -4400,6 +4428,68 @@ export const listingRouter = createTRPCRouter({
           updatedAt: new Date(),
         })
         .where(eq(listings.id, media.listingId))
+
+      return { ok: true }
+    }),
+
+  reorderListingMedia: protectedProcedure
+    .input(
+      z.object({
+        listingId: z.string().uuid(),
+        orderedMediaIds: z.array(z.string().uuid()),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const [owned] = await ctx.db
+        .select({ id: listings.id })
+        .from(listings)
+        .where(
+          and(
+            eq(listings.id, input.listingId),
+            eq(listings.publisherId, ctx.session.userId)
+          )
+        )
+        .limit(1)
+      if (!owned) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Propiedad no encontrada',
+        })
+      }
+
+      const rows = await ctx.db.query.listingMedia.findMany({
+        where: eq(listingMedia.listingId, input.listingId),
+      })
+      if (rows.length !== input.orderedMediaIds.length) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'La cantidad de fotos no coincide con el aviso.',
+        })
+      }
+      const idSet = new Set(rows.map((r) => r.id))
+      for (const mid of input.orderedMediaIds) {
+        if (!idSet.has(mid)) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Hay fotos que no pertenecen a este aviso.',
+          })
+        }
+      }
+
+      await ctx.db.transaction(async (tx) => {
+        for (let i = 0; i < input.orderedMediaIds.length; i++) {
+          const mediaId = input.orderedMediaIds[i]!
+          await tx
+            .update(listingMedia)
+            .set({ order: i })
+            .where(
+              and(
+                eq(listingMedia.id, mediaId),
+                eq(listingMedia.listingId, input.listingId)
+              )
+            )
+        }
+      })
 
       return { ok: true }
     }),

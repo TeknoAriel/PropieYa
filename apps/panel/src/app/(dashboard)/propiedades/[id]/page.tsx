@@ -5,24 +5,31 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
   formatTrpcUserMessage,
+  LISTING_AMENITY_IDS,
+  LISTING_AMENITY_LABELS,
+  OPERATION_TYPE_LABELS,
   PORTAL_COMMERCIAL_PACKAGES,
   portalCommercialPackageById,
   portalVisibilityOperationalLabel,
   portalVisibilityPanelStatusShort,
   portalVisibilitySurfacesLabel,
+  PROPERTY_TYPE_LABELS,
   resolvePortalCommercialPackageId,
   resolvePortalVisibilityOperationalStatus,
+  type Amenity,
   type CreateListingInput,
   type Currency,
   LISTING_STATUS_LABELS,
   type ListingPortalVisibility,
   type PortalCommercialPackageId,
   type ListingStatus,
+  type OperationType,
+  type PropertyType,
 } from '@propieya/shared'
 import { Button, Card, Input, Badge } from '@propieya/ui'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Star, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, ExternalLink, Star, Trash2 } from 'lucide-react'
 
 import {
   publicationChecklist,
@@ -31,6 +38,10 @@ import {
 } from '@/lib/listing-publication'
 import { formatListingVigencia } from '@/lib/vigencia'
 import { trpc } from '@/lib/trpc'
+
+const WEB_PUBLIC_BASE = (
+  process.env.NEXT_PUBLIC_WEB_APP_URL || 'https://propieyaweb.vercel.app'
+).replace(/\/$/, '')
 
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
@@ -59,6 +70,7 @@ export default function EditarPropiedadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState('')
   const [editError, setEditError] = useState('')
   const [portalPackageUi, setPortalPackageUi] = useState<PortalCommercialPackageId>('none')
@@ -69,6 +81,10 @@ export default function EditarPropiedadPage() {
     { id },
     { enabled: !!id }
   )
+  const { data: meQuality } = trpc.auth.me.useQuery(undefined, {
+    staleTime: 60_000,
+  })
+  const quality = meQuality?.qualityRules
   const utils = trpc.useUtils()
 
   const presignMutation = trpc.listing.getPresignedUploadUrl.useMutation()
@@ -88,6 +104,9 @@ export default function EditarPropiedadPage() {
     onSuccess: () => utils.listing.getMineById.invalidate({ id }),
   })
   const setPrimaryMutation = trpc.listing.setPrimaryMedia.useMutation({
+    onSuccess: () => utils.listing.getMineById.invalidate({ id }),
+  })
+  const reorderMediaMutation = trpc.listing.reorderListingMedia.useMutation({
     onSuccess: () => utils.listing.getMineById.invalidate({ id }),
   })
   const updateMutation = trpc.listing.update.useMutation({
@@ -115,37 +134,48 @@ export default function EditarPropiedadPage() {
 
   const handleFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
-      if (!file || !id) return
-      if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-        setUploadError('Solo se permiten imágenes JPEG, PNG o WebP.')
-        return
+      const list = e.target.files
+      if (!list?.length || !id) return
+      const files = Array.from(list)
+      for (const file of files) {
+        if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+          setUploadError('Solo se permiten imágenes JPEG, PNG o WebP.')
+          e.target.value = ''
+          return
+        }
       }
       setUploading(true)
       setUploadError('')
+      setUploadProgress(null)
       try {
-        const { uploadUrl, fileUrl } = await presignMutation.mutateAsync({
-          listingId: id,
-          filename: file.name,
-          contentType: file.type,
-        })
-        const res = await fetch(uploadUrl, {
-          method: 'PUT',
-          body: file,
-          headers: { 'Content-Type': file.type },
-        })
-        if (!res.ok) throw new Error(`Error al subir: ${res.status}`)
-        await addMediaMutation.mutateAsync({
-          listingId: id,
-          url: fileUrl,
-          type: 'image',
-          isPrimary: !current?.primaryImageUrl,
-        })
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i]!
+          setUploadProgress(`${i + 1} / ${files.length}`)
+          const { uploadUrl, fileUrl } = await presignMutation.mutateAsync({
+            listingId: id,
+            filename: file.name,
+            contentType: file.type,
+          })
+          const res = await fetch(uploadUrl, {
+            method: 'PUT',
+            body: file,
+            headers: { 'Content-Type': file.type },
+          })
+          if (!res.ok) throw new Error(`No se pudo subir una foto (${res.status}).`)
+          await addMediaMutation.mutateAsync({
+            listingId: id,
+            url: fileUrl,
+            type: 'image',
+            isPrimary: !current?.primaryImageUrl && i === 0,
+          })
+        }
       } catch (err) {
         setUploadError(
-          err instanceof Error ? err.message : 'Error al subir la imagen'
+          err instanceof Error ? err.message : 'Error al subir imágenes'
         )
+      } finally {
         setUploading(false)
+        setUploadProgress(null)
       }
       e.target.value = ''
     },
@@ -202,6 +232,53 @@ export default function EditarPropiedadPage() {
     ).value
       .trim()
       .slice(0, 10)
+    const featDispositionRaw = (
+      form.elements.namedItem('featDisposition') as HTMLSelectElement | null
+    )?.value
+    const featAgeType = (
+      form.elements.namedItem('featAgeType') as HTMLSelectElement | null
+    )?.value as 'brand_new' | 'under_construction' | 'years' | undefined
+    const featAgeYearsRaw = (form.elements.namedItem('featAgeYears') as HTMLInputElement | null)
+      ?.value
+
+    const operationTypeVal = (
+      form.elements.namedItem('operationType') as HTMLSelectElement
+    ).value as OperationType
+    const propertyTypeVal = (
+      form.elements.namedItem('propertyType') as HTMLSelectElement
+    ).value as PropertyType
+
+    const street = (form.elements.namedItem('addrStreet') as HTMLInputElement).value.trim()
+    const numberRaw = (form.elements.namedItem('addrNumber') as HTMLInputElement).value.trim()
+    const floorAddr = (form.elements.namedItem('addrFloor') as HTMLInputElement).value.trim()
+    const unitAddr = (form.elements.namedItem('addrUnit') as HTMLInputElement).value.trim()
+    const neighborhoodAddr = (
+      form.elements.namedItem('addrNeighborhood') as HTMLInputElement
+    ).value.trim()
+    const cityAddr = (form.elements.namedItem('addrCity') as HTMLInputElement).value.trim()
+    const stateAddr = (form.elements.namedItem('addrState') as HTMLInputElement).value.trim()
+    const postalAddr = (form.elements.namedItem('addrPostal') as HTMLInputElement).value.trim()
+
+    const currencyVal = (form.elements.namedItem('currency') as HTMLSelectElement)
+      .value as Currency
+    const showPriceEl = form.elements.namedItem('showPrice') as HTMLInputElement | null
+    const showPriceVal = Boolean(showPriceEl?.checked)
+    const expensesRaw = (form.elements.namedItem('expenses') as HTMLInputElement).value.trim()
+    const expensesCurrencyRaw = (
+      form.elements.namedItem('expensesCurrency') as HTMLSelectElement
+    ).value
+
+    const surfaceSemicoveredRaw = (
+      form.elements.namedItem('surfaceSemicovered') as HTMLInputElement
+    ).value
+    const surfaceLandRaw = (form.elements.namedItem('surfaceLand') as HTMLInputElement).value
+    const garagesRaw = (form.elements.namedItem('garages') as HTMLInputElement).value
+    const toilettesRaw = (form.elements.namedItem('toilettes') as HTMLInputElement).value
+
+    const latRaw = (form.elements.namedItem('locationLat') as HTMLInputElement).value.trim()
+    const lngRaw = (form.elements.namedItem('locationLng') as HTMLInputElement).value.trim()
+    const hideExactEl = form.elements.namedItem('hideExactAddress') as HTMLInputElement | null
+    const hideExactVal = Boolean(hideExactEl?.checked)
 
     if (!title || title.length < 10) {
       setEditError('El título debe tener al menos 10 caracteres')
@@ -216,7 +293,81 @@ export default function EditarPropiedadPage() {
       return
     }
 
-    const addr = current.address as Record<string, unknown> ?? {}
+    if (
+      !street ||
+      !neighborhoodAddr ||
+      !cityAddr ||
+      !stateAddr
+    ) {
+      setEditError('Completá calle, barrio, ciudad y provincia.')
+      return
+    }
+
+    let expensesParsed: number | null = null
+    if (expensesRaw !== '') {
+      const e = Number.parseFloat(expensesRaw)
+      if (!Number.isFinite(e) || e < 0) {
+        setEditError('Las expensas no son un número válido.')
+        return
+      }
+      expensesParsed = e
+    }
+
+    let surfaceSemicovered: number | null = current.surfaceSemicovered ?? null
+    if (surfaceSemicoveredRaw.trim() !== '') {
+      const n = Number(surfaceSemicoveredRaw)
+      surfaceSemicovered = !Number.isNaN(n) && n >= 0 ? n : null
+      if (surfaceSemicovered === null && surfaceSemicoveredRaw.trim() !== '') {
+        setEditError('Superficie semicubierta inválida.')
+        return
+      }
+    }
+
+    let surfaceLand: number | null = current.surfaceLand ?? null
+    if (surfaceLandRaw.trim() !== '') {
+      const n = Number(surfaceLandRaw)
+      surfaceLand = !Number.isNaN(n) && n >= 0 ? n : null
+      if (surfaceLand === null && surfaceLandRaw.trim() !== '') {
+        setEditError('Superficie de terreno inválida.')
+        return
+      }
+    }
+
+    if ((latRaw && !lngRaw) || (!latRaw && lngRaw)) {
+      setEditError('Indicá latitud y longitud juntas, o dejá ambas vacías.')
+      return
+    }
+
+    let location: CreateListingInput['location'] = null
+    if (latRaw && lngRaw) {
+      const la = Number.parseFloat(latRaw)
+      const ln = Number.parseFloat(lngRaw)
+      if (
+        !Number.isFinite(la) ||
+        !Number.isFinite(ln) ||
+        la < -90 ||
+        la > 90 ||
+        ln < -180 ||
+        ln > 180
+      ) {
+        setEditError('Latitud o longitud no válidas.')
+        return
+      }
+      location = { lat: la, lng: ln }
+    }
+
+    const garagesParsed = garagesRaw.trim() !== '' ? parseInt(garagesRaw, 10) : current.garages
+    const toilettesParsed =
+      toilettesRaw.trim() !== '' ? parseInt(toilettesRaw, 10) : current.toilettes
+    if (garagesParsed != null && (Number.isNaN(garagesParsed) || garagesParsed < 0)) {
+      setEditError('Cocheras: número inválido.')
+      return
+    }
+    if (toilettesParsed != null && (Number.isNaN(toilettesParsed) || toilettesParsed < 0)) {
+      setEditError('Toilettes: número inválido.')
+      return
+    }
+
     const prevFeats = (current.features ?? {}) as Record<string, unknown>
 
     const parseOptInt = (raw: string): number | null => {
@@ -260,18 +411,55 @@ export default function EditarPropiedadPage() {
       form.elements.namedItem('portalVisibilityFrom') as HTMLInputElement | null
     )?.value?.trim()
 
+    const amenitiesFromForm: Amenity[] = []
+    for (const k of LISTING_AMENITY_IDS) {
+      const el = form.elements.namedItem(`amenity_${k}`) as HTMLInputElement | null
+      if (el?.checked) amenitiesFromForm.push(k)
+    }
+
+    const dispositionVal =
+      featDispositionRaw &&
+      ['front', 'back', 'internal', 'lateral'].includes(featDispositionRaw)
+        ? (featDispositionRaw as CreateListingInput['features']['disposition'])
+        : null
+
+    let ageMerged: CreateListingInput['features']['age'] =
+      (prevFeats.age as CreateListingInput['features']['age']) ?? null
+    if (featAgeType === 'brand_new') ageMerged = { type: 'brand_new', years: null }
+    else if (featAgeType === 'under_construction')
+      ageMerged = { type: 'under_construction', years: null }
+    else if (featAgeType === 'years') {
+      const y = featAgeYearsRaw?.trim() ? parseInt(featAgeYearsRaw, 10) : null
+      ageMerged = {
+        type: 'years',
+        years: y != null && Number.isFinite(y) && y >= 0 ? y : null,
+      }
+    }
+
+    const extrasSafe =
+      prevFeats.extras &&
+      typeof prevFeats.extras === 'object' &&
+      !Array.isArray(prevFeats.extras)
+        ? (prevFeats.extras as Record<string, string | number | boolean>)
+        : {}
+
     const mergedFeatures: CreateListingInput['features'] = {
-      disposition: null,
-      age: null,
-      amenities: [],
-      extras: {},
-      commercialSub: null,
-      field: null,
       ...(featBaseNoPortal as Partial<CreateListingInput['features']>),
       floor: floorFeat,
       totalFloors: totalFloorsFeat,
       escalera: featEscalera === '' ? null : featEscalera.toUpperCase(),
       orientation: orientationVal,
+      disposition: dispositionVal,
+      age: ageMerged,
+      amenities: amenitiesFromForm,
+      extras: extrasSafe,
+      commercialSub: (prevFeats.commercialSub ??
+        null) as CreateListingInput['features']['commercialSub'],
+      field: (prevFeats.field ?? null) as CreateListingInput['features']['field'],
+    }
+
+    if (commercialPackage === 'none' && _prevPortal) {
+      mergedFeatures.portalVisibility = _prevPortal as ListingPortalVisibility
     }
 
     if (commercialPackage !== 'none') {
@@ -305,39 +493,48 @@ export default function EditarPropiedadPage() {
     updateMutation.mutate({
       id,
       data: {
+        propertyType: propertyTypeVal,
+        operationType: operationTypeVal,
         title: title.slice(0, 255),
         description: description.slice(0, 5000),
         price: {
           amount: price,
-          currency: (current.priceCurrency as Currency | null) ?? 'USD',
-          showPrice: true,
-          expenses: current.expenses,
-          expensesCurrency: (current.expensesCurrency as Currency | null) ?? null,
+          currency: currencyVal,
+          showPrice: showPriceVal,
+          expenses: expensesParsed,
+          expensesCurrency:
+            expensesParsed != null && expensesCurrencyRaw
+              ? (expensesCurrencyRaw as Currency)
+              : null,
         },
         surface: {
           total: surface,
           covered: surfaceCovered,
-          semicovered: current.surfaceSemicovered,
-          land: current.surfaceLand,
+          semicovered: surfaceSemicovered,
+          land: surfaceLand,
         },
         rooms: {
           bedrooms: bedrooms ? parseInt(bedrooms, 10) : null,
           bathrooms: bathrooms ? parseInt(bathrooms, 10) : null,
-          toilettes: current.toilettes,
-          garages: current.garages,
+          toilettes: toilettesParsed ?? null,
+          garages: garagesParsed ?? null,
           total: totalRoomsParsed ?? current.totalRooms,
         },
         address: {
-          street: (addr.street as string) ?? '',
-          number: (addr.number as string) ?? null,
-          floor: (addr.floor as string) ?? null,
-          unit: (addr.unit as string) ?? null,
-          neighborhood: (addr.neighborhood as string) ?? '',
-          city: (addr.city as string) ?? '',
-          state: (addr.state as string) ?? '',
-          country: (addr.country as string) ?? 'Argentina',
-          postalCode: (addr.postalCode as string) ?? null,
+          street,
+          number: numberRaw || null,
+          floor: floorAddr || null,
+          unit: unitAddr || null,
+          neighborhood: neighborhoodAddr,
+          city: cityAddr,
+          state: stateAddr,
+          country:
+            ((current.address as Record<string, unknown> | undefined)?.country as string) ||
+            'Argentina',
+          postalCode: postalAddr || null,
         },
+        location,
+        hideExactAddress: hideExactVal,
         features: mergedFeatures,
       },
     })
@@ -368,8 +565,20 @@ export default function EditarPropiedadPage() {
     totalFloors?: number | null
     escalera?: string | null
     orientation?: string | null
+    disposition?: string | null
+    age?: { type: string; years?: number | null } | null
+    amenities?: Amenity[]
     portalVisibility?: ListingPortalVisibility | null
   }
+  const amenitiesSelected = new Set(
+    Array.isArray(feats.amenities) ? feats.amenities : []
+  )
+  const ageTypeDefault =
+    feats.age?.type === 'brand_new' ||
+    feats.age?.type === 'under_construction' ||
+    feats.age?.type === 'years'
+      ? feats.age.type
+      : 'years'
   const portalPv = feats.portalVisibility
   const portalPackageCurrent = resolvePortalCommercialPackageId(portalPv)
   const portalPackageDef = portalCommercialPackageById(portalPackageCurrent)
@@ -379,6 +588,36 @@ export default function EditarPropiedadPage() {
   const portalFromDefault = untilToDatetimeLocalValue(portalPv?.from ?? undefined)
   const untilDefault = untilToDatetimeLocalValue(portalPv?.until ?? undefined)
   const media = (current as { media?: { id: string; url: string; isPrimary: boolean; order: number }[] }).media ?? []
+  const mediaSorted = [...media].sort((a, b) => {
+    if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1
+    return (a.order ?? 0) - (b.order ?? 0)
+  })
+  const advertiser = (
+    current as {
+      advertiser?: {
+        listingSource: string
+        publisherDisplayName: string | null
+        publisherEmail: string | null
+        publisherPhone: string | null
+        organizationName: string | null
+        organizationType: string | null
+        organizationEmail: string | null
+        organizationPhone: string | null
+      }
+    }
+  ).advertiser
+
+  const moveMediaOrder = async (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= mediaSorted.length || fromIndex === toIndex) return
+    const next = [...mediaSorted]
+    const [item] = next.splice(fromIndex, 1)
+    if (!item) return
+    next.splice(toIndex, 0, item)
+    await reorderMediaMutation.mutateAsync({
+      listingId: id,
+      orderedMediaIds: next.map((m) => m.id),
+    })
+  }
   const status = current.status as ListingStatus
   const operational = statusOperationalCopy(status, Boolean(current.canPublish))
   const actionCopy = statusActionCopy(
@@ -526,9 +765,203 @@ export default function EditarPropiedadPage() {
         ) : null}
       </Card>
 
+      <Card className="space-y-3 p-6">
+        <h2 className="text-lg font-semibold text-text-primary">Antes de publicar</h2>
+        <p className="text-sm text-text-secondary">
+          Así se ve tu aviso en el portal público cuando está activo (misma ficha para avisos
+          importados y manuales).
+        </p>
+        <ul className="list-inside list-disc space-y-1 text-sm text-text-secondary">
+          <li>
+            Fotos cargadas: {media.length}{' '}
+            {quality ? `(mínimo sugerido para publicar: ${quality.minPhotos})` : ''}
+          </li>
+          <li>
+            Título: {current.title.length} caracteres
+            {quality ? ` (mín. ${quality.minTitleLength})` : ''}
+          </li>
+          <li>
+            Descripción: {current.description.length} caracteres
+            {quality ? ` (mín. ${quality.minDescriptionLength})` : ''}
+          </li>
+          <li>
+            Contacto público en la ficha: datos de tu cuenta e inmobiliaria (nombre, mail y teléfono
+            visibles según el diseño del portal).
+          </li>
+        </ul>
+        <Button asChild variant="outline" size="sm">
+          <a
+            href={`${WEB_PUBLIC_BASE}/propiedad/${id}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Abrir vista pública (nueva pestaña)
+          </a>
+        </Button>
+        {!canPublishNow ? (
+          <div className="rounded-md border border-border bg-surface-secondary/50 p-3 text-sm text-text-secondary">
+            <p className="font-medium text-text-primary">Aún no se puede publicar</p>
+            <ul className="mt-2 space-y-1">
+              {checklist.map((item) => (
+                <li key={item}>— {item}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </Card>
+
+      {advertiser ? (
+        <Card className="space-y-3 p-6">
+          <h2 className="text-lg font-semibold text-text-primary">Anunciante y consultas</h2>
+          <p className="text-sm text-text-secondary">
+            Origen del aviso:{' '}
+            <span className="font-medium text-text-primary">
+              {advertiser.listingSource === 'manual' ? 'Publicación manual en Propieya' : advertiser.listingSource}
+            </span>
+            . Las consultas del portal llegan por el formulario de la ficha y se notifican al mail
+            configurado en tu cuenta.
+          </p>
+          <div className="grid gap-3 text-sm md:grid-cols-2">
+            <div className="rounded-md border border-border p-3">
+              <p className="text-xs uppercase tracking-wide text-text-tertiary">Cuenta publicadora</p>
+              <p className="mt-1 font-medium text-text-primary">
+                {advertiser.publisherDisplayName ?? '—'}
+              </p>
+              <p className="text-text-secondary">{advertiser.publisherEmail ?? '—'}</p>
+              <p className="text-text-secondary">{advertiser.publisherPhone ?? '—'}</p>
+            </div>
+            <div className="rounded-md border border-border p-3">
+              <p className="text-xs uppercase tracking-wide text-text-tertiary">Organización</p>
+              <p className="mt-1 font-medium text-text-primary">
+                {advertiser.organizationName ?? '—'}
+              </p>
+              <p className="text-text-secondary">Tipo: {advertiser.organizationType ?? '—'}</p>
+              <p className="text-text-secondary">{advertiser.organizationEmail ?? '—'}</p>
+              <p className="text-text-secondary">{advertiser.organizationPhone ?? '—'}</p>
+            </div>
+          </div>
+          <p className="text-xs text-text-tertiary">
+            WhatsApp: si cargaste teléfono en tu perfil, podés usarlo también para contacto;
+            Propieya no duplica un campo aparte todavía.
+          </p>
+        </Card>
+      ) : null}
+
       <form onSubmit={handleSubmit}>
         <Card className="p-6 space-y-6">
-          <h2 className="text-lg font-semibold text-text-primary">
+          <h2 className="text-lg font-semibold text-text-primary">Operación, tipo y ubicación</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-text-secondary">
+                Tipo de propiedad
+              </label>
+              <select
+                name="propertyType"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                defaultValue={current.propertyType as PropertyType}
+              >
+                {Object.entries(PROPERTY_TYPE_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-text-secondary">Operación</label>
+              <select
+                name="operationType"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                defaultValue={current.operationType as OperationType}
+              >
+                {Object.entries(OPERATION_TYPE_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-text-secondary">Calle</label>
+              <Input name="addrStreet" defaultValue={(addr?.street as string) ?? ''} required />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-text-secondary">Número</label>
+              <Input name="addrNumber" defaultValue={(addr?.number as string) ?? ''} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-text-secondary">Piso</label>
+              <Input name="addrFloor" defaultValue={(addr?.floor as string) ?? ''} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-text-secondary">
+                Depto / unidad
+              </label>
+              <Input name="addrUnit" defaultValue={(addr?.unit as string) ?? ''} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-text-secondary">Barrio</label>
+              <Input
+                name="addrNeighborhood"
+                defaultValue={(addr?.neighborhood as string) ?? ''}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-text-secondary">Ciudad</label>
+              <Input name="addrCity" defaultValue={(addr?.city as string) ?? ''} required />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-text-secondary">
+                Provincia
+              </label>
+              <Input name="addrState" defaultValue={(addr?.state as string) ?? ''} required />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-text-secondary">CP</label>
+              <Input name="addrPostal" defaultValue={(addr?.postalCode as string) ?? ''} />
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-text-secondary">
+                Latitud (opcional)
+              </label>
+              <Input
+                name="locationLat"
+                defaultValue={
+                  current.locationLat != null ? String(current.locationLat) : ''
+                }
+                placeholder="-34.6"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-text-secondary">
+                Longitud (opcional)
+              </label>
+              <Input
+                name="locationLng"
+                defaultValue={
+                  current.locationLng != null ? String(current.locationLng) : ''
+                }
+                placeholder="-58.4"
+              />
+            </div>
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="hideExactAddress"
+              defaultChecked={current.hideExactAddress}
+            />
+            Ocultar dirección exacta en la ficha pública
+          </label>
+
+          <h2 className="text-lg font-semibold text-text-primary border-t border-border pt-6">
             Datos básicos
           </h2>
           <div className="grid gap-4 md:grid-cols-2">
@@ -557,8 +990,57 @@ export default function EditarPropiedadPage() {
               />
             </div>
             <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Moneda</label>
+              <select
+                name="currency"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                defaultValue={(current.priceCurrency as Currency | null) ?? 'USD'}
+              >
+                {(['ARS', 'USD', 'CLP', 'UF', 'MXN'] as const).map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-end pb-2">
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <input type="checkbox" name="showPrice" defaultChecked={current.showPrice} />
+                Mostrar precio en la ficha
+              </label>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">
-                Superficie (m²)
+                Expensas (opcional)
+              </label>
+              <Input
+                name="expenses"
+                type="number"
+                min={0}
+                step={1}
+                defaultValue={current.expenses ?? ''}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">
+                Moneda expensas
+              </label>
+              <select
+                name="expensesCurrency"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                defaultValue={(current.expensesCurrency as Currency | null) ?? ''}
+              >
+                <option value="">—</option>
+                {(['ARS', 'USD', 'CLP', 'UF', 'MXN'] as const).map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">
+                Superficie total (m²)
               </label>
               <Input
                 name="surface"
@@ -592,6 +1074,30 @@ export default function EditarPropiedadPage() {
                 />
               </div>
             </div>
+            <div className="flex flex-wrap gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Toilettes
+                </label>
+                <Input
+                  name="toilettes"
+                  type="number"
+                  defaultValue={current.toilettes ?? ''}
+                  min={0}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Cocheras
+                </label>
+                <Input
+                  name="garages"
+                  type="number"
+                  defaultValue={current.garages ?? ''}
+                  min={0}
+                />
+              </div>
+            </div>
             <div className="md:col-span-2 space-y-3 border-t border-border pt-4">
               <h3 className="text-sm font-semibold text-text-primary">
                 Superficie cubierta, ambientes y datos para búsqueda (modelo XML
@@ -619,6 +1125,30 @@ export default function EditarPropiedadPage() {
                     type="number"
                     defaultValue={current.totalRooms ?? ''}
                     min={0}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
+                    Superficie semicubierta (m²)
+                  </label>
+                  <Input
+                    name="surfaceSemicovered"
+                    type="number"
+                    defaultValue={current.surfaceSemicovered ?? ''}
+                    min={0}
+                    step={1}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
+                    Terreno (m²)
+                  </label>
+                  <Input
+                    name="surfaceLand"
+                    type="number"
+                    defaultValue={current.surfaceLand ?? ''}
+                    min={0}
+                    step={1}
                   />
                 </div>
                 <div>
@@ -671,7 +1201,67 @@ export default function EditarPropiedadPage() {
                     placeholder="Ej: A, B"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
+                    Disposición
+                  </label>
+                  <select
+                    name="featDisposition"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    defaultValue={feats.disposition ?? ''}
+                  >
+                    <option value="">—</option>
+                    <option value="front">Frente</option>
+                    <option value="back">Contrafrente</option>
+                    <option value="internal">Interno</option>
+                    <option value="lateral">Lateral</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
+                    Antigüedad
+                  </label>
+                  <select
+                    name="featAgeType"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    defaultValue={ageTypeDefault}
+                  >
+                    <option value="brand_new">A estrenar</option>
+                    <option value="under_construction">En construcción</option>
+                    <option value="years">Años</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
+                    Años (si aplica)
+                  </label>
+                  <Input
+                    name="featAgeYears"
+                    type="number"
+                    min={0}
+                    defaultValue={
+                      feats.age?.type === 'years' && feats.age.years != null
+                        ? feats.age.years
+                        : ''
+                    }
+                  />
+                </div>
               </div>
+            </div>
+          </div>
+          <div className="space-y-2 border-t border-border pt-6">
+            <h3 className="text-sm font-semibold text-text-primary">Amenities</h3>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {LISTING_AMENITY_IDS.map((k) => (
+                <label key={k} className="flex cursor-pointer items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name={`amenity_${k}`}
+                    defaultChecked={amenitiesSelected.has(k)}
+                  />
+                  {LISTING_AMENITY_LABELS[k]}
+                </label>
+              ))}
             </div>
           </div>
           <div>
@@ -826,14 +1416,19 @@ export default function EditarPropiedadPage() {
       </form>
 
       <Card className="p-6">
-        <h2 className="text-lg font-semibold text-text-primary mb-4">
-          Imágenes
-        </h2>
-        <div className="flex flex-wrap gap-4 mb-4">
-          {media.map((m) => (
+        <h2 className="mb-1 text-lg font-semibold text-text-primary">Fotos</h2>
+        <p className="mb-4 text-sm text-text-secondary">
+          Subí varias a la vez; reordená con las flechas. La primera marcada como principal se
+          usa como portada en listados.
+          {quality
+            ? ` Para publicar necesitás al menos ${quality.minPhotos} fotos.`
+            : ''}
+        </p>
+        <div className="mb-4 flex flex-wrap gap-4">
+          {mediaSorted.map((m, idx) => (
             <div
               key={m.id}
-              className="relative group w-32 h-24 rounded overflow-hidden bg-surface-secondary border border-border"
+              className="group relative h-24 w-32 overflow-hidden rounded border border-border bg-surface-secondary"
             >
               <Image
                 src={m.url}
@@ -844,13 +1439,34 @@ export default function EditarPropiedadPage() {
                 unoptimized
               />
               {m.isPrimary && (
-                <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-brand-primary text-white text-xs rounded">
-                  Principal
+                <span className="absolute left-1 top-1 rounded bg-brand-primary px-1.5 py-0.5 text-xs text-white">
+                  Portada
                 </span>
               )}
-              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+              <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="!p-1"
+                  disabled={reorderMediaMutation.isPending || idx === 0}
+                  onClick={() => void moveMediaOrder(idx, idx - 1)}
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="!p-1"
+                  disabled={reorderMediaMutation.isPending || idx >= mediaSorted.length - 1}
+                  onClick={() => void moveMediaOrder(idx, idx + 1)}
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
                 {!m.isPrimary && (
                   <Button
+                    type="button"
                     size="sm"
                     variant="secondary"
                     onClick={() => setPrimaryMutation.mutate({ mediaId: m.id })}
@@ -861,6 +1477,7 @@ export default function EditarPropiedadPage() {
                   </Button>
                 )}
                 <Button
+                  type="button"
                   size="sm"
                   variant="destructive"
                   onClick={() => removeMediaMutation.mutate({ mediaId: m.id })}
@@ -877,16 +1494,22 @@ export default function EditarPropiedadPage() {
           ref={fileInputRef}
           type="file"
           accept={ACCEPTED_IMAGE_TYPES.join(',')}
+          multiple
           className="hidden"
           onChange={handleFileSelect}
           disabled={uploading}
         />
         <Button
+          type="button"
           variant="outline"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
         >
-          {uploading ? 'Subiendo...' : 'Subir imagen'}
+          {uploading
+            ? uploadProgress
+              ? `Subiendo ${uploadProgress}…`
+              : 'Subiendo…'
+            : 'Subir fotos'}
         </Button>
         {uploadError && (
           <p className="text-destructive text-sm mt-2">{uploadError}</p>
