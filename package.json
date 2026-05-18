@@ -28,6 +28,7 @@
     "import:yumblin": "pnpm exec tsx scripts/import-yumblin-json.ts",
     "import:yumblin:reimport": "pnpm exec tsx scripts/import-yumblin-json.ts -- --reimport",
     "seed:org": "pnpm exec tsx scripts/seed-org-for-import.ts",
+    "qa:publicar-v2": "pnpm exec tsx scripts/publicar-v2-qa-smoke.ts",
     "publish:imported": "pnpm exec tsx scripts/publish-imported-drafts.ts",
     "sync-search:local": "pnpm exec tsx scripts/sync-search-local.ts",
     "dedup:apply": "pnpm exec tsx scripts/apply-dedup-listings.ts",
