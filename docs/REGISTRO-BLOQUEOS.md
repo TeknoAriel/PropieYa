@@ -4,6 +4,7 @@ El agente anota aquí fallos que **no puede resolver** sin acción externa (GitH
 
 | Fecha | Qué falló | Acción necesaria (una vez) |
 |-------|-----------|----------------------------|
+| 2026-05-19 | **Panel B2B** `https://propieya-panel.vercel.app` → **404** `x-vercel-error: DEPLOYMENT_NOT_FOUND` (tras push `main` @ `96ac2b7`; portal web OK) | Vercel → proyecto **`propieya-panel`** (Root `apps/panel`, repo **TeknoAriel/PropieYa**, rama **`main`**) → confirmar que existe, que Git está conectado y que el dominio `propieya-panel.vercel.app` apunta a un deployment **Production** exitoso. Checklist: `docs/09-CONFIGURACION-COPIAR-PEGAR.md` § Panel. Sin panel no hay Publicar v2 en UI prod. |
 | 2026-04-19 | **Guía (no bloqueo):** confusión entre **cuota Vercel Hobby** y “error de código” (p. ej. mails que hablan de **25 deploys/día** vs. doc actual **100**/día) | **Fuente de verdad:** `docs/DEPLOY-CONTEXTO-AGENTES.md` § Cuotas y [Planes Hobby](https://vercel.com/docs/plans/hobby). Si el log de Vercel/Actions dice **quota / deployment limit / rate limit**: Team → **Usage** / **Billing**; reducir deploys Preview o esperar ventana; opcional upgrade Pro. **No** depurar el repo hasta descartar cupo. |
 | 2026-03-22 | Build Vercel: `@elastic/elasticsearch/api/types` y `@/lib/search` | Corregido en mapping.ts (tipo local) y lib/search/index.ts |
 | 2026-03-22 | main protegido: push directo rechazado (PR requerido) | Workflow cambiado a PR-based: crea PR, espera CI, mergea |
