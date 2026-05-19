@@ -138,10 +138,18 @@ pnpm verificar:deploy
 ### Falla Vercel CLI en workflow
 
 - Token inválido/expirado
-- `VERCEL_PROJECT_ID` de proyecto incorrecto (ej. panel)
+- `VERCEL_PROJECT_ID` de proyecto incorrecto (ej. panel en secret del **web**)
 - `VERCEL_ORG_ID` incorrecto
 
 Corregir secreto y volver a pushear `deploy/infra`.
+
+### Panel 404 (`DEPLOYMENT_NOT_FOUND` en propieya-panel.vercel.app)
+
+1. En Vercel debe existir el proyecto **`propieya-panel`** (Root `apps/panel`, repo **TeknoAriel/PropieYa**). Ver `docs/09-CONFIGURACION-COPIAR-PEGAR.md` §5.
+2. En GitHub → **Settings → Secrets → Actions**, agregar **`VERCEL_PANEL_PROJECT_ID`** (ID del proyecto panel; no usar el ID de `propie-ya-web`).
+3. Disparar el workflow **[Deploy panel producción](https://github.com/TeknoAriel/PropieYa/actions/workflows/deploy-panel-production.yml)** (`workflow_dispatch` o push a `main` / `deploy/infra`).
+4. Local: `pnpm verificar:panel` (opcional con `VERCEL_TOKEN` + `VERCEL_PANEL_PROJECT_ID`).
+5. En el proyecto **web** Vercel: `TRUSTED_PANEL_ORIGINS=https://propieya-panel.vercel.app` y `NEXT_PUBLIC_PANEL_URL` igual (sin `/` final).
 
 ---
 

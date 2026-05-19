@@ -45,6 +45,7 @@
     "diagnostico:prod": "bash scripts/diagnostico-produccion.sh",
     "verificar:deploy": "bash scripts/verificar-deploy-esperar.sh --wait 3",
     "verificar:ruta-produccion": "bash scripts/verificar-ruta-produccion.sh",
+    "verificar:panel": "bash scripts/verificar-panel-produccion.sh",
     "verify:repo-remote": "bash scripts/verify-repo-remote.sh",
     "prepare": "husky"
   },

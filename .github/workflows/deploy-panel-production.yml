@@ -1,0 +1,165 @@
+# Deploy del panel B2B (proyecto Vercel separado: propieya-panel, Root apps/panel).
+# Requiere secretos: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PANEL_PROJECT_ID.
+# Ver docs/DEPLOY-PASOS-URIs.md § Panel (CLI).
+
+name: Deploy panel producción
+
+on:
+  push:
+    branches: [main, deploy/infra]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-produccion-panel
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  PANEL_URL: https://propieya-panel.vercel.app
+  NEXT_PUBLIC_WEB_APP_URL: https://propieyaweb.vercel.app
+
+jobs:
+  deploy-panel:
+    name: Verify + Deploy panel + Smoke
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PANEL_PROJECT_ID: ${{ secrets.VERCEL_PANEL_PROJECT_ID }}
+      TURBO_DAEMON: 'false'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validar secretos Vercel (panel)
+        run: |
+          set -euo pipefail
+          missing=0
+          for k in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PANEL_PROJECT_ID; do
+            if [ -z "${!k:-}" ]; then
+              echo "::error::Falta secret $k en GitHub Actions"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Agregar VERCEL_PANEL_PROJECT_ID (proyecto propieya-panel) en Settings → Secrets. Ver docs/DEPLOY-PASOS-URIs.md"
+            exit 1
+          fi
+
+      - name: Verificar que VERCEL_PANEL_PROJECT_ID sea propieya-panel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PANEL_PROJECT_ID: ${{ secrets.VERCEL_PANEL_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          source scripts/production-canonical.env.sh
+          resp="$(curl -fsS -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            "https://api.vercel.com/v9/projects/${VERCEL_PANEL_PROJECT_ID}")"
+          name="$(echo "$resp" | jq -r '.name // empty')"
+          if [ -z "$name" ]; then
+            echo "::error::No se pudo leer el proyecto panel (token o VERCEL_PANEL_PROJECT_ID inválido)."
+            exit 1
+          fi
+          if [ "$name" != "${PROPIEYA_VERCEL_PANEL_PROJECT_NAME}" ]; then
+            echo "::error::VERCEL_PANEL_PROJECT_ID apunta a '${name}'; se esperaba '${PROPIEYA_VERCEL_PANEL_PROJECT_NAME}'."
+            exit 1
+          fi
+          echo "OK: proyecto panel (${name})."
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build panel
+        run: pnpm exec turbo run build --filter=@propieya/panel --force
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+
+      - name: Linkear proyecto panel y pull (raíz monorepo)
+        run: |
+          set -euo pipefail
+          mkdir -p .vercel
+          cat > .vercel/project.json <<JSON
+          {
+            "orgId": "${VERCEL_ORG_ID}",
+            "projectId": "${VERCEL_PANEL_PROJECT_ID}"
+          }
+          JSON
+          npx --yes vercel@51.4.0 pull --yes --environment=production --token "${VERCEL_TOKEN}"
+
+      - name: Deploy panel producción (Vercel CLI, raíz monorepo)
+        env:
+          TURBO_FORCE: '1'
+        run: |
+          set -euo pipefail
+          TOKEN="${VERCEL_TOKEN}"
+          META=( --meta "githubSha=${GITHUB_SHA}" --meta "githubRepo=${GITHUB_REPOSITORY}" )
+          if ! out=$(npx --yes vercel@51.4.0 deploy --prod --yes --token "${TOKEN}" \
+            --build-env "BUILD_COMMIT_SHA=${GITHUB_SHA}" \
+            --build-env "BUILD_GIT_REF=${GITHUB_REF_NAME}" \
+            --env "BUILD_COMMIT_SHA=${GITHUB_SHA}" \
+            --env "BUILD_GIT_REF=${GITHUB_REF_NAME}" \
+            "${META[@]}" 2>&1); then
+            echo "::error::vercel deploy --prod (panel) falló"
+            echo "$out" | tail -n 100
+            exit 1
+          fi
+          echo "$out"
+          url="$(
+            echo "$out" | grep -i 'Production:' | grep -oE 'https://[a-zA-Z0-9][a-zA-Z0-9.-]*\.vercel\.app' | head -n 1 || true
+          )"
+          if [ -z "${url:-}" ]; then
+            url="$(echo "$out" | grep -oE 'https://[a-zA-Z0-9][a-zA-Z0-9.-]*\.vercel\.app' | tail -n 1 || true)"
+          fi
+          if [ -n "${url:-}" ]; then
+            echo "DEPLOY_URL=$url" >> "$GITHUB_ENV"
+            echo "Deploy URL panel: $url"
+          fi
+
+      - name: Alias propieya-panel.vercel.app (best effort)
+        run: |
+          set +e
+          if [ -z "${DEPLOY_URL:-}" ]; then
+            echo "Sin DEPLOY_URL; omito alias."
+            exit 0
+          fi
+          npx --yes vercel@51.4.0 alias set "${DEPLOY_URL}" propieya-panel.vercel.app --yes --token "${VERCEL_TOKEN}" 2>/dev/null
+          exit 0
+
+      - name: Esperar propagación
+        run: sleep 60
+
+      - name: Smoke panel /api/health
+        run: |
+          set -euo pipefail
+          for i in 1 2 3 4 5 6 7 8; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" "${PANEL_URL}/api/health" 2>/dev/null || echo "000")
+            echo "Intento $i/8 ${PANEL_URL}/api/health → HTTP $code"
+            if [[ "$code" =~ ^(200|503)$ ]]; then
+              curl -sS "${PANEL_URL}/api/health" | head -c 400
+              echo ""
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::Panel no respondió 200/503 en ${PANEL_URL}"
+          exit 1

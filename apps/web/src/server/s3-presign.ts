@@ -9,13 +9,19 @@ export function isS3Configured(): boolean {
   )
 }
 
+function shouldForcePathStyle(): boolean {
+  if (process.env.S3_FORCE_PATH_STYLE === '1') return true
+  const endpoint = process.env.S3_ENDPOINT?.trim() ?? ''
+  return /localhost|127\.0\.0\.1/.test(endpoint)
+}
+
 function getClient(): S3Client {
   return new S3Client({
     region: process.env.S3_REGION || 'us-east-1',
     ...(process.env.S3_ENDPOINT
       ? {
           endpoint: process.env.S3_ENDPOINT,
-          forcePathStyle: process.env.S3_FORCE_PATH_STYLE === '1',
+          forcePathStyle: shouldForcePathStyle(),
         }
       : {}),
     credentials: {

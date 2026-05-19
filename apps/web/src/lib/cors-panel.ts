@@ -5,10 +5,17 @@
  * Varios orígenes separados por coma (preview + producción).
  */
 
+function normalizeOrigin(origin: string): string {
+  return origin.trim().replace(/\/$/, '')
+}
+
 export function getTrustedPanelOrigins(): string[] {
   const raw = process.env.TRUSTED_PANEL_ORIGINS?.trim() ?? ''
   if (raw.length > 0) {
-    return raw.split(',').map((s) => s.trim()).filter(Boolean)
+    return raw
+      .split(',')
+      .map((s) => normalizeOrigin(s))
+      .filter(Boolean)
   }
   return ['http://localhost:3011', 'http://127.0.0.1:3011']
 }
@@ -19,7 +26,7 @@ export function corsHeadersForRequest(request: Request): Headers {
   if (!origin) return headers
 
   const allowed = getTrustedPanelOrigins()
-  if (!allowed.includes(origin)) return headers
+  if (!allowed.includes(normalizeOrigin(origin))) return headers
 
   headers.set('Access-Control-Allow-Origin', origin)
   headers.set('Vary', 'Origin')

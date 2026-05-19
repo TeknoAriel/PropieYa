@@ -15,7 +15,8 @@
 | **Copia org (auditoría)** | `kiteprop/ia-propieya` (remoto `kiteprop`; push bajo pedido) |
 | **Root Directory en Vercel** | `apps/web` |
 | **Rama de integración deploy** | Push a `deploy/infra` → workflow → **Vercel CLI** (portal). **`main` debe fusionarse con `deploy/infra`** para mantener el repo y el deploy del panel (Git) alineados; el workflow **no** mergea solo. |
-| **Secretos GitHub** | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` deben apuntar al proyecto **`propie-ya-web`** (el workflow Promote **falla** si el ID no resuelve a ese nombre vía API Vercel). |
+| **Secretos GitHub (web)** | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` → proyecto **`propie-ya-web`** (Promote **falla** si el ID no resuelve a ese nombre). |
+| **Secretos GitHub (panel)** | Mismo `VERCEL_TOKEN` + `VERCEL_ORG_ID` + **`VERCEL_PANEL_PROJECT_ID`** → proyecto **`propieya-panel`**. Workflow: `.github/workflows/deploy-panel-production.yml`. |
 | **`/api/version` en deploy CLI** | Tras `vercel deploy --prod` (con `BUILD_COMMIT_SHA`), el workflow intenta **`vercel promote`** y **`alias set` en modo best-effort** (no tumba el job). El job **sí exige** smoke 2xx en `/` y `/api/health` en el canónico; si `/api/version` no coincide con el push, solo **warning** (modo recuperación sin depender de owner org ni dominio perfecto). |
 | **Fuente única de constantes** | `scripts/production-canonical.env.sh` — URL canónica, nombre del proyecto web, rama de deploy. Scripts: `pnpm verificar:ruta-produccion`. |
 | **Variables Vercel (web, Production)** | Mínimo: `DATABASE_URL`, `JWT_SECRET`, `TRUSTED_PANEL_ORIGINS`. [Environment Variables →](https://vercel.com/teknoariels-projects/propie-ya-web/settings/environment-variables) |
