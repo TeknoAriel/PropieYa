@@ -1,40 +1,59 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
+import { Suspense } from 'react'
 
-import { Button } from '@propieya/ui'
+import {
+  portalEmprendimientosDocumentTitle,
+  portalEmprendimientosMetaDescription,
+  portalPickSingleSearchParam,
+} from '@propieya/shared'
+import { Card, Skeleton } from '@propieya/ui'
 
-import { MarketingShell } from '@/components/marketing/marketing-shell'
+import { Footer } from '@/components/layout/footer'
+import { Header } from '@/components/layout/header'
 
-export const metadata: Metadata = {
-  title: 'Emprendimientos',
-  description:
-    'Emprendimientos inmobiliarios en Propieya: en preparación, con el mismo estándar de claridad que venta y alquiler.',
+import { EmprendimientosLandingView } from './emprendimientos-landing-view'
+
+type EmprendimientosPageProps = {
+  searchParams: Record<string, string | string[] | undefined>
+}
+
+export async function generateMetadata({
+  searchParams,
+}: EmprendimientosPageProps): Promise<Metadata> {
+  const ciudad = portalPickSingleSearchParam(searchParams.ciudad)
+  return {
+    title: portalEmprendimientosDocumentTitle(ciudad),
+    description: portalEmprendimientosMetaDescription(ciudad),
+  }
 }
 
 export default function EmprendimientosPage() {
   return (
-    <MarketingShell>
-      <article className="container mx-auto max-w-3xl space-y-6 px-4 py-12">
-        <h1 className="text-3xl font-bold text-text-primary">Emprendimientos</h1>
-        <p className="leading-relaxed text-text-secondary">
-          Hoy el foco del portal está en propiedades en venta y alquiler con mapa, filtros y
-          resultados explicados. La sección de emprendimientos la sumamos cuando el inventario y las fichas
-          estén listos para ofrecer la misma claridad y confianza.
-        </p>
-        <p className="text-sm leading-relaxed text-text-tertiary">
-          Más adelante, el módulo podrá reservar formatos de visibilidad (publicación en listado, destaque,
-          espacio tipo banner, prioridad en búsquedas) alineados con el mismo enfoque sobrio del resto del
-          portal, sin mezclar oferta comercial con la búsqueda orgánica.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <Button asChild variant="default">
-            <Link href="/venta">Ver venta</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/alquiler">Ver alquiler</Link>
-          </Button>
-        </div>
-      </article>
-    </MarketingShell>
+    <div className="flex min-h-screen flex-col">
+      <Header />
+      <main className="flex-1">
+        <Suspense
+          fallback={
+            <div className="container mx-auto px-4 py-10">
+              <Skeleton className="h-10 w-64" />
+              <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-3">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i} className="overflow-hidden">
+                    <Skeleton className="h-48 w-full" />
+                    <div className="space-y-3 p-4">
+                      <Skeleton className="h-4 w-3/4" />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          }
+        >
+          <EmprendimientosLandingView />
+        </Suspense>
+      </main>
+      <Footer />
+    </div>
   )
 }
+

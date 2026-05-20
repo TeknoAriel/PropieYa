@@ -84,6 +84,8 @@ import { trpc } from '@/lib/trpc'
 export type BuscarContentProps = {
   /** Si se define, la búsqueda queda filtrada a esa operación (páginas /venta y /alquiler). */
   forcedOperation?: 'sale' | 'rent'
+  /** Si se define, la búsqueda queda filtrada a ese tipo (p. ej. /emprendimientos → development_unit). */
+  forcedPropertyType?: PropertyType
   pageTitle: string
   pageSubtitle: string
 }
@@ -600,10 +602,12 @@ const PROPERTY_OPTIONS: { value: PropertyType; label: string }[] = [
   { value: 'commercial', label: 'Local' },
   { value: 'warehouse', label: 'Galpón' },
   { value: 'parking', label: 'Cochera' },
+  { value: 'development_unit', label: 'Emprendimiento' },
 ]
 
 export function BuscarContent({
   forcedOperation,
+  forcedPropertyType,
   pageTitle,
   pageSubtitle,
 }: BuscarContentProps) {
@@ -663,9 +667,14 @@ export function BuscarContent({
     if (forcedOperation) setOperationType(forcedOperation)
   }, [forcedOperation])
 
-  const [propertyType, setPropertyType] = useState<PropertyType | ''>(
-    (searchParams.get('tipo') as PropertyType) ?? ''
-  )
+  const [propertyType, setPropertyType] = useState<PropertyType | ''>(() => {
+    if (forcedPropertyType) return forcedPropertyType
+    return (searchParams.get('tipo') as PropertyType) ?? ''
+  })
+
+  useEffect(() => {
+    if (forcedPropertyType) setPropertyType(forcedPropertyType)
+  }, [forcedPropertyType])
   const [city, setCity] = useState(searchParams.get('ciudad') ?? '')
   const [neighborhood, setNeighborhood] = useState(searchParams.get('barrio') ?? '')
   const [minPrice, setMinPrice] = useState(searchParams.get('min') ?? '')
@@ -1271,15 +1280,18 @@ export function BuscarContent({
   })
 
   const opLocked = Boolean(forcedOperation)
+  const typeLocked = Boolean(forcedPropertyType)
 
   const searchPathPage: PortalSearchPage = useMemo(
     () =>
-      forcedOperation === 'sale'
-        ? 'venta'
-        : forcedOperation === 'rent'
-          ? 'alquiler'
-          : 'buscar',
-    [forcedOperation]
+      forcedPropertyType === 'development_unit'
+        ? 'emprendimientos'
+        : forcedOperation === 'sale'
+          ? 'venta'
+          : forcedOperation === 'rent'
+            ? 'alquiler'
+            : 'buscar',
+    [forcedOperation, forcedPropertyType]
   )
 
   const [assistantHint, setAssistantHint] = useState<{
@@ -1980,23 +1992,31 @@ export function BuscarContent({
                 </select>
               </BuscarLabeledField>
             )}
-            <BuscarLabeledField id="buscar-tipo" label={S.buscarFieldPropertyType}>
-              <select
-                id="buscar-tipo"
-                className={BUSCAR_SELECT_CLASS}
-                value={propertyType}
-                onChange={(e) =>
-                  setPropertyType(e.target.value as PropertyType | '')
-                }
-              >
-                <option value="">Todos los tipos</option>
-                {PROPERTY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </BuscarLabeledField>
+            {typeLocked ? (
+              <BuscarLabeledField id="buscar-tipo" label={S.buscarFieldPropertyType}>
+                <p className="rounded-md border border-border/40 bg-surface-secondary/50 px-3 py-2 text-sm text-text-primary">
+                  {PROPERTY_TYPE_LABELS[forcedPropertyType!] ?? forcedPropertyType}
+                </p>
+              </BuscarLabeledField>
+            ) : (
+              <BuscarLabeledField id="buscar-tipo" label={S.buscarFieldPropertyType}>
+                <select
+                  id="buscar-tipo"
+                  className={BUSCAR_SELECT_CLASS}
+                  value={propertyType}
+                  onChange={(e) =>
+                    setPropertyType(e.target.value as PropertyType | '')
+                  }
+                >
+                  <option value="">Todos los tipos</option>
+                  {PROPERTY_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </BuscarLabeledField>
+            )}
             <BuscarLabeledField id="buscar-ciudad" label={S.buscarFieldCity}>
               <Input
                 id="buscar-ciudad"

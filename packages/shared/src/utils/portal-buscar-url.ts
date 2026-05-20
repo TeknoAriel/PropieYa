@@ -29,7 +29,7 @@ function portalBuscarParams(filters: PortalBuscarUrlFilters): string {
 }
 
 /** Ruta de listado según contexto (`/buscar`, `/venta`, `/alquiler`). */
-export type PortalSearchPage = 'buscar' | 'venta' | 'alquiler'
+export type PortalSearchPage = 'buscar' | 'venta' | 'alquiler' | 'emprendimientos'
 
 export function buildPortalSearchPath(
   filters: PortalBuscarUrlFilters,
@@ -37,7 +37,13 @@ export function buildPortalSearchPath(
 ): string {
   const qs = portalBuscarParams(filters)
   const base =
-    page === 'venta' ? '/venta' : page === 'alquiler' ? '/alquiler' : '/buscar'
+    page === 'venta'
+      ? '/venta'
+      : page === 'alquiler'
+        ? '/alquiler'
+        : page === 'emprendimientos'
+          ? '/emprendimientos'
+          : '/buscar'
   return qs ? `${base}?${qs}` : base
 }
 

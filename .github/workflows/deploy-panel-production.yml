@@ -34,22 +34,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validar secretos Vercel (panel)
+      - name: Comprobar secretos panel (skip si faltan)
+        id: panel_ready
         run: |
           set -euo pipefail
-          missing=0
+          missing=""
           for k in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PANEL_PROJECT_ID; do
             if [ -z "${!k:-}" ]; then
-              echo "::error::Falta secret $k en GitHub Actions"
-              missing=1
+              missing="${missing} ${k}"
             fi
           done
-          if [ "$missing" -ne 0 ]; then
-            echo "::error::Agregar VERCEL_PANEL_PROJECT_ID (proyecto propieya-panel) en Settings → Secrets. Ver docs/DEPLOY-PASOS-URIs.md"
-            exit 1
+          if [ -n "${missing}" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Deploy panel omitido — faltan secretos:${missing}. Crear VERCEL_PANEL_PROJECT_ID (proyecto propieya-panel). Ver docs/DEPLOY-PASOS-URIs.md § A2 y § Panel 404."
+            exit 0
           fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+          echo "Secretos panel OK."
 
       - name: Verificar que VERCEL_PANEL_PROJECT_ID sea propieya-panel
+        if: steps.panel_ready.outputs.ready == 'true'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_PANEL_PROJECT_ID: ${{ secrets.VERCEL_PANEL_PROJECT_ID }}
@@ -70,31 +74,38 @@ jobs:
           echo "OK: proyecto panel (${name})."
 
       - name: Setup pnpm
+        if: steps.panel_ready.outputs.ready == 'true'
         uses: pnpm/action-setup@v2
         with:
           version: 9
 
       - name: Setup Node
+        if: steps.panel_ready.outputs.ready == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
 
       - name: Install dependencies
+        if: steps.panel_ready.outputs.ready == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Lint
+        if: steps.panel_ready.outputs.ready == 'true'
         run: pnpm lint
 
       - name: Typecheck
+        if: steps.panel_ready.outputs.ready == 'true'
         run: pnpm typecheck
 
       - name: Build panel
+        if: steps.panel_ready.outputs.ready == 'true'
         run: pnpm exec turbo run build --filter=@propieya/panel --force
         env:
           NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Linkear proyecto panel y pull (raíz monorepo)
+        if: steps.panel_ready.outputs.ready == 'true'
         run: |
           set -euo pipefail
           mkdir -p .vercel
@@ -107,6 +118,7 @@ jobs:
           npx --yes vercel@51.4.0 pull --yes --environment=production --token "${VERCEL_TOKEN}"
 
       - name: Deploy panel producción (Vercel CLI, raíz monorepo)
+        if: steps.panel_ready.outputs.ready == 'true'
         env:
           TURBO_FORCE: '1'
         run: |
@@ -136,6 +148,7 @@ jobs:
           fi
 
       - name: Alias propieya-panel.vercel.app (best effort)
+        if: steps.panel_ready.outputs.ready == 'true'
         run: |
           set +e
           if [ -z "${DEPLOY_URL:-}" ]; then
@@ -146,9 +159,11 @@ jobs:
           exit 0
 
       - name: Esperar propagación
+        if: steps.panel_ready.outputs.ready == 'true'
         run: sleep 60
 
       - name: Smoke panel /api/health
+        if: steps.panel_ready.outputs.ready == 'true'
         run: |
           set -euo pipefail
           for i in 1 2 3 4 5 6 7 8; do

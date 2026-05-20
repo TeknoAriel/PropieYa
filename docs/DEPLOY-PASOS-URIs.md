@@ -58,12 +58,16 @@ Ir a: **https://github.com/TeknoAriel/PropieYa/settings/secrets/actions** y crea
 
 - `VERCEL_TOKEN`
 - `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
+- `VERCEL_PROJECT_ID` — proyecto **web** (`propie-ya-web`)
+- `VERCEL_PANEL_PROJECT_ID` — proyecto **panel** (`propieya-panel`); sin esto el panel queda en 404
 
 Origen de valores:
 - Vercel → Account Settings → Tokens (`VERCEL_TOKEN`)
-- Vercel → proyecto web (`propie-ya-web`) → Settings → General (`Project ID`)
-- Vercel → Team Settings (`Team/Org ID`)
+- Vercel → proyecto web (`propie-ya-web`) → Settings → General → **Project ID** → `VERCEL_PROJECT_ID`
+- Vercel → proyecto panel (`propieya-panel`) → Settings → General → **Project ID** → `VERCEL_PANEL_PROJECT_ID`
+- Vercel → Team Settings (`Team/Org ID`) → `VERCEL_ORG_ID`
+
+Si el proyecto `propieya-panel` no existe: crearlo (Root `apps/panel`, repo TeknoAriel/PropieYa) según `docs/09-CONFIGURACION-COPIAR-PEGAR.md` §5, luego pegar el Project ID en el secret.
 
 ### A3. Vercel Web (proyecto correcto)
 

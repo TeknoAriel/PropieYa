@@ -1,6 +1,6 @@
 # Backlog: emprendimientos, multipaís, moneda y búsqueda
 
-**Estado:** pendiente de producto e ingeniería. **UI actual:** stub `/emprendimientos` hasta inventario y fichas alineadas al estándar del portal.
+**Estado:** listado en `/emprendimientos` activo (`development_unit` importado). Pendiente: ficha de proyecto, tipologías/stock y API REST dedicada si Kiteprop la expone (ver `docs/68-KITEPROP-EMPRENDIMIENTOS-API-Y-PORTAL.md`).
 
 ---
 

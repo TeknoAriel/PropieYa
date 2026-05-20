@@ -40,6 +40,10 @@ function pathProperties(): string {
   return process.env.KITEPROP_PATH_PROPERTIES?.trim() || 'properties'
 }
 
+function pathDevelopments(): string {
+  return process.env.KITEPROP_PATH_DEVELOPMENTS?.trim() || 'developments'
+}
+
 function pathLeads(): string {
   return process.env.KITEPROP_PATH_LEADS?.trim() || 'leads'
 }
@@ -212,6 +216,15 @@ export async function getPropertyById(
     'GET',
     `${pathProperties()}/${encodeURIComponent(String(id))}`
   )
+}
+
+export type GetDevelopmentsParams = GetPropertiesParams
+
+/** Listado REST de emprendimientos (ruta configurable; verificar con `pnpm probe:kiteprop-developments`). */
+export async function getDevelopments(
+  params: GetDevelopmentsParams = {}
+): Promise<KitepropClientResult<unknown>> {
+  return kitepropRequest<unknown>('GET', pathDevelopments(), { query: params })
 }
 
 export type CreateLeadPayload = KitepropJson

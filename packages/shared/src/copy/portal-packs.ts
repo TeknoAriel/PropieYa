@@ -234,6 +234,10 @@ export const PORTAL_SEARCH_UX_COPY = {
   alquilerTitle: 'Alquileres y temporarios',
   alquilerSubtitle:
     'Departamentos y casas publicadas; refiná zona y condiciones cuando quieras.',
+  /** H1 por defecto en /emprendimientos. */
+  emprendimientosTitle: 'Emprendimientos y unidades en pozo',
+  emprendimientosSubtitle:
+    'Torres, barrios cerrados y unidades con entrega a futuro. Filtrá por zona, precio y operación.',
 
   /** Fila opcional de atajos por ciudad (solo landings; sin API). */
   landingQuickCitiesAriaLabel: 'Ciudades frecuentes',
@@ -770,6 +774,32 @@ export function portalAlquilerMetaDescription(ciudad: string): string {
     return 'Departamentos y casas en alquiler o temporario. Explorá avisos y refiná por zona en Propieya.'
   }
   return `Alquileres y temporarios en ${c}. Explorá avisos y refiná con filtros o mapa en Propieya.`
+}
+
+export function portalEmprendimientosLandingH1(ciudad: string): string {
+  const c = ciudad.trim()
+  if (!c) return PORTAL_SEARCH_UX_COPY.emprendimientosTitle
+  return `Emprendimientos en ${c}`
+}
+
+export function portalEmprendimientosLandingLead(ciudad: string): string {
+  const c = ciudad.trim()
+  if (!c) return PORTAL_SEARCH_UX_COPY.emprendimientosSubtitle
+  return `Unidades y proyectos en pozo publicados en ${c}. Afiná con filtros o mapa.`
+}
+
+export function portalEmprendimientosDocumentTitle(ciudad: string): string {
+  const c = ciudad.trim()
+  if (!c) return 'Emprendimientos y unidades en pozo'
+  return `Emprendimientos en ${c}`
+}
+
+export function portalEmprendimientosMetaDescription(ciudad: string): string {
+  const c = ciudad.trim()
+  if (!c) {
+    return 'Emprendimientos, torres y unidades en pozo. Explorá avisos importados y refiná por zona en Propieya.'
+  }
+  return `Emprendimientos en ${c}. Unidades en pozo y proyectos con entrega a futuro en Propieya.`
 }
 
 export function portalBuscarLandingH1(ciudad: string): string {
