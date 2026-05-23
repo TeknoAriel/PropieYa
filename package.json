@@ -32,6 +32,7 @@
     "qa:portal-prod": "node scripts/qa-post-auth-validation.mjs",
     "probe:kiteprop-developments": "pnpm exec tsx scripts/kiteprop-developments-api-probe.ts",
     "backfill:kiteprop-property-id": "pnpm exec tsx scripts/backfill-kiteprop-property-id-from-feed.ts",
+    "backfill:development-project": "pnpm exec tsx scripts/backfill-development-project-features.ts",
     "publish:imported": "pnpm exec tsx scripts/publish-imported-drafts.ts",
     "sync-search:local": "pnpm exec tsx scripts/sync-search-local.ts",
     "dedup:apply": "pnpm exec tsx scripts/apply-dedup-listings.ts",

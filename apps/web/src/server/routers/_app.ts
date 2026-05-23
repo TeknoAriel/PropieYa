@@ -1,6 +1,7 @@
 import { createTRPCRouter } from '../trpc'
 import { authRouter } from './auth'
 import { demandRouter } from './demand'
+import { developmentRouter } from './development'
 import { healthRouter } from './health'
 import { leadRouter } from './lead'
 import { listingRouter } from './listing'
@@ -12,6 +13,7 @@ import { statsRouter } from './stats'
 export const appRouter = createTRPCRouter({
   auth: authRouter,
   demand: demandRouter,
+  development: developmentRouter,
   health: healthRouter,
   lead: leadRouter,
   listing: listingRouter,

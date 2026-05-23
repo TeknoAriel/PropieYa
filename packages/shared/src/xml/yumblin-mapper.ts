@@ -6,6 +6,7 @@
  */
 
 import { extractAmenitiesFromFeedItemDetailed } from '../amenity-mapping'
+import { developmentProjectFieldsFromFeedItem } from '../development-project'
 import { peekFeedKitepropNumericPropertyId } from '../kiteprop-property-id'
 import { mapFeedPropertyTypeWithListingText } from '../map-feed-property-type'
 import type { Amenity, OperationType } from '../types/listing'
@@ -457,6 +458,14 @@ export function mapYumblinItem(
     ...(kitepropAgency ? { kitepropAgency } : {}),
     ...(kitepropAssignedContact ? { kitepropAssignedContact } : {}),
     ...(kitepropPropertyId != null ? { kitepropPropertyId } : {}),
+    ...(propertyType === 'development_unit'
+      ? developmentProjectFieldsFromFeedItem(
+          item,
+          title,
+          city ?? '',
+          neighborhood ?? null
+        )
+      : {}),
   }
 
   return {
