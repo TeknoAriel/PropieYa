@@ -1,3 +1,5 @@
+import { resolveKitepropPropertyIdForMessage } from '@propieya/shared'
+
 import {
   createContact,
   createMessage,
@@ -43,8 +45,11 @@ export type GetPropertiesFromKitePropInput = {
 }
 
 export type PropertyInquiryPayload = {
+  /** ID numérico KiteProp (`features.kitepropPropertyId` en import). */
+  kiteprop_property_id?: string | number | null
   property_id?: string | number | null
   property_code?: string | null
+  external_id?: string | null
   property_title?: string | null
   source: 'Propieya'
   page_url?: string | null
@@ -273,32 +278,17 @@ export function resolveKitepropMessageName(input: KitepropMessageNameInput): str
   return 'Contacto Propieya'
 }
 
-function normalizePropertyId(
-  propertyId: string | number | null | undefined,
-  propertyCode: string | null | undefined
-): number | null {
-  if (typeof propertyId === 'number' && Number.isFinite(propertyId)) {
-    return propertyId
-  }
-  if (typeof propertyId === 'string') {
-    const n = Number.parseInt(propertyId, 10)
-    if (Number.isFinite(n)) return n
-    const tailDigits = propertyId.match(/(\d{3,})$/)?.[1]
-    if (tailDigits) {
-      const parsed = Number.parseInt(tailDigits, 10)
-      if (Number.isFinite(parsed)) return parsed
-    }
-  }
-  if (typeof propertyCode === 'string') {
-    const n = Number.parseInt(propertyCode, 10)
-    if (Number.isFinite(n)) return n
-    const tailDigits = propertyCode.match(/(\d{3,})$/)?.[1]
-    if (tailDigits) {
-      const parsed = Number.parseInt(tailDigits, 10)
-      if (Number.isFinite(parsed)) return parsed
-    }
-  }
-  return null
+function resolveInquiryPropertyId(payload: PropertyInquiryPayload): number | null {
+  const externalFallback =
+    payload.external_id ??
+    payload.property_code ??
+    (payload.property_id != null ? String(payload.property_id) : undefined)
+  return resolveKitepropPropertyIdForMessage({
+    kitepropPropertyId: payload.kiteprop_property_id,
+    propertyId: payload.property_id,
+    propertyCode: payload.property_code,
+    externalId: externalFallback,
+  })
 }
 
 function stringifyUpstreamError(raw: unknown): string {
@@ -331,7 +321,7 @@ async function postLegacyInquiry(payload: PropertyInquiryPayload): Promise<Prope
     }
   }
 
-  const propertyId = normalizePropertyId(payload.property_id, payload.property_code)
+  const propertyId = resolveInquiryPropertyId(payload)
   const legacyPayload = {
     full_name: payload.name,
     email: payload.email,
@@ -401,8 +391,7 @@ export async function createPropertyInquiryInKiteProp(
   const legacy = await postLegacyInquiry(payload)
   if (legacy) return legacy
 
-  // Contrato confirmado por auditor para POST /messages.
-  const propertyId = normalizePropertyId(payload.property_id, payload.property_code)
+  const propertyId = resolveInquiryPropertyId(payload)
   if (propertyId !== null) {
     // Mismo contrato que AvalonWeb `attachPropertyInquiry` → POST …/messages:
     // name, email, body, property_id, phone (docs/KITEPROP.md en Avalon).

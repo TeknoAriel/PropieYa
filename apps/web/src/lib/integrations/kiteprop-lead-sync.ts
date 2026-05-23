@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 
 import type { Database } from '@propieya/database'
 import { leads, listings } from '@propieya/database'
+import { getKitepropPropertyIdFromListingFeatures } from '@propieya/shared'
 
 import { isKitepropConfigured } from './kiteprop-client'
 import { createPropertyInquiryInKiteProp } from './kiteprop-properties'
@@ -54,6 +55,7 @@ export async function syncActivatedLeadToKiteprop(
       listingId: leads.listingId,
       listingTitle: listings.title,
       listingExternalId: listings.externalId,
+      listingFeatures: listings.features,
     })
     .from(leads)
     .innerJoin(listings, eq(leads.listingId, listings.id))
@@ -65,12 +67,16 @@ export async function syncActivatedLeadToKiteprop(
     return
   }
   const configured = isKitepropConfigured()
+  const kitepropPropertyIdPreview = getKitepropPropertyIdFromListingFeatures(
+    row.listingFeatures ?? null
+  )
   console.info('[kiteprop-lead-sync] start', {
     leadId,
     configured,
     accessStatus: row.accessStatus,
     listingSource: row.listingSource,
     listingExternalId: row.listingExternalId ?? null,
+    kitepropPropertyId: kitepropPropertyIdPreview,
   })
   if (!configured) {
     console.warn('[kiteprop-lead-sync] skip_not_configured', { leadId })
@@ -102,9 +108,13 @@ export async function syncActivatedLeadToKiteprop(
 
   const routing = readRoutingMeta(row.enrichment)
 
+  const kitepropPropertyId = getKitepropPropertyIdFromListingFeatures(row.listingFeatures)
+
   const inquiry = await createPropertyInquiryInKiteProp({
-    property_id: row.listingExternalId ?? undefined,
+    kiteprop_property_id: kitepropPropertyId ?? undefined,
+    property_id: kitepropPropertyId ?? row.listingExternalId ?? undefined,
     property_code: row.listingExternalId ?? undefined,
+    external_id: row.listingExternalId ?? undefined,
     property_title: row.listingTitle,
     source: 'Propieya',
     page_url:
@@ -147,7 +157,12 @@ export async function syncActivatedLeadToKiteprop(
   }
 
   const remoteId = inquiry.contactId ?? null
-  const preview = JSON.stringify({ mode: inquiry.mode, contactId: inquiry.contactId ?? null })
+  const preview = JSON.stringify({
+    mode: inquiry.mode,
+    contactId: inquiry.contactId ?? null,
+    propertyId: kitepropPropertyId ?? null,
+    externalId: row.listingExternalId ?? null,
+  })
 
   console.info('[kiteprop-lead-sync] createPropertyInquiryInKiteProp OK', {
     leadId,

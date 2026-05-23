@@ -60,9 +60,8 @@ Prioridad de contacto asignado implementada:
    - `mapKitePropContact(raw)`
    - `createPropertyInquiryInKiteProp(payload)` (guardado por flags)
 
-2. **Sin inventar contrato de POST:**  
-   `createPropertyInquiryInKiteProp` queda desactivado por defecto y exige `KITEPROP_ENABLE_INQUIRY_POST=1`.  
-   Esto evita enviar payloads no confirmados.
+2. **POST consultas (leads):**  
+   `createPropertyInquiryInKiteProp` → `POST /api/v1/messages` con `property_id` numérico cuando el aviso tiene `features.kitepropPropertyId` (import) o `externalId` resoluble (`KP…`). Sin propiedad → `POST /contacts`. Requiere `KITEPROP_API_KEY` en el portal.
 
 3. **Contacto asignado en ficha:**  
    Se toma de `features.kitepropAssignedContact` (persistido en import) y opcionalmente se enriquece por API si:
@@ -81,7 +80,7 @@ Prioridad de contacto asignado implementada:
 Para activar envío definitivo a KiteProp desde formulario del portal:
 
 1. confirmar contrato exacto de `POST /contacts` (requeridos y nombres finales)
-2. confirmar contrato exacto de `POST /messages` y referencia a `property_id/property_code`
+2. confirmar en prod respuestas 2xx de `POST /messages` con `property_id` desde `features.kitepropPropertyId`
 3. validar en entorno con `KITEPROP_API_KEY` operativa y respuestas 2xx reales
 
 Hasta entonces, la integración queda preparada y segura (sin POST inventado).

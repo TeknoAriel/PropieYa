@@ -57,4 +57,23 @@ describe('mapYumblinItem property type', () => {
     expect(row).not.toBeNull()
     expect(row!.propertyType).toBe('house')
   })
+
+  it('persiste kitepropPropertyId numérico del feed (campo id, no public_code)', () => {
+    const row = mapYumblinItem(
+      {
+        title: 'Depto en pozo',
+        content: 'Desc',
+        id: 506424,
+        public_code: 'KP506424',
+        for_sale: true,
+        price: 100_000,
+        total_meters: 80,
+        property_type: 'apartments',
+      },
+      baseInput
+    )
+    expect(row).not.toBeNull()
+    expect(row!.externalId).toBe('KP506424')
+    expect((row!.features as Record<string, unknown>).kitepropPropertyId).toBe(506424)
+  })
 })

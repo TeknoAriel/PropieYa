@@ -6,6 +6,7 @@
  */
 
 import { extractAmenitiesFromFeedItemDetailed } from '../amenity-mapping'
+import { peekFeedKitepropNumericPropertyId } from '../kiteprop-property-id'
 import { mapFeedPropertyTypeWithListingText } from '../map-feed-property-type'
 import type { Amenity, OperationType } from '../types/listing'
 
@@ -305,6 +306,7 @@ export function mapYumblinItem(
   const externalId = getValue(item, 'public_code', 'id', 'codigo', 'external_id', 'id_aviso', 'uuid') as
     | string
     | null
+  const kitepropPropertyId = peekFeedKitepropNumericPropertyId(item)
   const bedrooms = getValue(item, 'bedrooms', 'dormitorios', 'rooms', 'ambientes') as number | string | null
   const bathrooms = getValue(item, 'bathrooms', 'banos', 'half_bathrooms') as number | string | null
   const garagesVal = getValue(item, 'garages', 'cocheras', 'garage_count', 'estacionamientos') ?? item.garages ?? item.cocheras
@@ -454,6 +456,7 @@ export function mapYumblinItem(
     ...(feedRawTokens.length > 0 ? { feedAmenityRaw: feedRawTokens } : {}),
     ...(kitepropAgency ? { kitepropAgency } : {}),
     ...(kitepropAssignedContact ? { kitepropAssignedContact } : {}),
+    ...(kitepropPropertyId != null ? { kitepropPropertyId } : {}),
   }
 
   return {
