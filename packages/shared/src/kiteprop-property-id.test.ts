@@ -25,6 +25,15 @@ describe('kiteprop-property-id', () => {
     ).toBe(999001)
   })
 
+  it('no infiere id desde KP sin flag (evita property_id incorrecto)', () => {
+    expect(
+      resolveKitepropPropertyIdForMessage({
+        externalId: 'KP506424',
+        propertyCode: 'KP506424',
+      })
+    ).toBeNull()
+  })
+
   it('lee kitepropPropertyId desde features', () => {
     expect(
       getKitepropPropertyIdFromListingFeatures({ kitepropPropertyId: 12345, amenities: [] })

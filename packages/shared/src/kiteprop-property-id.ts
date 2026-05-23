@@ -37,7 +37,8 @@ export function parseKitepropNumericPropertyId(
 
 /**
  * Resuelve el `property_id` para POST /messages.
- * Prioridad: id numérico del feed → property_id explícito → public_code / externalId.
+ * Prioridad: `features.kitepropPropertyId` (campo `id` del feed) → id numérico explícito.
+ * No infiere id desde el sufijo de `KP…` (suele no coincidir con `properties.id` en KiteProp).
  */
 export function resolveKitepropPropertyIdForMessage(
   input: KitepropPropertyIdInput
@@ -45,12 +46,18 @@ export function resolveKitepropPropertyIdForMessage(
   const fromStored = parseKitepropNumericPropertyId(input.kitepropPropertyId ?? undefined)
   if (fromStored != null) return fromStored
   const fromProperty = parseKitepropNumericPropertyId(input.propertyId ?? undefined)
-  if (fromProperty != null) return fromProperty
-  const fromCode = parseKitepropNumericPropertyId(input.propertyCode ?? undefined)
-  if (fromCode != null) return fromCode
-  const fromExternal = parseKitepropNumericPropertyId(input.externalId ?? undefined)
-  if (fromExternal != null) return fromExternal
+  if (fromProperty != null && !looksLikePublicCode(String(input.propertyId))) return fromProperty
+  if (process.env.KITEPROP_ALLOW_KP_SUFFIX_PROPERTY_ID === '1') {
+    const fromCode = parseKitepropNumericPropertyId(input.propertyCode ?? undefined)
+    if (fromCode != null) return fromCode
+    const fromExternal = parseKitepropNumericPropertyId(input.externalId ?? undefined)
+    if (fromExternal != null) return fromExternal
+  }
   return null
+}
+
+function looksLikePublicCode(value: string): boolean {
+  return /^KP\d+/i.test(value.trim())
 }
 
 export function getKitepropPropertyIdFromListingFeatures(features: unknown): number | null {
