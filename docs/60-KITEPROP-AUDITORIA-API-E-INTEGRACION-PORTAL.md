@@ -61,7 +61,7 @@ Prioridad de contacto asignado implementada:
    - `createPropertyInquiryInKiteProp(payload)` (guardado por flags)
 
 2. **POST consultas (leads):**  
-   `createPropertyInquiryInKiteProp` → `POST /api/v1/messages` con `property_id` numérico cuando el aviso tiene `features.kitepropPropertyId` (import) o `externalId` resoluble (`KP…`). Sin propiedad → `POST /contacts`. Requiere `KITEPROP_API_KEY` en el portal.
+   `createPropertyInquiryInKiteProp` → `POST /api/v1/messages` con `property_id` numérico (`features.kitepropPropertyId` o `KP…`). El sync se **await** en `lead.create` / `activate` (no fire-and-forget en Vercel). Cron `GET /api/cron/retry-kiteprop-leads` cada 30 min reintenta fallos. **Obligatorio:** `KITEPROP_API_KEY` en el proyecto Vercel **web** (`/api/health` → `kitepropLeads`).
 
 3. **Contacto asignado en ficha:**  
    Se toma de `features.kitepropAssignedContact` (persistido en import) y opcionalmente se enriquece por API si:

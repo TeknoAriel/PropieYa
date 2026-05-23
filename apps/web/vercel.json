@@ -22,6 +22,10 @@
     {
       "path": "/api/cron/inventory-audit",
       "schedule": "15 7 * * *"
+    },
+    {
+      "path": "/api/cron/retry-kiteprop-leads",
+      "schedule": "*/30 * * * *"
     }
   ]
 }

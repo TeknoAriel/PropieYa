@@ -1,7 +1,8 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 import type { Database } from '@propieya/database'
 import { leads, listings } from '@propieya/database'
+
 import { getKitepropPropertyIdFromListingFeatures } from '@propieya/shared'
 
 import { isKitepropConfigured } from './kiteprop-client'
@@ -21,6 +22,13 @@ type LeadRoutingMeta = {
   assignedUserName?: string | null
 }
 
+export function isLeadEligibleForKitepropSync(
+  accessStatus: string,
+  listingSource: string
+): boolean {
+  return accessStatus === 'activated' || listingSource === 'import'
+}
+
 function readKitepropMeta(enrichment: unknown): KitepropLeadMeta | undefined {
   if (!enrichment || typeof enrichment !== 'object') return undefined
   const k = (enrichment as Record<string, unknown>).kiteprop
@@ -33,15 +41,35 @@ function readRoutingMeta(enrichment: unknown): LeadRoutingMeta | undefined {
   return enrichment as LeadRoutingMeta
 }
 
+async function persistKitepropSyncMeta(
+  db: Database,
+  leadId: string,
+  prev: Record<string, unknown>,
+  meta: KitepropLeadMeta | undefined,
+  patch: KitepropLeadMeta
+): Promise<void> {
+  await db
+    .update(leads)
+    .set({
+      enrichment: {
+        ...prev,
+        kiteprop: {
+          ...meta,
+          ...patch,
+        },
+      },
+    })
+    .where(eq(leads.id, leadId))
+}
+
 /**
- * Tras activación (o creación ya activada), envía el lead a KiteProp una sola vez por éxito previo.
- * Idempotencia local: `enrichment.kiteprop.syncStatus === 'ok'`.
- * Reintenta si el último intento fue error.
+ * Envía el lead a KiteProp (POST /messages con property_id cuando aplica).
+ * Idempotencia: no reenvía si `enrichment.kiteprop.syncStatus === 'ok'`.
  */
 export async function syncActivatedLeadToKiteprop(
   db: Database,
   leadId: string
-): Promise<void> {
+): Promise<{ ok: boolean; skipped?: string; error?: string }> {
   const [row] = await db
     .select({
       id: leads.id,
@@ -64,39 +92,7 @@ export async function syncActivatedLeadToKiteprop(
 
   if (!row) {
     console.warn('[kiteprop-lead-sync] skip_missing_lead', { leadId })
-    return
-  }
-  const configured = isKitepropConfigured()
-  const kitepropPropertyIdPreview = getKitepropPropertyIdFromListingFeatures(
-    row.listingFeatures ?? null
-  )
-  console.info('[kiteprop-lead-sync] start', {
-    leadId,
-    configured,
-    accessStatus: row.accessStatus,
-    listingSource: row.listingSource,
-    listingExternalId: row.listingExternalId ?? null,
-    kitepropPropertyId: kitepropPropertyIdPreview,
-  })
-  if (!configured) {
-    console.warn('[kiteprop-lead-sync] skip_not_configured', { leadId })
-    return
-  }
-  const shouldSync =
-    row.accessStatus === 'activated' || row.listingSource === 'import'
-  if (!shouldSync) {
-    console.info('[kiteprop-lead-sync] skip_not_eligible', {
-      leadId,
-      accessStatus: row.accessStatus,
-      listingSource: row.listingSource,
-    })
-    return
-  }
-
-  const meta = readKitepropMeta(row.enrichment)
-  if (meta?.syncStatus === 'ok') {
-    console.info('[kiteprop-lead-sync] skip_already_synced', { leadId })
-    return
+    return { ok: false, skipped: 'missing_lead' }
   }
 
   const prev =
@@ -104,11 +100,46 @@ export async function syncActivatedLeadToKiteprop(
       ? (row.enrichment as Record<string, unknown>)
       : {}
 
+  const meta = readKitepropMeta(row.enrichment)
   const attemptAt = new Date().toISOString()
+  const configured = isKitepropConfigured()
+  const kitepropPropertyId = getKitepropPropertyIdFromListingFeatures(row.listingFeatures)
+
+  console.info('[kiteprop-lead-sync] start', {
+    leadId,
+    configured,
+    accessStatus: row.accessStatus,
+    listingSource: row.listingSource,
+    listingExternalId: row.listingExternalId ?? null,
+    kitepropPropertyId,
+  })
+
+  if (!configured) {
+    const err = 'KITEPROP_API_KEY no configurada en el portal (Vercel)'
+    console.warn('[kiteprop-lead-sync] skip_not_configured', { leadId })
+    await persistKitepropSyncMeta(db, leadId, prev, meta, {
+      syncStatus: 'error',
+      lastError: err,
+      lastAttemptAt: attemptAt,
+    })
+    return { ok: false, error: err }
+  }
+
+  if (!isLeadEligibleForKitepropSync(row.accessStatus, row.listingSource)) {
+    console.info('[kiteprop-lead-sync] skip_not_eligible', {
+      leadId,
+      accessStatus: row.accessStatus,
+      listingSource: row.listingSource,
+    })
+    return { ok: false, skipped: 'not_eligible' }
+  }
+
+  if (meta?.syncStatus === 'ok') {
+    console.info('[kiteprop-lead-sync] skip_already_synced', { leadId })
+    return { ok: true, skipped: 'already_synced' }
+  }
 
   const routing = readRoutingMeta(row.enrichment)
-
-  const kitepropPropertyId = getKitepropPropertyIdFromListingFeatures(row.listingFeatures)
 
   const inquiry = await createPropertyInquiryInKiteProp({
     kiteprop_property_id: kitepropPropertyId ?? undefined,
@@ -132,28 +163,19 @@ export async function syncActivatedLeadToKiteprop(
 
   if (!inquiry.ok) {
     if (inquiry.reason === 'contract_not_confirmed' || inquiry.reason === 'not_configured') {
-      return
+      return { ok: false, error: inquiry.message }
     }
     console.error('[kiteprop-lead-sync] createPropertyInquiryInKiteProp falló', {
       leadId,
       reason: inquiry.reason,
       message: inquiry.message,
     })
-    await db
-      .update(leads)
-      .set({
-        enrichment: {
-          ...prev,
-          kiteprop: {
-            ...meta,
-            syncStatus: 'error' as const,
-            lastError: inquiry.message,
-            lastAttemptAt: attemptAt,
-          },
-        },
-      })
-      .where(eq(leads.id, leadId))
-    return
+    await persistKitepropSyncMeta(db, leadId, prev, meta, {
+      syncStatus: 'error',
+      lastError: inquiry.message,
+      lastAttemptAt: attemptAt,
+    })
+    return { ok: false, error: inquiry.message }
   }
 
   const remoteId = inquiry.contactId ?? null
@@ -170,27 +192,63 @@ export async function syncActivatedLeadToKiteprop(
     mode: inquiry.mode,
   })
 
-  await db
-    .update(leads)
-    .set({
-      enrichment: {
-        ...prev,
-        kiteprop: {
-          ...meta,
-          syncedAt: attemptAt,
-          syncStatus: 'ok' as const,
-          remoteId,
-          lastAttemptAt: attemptAt,
-          responsePreview: preview,
-          lastError: undefined,
-        },
-      },
-    })
-    .where(eq(leads.id, leadId))
+  await persistKitepropSyncMeta(db, leadId, prev, meta, {
+    syncedAt: attemptAt,
+    syncStatus: 'ok',
+    remoteId,
+    lastAttemptAt: attemptAt,
+    responsePreview: preview,
+    lastError: undefined,
+  })
+
+  return { ok: true }
 }
 
-export function scheduleKitepropLeadSync(db: Database, leadId: string): void {
-  void syncActivatedLeadToKiteprop(db, leadId).catch((err) => {
-    console.error('[kiteprop-lead-sync] no manejado', { leadId, err })
+/** Reintenta leads elegibles sin sync OK (últimas N horas). */
+export async function retryFailedKitepropLeadSyncs(
+  db: Database,
+  options?: { sinceHours?: number; limit?: number }
+): Promise<{ attempted: number; succeeded: number; failed: number; skipped: number }> {
+  const sinceHours = Math.min(168, Math.max(1, options?.sinceHours ?? 72))
+  const limit = Math.min(100, Math.max(1, options?.limit ?? 40))
+
+  const rows = await db.execute(sql`
+    select l.id as lead_id
+    from leads l
+    inner join listings li on li.id = l.listing_id
+    where l.created_at >= now() - (${sinceHours} || ' hours')::interval
+      and (
+        l.access_status = 'activated'
+        or li.source = 'import'
+      )
+      and coalesce(l.enrichment->'kiteprop'->>'syncStatus', '') is distinct from 'ok'
+    order by l.created_at desc
+    limit ${limit}
+  `)
+
+  const leadIds = (rows as unknown as Array<{ lead_id: string }>).map((r) => r.lead_id)
+  let succeeded = 0
+  let failed = 0
+  let skipped = 0
+
+  for (const leadId of leadIds) {
+    const result = await syncActivatedLeadToKiteprop(db, leadId)
+    if (result.skipped) skipped += 1
+    else if (result.ok) succeeded += 1
+    else failed += 1
+  }
+
+  return { attempted: leadIds.length, succeeded, failed, skipped }
+}
+
+/**
+ * Dispara sync a KiteProp. En lead.create/activate se debe **await** esta promesa
+ * (serverless no garantiza trabajo fire-and-forget tras la respuesta HTTP).
+ */
+export function scheduleKitepropLeadSync(db: Database, leadId: string): Promise<void> {
+  return syncActivatedLeadToKiteprop(db, leadId).then((result) => {
+    if (!result.ok && result.error) {
+      console.error('[kiteprop-lead-sync] sync falló', { leadId, error: result.error })
+    }
   })
 }

@@ -229,7 +229,7 @@ export const leadRouter = createTRPCRouter({
           listingSource: row.source,
           accessStatus: paid ? 'activated' : 'pending',
         })
-        scheduleKitepropLeadSync(ctx.db, created.id)
+        await scheduleKitepropLeadSync(ctx.db, created.id)
       }
 
       return created
@@ -346,7 +346,7 @@ export const leadRouter = createTRPCRouter({
           userId: ctx.session.userId,
           payload: { mode: result.mode },
         })
-        scheduleKitepropLeadSync(ctx.db, input.id)
+        await scheduleKitepropLeadSync(ctx.db, input.id)
       }
 
       return {

@@ -5,6 +5,8 @@ import { NextResponse } from 'next/server'
 
 import { getDb } from '@propieya/database'
 
+import { isKitepropConfigured } from '@/lib/integrations/kiteprop-client'
+
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
@@ -121,11 +123,25 @@ export async function GET() {
     }
   }
 
+  const kitepropApiKey = isKitepropConfigured()
+  const kitepropLegacyConsulta = Boolean(process.env.KITEPROP_API_CONSULTA_URL?.trim())
+  checks.kitepropLeads = kitepropApiKey
+    ? { status: 'ok' }
+    : {
+        status: 'error',
+        error:
+          'KITEPROP_API_KEY ausente: las consultas del portal no se envían a KiteProp (definir en Vercel web)',
+      }
+
   const allOk = Object.values(checks).every((c) => c.status === 'ok')
   const status = allOk ? 200 : 503
   const body = {
     status: allOk ? 'healthy' : 'degraded',
     checks,
+    integrations: {
+      kitepropApiKeyConfigured: kitepropApiKey,
+      kitepropLegacyConsultaUrl: kitepropLegacyConsulta,
+    },
     latencyMs: Date.now() - startedAt,
     timestamp: new Date().toISOString(),
     version: process.env.VERCEL_GIT_COMMIT_SHA

@@ -371,11 +371,8 @@ async function postLegacyInquiry(payload: PropertyInquiryPayload): Promise<Prope
 }
 
 /**
- * El contrato exacto de POST en KiteProp puede variar por cuenta/versión.
- * Para evitar inventar payloads, este adaptador solo se activa con:
- * - `KITEPROP_ENABLE_INQUIRY_POST=1`
- * y usa `contacts` (confirmado por docs MCP) con payload conservador.
- * El envío de `messages` es opt-in (`KITEPROP_ENABLE_MESSAGE_POST=1`).
+ * Consulta en KiteProp: prioriza POST /api/v1/messages con property_id.
+ * `KITEPROP_API_CONSULTA_URL` solo se usa si no hay property_id resoluble.
  */
 export async function createPropertyInquiryInKiteProp(
   payload: PropertyInquiryPayload
@@ -387,9 +384,6 @@ export async function createPropertyInquiryInKiteProp(
       message: 'KITEPROP_API_KEY no configurada',
     }
   }
-
-  const legacy = await postLegacyInquiry(payload)
-  if (legacy) return legacy
 
   const propertyId = resolveInquiryPropertyId(payload)
   if (propertyId !== null) {
@@ -404,10 +398,14 @@ export async function createPropertyInquiryInKiteProp(
     }
     const createdMessage = await createMessage(messagePayload)
     if (!createdMessage.ok) {
+      const detail =
+        createdMessage.body != null
+          ? stringifyUpstreamError(createdMessage.body)
+          : createdMessage.message
       return {
         ok: false,
         reason: 'upstream_error',
-        message: createdMessage.message,
+        message: `POST /messages: ${createdMessage.message}${detail ? ` — ${detail}` : ''}`,
       }
     }
     if (hasFailureEnvelope(createdMessage.data)) {
@@ -419,6 +417,9 @@ export async function createPropertyInquiryInKiteProp(
     }
     return { ok: true, mode: 'contacts_and_messages', contactId: null }
   }
+
+  const legacy = await postLegacyInquiry(payload)
+  if (legacy) return legacy
 
   // Sin propiedad, fallback a contacto.
   const contactPayload: Record<string, unknown> = {
