@@ -4,7 +4,7 @@ El agente anota aquí fallos que **no puede resolver** sin acción externa (GitH
 
 | Fecha | Qué falló | Acción necesaria (una vez) |
 |-------|-----------|----------------------------|
-| 2026-05-19 | **Panel B2B** `https://propieya-panel.vercel.app` → **404** `DEPLOYMENT_NOT_FOUND` (portal web OK) | **Un paso:** GitHub secret **`VERCEL_PANEL_PROJECT_ID`** (proyecto `propieya-panel`) + ejecutar workflow **Deploy panel producción** o `pnpm verificar:panel`. Detalle: `docs/DEPLOY-PASOS-URIs.md` § Panel 404. |
+| 2026-05-28 | **Panel B2B** `propieya-panel.vercel.app` → **404** `DEPLOYMENT_NOT_FOUND` | **Cerrado (ops):** deploy CLI a `propieya-panel` (`prj_Fzmr9YN25YEBHm0tk5gQ70VXmcKV`), alias canónico, SSO Vercel deshabilitado en el proyecto. `/propiedades/nueva` → 200. **Pendiente automatizar:** secret GitHub `VERCEL_PANEL_PROJECT_ID` = ese ID + workflow `deploy-panel-production.yml` en cada release. |
 | 2026-04-19 | **Guía (no bloqueo):** confusión entre **cuota Vercel Hobby** y “error de código” (p. ej. mails que hablan de **25 deploys/día** vs. doc actual **100**/día) | **Fuente de verdad:** `docs/DEPLOY-CONTEXTO-AGENTES.md` § Cuotas y [Planes Hobby](https://vercel.com/docs/plans/hobby). Si el log de Vercel/Actions dice **quota / deployment limit / rate limit**: Team → **Usage** / **Billing**; reducir deploys Preview o esperar ventana; opcional upgrade Pro. **No** depurar el repo hasta descartar cupo. |
 | 2026-03-22 | Build Vercel: `@elastic/elasticsearch/api/types` y `@/lib/search` | Corregido en mapping.ts (tipo local) y lib/search/index.ts |
 | 2026-03-22 | main protegido: push directo rechazado (PR requerido) | Workflow cambiado a PR-based: crea PR, espera CI, mergea |
