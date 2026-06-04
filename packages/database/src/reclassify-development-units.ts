@@ -1,6 +1,6 @@
+import { mapFeedPropertyTypeWithListingText } from '@propieya/shared'
 import { and, eq, ne, sql } from 'drizzle-orm'
 
-import { mapFeedPropertyTypeWithListingText } from '@propieya/shared'
 
 import type { getDb } from './client'
 import { listings } from './schema/listings'
