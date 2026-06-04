@@ -110,9 +110,40 @@ export function shouldTreatCocheraAsParkingPropertyType(text: string): boolean {
 }
 
 /**
+ * Señales fuertes de unidad en emprendimiento / pozo (prioridad sobre "departamento" en título).
+ * Excluye terrenos turísticos ("emprendimiento cabañas") que no son el vertical de pozo.
+ */
+export function matchDevelopmentUnitFromText(normalizedLower: string): boolean {
+  const s = normalizedLower
+  if (!s.trim()) return false
+
+  if (
+    /\b(terreno|lote|chacra|campo|hect[aá]rea|finca)\b/.test(s) &&
+    /\b(caba[nñ]as?|complejo\s+tur[ií]stico|hostel|glamping)\b/.test(s)
+  ) {
+    return false
+  }
+
+  if (/\ben\s+pozo\b/.test(s)) return true
+  if (/\bdepartamentos?\s+en\s+pozo\b/.test(s)) return true
+  if (/\bunidades?\s+en\s+pozo\b/.test(s)) return true
+  if (/\bemprendimiento\s+en\s+pozo\b/.test(s)) return true
+  if (/\bventa\s+emprendimiento\b/.test(s)) return true
+  if (/\bemprendimiento\s+avanzado\b/.test(s)) return true
+  if (
+    /\bemprendimiento\b/.test(s) &&
+    /\b(entrega|obra|torre|edificio|departamentos?|unidades?|ambientes?)\b/.test(s)
+  ) {
+    return true
+  }
+  return false
+}
+
+/**
  * Detecta tipo de propiedad por subcadenas; prioriza frases largas.
  */
 export function matchPropertyTypeFromText(normalizedLower: string): PropertyType | undefined {
+  if (matchDevelopmentUnitFromText(normalizedLower)) return 'development_unit'
   const s = normalizedLower
   for (const { phrase, type } of PROPERTY_PHRASES_SORTED) {
     if (!s.includes(phrase)) continue

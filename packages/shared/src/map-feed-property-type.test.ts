@@ -16,6 +16,30 @@ describe('mapFeedPropertyTypeWithListingText', () => {
     ).toBe('land')
   })
 
+  it('corrige apartments del feed si el título indica en pozo (emprendimiento)', () => {
+    expect(
+      mapFeedPropertyTypeWithListingText('apartments', {
+        title: 'Departamento en venta en En Pozo Edificio Xuum Uf 200-201 2do Piso',
+        description: '',
+      })
+    ).toBe('development_unit')
+    expect(
+      mapFeedPropertyTypeWithListingText('apartments', {
+        title: 'Departamentos 2 dormitorios en venta, en pozo con financiacion',
+        description: '',
+      })
+    ).toBe('development_unit')
+  })
+
+  it('no fuerza development_unit en terreno turístico con palabra emprendimiento', () => {
+    expect(
+      mapFeedPropertyTypeWithListingText('residential_lands', {
+        title: 'TERRENO VENTA MISIONES IDEAL EMPRENDIMIENTO CABAÑAS',
+        description: '',
+      })
+    ).toBe('land')
+  })
+
   it('corrige apartment del feed si el título describe PH', () => {
     expect(
       mapFeedPropertyTypeWithListingText('apartment', {

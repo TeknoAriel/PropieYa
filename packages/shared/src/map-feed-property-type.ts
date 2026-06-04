@@ -4,7 +4,7 @@
  * cuando el texto describe claramente otra categoría.
  */
 
-import { matchPropertyTypeFromText } from './search-semantics'
+import { matchDevelopmentUnitFromText, matchPropertyTypeFromText } from './search-semantics'
 import type { PropertyType } from './types/listing'
 
 /**
@@ -96,6 +96,13 @@ const FEED_TYPE_EXACT: Record<string, PropertyType> = {
   triplex: 'house',
   tríplex: 'house',
   emprendimiento: 'development_unit',
+  emprendimientos: 'development_unit',
+  developments: 'development_unit',
+  development: 'development_unit',
+  development_unit: 'development_unit',
+  development_units: 'development_unit',
+  real_estate_development: 'development_unit',
+  real_estate_developments: 'development_unit',
 }
 
 /**
@@ -109,6 +116,9 @@ export function mapFeedPropertyTypeWithListingText(
 ): PropertyType {
   const key = feedTypeKey(raw)
   const textBlob = `${context.title} ${context.description ?? ''}`.trim().toLowerCase()
+  if (textBlob && matchDevelopmentUnitFromText(textBlob)) {
+    return 'development_unit'
+  }
   const fromText = textBlob ? matchPropertyTypeFromText(textBlob) : undefined
 
   if (!key) {

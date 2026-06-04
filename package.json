@@ -40,6 +40,8 @@
     "reindex:bonsai": "USE_OPENSEARCH=1 pnpm exec tsx scripts/sync-search-local.ts",
     "audit:listing-types": "pnpm exec tsx scripts/audit-listing-property-types.ts",
     "reclassify:listing-types": "pnpm exec tsx scripts/reclassify-listing-property-types.ts",
+    "reclassify:development-units": "pnpm exec tsx scripts/reclassify-development-units.ts",
+    "audit:feed-emprendimientos": "pnpm exec tsx scripts/audit-feed-emprendimiento-mapping.ts",
     "audit:yumblin-fields": "pnpm exec tsx scripts/audit-yumblin-fields.ts",
     "audit:prod:leads": "pnpm exec tsx scripts/audit-prod-leads-schema.ts",
     "apply:prod:leads-schema": "pnpm exec tsx scripts/apply-prod-leads-schema-fix.ts",
