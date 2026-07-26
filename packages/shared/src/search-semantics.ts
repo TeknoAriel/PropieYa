@@ -84,8 +84,10 @@ const PROPERTY_PHRASES: Array<{ phrase: string; type: PropertyType }> = [
   { phrase: 'depósito', type: 'warehouse' },
   { phrase: 'deposito', type: 'warehouse' },
   { phrase: 'cochera', type: 'parking' },
-  { phrase: 'emprendimiento', type: 'development_unit' },
-  { phrase: 'en pozo', type: 'development_unit' },
+  /**
+   * Emprendimiento / en pozo: ver `matchDevelopmentUnitFromText` (prioridad y exclusiones).
+   * No mapear la palabra suelta aquí — «lote ideal emprendimiento» no es unidad en pozo.
+   */
   /**
    * No mapear la palabra suelta "casa": en búsquedas tipo «casa en venta» el usuario suele
    * referirse a cualquier inmueble; forzar `house` excluye deptos y vacía el listado.
@@ -117,6 +119,23 @@ export function matchDevelopmentUnitFromText(normalizedLower: string): boolean {
   const s = normalizedLower
   if (!s.trim()) return false
 
+  // Lote/terreno/campo sin tipología residencial de pozo → no es unidad de emprendimiento.
+  if (
+    /\b(terreno|terrenos|lote|lotes|chacra|campo|hect[aá]reas?|finca)\b/.test(s) &&
+    !/\b(departamento|departamentos|depto|deptos|unidad|unidades|torre|edificio|en\s+pozo)\b/.test(s)
+  ) {
+    return false
+  }
+
+  // Casa/galpón sueltos (sin pozo) no van al módulo emprendimientos.
+  if (
+    /\b(casa|casas|galp[oó]n|galpones|duplex|d[uú]plex)\b/.test(s) &&
+    !/\ben\s+pozo\b/.test(s) &&
+    !/\b(departamento|departamentos|torre|edificio)\b/.test(s)
+  ) {
+    return false
+  }
+
   if (
     /\b(terreno|lote|chacra|campo|hect[aá]rea|finca)\b/.test(s) &&
     /\b(caba[nñ]as?|complejo\s+tur[ií]stico|hostel|glamping)\b/.test(s)
@@ -125,14 +144,12 @@ export function matchDevelopmentUnitFromText(normalizedLower: string): boolean {
   }
 
   if (/\ben\s+pozo\b/.test(s)) return true
-  if (/\bdepartamentos?\s+en\s+pozo\b/.test(s)) return true
-  if (/\bunidades?\s+en\s+pozo\b/.test(s)) return true
   if (/\bemprendimiento\s+en\s+pozo\b/.test(s)) return true
-  if (/\bventa\s+emprendimiento\b/.test(s)) return true
+  if (/\bventa\s+emprendimiento\b/.test(s) && !/\b(lote|terreno|campo)\b/.test(s)) return true
   if (/\bemprendimiento\s+avanzado\b/.test(s)) return true
   if (
     /\bemprendimiento\b/.test(s) &&
-    /\b(entrega|obra|torre|edificio|departamentos?|unidades?|ambientes?)\b/.test(s)
+    /\b(entrega|obra|torre|edificio|departamentos?|unidades?)\b/.test(s)
   ) {
     return true
   }

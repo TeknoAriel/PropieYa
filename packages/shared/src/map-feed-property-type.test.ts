@@ -40,6 +40,21 @@ describe('mapFeedPropertyTypeWithListingText', () => {
     ).toBe('land')
   })
 
+  it('no clasifica lote/casa sueltos como emprendimiento', () => {
+    expect(
+      mapFeedPropertyTypeWithListingText('', {
+        title: 'Lote en venta zona norte oportunidad',
+        description: 'Ideal emprendimiento inmobiliario',
+      })
+    ).toBe('land')
+    expect(
+      mapFeedPropertyTypeWithListingText('', {
+        title: 'Casa de dos pisos con quincho y piscina',
+        description: '',
+      })
+    ).not.toBe('development_unit')
+  })
+
   it('corrige apartment del feed si el título describe PH', () => {
     expect(
       mapFeedPropertyTypeWithListingText('apartment', {
