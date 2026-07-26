@@ -10,11 +10,23 @@ const PAGE = 500
 const CANDIDATE_WHERE = and(
   eq(listings.status, 'active'),
   ne(listings.propertyType, 'development_unit'),
+  // No promover terreno/lote/cochera solo por la palabra «emprendimiento» en el copy.
+  sql`${listings.propertyType} not in ('land', 'parking', 'warehouse', 'commercial', 'office')`,
   sql`(
     lower(${listings.title}) ~* 'en[[:space:]]+pozo'
-    OR lower(${listings.title}) ~* 'emprendimiento'
+    OR lower(${listings.title}) ~* 'emprendimiento[[:space:]]+en[[:space:]]+pozo'
+    OR lower(${listings.title}) ~* 'complejo[[:space:]]+habitacional'
     OR lower(${listings.description}) ~* 'en[[:space:]]+pozo'
-    OR lower(${listings.description}) ~* 'emprendimiento'
+    OR lower(${listings.description}) ~* 'emprendimiento[[:space:]]+en[[:space:]]+pozo'
+    OR lower(${listings.description}) ~* 'complejo[[:space:]]+habitacional'
+    OR (
+      lower(${listings.title}) ~* 'emprendimiento'
+      AND lower(${listings.title} || ' ' || coalesce(${listings.description}, '')) ~* '(proyecto|obra|entrega|torre|en[[:space:]]+desarrollo)'
+    )
+    OR (
+      lower(${listings.description}) ~* 'emprendimiento'
+      AND lower(${listings.title} || ' ' || coalesce(${listings.description}, '')) ~* '(proyecto|obra|entrega|torre|en[[:space:]]+desarrollo)'
+    )
   )`
 )
 

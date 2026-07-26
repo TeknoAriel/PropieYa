@@ -75,7 +75,50 @@ describe('mapFeedPropertyTypeWithListingText', () => {
     expect(
       mapFeedPropertyTypeWithListingText('apartments', {
         title: 'Amplio Loft en Barrio Devoto',
-        description: 'Emprendimiento de categoría. Este proyecto ofrece calidad constructiva.',
+        description:
+          'Emprendimiento de categoría. Este proyecto ofrece unidades con calidad constructiva.',
+      })
+    ).toBe('development_unit')
+  })
+
+  it('no marca depto usado solo por «unidad funcional» ni cochera en edificio', () => {
+    expect(
+      mapFeedPropertyTypeWithListingText('apartments', {
+        title: 'Venta departamento 4amb en Almagro con cochera',
+        description: 'Excelente unidad funcional con amenities.',
+      })
+    ).toBe('apartment')
+    expect(
+      mapFeedPropertyTypeWithListingText('parking', {
+        title: 'Excelente Cochera en Venta - Edificio Casiopea',
+        description: 'Emprendimiento con amenities en el edificio.',
+      })
+    ).toBe('parking')
+  })
+
+  it('marca complejo habitacional / en desarrollo y excluye lote de barrio', () => {
+    expect(
+      mapFeedPropertyTypeWithListingText('apartments', {
+        title: 'Complejo Habitacional El Colonial',
+        description: 'Este proyecto actualmente en desarrollo cuenta con 13 unidades monoambientes.',
+      })
+    ).toBe('development_unit')
+    expect(
+      mapFeedPropertyTypeWithListingText('land', {
+        title: 'Costa Esmeralda - Barrio Senderos - Lote 371',
+        description: 'Lote en barrio privado. Posibilidad en pozo. Unidades disponibles.',
+      })
+    ).toBe('land')
+    expect(
+      mapFeedPropertyTypeWithListingText('', {
+        title: 'TERRENO EN AZAHARES DEL PARANA',
+        description: 'Emprendimiento náutico. Proyecto con departamentos con amarras.',
+      })
+    ).toBe('land')
+    expect(
+      mapFeedPropertyTypeWithListingText('', {
+        title: 'VENTA EN POZO - PAMPAS DE MANANTIALES - 2D/1B',
+        description: 'Barrio con lotes y terrenos. Unidades en el complejo.',
       })
     ).toBe('development_unit')
   })
