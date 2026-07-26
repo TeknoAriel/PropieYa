@@ -127,11 +127,13 @@ export function matchDevelopmentUnitFromText(normalizedLower: string): boolean {
     return false
   }
 
-  // Casa/galpón sueltos (sin pozo) no van al módulo emprendimientos.
+  // Casa/galpón/dúplex usados: no van a emprendimientos salvo pozo u obra/torre explícita.
+  // (Antes, un "departamento" en la descripción anulaba la exclusión y
+  // «ideal … o emprendimiento» + depto marcaba falsos positivos.)
   if (
     /\b(casa|casas|galp[oó]n|galpones|duplex|d[uú]plex)\b/.test(s) &&
     !/\ben\s+pozo\b/.test(s) &&
-    !/\b(departamento|departamentos|torre|edificio)\b/.test(s)
+    !(/\bemprendimiento\b/.test(s) && /\b(entrega|obra|torre|edificio)\b/.test(s))
   ) {
     return false
   }
@@ -147,9 +149,18 @@ export function matchDevelopmentUnitFromText(normalizedLower: string): boolean {
   if (/\bemprendimiento\s+en\s+pozo\b/.test(s)) return true
   if (/\bventa\s+emprendimiento\b/.test(s) && !/\b(lote|terreno|campo)\b/.test(s)) return true
   if (/\bemprendimiento\s+avanzado\b/.test(s)) return true
+
+  // Uso genérico («oficina o emprendimiento») no es vertical pozo.
+  const empAsUseCaseOnly =
+    /\b(?:o|para)\s+emprendimiento\b/.test(s) &&
+    !/\bemprendimiento\s+(?:en\s+pozo|avanzado)\b/.test(s) &&
+    !/\b(?:entrega|obra|torre|edificio|proyecto)\b/.test(s)
+  if (empAsUseCaseOnly) return false
+
+  // Señales de obra/proyecto — no alcanza «departamento/unidad» sueltos en copy de depto.
   if (
     /\bemprendimiento\b/.test(s) &&
-    /\b(entrega|obra|torre|edificio|departamentos?|unidades?)\b/.test(s)
+    /\b(entrega|obra|torre|edificio|proyecto)\b/.test(s)
   ) {
     return true
   }

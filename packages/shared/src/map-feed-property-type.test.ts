@@ -55,6 +55,31 @@ describe('mapFeedPropertyTypeWithListingText', () => {
     ).not.toBe('development_unit')
   })
 
+  it('no marca dúplex/galpón por «o emprendimiento» + departamento en copy', () => {
+    expect(
+      mapFeedPropertyTypeWithListingText('apartments', {
+        title: 'Recién remodelado! Duplex Barrio Lastarria, como nuevo',
+        description:
+          'Uso mixto: ideal para vivienda, oficina o emprendimiento. Departamento con vista.',
+      })
+    ).not.toBe('development_unit')
+    expect(
+      mapFeedPropertyTypeWithListingText('apartments', {
+        title: 'Galpon y Vivienda en Ramos Mejía',
+        description: 'Departamento de 4 ambientes en primer piso.',
+      })
+    ).not.toBe('development_unit')
+  })
+
+  it('sí marca emprendimiento real con proyecto/obra', () => {
+    expect(
+      mapFeedPropertyTypeWithListingText('apartments', {
+        title: 'Amplio Loft en Barrio Devoto',
+        description: 'Emprendimiento de categoría. Este proyecto ofrece calidad constructiva.',
+      })
+    ).toBe('development_unit')
+  })
+
   it('corrige apartment del feed si el título describe PH', () => {
     expect(
       mapFeedPropertyTypeWithListingText('apartment', {
