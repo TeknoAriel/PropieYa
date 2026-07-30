@@ -56,7 +56,10 @@ const PROPERTY_PHRASES: Array<{ phrase: string; type: PropertyType }> = [
   { phrase: 'casa quinta', type: 'house' },
   { phrase: 'casa de campo', type: 'house' },
   { phrase: 'local comercial', type: 'commercial' },
-  { phrase: 'unidad funcional', type: 'development_unit' },
+  /**
+   * «unidad funcional» es jerga legal de depto en AR — no implica pozo.
+   * Emprendimientos: ver `matchDevelopmentUnitFromText`.
+   */
   { phrase: 'departamento', type: 'apartment' },
   { phrase: 'monoambiente', type: 'apartment' },
   { phrase: 'duplex', type: 'house' },
@@ -84,8 +87,10 @@ const PROPERTY_PHRASES: Array<{ phrase: string; type: PropertyType }> = [
   { phrase: 'depósito', type: 'warehouse' },
   { phrase: 'deposito', type: 'warehouse' },
   { phrase: 'cochera', type: 'parking' },
-  { phrase: 'emprendimiento', type: 'development_unit' },
-  { phrase: 'en pozo', type: 'development_unit' },
+  /**
+   * Emprendimiento / en pozo: ver `matchDevelopmentUnitFromText` (prioridad y exclusiones).
+   * No mapear la palabra suelta aquí — «lote ideal emprendimiento» no es unidad en pozo.
+   */
   /**
    * No mapear la palabra suelta "casa": en búsquedas tipo «casa en venta» el usuario suele
    * referirse a cualquier inmueble; forzar `house` excluye deptos y vacía el listado.
@@ -110,9 +115,110 @@ export function shouldTreatCocheraAsParkingPropertyType(text: string): boolean {
 }
 
 /**
+ * Título claramente de terreno/lote/casa usada → no es vertical pozo,
+ * aunque la descripción mencione el barrio/emprendimiento vecino.
+ */
+export function titleBlocksDevelopmentUnit(title: string): boolean {
+  const t = title.toLowerCase().trim()
+  if (!t) return false
+  if (/\b(terreno|terrenos|lote|lotes|chacra|campo|hect[aá]reas?|finca)\b/.test(t)) {
+    return !/\b(departamento|depto|en\s+pozo)\b/.test(t)
+  }
+  if (/\b(cochera|cocheras)\b/.test(t) && !/\b(departamento|depto|ambiente|ambientes|dormitorio|monoambiente)\b/.test(t)) {
+    return !/\ben\s+pozo\b/.test(t)
+  }
+  if (/\b(casa|casas|galp[oó]n|galpones|duplex|d[uú]plex)\b/.test(t)) {
+    return !/\ben\s+pozo\b/.test(t)
+  }
+  if (/\bbarrio\s+(?:privado|cerrado)\b/.test(t) && !/\b(departamento|depto|torre|edificio|en\s+pozo)\b/.test(t)) {
+    return true
+  }
+  return false
+}
+
+/**
+ * Señales fuertes de unidad en emprendimiento / pozo (prioridad sobre "departamento" en título).
+ * Excluye terrenos turísticos ("emprendimiento cabañas") que no son el vertical de pozo.
+ */
+export function matchDevelopmentUnitFromText(normalizedLower: string): boolean {
+  const s = normalizedLower
+  if (!s.trim()) return false
+
+  // Cochera/estacionamiento como aviso principal (no unidad en pozo).
+  if (
+    /\b(cochera|cocheras|estacionamiento|estacionamientos)\b/.test(s) &&
+    !/\b(departamento|departamentos|depto|deptos|ambiente|ambientes|dormitorio|dormitorios|monoambiente|en\s+pozo|unidad\s+funcional)\b/.test(
+      s
+    )
+  ) {
+    return false
+  }
+
+  // Lote/terreno/campo: no alcanza con mencionar lotes del barrio en la descripción.
+  // Si hay «en pozo» real (no «posibilidad en pozo»), no excluir aquí.
+  const hasPozoSignal =
+    /\ben\s+pozo\b/.test(s) && !/\bposibilidad(?:es)?\s+en\s+pozo\b/.test(s)
+
+  if (
+    /\b(terreno|terrenos|lote|lotes|chacra|campo|hect[aá]reas?|finca)\b/.test(s) &&
+    !hasPozoSignal
+  ) {
+    return false
+  }
+
+  // Casa/galpón/dúplex usados: no van a emprendimientos salvo pozo explícito.
+  if (
+    /\b(casa|casas|galp[oó]n|galpones|duplex|d[uú]plex)\b/.test(s) &&
+    !/\ben\s+pozo\b/.test(s)
+  ) {
+    return false
+  }
+
+  if (
+    /\b(terreno|lote|chacra|campo|hect[aá]rea|finca)\b/.test(s) &&
+    /\b(caba[nñ]as?|complejo\s+tur[ií]stico|hostel|glamping)\b/.test(s)
+  ) {
+    return false
+  }
+
+  // «posibilidad en pozo» = forma de pago, no tipología.
+  if (hasPozoSignal) return true
+  if (/\bemprendimiento\s+en\s+pozo\b/.test(s)) return true
+  if (/\bventa\s+emprendimiento\b/.test(s) && !/\b(lote|terreno|campo)\b/.test(s)) return true
+  if (/\bemprendimiento\s+avanzado\b/.test(s)) return true
+  if (/\bcomplejo\s+habitacional\b/.test(s)) return true
+  if (/\ben\s+desarrollo\b/.test(s) && /\b(unidades?|departamentos?|monoambientes?|torre|edificio)\b/.test(s)) {
+    return true
+  }
+
+  // Uso genérico («oficina o emprendimiento» / «para emprendimiento»).
+  if (/\b(?:o|para)\s+emprendimiento\b/.test(s) && !/\bemprendimiento\s+(?:en\s+pozo|avanzado)\b/.test(s)) {
+    if (!/\b(entrega|obra|torre)\b/.test(s)) return false
+  }
+
+  // Señales de obra — exige emprendimiento + (entrega|obra|torre), no «proyecto» solo.
+  if (/\bemprendimiento\b/.test(s) && /\b(entrega|obra|torre)\b/.test(s)) {
+    return true
+  }
+  if (
+    /\bemprendimiento\b/.test(s) &&
+    /\bproyecto\b/.test(s) &&
+    /\b(entrega|obra|torre|en\s+desarrollo|departamentos?|unidades?|monoambientes?)\b/.test(s)
+  ) {
+    return true
+  }
+  return false
+}
+
+/**
  * Detecta tipo de propiedad por subcadenas; prioriza frases largas.
  */
-export function matchPropertyTypeFromText(normalizedLower: string): PropertyType | undefined {
+export function matchPropertyTypeFromText(
+  normalizedLower: string,
+  options?: { allowDevelopmentUnit?: boolean }
+): PropertyType | undefined {
+  const allowDu = options?.allowDevelopmentUnit !== false
+  if (allowDu && matchDevelopmentUnitFromText(normalizedLower)) return 'development_unit'
   const s = normalizedLower
   for (const { phrase, type } of PROPERTY_PHRASES_SORTED) {
     if (!s.includes(phrase)) continue

@@ -154,6 +154,9 @@ Corregir secreto y volver a pushear `deploy/infra`.
 3. Disparar el workflow **[Deploy panel producción](https://github.com/TeknoAriel/PropieYa/actions/workflows/deploy-panel-production.yml)** (`workflow_dispatch` o push a `main` / `deploy/infra`).
 4. Local: `pnpm verificar:panel` (opcional con `VERCEL_TOKEN` + `VERCEL_PANEL_PROJECT_ID`).
 5. En el proyecto **web** Vercel: `TRUSTED_PANEL_ORIGINS=https://propieya-panel.vercel.app` y `NEXT_PUBLIC_PANEL_URL` igual (sin `/` final).
+6. Si el panel responde **401 Authentication Required** (pantalla Vercel SSO): deshabilitar protección SSO en el proyecto panel — `npx vercel project protection disable propieya-panel --sso` (el panel usa login propio; no debe tener muro Vercel en `*.vercel.app`).
+
+**ID proyecto panel (secret `VERCEL_PANEL_PROJECT_ID`):** `prj_Fzmr9YN25YEBHm0tk5gQ70VXmcKV` — también en `scripts/production-canonical.env.sh`.
 
 ---
 

@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 
 import { getDb } from '@propieya/database'
@@ -16,9 +17,7 @@ export async function GET() {
   // 1. Database
   try {
     const dbStart = Date.now()
-    // Raw: getDb() tipa execute(SQLWrapper); forzamos firma mínima para health.
-    const db = getDb() as unknown as { execute: (q: string) => Promise<unknown> }
-    await db.execute('SELECT 1')
+    await getDb().execute(sql`SELECT 1`)
     checks.database = { status: 'ok', latencyMs: Date.now() - dbStart }
   } catch (err) {
     checks.database = {
@@ -30,13 +29,14 @@ export async function GET() {
   // 2. Tablas mínimas para operar auth + panel de propiedades/leads.
   try {
     const schemaStart = Date.now()
-    const db = getDb()
-    const rows = await (
-      db as unknown as { execute: (q: string) => Promise<unknown> }
-    ).execute(
-      "SELECT to_regclass('public.users')::text AS users, to_regclass('public.organizations')::text AS organizations, to_regclass('public.listings')::text AS listings, to_regclass('public.leads')::text AS leads"
-    )
-    const first = (rows as unknown as Array<Record<string, unknown>>)[0] ?? {}
+    const schemaRows = await getDb().execute(sql`
+      SELECT
+        to_regclass('public.users')::text AS users,
+        to_regclass('public.organizations')::text AS organizations,
+        to_regclass('public.listings')::text AS listings,
+        to_regclass('public.leads')::text AS leads
+    `)
+    const first = (schemaRows as unknown as Array<Record<string, unknown>>)[0] ?? {}
     const missing = ['users', 'organizations', 'listings', 'leads'].filter((k) => !first[k])
     if (missing.length === 0) {
       checks.schema = { status: 'ok', latencyMs: Date.now() - schemaStart }

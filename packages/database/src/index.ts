@@ -15,3 +15,7 @@ export {
   type YumblinImportSyncResult,
   type YumblinImportSyncAllSourcesOptions,
 } from './yumblin-import-sync'
+export {
+  runReclassifyDevelopmentUnits,
+  type ReclassifyDevelopmentUnitsResult,
+} from './reclassify-development-units'

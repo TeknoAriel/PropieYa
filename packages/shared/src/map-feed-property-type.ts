@@ -4,7 +4,7 @@
  * cuando el texto describe claramente otra categoría.
  */
 
-import { matchPropertyTypeFromText } from './search-semantics'
+import { matchDevelopmentUnitFromText, matchPropertyTypeFromText, titleBlocksDevelopmentUnit } from './search-semantics'
 import type { PropertyType } from './types/listing'
 
 /**
@@ -96,6 +96,13 @@ const FEED_TYPE_EXACT: Record<string, PropertyType> = {
   triplex: 'house',
   tríplex: 'house',
   emprendimiento: 'development_unit',
+  emprendimientos: 'development_unit',
+  developments: 'development_unit',
+  development: 'development_unit',
+  development_unit: 'development_unit',
+  development_units: 'development_unit',
+  real_estate_development: 'development_unit',
+  real_estate_developments: 'development_unit',
 }
 
 /**
@@ -108,8 +115,30 @@ export function mapFeedPropertyTypeWithListingText(
   context: { title: string; description?: string | null }
 ): PropertyType {
   const key = feedTypeKey(raw)
+  const titleLower = context.title.toLowerCase().trim()
   const textBlob = `${context.title} ${context.description ?? ''}`.trim().toLowerCase()
-  const fromText = textBlob ? matchPropertyTypeFromText(textBlob) : undefined
+  const allowDu = !titleBlocksDevelopmentUnit(context.title)
+
+  // Título dominante terreno/lote/casa/cochera: no dejar que la descripción del barrio gane.
+  if (titleBlocksDevelopmentUnit(context.title) && titleLower) {
+    const fromTitle = matchPropertyTypeFromText(titleLower, { allowDevelopmentUnit: false })
+    if (fromTitle && fromTitle !== 'apartment') {
+      return fromTitle
+    }
+    if (/\b(terreno|terrenos|lote|lotes|chacra|campo|hect[aá]reas?|finca)\b/.test(titleLower)) {
+      return 'land'
+    }
+    if (/\b(casa|casas|duplex|d[uú]plex)\b/.test(titleLower)) return 'house'
+    if (/\b(galp[oó]n|galpones)\b/.test(titleLower)) return 'warehouse'
+    if (/\b(cochera|cocheras)\b/.test(titleLower)) return 'parking'
+  }
+
+  if (textBlob && allowDu && matchDevelopmentUnitFromText(textBlob)) {
+    return 'development_unit'
+  }
+  const fromText = textBlob
+    ? matchPropertyTypeFromText(textBlob, { allowDevelopmentUnit: allowDu })
+    : undefined
 
   if (!key) {
     if (fromText) return fromText
