@@ -5,6 +5,7 @@ import Link from 'next/link'
 
 import { Badge, Button, Card } from '@propieya/ui'
 import {
+  DEVELOPMENT_DELIVERY_HORIZON_LABELS,
   OPERATION_TYPE_LABELS,
   type DevelopmentProjectSummary,
 } from '@propieya/shared'
@@ -62,7 +63,11 @@ export function DevelopmentProjectCard({ project }: DevelopmentProjectCardProps)
                 ))}
                 {project.deliveryDate ? (
                   <Badge variant="outline">Entrega: {project.deliveryDate}</Badge>
-                ) : null}
+                ) : (
+                  <Badge variant="outline">
+                    {DEVELOPMENT_DELIVERY_HORIZON_LABELS[project.deliveryHorizon]}
+                  </Badge>
+                )}
                 <Badge variant="outline">
                   {project.unitCount} unidad{project.unitCount === 1 ? '' : 'es'}
                 </Badge>

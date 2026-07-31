@@ -183,6 +183,15 @@ export function matchDevelopmentUnitFromText(normalizedLower: string): boolean {
 
   // «posibilidad en pozo» = forma de pago, no tipología.
   if (hasPozoSignal) return true
+  // Horizonte futuro explícito + tipología residencial («para dentro de 2 años»)
+  if (
+    /\b(para\s+dentro\s+de\s+\d+|en\s+\d+\s+a[nñ]os|entrega\s+en\s+20[2-3]\d)\b/.test(s) &&
+    /\b(departamento|departamentos|depto|deptos|vivienda|unidad|torre|edificio|emprendimiento)\b/.test(
+      s
+    )
+  ) {
+    return true
+  }
   if (/\bemprendimiento\s+en\s+pozo\b/.test(s)) return true
   if (/\bventa\s+emprendimiento\b/.test(s) && !/\b(lote|terreno|campo)\b/.test(s)) return true
   if (/\bemprendimiento\s+avanzado\b/.test(s)) return true
