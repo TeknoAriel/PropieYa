@@ -34,6 +34,11 @@ describe('development project naming', () => {
   it('detecta nombres débiles de tipología', () => {
     expect(isWeakDevelopmentProjectName('Departamento')).toBe(true)
     expect(isWeakDevelopmentProjectName('Departamento de 3 dormitorios')).toBe(true)
+    expect(
+      isWeakDevelopmentProjectName(
+        'Departamento de 1 dormitorio sobre Av San Martin al 200'
+      )
+    ).toBe(true)
     expect(isWeakDevelopmentProjectName('MSR Modena SKY')).toBe(false)
     expect(isWeakDevelopmentProjectName('Complejo Habitacional El Colonial')).toBe(false)
   })

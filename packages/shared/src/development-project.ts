@@ -91,11 +91,10 @@ export function isWeakDevelopmentProjectName(name: string): boolean {
   if (!n) return true
   if (n.length < 6) return true
   if (WEAK_PROJECT_NAME.test(n)) return true
-  // «Departamento de 3 dormitorios» / «Departamento 2 ambientes tipo estudio» sin torre/edificio
+  // Tipología de unidad sin marca de proyecto (aunque el título sea largo).
   if (
-    /^(departamento|depto|dpto)\b/i.test(n) &&
-    !/\b(torre|edificio|complejo|emprendimiento|sky|modena|firenze)\b/i.test(n) &&
-    n.length < 55
+    /^(departamento|departamentos|deptos?|dpto)\b/i.test(n) &&
+    !/\b(torre|edificio|complejo|emprendimiento|sky|modena|firenze|colonial)\b/i.test(n)
   ) {
     return true
   }
