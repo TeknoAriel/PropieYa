@@ -39,8 +39,26 @@ describe('development project naming', () => {
         'Departamento de 1 dormitorio sobre Av San Martin al 200'
       )
     ).toBe(true)
+    expect(isWeakDevelopmentProjectName('Departamentoa estrenar de 2 dormitorios')).toBe(true)
+    expect(isWeakDevelopmentProjectName('DPTOS DE 2 y 3 AMBIENTES EN VENTA EN POZO')).toBe(true)
+    expect(isWeakDevelopmentProjectName('Duplex')).toBe(true)
     expect(isWeakDevelopmentProjectName('MSR Modena SKY')).toBe(false)
     expect(isWeakDevelopmentProjectName('Complejo Habitacional El Colonial')).toBe(false)
+  })
+
+  it('extrae marca PRADEA / evita Morón, Morón', () => {
+    expect(
+      extractDevelopmentProjectName('VENTA OFICINAS en pozo- PRADEA - FISHERTON')
+    ).toMatch(/PRADEA/i)
+    const id = resolveDevelopmentProjectIdentity('Departamento', 'Morón', 'Morón')
+    expect(id.projectName).toBe('Emprendimiento en Morón')
+    expect(id.projectName).not.toMatch(/Morón, Morón/)
+  })
+
+  it('usa código MORZ como marca corta', () => {
+    expect(extractLocationHintFromTitle('DEPARTAMENTOS EN POZO, MORZ, Valeria del mar')).toMatch(
+      /MORZ/i
+    )
   })
 
   it('extrae Torre / Edificio del título marketing', () => {
