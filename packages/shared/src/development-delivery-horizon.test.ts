@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   developmentHorizonMatchesFilter,
+  extractDeliveryHorizonFilterFromQuery,
   inferDevelopmentDeliveryHorizon,
   parseDevelopmentDeliveryDate,
   pickProjectDeliveryHorizon,
@@ -55,5 +56,18 @@ describe('development delivery horizon', () => {
     expect(
       pickProjectDeliveryHorizon(['unknown', 'near_term', 'under_construction'])
     ).toBe('under_construction')
+  })
+
+  it('extrae entrega desde lenguaje natural', () => {
+    expect(extractDeliveryHorizonFilterFromQuery('depto ya habitable en Rosario').filter).toBe(
+      'proxima'
+    )
+    expect(extractDeliveryHorizonFilterFromQuery('unidad en pozo Palermo').filter).toBe('pozo')
+    expect(
+      extractDeliveryHorizonFilterFromQuery('departamento para dentro de 2 años').filter
+    ).toBe('pozo')
+    expect(
+      extractDeliveryHorizonFilterFromQuery('financiacion con posibilidad en pozo').filter
+    ).toBeUndefined()
   })
 })

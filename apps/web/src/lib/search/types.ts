@@ -57,6 +57,11 @@ export interface SearchFilters {
   neighborhood?: string
   /** Código público de aviso (p. ej. KP486622); filtro duro en título/descripción (y externalId en SQL). */
   publicListingCode?: string
+  /**
+   * Horizonte de entrega (emprendimientos). Fuerza `propertyType=development_unit`
+   * y acota por frases de pozo vs a estrenar.
+   */
+  entrega?: 'pozo' | 'proxima'
   amenities?: string[]
   /**
    * `preferred` (default): amenities y facets.flags suman score, no excluyen.

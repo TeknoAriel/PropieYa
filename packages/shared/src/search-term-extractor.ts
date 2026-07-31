@@ -7,6 +7,11 @@
 
 import { SEARCH_TERM_TO_AMENITY } from './amenity-mapping'
 import {
+  extractDeliveryHorizonFilterFromQuery,
+  type DevelopmentDeliveryFilter,
+} from './development-delivery-horizon'
+import {
+  matchDevelopmentUnitFromText,
   matchOperationSpanInOriginalQuery,
   PROPERTY_PHRASES_SORTED,
   shouldTreatCocheraAsParkingPropertyType,
@@ -16,6 +21,8 @@ import type { Amenity, OperationType, PropertyType } from './types/listing'
 export interface ExtractedFilters {
   operationType?: OperationType
   propertyType?: PropertyType
+  /** pozo = en obra; proxima = a estrenar / entrega cercana (unidades de emprendimiento). */
+  entrega?: DevelopmentDeliveryFilter
   amenities?: Amenity[]
   minSurface?: number
   maxSurface?: number
@@ -138,21 +145,33 @@ export function extractFiltersFromQueryDetailed(q: string): ExtractFiltersFromQu
     consumedParts.push(opMatch.span)
   }
 
+  const delivery = extractDeliveryHorizonFilterFromQuery(q)
+  if (delivery.filter) {
+    filters.entrega = delivery.filter
+    if (delivery.consumed) consumedParts.push(delivery.consumed)
+  }
+
   let propertySet = false
-  for (const { phrase, type } of PROPERTY_PHRASES_SORTED) {
-    const idx = lower.indexOf(phrase)
-    if (idx < 0) continue
-    if (
-      phrase === 'cochera' &&
-      type === 'parking' &&
-      !shouldTreatCocheraAsParkingPropertyType(lower)
-    ) {
-      continue
-    }
-    filters.propertyType = type
-    consumedParts.push(q.slice(idx, idx + phrase.length))
+  if (matchDevelopmentUnitFromText(lower) || filters.entrega) {
+    filters.propertyType = 'development_unit'
     propertySet = true
-    break
+  }
+  if (!propertySet) {
+    for (const { phrase, type } of PROPERTY_PHRASES_SORTED) {
+      const idx = lower.indexOf(phrase)
+      if (idx < 0) continue
+      if (
+        phrase === 'cochera' &&
+        type === 'parking' &&
+        !shouldTreatCocheraAsParkingPropertyType(lower)
+      ) {
+        continue
+      }
+      filters.propertyType = type
+      consumedParts.push(q.slice(idx, idx + phrase.length))
+      propertySet = true
+      break
+    }
   }
   if (!propertySet) {
     const depto = q.match(/\bdeptos?\b/i)

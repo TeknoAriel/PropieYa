@@ -42,6 +42,7 @@ import {
   mergePublicSearchFromQuery,
   inferListingMatchProfile,
   residualPublicSearchText,
+  developmentDeliveryFilterMatchPhrases,
   FACETS_CATALOG,
   SEARCH_FILTER_AMENITIES,
   withMatchReasons,
@@ -262,6 +263,7 @@ function searchFiltersToListingInputOverlay(
     city: f.city,
     neighborhood: f.neighborhood,
     publicListingCode: f.publicListingCode,
+    entrega: f.entrega,
     amenities: f.amenities,
     facets: f.facets,
     geoPoint: f.geoPoint,
@@ -365,7 +367,22 @@ function buildListingSearchSqlFromSeed(
   if (sqlInput.operationType) {
     conditions.push(eq(listings.operationType, sqlInput.operationType))
   }
-  if (sqlInput.propertyType) {
+  const entregaSql =
+    sqlInput.entrega === 'pozo' || sqlInput.entrega === 'proxima'
+      ? sqlInput.entrega
+      : undefined
+  if (entregaSql) {
+    conditions.push(eq(listings.propertyType, 'development_unit'))
+    const phraseOrs = developmentDeliveryFilterMatchPhrases(entregaSql).flatMap(
+      (phrase) => {
+        const pat = `%${sanitizeIlikeFragment(phrase)}%`
+        return [ilike(listings.title, pat), ilike(listings.description, pat)]
+      }
+    )
+    if (phraseOrs.length > 0) {
+      conditions.push(or(...phraseOrs)!)
+    }
+  } else if (sqlInput.propertyType) {
     conditions.push(eq(listings.propertyType, sqlInput.propertyType))
   }
   const minP = sqlInput.minPrice
@@ -3668,6 +3685,8 @@ export const listingRouter = createTRPCRouter({
         minTotalRooms: input.minTotalRooms,
         city: input.city,
         neighborhood: input.neighborhood,
+        publicListingCode: input.publicListingCode,
+        entrega: input.entrega,
         amenities: input.amenities,
         geoPoint: input.geoPoint,
         geoRadius: input.geoRadius,

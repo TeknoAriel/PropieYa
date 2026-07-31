@@ -12,6 +12,8 @@ export type PortalBuscarUrlFilters = {
   maxPrice?: number
   minBedrooms?: number
   minSurface?: number
+  /** pozo | proxima — facet de horizonte de entrega (emprendimientos). */
+  entrega?: 'pozo' | 'proxima'
 }
 
 function portalBuscarParams(filters: PortalBuscarUrlFilters): string {
@@ -25,6 +27,9 @@ function portalBuscarParams(filters: PortalBuscarUrlFilters): string {
   if (filters.maxPrice != null) params.set('max', String(filters.maxPrice))
   if (filters.minBedrooms != null) params.set('dorm', String(filters.minBedrooms))
   if (filters.minSurface != null) params.set('sup', String(filters.minSurface))
+  if (filters.entrega === 'pozo' || filters.entrega === 'proxima') {
+    params.set('entrega', filters.entrega)
+  }
   return params.toString()
 }
 

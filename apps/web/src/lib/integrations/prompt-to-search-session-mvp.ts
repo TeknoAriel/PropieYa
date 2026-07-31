@@ -66,6 +66,21 @@ export function promptToSearchSessionMVP(prompt: string): SearchSessionMVP {
   if (/\bdepa(rtamento)?\b|\bdepto\b/.test(p)) patch.propertyType = 'apartment'
   if (/\blote\b/.test(p)) patch.propertyType = 'lot'
 
+  if (
+    /\b(ya\s+habitable|a\s+estrenar|entrega\s+inmediata|listo\s+para\s+habitar)\b/.test(p)
+  ) {
+    patch.entrega = 'proxima'
+    patch.propertyType = 'development_unit'
+  } else if (
+    /\b(en\s+pozo|en\s+obra|para\s+dentro\s+de\s+\d+|en\s+\d+\s+a[nñ]os|entrega\s+en\s+20[2-3]\d)\b/.test(
+      p
+    ) &&
+    !/\bposibilidad(?:es)?\s+en\s+pozo\b/.test(p)
+  ) {
+    patch.entrega = 'pozo'
+    patch.propertyType = 'development_unit'
+  }
+
   return normalizeSearchSessionMVP(patch)
 }
 

@@ -675,6 +675,10 @@ export function BuscarContent({
   useEffect(() => {
     if (forcedPropertyType) setPropertyType(forcedPropertyType)
   }, [forcedPropertyType])
+  const [entrega, setEntrega] = useState<'pozo' | 'proxima' | ''>(() => {
+    const e = (searchParams.get('entrega') ?? '').trim()
+    return e === 'pozo' || e === 'proxima' ? e : ''
+  })
   const [city, setCity] = useState(searchParams.get('ciudad') ?? '')
   const [neighborhood, setNeighborhood] = useState(searchParams.get('barrio') ?? '')
   const [minPrice, setMinPrice] = useState(searchParams.get('min') ?? '')
@@ -900,7 +904,8 @@ export function BuscarContent({
     () => ({
       q: q.trim() || undefined,
       operationType: (forcedOperation ?? operationType) || undefined,
-      propertyType: propertyType || undefined,
+      propertyType: entrega ? 'development_unit' : propertyType || undefined,
+      entrega: entrega || undefined,
       city: city.trim() || undefined,
       neighborhood: neighborhood.trim() || undefined,
       minPrice: minPrice ? Number(minPrice) : undefined,
@@ -950,6 +955,7 @@ export function BuscarContent({
       forcedOperation,
       operationType,
       propertyType,
+      entrega,
       city,
       neighborhood,
       minPrice,
@@ -984,7 +990,8 @@ export function BuscarContent({
     const op = (forcedOperation ?? operationType) || null
     return {
       operationType: op ? (op as NonNullable<SearchSessionMVP['operationType']>) : null,
-      propertyType: propertyType || null,
+      propertyType: entrega ? 'development_unit' : propertyType || null,
+      entrega: entrega || null,
       city: city.trim() || null,
       neighborhood: neighborhood.trim() || null,
       q: q.trim() || null,
@@ -1011,6 +1018,7 @@ export function BuscarContent({
     forcedOperation,
     operationType,
     propertyType,
+    entrega,
     city,
     neighborhood,
     q,
@@ -1192,6 +1200,8 @@ export function BuscarContent({
       const pt = sn.propertyType as PropertyType
       parts.push(PROPERTY_TYPE_LABELS[pt] ?? sn.propertyType)
     }
+    if (sn.entrega === 'pozo') parts.push(S.buscarFieldDeliveryPozo)
+    if (sn.entrega === 'proxima') parts.push(S.buscarFieldDeliveryProxima)
     if (sn.operationType) {
       const ot = sn.operationType as OperationType
       parts.push(OPERATION_TYPE_LABELS[ot] ?? sn.operationType)
@@ -1492,6 +1502,10 @@ export function BuscarContent({
       setOperationType((sp.get('op') as OperationType) ?? '')
     }
     setPropertyType((sp.get('tipo') as PropertyType) ?? '')
+    {
+      const e = (sp.get('entrega') ?? '').trim()
+      setEntrega(e === 'pozo' || e === 'proxima' ? e : '')
+    }
     setCity(sp.get('ciudad') ?? '')
     setNeighborhood(sp.get('barrio') ?? '')
     setMinPrice(sp.get('min') ?? '')
@@ -1646,6 +1660,13 @@ export function BuscarContent({
       if (propertyType) p.set('tipo', propertyType)
       else p.delete('tipo')
 
+      if (entrega === 'pozo' || entrega === 'proxima') {
+        p.set('entrega', entrega)
+        p.set('tipo', 'development_unit')
+      } else {
+        p.delete('entrega')
+      }
+
       const c = city.trim()
       if (c) p.set('ciudad', c.slice(0, 120))
       else p.delete('ciudad')
@@ -1676,6 +1697,7 @@ export function BuscarContent({
     searchPathPage,
     operationType,
     propertyType,
+    entrega,
     city,
     neighborhood,
     minPrice,
@@ -2017,6 +2039,23 @@ export function BuscarContent({
                 </select>
               </BuscarLabeledField>
             )}
+            <BuscarLabeledField id="buscar-entrega" label={S.buscarFieldDelivery}>
+              <select
+                id="buscar-entrega"
+                className={BUSCAR_SELECT_CLASS}
+                value={entrega}
+                onChange={(e) => {
+                  const v = e.target.value
+                  const next = v === 'pozo' || v === 'proxima' ? v : ''
+                  setEntrega(next)
+                  if (next) setPropertyType('development_unit')
+                }}
+              >
+                <option value="">{S.buscarFieldDeliveryAny}</option>
+                <option value="pozo">{S.buscarFieldDeliveryPozo}</option>
+                <option value="proxima">{S.buscarFieldDeliveryProxima}</option>
+              </select>
+            </BuscarLabeledField>
             <BuscarLabeledField id="buscar-ciudad" label={S.buscarFieldCity}>
               <Input
                 id="buscar-ciudad"
