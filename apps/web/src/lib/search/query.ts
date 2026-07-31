@@ -7,7 +7,7 @@
  * - `intent`: operación/tipo duros; el resto rankea vía `should` + `constant_score` (sin excluir).
  */
 
-import { inferListingMatchProfile, mergePublicSearchFromQuery } from '@propieya/shared'
+import { inferListingMatchProfile, mergePublicSearchFromQuery, developmentDeliveryFilterMatchPhrases } from '@propieya/shared'
 
 import type { SearchFilters } from './types'
 import { getListingsIndex } from './client'
@@ -315,7 +315,21 @@ export function buildSearchBody(filters: SearchFilters): Record<string, unknown>
   if (rest.operationType) {
     must.push({ term: { operationType: rest.operationType } })
   }
-  if (rest.propertyType) {
+  const entrega =
+    rest.entrega === 'pozo' || rest.entrega === 'proxima' ? rest.entrega : undefined
+  if (entrega) {
+    must.push({ term: { propertyType: 'development_unit' } })
+    const phrases = developmentDeliveryFilterMatchPhrases(entrega)
+    must.push({
+      bool: {
+        should: phrases.flatMap((phrase) => [
+          { match_phrase: { title: phrase } },
+          { match_phrase: { description: phrase } },
+        ]),
+        minimum_should_match: 1,
+      },
+    })
+  } else if (rest.propertyType) {
     must.push({ term: { propertyType: rest.propertyType } })
   }
 

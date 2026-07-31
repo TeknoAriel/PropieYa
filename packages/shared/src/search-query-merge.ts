@@ -16,6 +16,8 @@ export type MergeableSearchBase = {
   q?: string
   operationType?: string
   propertyType?: string
+  /** pozo | proxima — unidades de emprendimiento por horizonte de entrega. */
+  entrega?: 'pozo' | 'proxima'
   amenities?: string[]
   minSurface?: number
   maxSurface?: number
@@ -125,10 +127,19 @@ export function mergePublicSearchFromQuery<T extends MergeableSearchBase>(
 ): T & { residualTextQuery: string } {
   const q = input.q?.trim()
   if (!q) {
-    return { ...input, residualTextQuery: '' }
+    return {
+      ...input,
+      propertyType: input.entrega ? 'development_unit' : input.propertyType,
+      residualTextQuery: '',
+    }
   }
   const { filters: ex, consumedParts } = extractFiltersFromQueryDetailed(q)
   const residualTextQuery = stripConsumedPartsFromQuery(q, consumedParts)
+  const entrega = ex.entrega ?? input.entrega
+  const propertyType =
+    entrega != null
+      ? 'development_unit'
+      : (ex.propertyType ?? input.propertyType)
   return {
     ...input,
     /**
@@ -137,7 +148,8 @@ export function mergePublicSearchFromQuery<T extends MergeableSearchBase>(
      * seguiríamos buscando venta+depto y el listado queda en cero.
      */
     operationType: ex.operationType ?? input.operationType,
-    propertyType: ex.propertyType ?? input.propertyType,
+    propertyType,
+    entrega,
     amenities: [...new Set([...(input.amenities ?? []), ...((ex.amenities ?? []) as string[])])],
     minSurface: ex.minSurface ?? input.minSurface,
     maxSurface: ex.maxSurface ?? input.maxSurface,

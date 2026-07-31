@@ -45,6 +45,8 @@ export const listingSearchFiltersBaseSchema = z.object({
   neighborhood: z.string().max(120).optional(),
   /** Código público (Properstar/Kiteprop). Filtro duro junto al resto de criterios. */
   publicListingCode: z.string().max(24).optional(),
+  /** Horizonte de entrega: pozo = obra; proxima = a estrenar / cercana. */
+  entrega: z.enum(['pozo', 'proxima']).optional(),
   /** Con ciudad/barrio: orden por cercanía a este punto (no filtra). Ignorado sin localidad. */
   sortNearLat: z.number().gte(-90).lte(90).optional(),
   sortNearLng: z.number().gte(-180).lte(180).optional(),

@@ -231,6 +231,20 @@ describe('extractFiltersFromQuery / cochera', () => {
   })
 })
 
+describe('extractFiltersFromQuery / entrega', () => {
+  it('ya habitable → proxima + development_unit', () => {
+    const f = extractFiltersFromQuery('departamento ya habitable en Palermo')
+    expect(f.entrega).toBe('proxima')
+    expect(f.propertyType).toBe('development_unit')
+  })
+
+  it('en pozo gana sobre departamento', () => {
+    const f = extractFiltersFromQuery('departamento en pozo Rosario')
+    expect(f.entrega).toBe('pozo')
+    expect(f.propertyType).toBe('development_unit')
+  })
+})
+
 describe('detectStrictAmenitiesFromText', () => {
   it('detecta sí o sí', () => {
     expect(detectStrictAmenitiesFromText('sí o sí con pileta')).toBe(true)

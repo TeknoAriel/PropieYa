@@ -76,11 +76,14 @@ function stretchPrice(
 function filtersStrong(s: SearchSessionMVP): SearchFilters {
   const geo = geoSlice(s)
   const am = amenitySlice(s)
+  const entrega =
+    s.entrega === 'pozo' || s.entrega === 'proxima' ? s.entrega : undefined
   return {
     q: s.q ?? undefined,
     publicListingCode: s.publicListingCode ?? undefined,
     operationType: s.operationType ?? undefined,
-    propertyType: s.propertyType ?? undefined,
+    propertyType: entrega ? 'development_unit' : (s.propertyType ?? undefined),
+    entrega,
     city: s.city ?? undefined,
     neighborhood: s.neighborhood ?? undefined,
     minPrice: s.minPrice ?? undefined,
@@ -99,11 +102,14 @@ function filtersStrong(s: SearchSessionMVP): SearchFilters {
 function filtersNear(s: SearchSessionMVP): SearchFilters {
   const geo = geoSlice(s)
   const am = amenitySlice(s)
+  const entrega =
+    s.entrega === 'pozo' || s.entrega === 'proxima' ? s.entrega : undefined
   return {
     q: s.q ?? undefined,
     publicListingCode: s.publicListingCode ?? undefined,
     operationType: s.operationType ?? undefined,
-    propertyType: s.propertyType ?? undefined,
+    propertyType: entrega ? 'development_unit' : (s.propertyType ?? undefined),
+    entrega,
     city: s.city ?? undefined,
     neighborhood: undefined,
     minPrice: s.minPrice ?? undefined,

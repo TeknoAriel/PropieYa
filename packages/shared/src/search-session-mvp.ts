@@ -54,6 +54,11 @@ export const searchSessionMVPSchema = z.object({
    * se detecta también desde `q` en `enrichSearchSessionMVPFromParsedQuery`.
    */
   publicListingCode: z.string().max(24).nullable().optional(),
+  /**
+   * Horizonte de entrega (emprendimientos): pozo = en obra; proxima = a estrenar / cercana.
+   * Si está seteado, la búsqueda se acota a `development_unit`.
+   */
+  entrega: z.enum(['pozo', 'proxima']).nullable().optional(),
 })
 
 export type SearchSessionMVP = z.infer<typeof searchSessionMVPSchema>
@@ -196,13 +201,18 @@ export function enrichSearchSessionMVPFromParsedQuery(
 
   const op =
     (merged.operationType ?? s.operationType) as SearchSessionMVP['operationType']
-  const ptRaw = merged.propertyType ?? s.propertyType
+  const entregaRaw = merged.entrega ?? s.entrega
+  const entrega =
+    entregaRaw === 'pozo' || entregaRaw === 'proxima' ? entregaRaw : null
+  const ptRaw =
+    entrega != null ? 'development_unit' : (merged.propertyType ?? s.propertyType)
   const pt = ptRaw?.trim() ? ptRaw.trim().slice(0, 50) : null
 
   return {
     ...s,
     operationType: op ?? null,
     propertyType: pt,
+    entrega,
     city,
     neighborhood,
     amenityIds,
@@ -239,7 +249,14 @@ export function normalizeSearchSessionMVP(raw: unknown): SearchSessionMVP {
   const city = s.city?.trim() ? s.city.trim() : null
   const neighborhood = s.neighborhood?.trim() ? s.neighborhood.trim() : null
   const q = s.q?.trim() ? s.q.trim().slice(0, 200) : null
-  const propertyType = s.propertyType?.trim() ? s.propertyType.trim().slice(0, 50) : null
+  const entrega =
+    s.entrega === 'pozo' || s.entrega === 'proxima' ? s.entrega : null
+  const propertyType =
+    entrega != null
+      ? 'development_unit'
+      : s.propertyType?.trim()
+        ? s.propertyType.trim().slice(0, 50)
+        : null
   const publicListingCode = s.publicListingCode?.trim()
     ? s.publicListingCode.trim().toUpperCase().slice(0, 24)
     : null
@@ -275,6 +292,7 @@ export function normalizeSearchSessionMVP(raw: unknown): SearchSessionMVP {
     neighborhood,
     q,
     propertyType,
+    entrega,
     minPrice,
     maxPrice,
     mapMode,

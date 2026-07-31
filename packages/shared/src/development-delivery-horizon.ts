@@ -158,3 +158,63 @@ export function pickProjectDeliveryHorizon(
   if (unitHorizons.includes('near_term')) return 'near_term'
   return 'unknown'
 }
+
+function normalizeDeliveryQueryBlob(q: string): string {
+  return q
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+}
+
+/**
+ * Extrae filtro de horizonte desde lenguaje natural (asistente / `q`).
+ * «ya habitable» → proxima; «en pozo» / «para dentro de N años» → pozo.
+ */
+export function extractDeliveryHorizonFilterFromQuery(q: string): {
+  filter?: DevelopmentDeliveryFilter
+  consumed?: string
+} {
+  const raw = q.trim()
+  if (!raw) return {}
+  const s = normalizeDeliveryQueryBlob(raw)
+
+  const near = raw.match(
+    /\b(ya\s+habitable|a\s+estrenar|entrega\s+inmediata|listo\s+para\s+habitar|ocupaci[oó]n\s+inmediata)\b/i
+  )
+  if (near?.[0]) return { filter: 'proxima', consumed: near[0] }
+
+  if (/\bposibilidad(?:es)?\s+en\s+pozo\b/.test(s)) return {}
+
+  const pozo = raw.match(
+    /\b(en\s+pozo|en\s+obra|en\s+construcci[oó]n|para\s+dentro\s+de\s+\d+\s*a[nñ]os?|en\s+\d+\s+a[nñ]os|entrega\s+en\s+20[2-3]\d)\b/i
+  )
+  if (pozo?.[0]) return { filter: 'pozo', consumed: pozo[0] }
+
+  return {}
+}
+
+/**
+ * Frases para ILIKE / match_phrase cuando no hay campo `deliveryHorizon` indexado.
+ * Aproxima `inferDevelopmentDeliveryHorizon` sobre título/descripción.
+ */
+export function developmentDeliveryFilterMatchPhrases(
+  filter: DevelopmentDeliveryFilter
+): readonly string[] {
+  if (filter === 'pozo') {
+    return [
+      'en pozo',
+      'en obra',
+      'en construcción',
+      'en construccion',
+      'en desarrollo',
+    ]
+  }
+  return [
+    'a estrenar',
+    'entrega inmediata',
+    'listo para habitar',
+    'ya habitable',
+    'ocupación inmediata',
+    'ocupacion inmediata',
+  ]
+}

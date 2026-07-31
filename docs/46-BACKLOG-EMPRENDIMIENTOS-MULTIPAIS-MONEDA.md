@@ -15,7 +15,8 @@
 ## 2. Disponibilidad / horizonte de entrega
 
 - **Hecho (v0):** filtro en `/emprendimientos` + badge de horizonte; parseo de `deliveryDate` (JUNIO 2027, ISO, etc.).
-- Pendiente: facet en `/buscar` general y multi-turno del asistente con «ya habitable» vs «para dentro de dos años» como filtro de sesión explícito.
+- **Hecho (v1):** facet `?entrega=pozo|proxima` en `/buscar` (sesión v2 + SQL/ES); el asistente / `q` entiende «ya habitable» vs «en pozo» / «para dentro de N años» (`extractDeliveryHorizonFilterFromQuery`).
+- Pendiente: multi-turno con filtro de sesión persistente entre mensajes sin re-parsear todo el prompt.
 
 ---
 
