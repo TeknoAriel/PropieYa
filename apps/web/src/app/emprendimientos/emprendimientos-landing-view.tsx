@@ -27,7 +27,7 @@ export function EmprendimientosLandingView() {
   const maxPrice = parseOptionalNumber(searchParams.get('precioMax'))
   const minBedrooms = parseOptionalNumber(searchParams.get('ambientes'))
   const entregaRaw = (searchParams.get('entrega') ?? '').trim()
-  const entrega =
+  const entrega: 'pozo' | 'proxima' | undefined =
     entregaRaw === 'pozo' || entregaRaw === 'proxima' ? entregaRaw : undefined
 
   const input = useMemo(
