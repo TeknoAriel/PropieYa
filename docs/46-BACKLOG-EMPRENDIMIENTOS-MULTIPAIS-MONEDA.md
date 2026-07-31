@@ -1,6 +1,6 @@
 # Backlog: emprendimientos, multipaís, moneda y búsqueda
 
-**Estado:** listado en `/emprendimientos` por **proyecto + unidades** (`development.listProjects`, ficha `/emprendimientos/[slug]`). Import: muchos avisos llegan como `apartments` en feed pero título «en pozo» — mapper corrige vía `matchDevelopmentUnitFromText`; reclasificar DB: `APPLY=1 ENV_FILE=apps/web/.env.prod.audit pnpm reclassify:development-units`. Ver `docs/68-KITEPROP-EMPRENDIMIENTOS-API-Y-PORTAL.md`.
+**Estado:** listado en `/emprendimientos` por **proyecto + unidades** (`development.listProjects`, ficha `/emprendimientos/[slug]`). Import: muchos avisos llegan como `apartments` en feed pero título «en pozo» — mapper corrige vía `matchDevelopmentUnitFromText`; reclasificar DB: `APPLY=1 ENV_FILE=apps/web/.env.prod.audit pnpm reclassify:development-units`. Títulos genéricos («Departamento») se **desambiguan** con barrio/calle y se ignoran claves `departamento|ciudad` persistidas (`resolveDevelopmentProjectIdentity`). Ver `docs/68-KITEPROP-EMPRENDIMIENTOS-API-Y-PORTAL.md`.
 
 ---
 

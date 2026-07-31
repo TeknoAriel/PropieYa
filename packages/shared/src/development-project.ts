@@ -82,6 +82,61 @@ const UNIT_TAIL =
 const MARKETING_PREFIX =
   /^(oportunidad de inversi[oó]n|excelente oportunidad|incre[ií]ble oportunidad|venta\.?|alquiler\.?)\s*[-–:]\s*/i
 
+/** Nombres que son tipología de unidad, no marca de proyecto. */
+const WEAK_PROJECT_NAME =
+  /^(departamento|departamentos|deptos?|dpto|unidad|unidades|monoambiente|loft|semipiso|ph)(\s+(de\s+)?\d+(\s*(amb|ambientes?|dorm|dormitorios?))?)?$/i
+
+export function isWeakDevelopmentProjectName(name: string): boolean {
+  const n = (name ?? '').trim()
+  if (!n) return true
+  if (n.length < 6) return true
+  if (WEAK_PROJECT_NAME.test(n)) return true
+  // «Departamento de 3 dormitorios» / «Departamento 2 ambientes tipo estudio» sin torre/edificio
+  if (
+    /^(departamento|depto|dpto)\b/i.test(n) &&
+    !/\b(torre|edificio|complejo|emprendimiento|sky|modena|firenze)\b/i.test(n) &&
+    n.length < 55
+  ) {
+    return true
+  }
+  return false
+}
+
+/** Pista de ubicación en título (calle / avenida) para desambiguar unidades genéricas. */
+export function extractLocationHintFromTitle(title: string): string | null {
+  const t = (title ?? '').trim()
+  if (!t) return null
+  const sobre = t.match(
+    /\b(?:sobre|en)\s+(av\.?\s*|avenida\s+|calle\s+)?([A-Za-zÁÉÍÓÚáéíóúÑñ0-9][A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s.]{2,40})(?:\s+al\s+(\d+))?/i
+  )
+  if (sobre) {
+    const street = `${(sobre[1] ?? '').trim()} ${(sobre[2] ?? '').trim()}`.trim()
+    const num = sobre[3]?.trim()
+    const label = num ? `${street} ${num}` : street
+    if (label.length >= 4 && !/^(venta|alquiler|pozo)$/i.test(label)) return label.slice(0, 80)
+  }
+  const pozoStreet = t.match(/\ben\s+pozo\s+(.+)$/i)
+  if (pozoStreet?.[1] && pozoStreet[1].trim().length >= 4) {
+    return pozoStreet[1].trim().slice(0, 80)
+  }
+  return null
+}
+
+function displayNameFromLocation(
+  city: string,
+  neighborhood?: string | null,
+  locationHint?: string | null
+): string {
+  if (locationHint && locationHint.trim().length >= 4) {
+    const place = neighborhood || city
+    return `Emprendimiento en ${locationHint.trim()}${place ? `, ${place}` : ''}`.slice(0, 200)
+  }
+  if (neighborhood && neighborhood.trim()) {
+    return `Emprendimiento en ${neighborhood.trim()}, ${city}`.slice(0, 200)
+  }
+  return `Emprendimiento en ${city}`.slice(0, 200)
+}
+
 /** Extrae nombre de proyecto desde el título del aviso (unidad). */
 export function extractDevelopmentProjectName(title: string): string {
   const raw = (title ?? '').trim()
@@ -95,8 +150,15 @@ export function extractDevelopmentProjectName(title: string): string {
       /^\s*(depto|dpto|departamento|departamentos|unidad|unidades|ambientes?|dorm)/i.test(tail)
     ) {
       const head = (dash[1] ?? '').trim()
-      if (head.length >= 4) return head
+      if (head.length >= 4 && !isWeakDevelopmentProjectName(head)) return head
     }
+  }
+
+  // «¡Vive en Grande en Torre Firenze! Departamentos…» → Torre Firenze
+  const torre = raw.match(/\b((?:torre|edificio|complejo)\s+[A-Za-zÁÉÍÓÚáéíóúÑñ0-9][\wÁÉÍÓÚáéíóúÑñ0-9\s.-]{2,40})/i)
+  if (torre?.[1]) {
+    const name = torre[1].trim().replace(/\s+/g, ' ')
+    if (name.length >= 6) return name.slice(0, 200)
   }
 
   let name = raw.replace(MARKETING_PREFIX, '').trim()
@@ -104,6 +166,53 @@ export function extractDevelopmentProjectName(title: string): string {
   name = name.replace(/\s+en\s+(venta|alquiler)\b.*$/i, '').trim()
   if (name.length < 4) return raw.slice(0, 120)
   return name.slice(0, 200)
+}
+
+/**
+ * Nombre + clave de agrupación. Si el título es genérico («Departamento»),
+ * desambigua con barrio/calle para no mezclar edificios distintos.
+ */
+export function resolveDevelopmentProjectIdentity(
+  title: string,
+  city: string,
+  neighborhood?: string | null,
+  features?: unknown
+): { projectKey: string; projectName: string; deliveryDate: string | null } {
+  const f = (features && typeof features === 'object' && !Array.isArray(features)
+    ? features
+    : {}) as DevelopmentProjectFeatures
+
+  const fromFeatures =
+    typeof f.developmentProjectName === 'string' && f.developmentProjectName.trim()
+      ? f.developmentProjectName.trim()
+      : null
+
+  const extracted = extractDevelopmentProjectName(title)
+  const locationHint = extractLocationHintFromTitle(title)
+  const baseName = fromFeatures || extracted
+  const weak = isWeakDevelopmentProjectName(baseName)
+
+  const projectName = weak
+    ? displayNameFromLocation(city, neighborhood, locationHint)
+    : baseName
+
+  const keySeed = weak ? String(locationHint || neighborhood || projectName) : projectName
+  const derivedKey = buildDevelopmentProjectKey(keySeed, city, neighborhood)
+
+  const storedKey =
+    typeof f.developmentProjectKey === 'string' ? f.developmentProjectKey.trim() : ''
+  // Ignorar claves persistidas genéricas (departamento|ciudad) — recalcular.
+  const projectKey =
+    storedKey && !/^(departamento|departamentos|depto|dpto|unidad|loft)(\||$)/i.test(storedKey)
+      ? storedKey
+      : derivedKey
+
+  const deliveryDate =
+    typeof f.deliveryDate === 'string' && f.deliveryDate.trim().length > 0
+      ? f.deliveryDate.trim()
+      : null
+
+  return { projectKey, projectName, deliveryDate }
 }
 
 function stripDiacritics(s: string): string {
@@ -144,24 +253,7 @@ export function readDevelopmentProjectFromFeatures(
   city: string,
   neighborhood?: string | null
 ): { projectKey: string; projectName: string; deliveryDate: string | null } {
-  const f = (features && typeof features === 'object' && !Array.isArray(features)
-    ? features
-    : {}) as DevelopmentProjectFeatures
-
-  const projectName =
-    (typeof f.developmentProjectName === 'string' && f.developmentProjectName.trim()) ||
-    extractDevelopmentProjectName(fallbackTitle)
-
-  const projectKey =
-    (typeof f.developmentProjectKey === 'string' && f.developmentProjectKey.trim()) ||
-    buildDevelopmentProjectKey(projectName, city, neighborhood)
-
-  const deliveryDate =
-    typeof f.deliveryDate === 'string' && f.deliveryDate.trim().length > 0
-      ? f.deliveryDate.trim()
-      : null
-
-  return { projectKey, projectName, deliveryDate }
+  return resolveDevelopmentProjectIdentity(fallbackTitle, city, neighborhood, features)
 }
 
 export function developmentProjectSlug(projectKey: string, projectName: string, city: string): string {
@@ -240,12 +332,35 @@ export function groupListingsIntoDevelopmentProjects(
     const neighborhood = first.address?.neighborhood
       ? String(first.address.neighborhood).trim()
       : null
-    const { projectName, deliveryDate } = readDevelopmentProjectFromFeatures(
-      first.features,
-      first.title,
-      city,
-      neighborhood
-    )
+
+    // Preferir el mejor nombre del grupo (evitar quedarse con «Departamento» si hay Torre X).
+    let projectName = ''
+    let deliveryDate: string | null = null
+    for (const u of units) {
+      const id = readDevelopmentProjectFromFeatures(
+        u.features,
+        u.title,
+        String(u.address?.city ?? city).trim() || city,
+        u.address?.neighborhood ? String(u.address.neighborhood).trim() : neighborhood
+      )
+      if (!deliveryDate && id.deliveryDate) deliveryDate = id.deliveryDate
+      if (
+        !projectName ||
+        (isWeakDevelopmentProjectName(projectName) && !isWeakDevelopmentProjectName(id.projectName)) ||
+        (!isWeakDevelopmentProjectName(id.projectName) &&
+          id.projectName.length > projectName.length)
+      ) {
+        projectName = id.projectName
+      }
+    }
+    if (!projectName) {
+      projectName = readDevelopmentProjectFromFeatures(
+        first.features,
+        first.title,
+        city,
+        neighborhood
+      ).projectName
+    }
 
     const prices = units.map((u) => u.priceAmount).filter((n) => Number.isFinite(n))
     const surfaces = units.map((u) => u.surfaceTotal).filter((n) => Number.isFinite(n))
@@ -309,13 +424,13 @@ export function developmentProjectFieldsFromFeedItem(
   city: string,
   neighborhood?: string | null
 ): DevelopmentProjectFeatures {
-  const projectName = extractDevelopmentProjectName(mappedTitle)
-  const projectKey = buildDevelopmentProjectKey(projectName, city, neighborhood)
+  const { projectKey, projectName, deliveryDate: fromTitle } =
+    resolveDevelopmentProjectIdentity(mappedTitle, city, neighborhood)
   const deliveryRaw = item.delivery_date ?? item.deliveryDate
   const deliveryDate =
     deliveryRaw != null && String(deliveryRaw).trim().length > 0
       ? String(deliveryRaw).trim()
-      : null
+      : fromTitle
   return {
     developmentProjectKey: projectKey,
     developmentProjectName: projectName,
