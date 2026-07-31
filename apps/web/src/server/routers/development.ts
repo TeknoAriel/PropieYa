@@ -5,9 +5,11 @@ import { listings, listingsSelectPublic } from '@propieya/database'
 import type { Context } from '../trpc'
 import {
   buildDevelopmentProjectDetail,
+  developmentHorizonMatchesFilter,
   findDevelopmentProjectBySlug,
   groupListingsIntoDevelopmentProjects,
   readDevelopmentProjectFromFeatures,
+  type DevelopmentDeliveryFilter,
   type DevelopmentListingRow,
 } from '@propieya/shared'
 
@@ -19,6 +21,8 @@ const listInput = z.object({
   minPrice: z.number().min(0).optional(),
   maxPrice: z.number().min(0).optional(),
   minBedrooms: z.number().int().min(0).optional(),
+  /** pozo = en obra; proxima = a estrenar / entrega cercana */
+  entrega: z.enum(['pozo', 'proxima']).optional(),
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(24).default(12),
 })
@@ -108,17 +112,23 @@ function rowsForProject(
 
 export const developmentRouter = createTRPCRouter({
   listProjects: publicProcedure.input(listInput).query(async ({ ctx, input }) => {
-    const rows = await fetchDevelopmentUnitRows(ctx.db, input)
-    const all = groupListingsIntoDevelopmentProjects(rows)
-    const start = (input.page - 1) * input.pageSize
-    const items = all.slice(start, start + input.pageSize)
+    const { entrega, page, pageSize, ...rowFilters } = input
+    const rows = await fetchDevelopmentUnitRows(ctx.db, rowFilters)
+    let all = groupListingsIntoDevelopmentProjects(rows)
+    if (entrega) {
+      const filter = entrega as DevelopmentDeliveryFilter
+      all = all.filter((p) => developmentHorizonMatchesFilter(p.deliveryHorizon, filter))
+    }
+    const start = (page - 1) * pageSize
+    const items = all.slice(start, start + pageSize)
+    const unitCountInProjects = all.reduce((acc, p) => acc + p.unitCount, 0)
     return {
       items,
       totalProjects: all.length,
-      totalUnits: rows.length,
-      page: input.page,
-      pageSize: input.pageSize,
-      hasMore: start + input.pageSize < all.length,
+      totalUnits: entrega ? unitCountInProjects : rows.length,
+      page,
+      pageSize,
+      hasMore: start + pageSize < all.length,
     }
   }),
 

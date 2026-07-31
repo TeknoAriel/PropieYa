@@ -7,6 +7,7 @@ import { useParams } from 'next/navigation'
 
 import { Badge, Button, Skeleton } from '@propieya/ui'
 import {
+  DEVELOPMENT_DELIVERY_HORIZON_LABELS,
   OPERATION_TYPE_LABELS,
   type DevelopmentProjectUnit,
 } from '@propieya/shared'
@@ -125,7 +126,11 @@ export function DevelopmentProjectDetailView() {
                 ))}
                 {project.deliveryDate ? (
                   <Badge variant="outline">Entrega: {project.deliveryDate}</Badge>
-                ) : null}
+                ) : (
+                  <Badge variant="outline">
+                    {DEVELOPMENT_DELIVERY_HORIZON_LABELS[project.deliveryHorizon]}
+                  </Badge>
+                )}
                 <Badge variant="outline">
                   {project.unitCount} unidad{project.unitCount === 1 ? '' : 'es'}
                 </Badge>

@@ -4,6 +4,11 @@
  * si falta, se deriva del título + ubicación.
  */
 
+import {
+  inferDevelopmentDeliveryHorizon,
+  pickProjectDeliveryHorizon,
+  type DevelopmentDeliveryHorizon,
+} from './development-delivery-horizon'
 import type { OperationType, PropertyType } from './types/listing'
 
 export type DevelopmentProjectFeatures = {
@@ -59,6 +64,7 @@ export type DevelopmentProjectSummary = {
   neighborhood: string | null
   addressSummary: string | null
   deliveryDate: string | null
+  deliveryHorizon: DevelopmentDeliveryHorizon
   advertiserName: string | null
   heroImageUrl: string | null
   unitCount: number
@@ -399,6 +405,7 @@ export function groupListingsIntoDevelopmentProjects(
     // Preferir el mejor nombre del grupo (evitar quedarse con «Departamento» si hay Torre X).
     let projectName = ''
     let deliveryDate: string | null = null
+    const horizons: DevelopmentDeliveryHorizon[] = []
     for (const u of units) {
       const id = readDevelopmentProjectFromFeatures(
         u.features,
@@ -407,6 +414,13 @@ export function groupListingsIntoDevelopmentProjects(
         u.address?.neighborhood ? String(u.address.neighborhood).trim() : neighborhood
       )
       if (!deliveryDate && id.deliveryDate) deliveryDate = id.deliveryDate
+      horizons.push(
+        inferDevelopmentDeliveryHorizon({
+          deliveryDate: id.deliveryDate,
+          title: u.title,
+          description: u.description,
+        })
+      )
       if (
         !projectName ||
         (isWeakDevelopmentProjectName(projectName) && !isWeakDevelopmentProjectName(id.projectName)) ||
@@ -425,6 +439,8 @@ export function groupListingsIntoDevelopmentProjects(
       ).projectName
     }
 
+    const deliveryHorizon = pickProjectDeliveryHorizon(horizons)
+
     const prices = units.map((u) => u.priceAmount).filter((n) => Number.isFinite(n))
     const surfaces = units.map((u) => u.surfaceTotal).filter((n) => Number.isFinite(n))
     const currency = first.priceCurrency || 'USD'
@@ -441,6 +457,7 @@ export function groupListingsIntoDevelopmentProjects(
       neighborhood,
       addressSummary: addressSummary(first),
       deliveryDate,
+      deliveryHorizon,
       advertiserName: readAdvertiser(first.features),
       heroImageUrl:
         sortedUnits.find((u) => u.primaryImageUrl)?.primaryImageUrl ?? null,

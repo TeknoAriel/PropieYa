@@ -20,6 +20,7 @@ export function DevelopmentFiltersBar() {
   const minPrice = searchParams.get('precioMin') ?? ''
   const maxPrice = searchParams.get('precioMax') ?? ''
   const minBedrooms = searchParams.get('ambientes') ?? ''
+  const entrega = searchParams.get('entrega') ?? ''
 
   const apply = useCallback(
     (form: FormData) => {
@@ -29,11 +30,13 @@ export function DevelopmentFiltersBar() {
       const pMin = String(form.get('precioMin') ?? '').trim()
       const pMax = String(form.get('precioMax') ?? '').trim()
       const amb = String(form.get('ambientes') ?? '').trim()
+      const ent = String(form.get('entrega') ?? '').trim()
       if (c) params.set('ciudad', c)
       if (op) params.set('operacion', op)
       if (pMin) params.set('precioMin', pMin)
       if (pMax) params.set('precioMax', pMax)
       if (amb) params.set('ambientes', amb)
+      if (ent === 'pozo' || ent === 'proxima') params.set('entrega', ent)
       const qs = params.toString()
       startTransition(() => {
         router.push(qs ? `/emprendimientos?${qs}` : '/emprendimientos')
@@ -42,11 +45,15 @@ export function DevelopmentFiltersBar() {
     [router]
   )
 
+  const hasFilters = Boolean(
+    ciudad || operationType || minPrice || maxPrice || minBedrooms || entrega
+  )
+
   return (
     <div className="border-b border-border/20 bg-surface-secondary/40">
       <div className="container mx-auto space-y-4 px-4 py-4">
         <form
-          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6 lg:items-end"
+          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7 lg:items-end"
           onSubmit={(e) => {
             e.preventDefault()
             apply(new FormData(e.currentTarget))
@@ -81,6 +88,19 @@ export function DevelopmentFiltersBar() {
             </select>
           </div>
           <div className="space-y-1">
+            <Label htmlFor="dev-entrega">Entrega</Label>
+            <select
+              id="dev-entrega"
+              name="entrega"
+              defaultValue={entrega}
+              className="flex h-10 w-full rounded-md border border-border/50 bg-surface-primary px-3 text-sm"
+            >
+              <option value="">Todas</option>
+              <option value="pozo">En pozo / obra</option>
+              <option value="proxima">Entrega próxima</option>
+            </select>
+          </div>
+          <div className="space-y-1">
             <Label htmlFor="dev-precioMin">Precio desde</Label>
             <Input
               id="dev-precioMin"
@@ -112,15 +132,15 @@ export function DevelopmentFiltersBar() {
               defaultValue={minBedrooms}
             />
           </div>
-          <div className="flex gap-2">
-            <Button type="submit" disabled={pending} className="flex-1">
+          <div className="flex gap-2 sm:col-span-2 lg:col-span-7">
+            <Button type="submit" disabled={pending}>
               {pending ? 'Buscando…' : 'Filtrar'}
             </Button>
-            {(ciudad || operationType || minPrice || maxPrice || minBedrooms) && (
+            {hasFilters ? (
               <Button type="button" variant="outline" asChild>
                 <Link href="/emprendimientos">Limpiar</Link>
               </Button>
-            )}
+            ) : null}
           </div>
         </form>
 

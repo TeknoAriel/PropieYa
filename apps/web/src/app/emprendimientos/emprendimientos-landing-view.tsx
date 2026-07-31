@@ -26,6 +26,9 @@ export function EmprendimientosLandingView() {
   const minPrice = parseOptionalNumber(searchParams.get('precioMin'))
   const maxPrice = parseOptionalNumber(searchParams.get('precioMax'))
   const minBedrooms = parseOptionalNumber(searchParams.get('ambientes'))
+  const entregaRaw = (searchParams.get('entrega') ?? '').trim()
+  const entrega: 'pozo' | 'proxima' | undefined =
+    entregaRaw === 'pozo' || entregaRaw === 'proxima' ? entregaRaw : undefined
 
   const input = useMemo(
     () => ({
@@ -35,10 +38,11 @@ export function EmprendimientosLandingView() {
       minPrice,
       maxPrice,
       minBedrooms: minBedrooms != null ? Math.floor(minBedrooms) : undefined,
+      entrega,
       page: 1,
       pageSize: 24,
     }),
-    [ciudad, operationType, minPrice, maxPrice, minBedrooms]
+    [ciudad, operationType, minPrice, maxPrice, minBedrooms, entrega]
   )
 
   const { data, isLoading, isError, refetch } = trpc.development.listProjects.useQuery(input)

@@ -7,15 +7,15 @@
 ## 1. Sección portal «Emprendimientos e inversiones»
 
 - **Definición de negocio:** emprendimientos = edificios o unidades **en pozo** (sin entrega rápida), en la misma familia conceptual que **lotes** o **barrios** donde el horizonte de ocupación no es inmediato.
-- **Portal:** una sección dedicada (evolucionar la página actual en `apps/web/src/app/emprendimientos/page.tsx`) con listado, filtros y ficha coherente con venta/alquiler.
-- **Búsqueda «normal»** (`/buscar`, asistente, chips): debe poder **incluir o focalizar** emprendimientos además de stock con entrega inmediata, según intención del usuario.
+- **Portal:** listado con filtro **Entrega** (`?entrega=pozo|proxima`): pozo/obra vs a estrenar / < ~6 meses (`inferDevelopmentDeliveryHorizon`).
+- **Búsqueda «normal»** (`/buscar`, asistente, chips): «en pozo» / «para dentro de N años» + tipología → `development_unit` vía `matchDevelopmentUnitFromText`.
 
 ---
 
 ## 2. Disponibilidad / horizonte de entrega
 
-- Criterio frecuente: **entrega inmediata** vs **entrega en X años** (o rango).
-- Filtros y modelo de datos deben expresar este eje; el **agente conversacional** debe interpretar frases del tipo «para dentro de dos años», «ya habitable», «en pozo», etc., y mapear a filtros o facetas.
+- **Hecho (v0):** filtro en `/emprendimientos` + badge de horizonte; parseo de `deliveryDate` (JUNIO 2027, ISO, etc.).
+- Pendiente: facet en `/buscar` general y multi-turno del asistente con «ya habitable» vs «para dentro de dos años» como filtro de sesión explícito.
 
 ---
 
