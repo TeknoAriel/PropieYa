@@ -82,9 +82,116 @@ const UNIT_TAIL =
 const MARKETING_PREFIX =
   /^(oportunidad de inversi[oó]n|excelente oportunidad|incre[ií]ble oportunidad|venta\.?|alquiler\.?)\s*[-–:]\s*/i
 
+/** Nombres que son tipología de unidad, no marca de proyecto. */
+const WEAK_PROJECT_NAME =
+  /^(departamento|departamentos|departamentoa|deptos?|dptos?|dpto|unidad|unidades|monoambiente|loft|semipiso|ph|duplex|dúplex|oficina|oficinas|local|locales)(\s+(de\s+)?\d+(\s*(amb|ambientes?|dorm|dormitorios?))?)?$/i
+
+function normalizeProjectTitleTypos(s: string): string {
+  return s
+    .replace(/\bdepartamentoa\b/gi, 'departamento')
+    .replace(/\bdptos?\b/gi, 'departamentos')
+}
+
+export function isWeakDevelopmentProjectName(name: string): boolean {
+  const n = normalizeProjectTitleTypos((name ?? '').trim())
+  if (!n) return true
+  if (n.length < 6) return true
+  if (WEAK_PROJECT_NAME.test(n)) return true
+  // Tipología / copy de unidad sin marca de proyecto.
+  if (
+    /^(departamento|departamentos|deptos?|dptos?|dpto|duplex|dúplex|oficina|oficinas|local|locales|venta\.?|alquiler\.?)\b/i.test(
+      n
+    ) &&
+    !/\b(torre|edificio|complejo|emprendimiento|sky|modena|firenze|colonial|pradea|xuum|build)\b/i.test(
+      n
+    )
+  ) {
+    return true
+  }
+  // «DPTOS DE 2 y 3 AMBIENTES EN VENTA EN POZO» sin marca.
+  if (
+    /\b(dptos?|deptos?|departamentos?)\b/i.test(n) &&
+    /\b(ambientes?|dormitorios?)\b/i.test(n) &&
+    !/\b(torre|edificio|complejo|pradea|xuum|modena|firenze|sky)\b/i.test(n)
+  ) {
+    return true
+  }
+  return false
+}
+
+/** Pista de ubicación o marca en título (calle / avenida / código pozo). */
+export function extractLocationHintFromTitle(title: string): string | null {
+  const t = normalizeProjectTitleTypos((title ?? '').trim())
+  if (!t) return null
+
+  // Marca tras guión: «en pozo- PRADEA - FISHERTON»
+  const brandDash = t.match(
+    /\ben\s+pozo\s*[-–]\s*([A-Za-zÁÉÍÓÚáéíóúÑñ0-9][\wÁÉÍÓÚáéíóúÑñ.-]{1,30})/i
+  )
+  if (brandDash?.[1] && brandDash[1].trim().length >= 2) {
+    return brandDash[1].trim().slice(0, 80)
+  }
+
+  // Código/marca corto tras «en pozo»: MORZ, XUUM…
+  const pozoCode = t.match(/\ben\s+pozo[,\s]+([A-ZÁÉÍÓÚÑ]{2,}[\wÁÉÍÓÚáéíóúÑñ-]{0,20})\b/i)
+  if (pozoCode?.[1] && !/^(con|sin|y|de|en|al|la|el)$/i.test(pozoCode[1])) {
+    return pozoCode[1].trim().slice(0, 80)
+  }
+
+  const sobre = t.match(
+    /\b(?:sobre|en)\s+(av\.?\s*|avenida\s+|calle\s+)?([A-Za-zÁÉÍÓÚáéíóúÑñ0-9][A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s.]{2,40})(?:\s+al\s+(\d+))?/i
+  )
+  if (sobre) {
+    const street = `${(sobre[1] ?? '').trim()} ${(sobre[2] ?? '').trim()}`.trim()
+    const num = sobre[3]?.trim()
+    const label = num ? `${street} ${num}` : street
+    if (
+      label.length >= 4 &&
+      !/^(venta|alquiler|pozo|pinamar|centro)$/i.test(label) &&
+      !/^pozo\b/i.test(label)
+    ) {
+      return label.slice(0, 80)
+    }
+  }
+  const pozoStreet = t.match(/\ben\s+pozo\s+(.+)$/i)
+  if (pozoStreet?.[1] && pozoStreet[1].trim().length >= 4) {
+    const rest = pozoStreet[1].trim()
+    // Evitar «venta Pinamar centro…» como si fuera calle del pozo
+    if (!/^(venta|alquiler)\b/i.test(rest)) return rest.slice(0, 80)
+  }
+  return null
+}
+
+function displayNameFromLocation(
+  city: string,
+  neighborhood?: string | null,
+  locationHint?: string | null
+): string {
+  const cityN = city.trim()
+  const nb = neighborhood?.trim() || ''
+  const hint = locationHint?.trim() || ''
+
+  if (hint.length >= 2) {
+    // Marca corta (MORZ, PRADEA): «MORZ · Centro»
+    if (/^[A-ZÁÉÍÓÚÑ0-9][A-ZÁÉÍÓÚÑa-záéíóúñ0-9.-]{1,24}$/.test(hint) && !/\s/.test(hint)) {
+      const place = nb && nb.toLowerCase() !== cityN.toLowerCase() ? nb : cityN
+      return `${hint}${place ? ` · ${place}` : ''}`.slice(0, 200)
+    }
+    const place =
+      nb && nb.toLowerCase() !== cityN.toLowerCase()
+        ? `${nb}, ${cityN}`
+        : cityN
+    return `Emprendimiento en ${hint}${place ? `, ${place}` : ''}`.slice(0, 200)
+  }
+  if (nb && nb.toLowerCase() !== cityN.toLowerCase()) {
+    return `Emprendimiento en ${nb}, ${cityN}`.slice(0, 200)
+  }
+  return `Emprendimiento en ${cityN}`.slice(0, 200)
+}
+
 /** Extrae nombre de proyecto desde el título del aviso (unidad). */
 export function extractDevelopmentProjectName(title: string): string {
-  const raw = (title ?? '').trim()
+  const raw = normalizeProjectTitleTypos((title ?? '').trim())
   if (!raw) return 'Emprendimiento'
 
   const dash = raw.match(/^(.+?)\s*[-–]\s*(.+)$/)
@@ -95,15 +202,80 @@ export function extractDevelopmentProjectName(title: string): string {
       /^\s*(depto|dpto|departamento|departamentos|unidad|unidades|ambientes?|dorm)/i.test(tail)
     ) {
       const head = (dash[1] ?? '').trim()
-      if (head.length >= 4) return head
+      if (head.length >= 4 && !isWeakDevelopmentProjectName(head)) return head
     }
   }
+
+  // «¡Vive en Grande en Torre Firenze! Departamentos…» → Torre Firenze
+  const torre = raw.match(
+    /\b((?:torre|edificio|complejo)\s+[A-Za-zÁÉÍÓÚáéíóúÑñ0-9][\wÁÉÍÓÚáéíóúÑñ0-9\s.-]{2,40})/i
+  )
+  if (torre?.[1]) {
+    const name = torre[1].trim().replace(/\s+/g, ' ')
+    if (name.length >= 6) return name.slice(0, 200)
+  }
+
+  // Marca conocida en mayúsculas / título: PRADEA, XUUM, Build Barracas
+  const brand = raw.match(
+    /\b(PRADEA|XUUM|Build\s+Barracas|MSR\s+Modena\s+SKY|JUNIN\s+AL\s+\d+\s+DESARROLLOS)\b/i
+  )
+  if (brand?.[1]) return brand[1].trim().replace(/\s+/g, ' ').slice(0, 200)
 
   let name = raw.replace(MARKETING_PREFIX, '').trim()
   name = name.replace(/\s*[-–|/]\s*(depto|dpto).+$/i, '').trim()
   name = name.replace(/\s+en\s+(venta|alquiler)\b.*$/i, '').trim()
   if (name.length < 4) return raw.slice(0, 120)
   return name.slice(0, 200)
+}
+
+/**
+ * Nombre + clave de agrupación. Si el título es genérico («Departamento»),
+ * desambigua con barrio/calle para no mezclar edificios distintos.
+ */
+export function resolveDevelopmentProjectIdentity(
+  title: string,
+  city: string,
+  neighborhood?: string | null,
+  features?: unknown
+): { projectKey: string; projectName: string; deliveryDate: string | null } {
+  const f = (features && typeof features === 'object' && !Array.isArray(features)
+    ? features
+    : {}) as DevelopmentProjectFeatures
+
+  const fromFeatures =
+    typeof f.developmentProjectName === 'string' && f.developmentProjectName.trim()
+      ? f.developmentProjectName.trim()
+      : null
+
+  const extracted = extractDevelopmentProjectName(title)
+  const locationHint = extractLocationHintFromTitle(title)
+  const baseName = fromFeatures || extracted
+  const weak = isWeakDevelopmentProjectName(baseName)
+
+  const projectName = weak
+    ? displayNameFromLocation(city, neighborhood, locationHint)
+    : baseName
+
+  const keySeed = weak ? String(locationHint || neighborhood || projectName) : projectName
+  const derivedKey = buildDevelopmentProjectKey(keySeed, city, neighborhood)
+
+  const storedKey =
+    typeof f.developmentProjectKey === 'string' ? f.developmentProjectKey.trim() : ''
+  // Ignorar claves persistidas genéricas (departamento|ciudad) — recalcular.
+  const projectKey =
+    storedKey &&
+    !/^(departamento|departamentos|departamentoa|depto|dpto|dptos?|deptos?|unidad|loft|duplex|oficina|local)(\||$)/i.test(
+      storedKey
+    )
+      ? storedKey
+      : derivedKey
+
+  const deliveryDate =
+    typeof f.deliveryDate === 'string' && f.deliveryDate.trim().length > 0
+      ? f.deliveryDate.trim()
+      : null
+
+  return { projectKey, projectName, deliveryDate }
 }
 
 function stripDiacritics(s: string): string {
@@ -144,24 +316,7 @@ export function readDevelopmentProjectFromFeatures(
   city: string,
   neighborhood?: string | null
 ): { projectKey: string; projectName: string; deliveryDate: string | null } {
-  const f = (features && typeof features === 'object' && !Array.isArray(features)
-    ? features
-    : {}) as DevelopmentProjectFeatures
-
-  const projectName =
-    (typeof f.developmentProjectName === 'string' && f.developmentProjectName.trim()) ||
-    extractDevelopmentProjectName(fallbackTitle)
-
-  const projectKey =
-    (typeof f.developmentProjectKey === 'string' && f.developmentProjectKey.trim()) ||
-    buildDevelopmentProjectKey(projectName, city, neighborhood)
-
-  const deliveryDate =
-    typeof f.deliveryDate === 'string' && f.deliveryDate.trim().length > 0
-      ? f.deliveryDate.trim()
-      : null
-
-  return { projectKey, projectName, deliveryDate }
+  return resolveDevelopmentProjectIdentity(fallbackTitle, city, neighborhood, features)
 }
 
 export function developmentProjectSlug(projectKey: string, projectName: string, city: string): string {
@@ -240,12 +395,35 @@ export function groupListingsIntoDevelopmentProjects(
     const neighborhood = first.address?.neighborhood
       ? String(first.address.neighborhood).trim()
       : null
-    const { projectName, deliveryDate } = readDevelopmentProjectFromFeatures(
-      first.features,
-      first.title,
-      city,
-      neighborhood
-    )
+
+    // Preferir el mejor nombre del grupo (evitar quedarse con «Departamento» si hay Torre X).
+    let projectName = ''
+    let deliveryDate: string | null = null
+    for (const u of units) {
+      const id = readDevelopmentProjectFromFeatures(
+        u.features,
+        u.title,
+        String(u.address?.city ?? city).trim() || city,
+        u.address?.neighborhood ? String(u.address.neighborhood).trim() : neighborhood
+      )
+      if (!deliveryDate && id.deliveryDate) deliveryDate = id.deliveryDate
+      if (
+        !projectName ||
+        (isWeakDevelopmentProjectName(projectName) && !isWeakDevelopmentProjectName(id.projectName)) ||
+        (!isWeakDevelopmentProjectName(id.projectName) &&
+          id.projectName.length > projectName.length)
+      ) {
+        projectName = id.projectName
+      }
+    }
+    if (!projectName) {
+      projectName = readDevelopmentProjectFromFeatures(
+        first.features,
+        first.title,
+        city,
+        neighborhood
+      ).projectName
+    }
 
     const prices = units.map((u) => u.priceAmount).filter((n) => Number.isFinite(n))
     const surfaces = units.map((u) => u.surfaceTotal).filter((n) => Number.isFinite(n))
@@ -309,13 +487,13 @@ export function developmentProjectFieldsFromFeedItem(
   city: string,
   neighborhood?: string | null
 ): DevelopmentProjectFeatures {
-  const projectName = extractDevelopmentProjectName(mappedTitle)
-  const projectKey = buildDevelopmentProjectKey(projectName, city, neighborhood)
+  const { projectKey, projectName, deliveryDate: fromTitle } =
+    resolveDevelopmentProjectIdentity(mappedTitle, city, neighborhood)
   const deliveryRaw = item.delivery_date ?? item.deliveryDate
   const deliveryDate =
     deliveryRaw != null && String(deliveryRaw).trim().length > 0
       ? String(deliveryRaw).trim()
-      : null
+      : fromTitle
   return {
     developmentProjectKey: projectKey,
     developmentProjectName: projectName,
