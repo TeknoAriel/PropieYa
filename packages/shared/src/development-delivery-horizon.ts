@@ -63,7 +63,7 @@ export function parseDevelopmentDeliveryDate(
     if (y >= 2000 && m >= 1 && m <= 12) return new Date(y, m - 1, d)
   }
 
-  const slash = s.match(/^(\d{1,2})[\/\-.](\d{4})$/)
+  const slash = s.match(/^(\d{1,2})[/.-](\d{4})$/)
   if (slash) {
     const m = Number(slash[1])
     const y = Number(slash[2])
@@ -81,7 +81,7 @@ export function parseDevelopmentDeliveryDate(
   }
 
   const yearOnly = s.match(/\b(20[2-3]\d)\b/)
-  if (yearOnly && !/\b\d{1,2}[\/\-.]\d{1,2}/.test(s)) {
+  if (yearOnly && !/\b\d{1,2}[/.-]\d{1,2}/.test(s)) {
     const y = Number(yearOnly[1])
     // Si solo hay año, asumir mitad de año
     return new Date(y, 5, 1)

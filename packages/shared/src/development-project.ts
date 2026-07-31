@@ -4,12 +4,12 @@
  * si falta, se deriva del título + ubicación.
  */
 
-import type { OperationType, PropertyType } from './types/listing'
 import {
   inferDevelopmentDeliveryHorizon,
   pickProjectDeliveryHorizon,
   type DevelopmentDeliveryHorizon,
 } from './development-delivery-horizon'
+import type { OperationType, PropertyType } from './types/listing'
 
 export type DevelopmentProjectFeatures = {
   developmentProjectKey?: string | null
