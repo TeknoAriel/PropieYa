@@ -619,6 +619,8 @@ export const PORTAL_SEARCH_UX_COPY = {
   conversationalChipOtherArea: 'Otro barrio o zona',
   conversationalChipParking: 'Con cochera',
   conversationalChipMoreBedrooms: 'Más dormitorios',
+  conversationalChipNearDelivery: 'Ya habitable',
+  conversationalChipPozo: 'En pozo',
 
   /** /buscar — guía breve alineada a la home. */
   buscarFlowTitle: 'Pasos de búsqueda',

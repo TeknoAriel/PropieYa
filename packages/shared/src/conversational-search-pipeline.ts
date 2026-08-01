@@ -34,6 +34,8 @@ export type ConversationalFlatIntent = {
   minBedrooms?: number
   minSurface?: number
   amenities?: string[]
+  /** Horizonte de entrega (emprendimientos). */
+  entrega?: 'pozo' | 'proxima'
   q?: string
 }
 
@@ -307,6 +309,11 @@ export function validateConversationalPipeline(
   if (out.propertyType && !PROPERTY_ENUM.has(out.propertyType)) {
     validationNotes.push(`propertyType inválido omitido: ${out.propertyType}`)
     delete out.propertyType
+  }
+  if (out.entrega === 'pozo' || out.entrega === 'proxima') {
+    out.propertyType = 'development_unit'
+  } else if (out.entrega != null) {
+    delete out.entrega
   }
 
   if (out.city?.trim()) {

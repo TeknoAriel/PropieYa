@@ -22,6 +22,8 @@ export interface ExtractedIntention {
   minBedrooms?: number
   minSurface?: number
   amenities?: string[]
+  /** Horizonte de entrega (emprendimientos): pozo | proxima. */
+  entrega?: 'pozo' | 'proxima'
   /** Texto para el motor (típicamente el mensaje o lo que quedó libre tras estructurar). */
   q?: string
 }
@@ -79,6 +81,7 @@ function finalizeConversationalIntention(
   intention: ExtractedIntention
 ): ExtractedIntention {
   const fb = fallbackExtract(message)
+  const entrega = intention.entrega ?? fb.entrega
   const out: ExtractedIntention = {
     operationType: intention.operationType ?? fb.operationType,
     propertyType: sanitizePropertyType(intention.propertyType) ?? fb.propertyType,
@@ -89,7 +92,11 @@ function finalizeConversationalIntention(
     minBedrooms: intention.minBedrooms ?? fb.minBedrooms,
     minSurface: intention.minSurface ?? fb.minSurface,
     amenities: [...new Set([...(intention.amenities ?? []), ...(fb.amenities ?? [])])],
+    entrega,
     q: (intention.q?.trim() || message.trim()).slice(0, 200) || undefined,
+  }
+  if (out.entrega === 'pozo' || out.entrega === 'proxima') {
+    out.propertyType = 'development_unit'
   }
   if (out.propertyType && !CANONICAL_PROPERTY_TYPES.has(out.propertyType)) {
     delete out.propertyType
@@ -124,7 +131,8 @@ Campos opcionales (omití clave o usá null si no aplica):
 - minPrice, maxPrice: enteros (sin puntos de miles)
 - minBedrooms, minSurface: números si el usuario los da
 - amenities: array de códigos en inglés permitidos en catálogo (balcony, terrace, parking, pool, garden, bbq, gym, laundry, etc.)
-- q: solo matices que no entran arriba (ej. "luminoso", "frente al río", "a estrenar"). Si todo quedó en campos estructurados, q puede ser null o "".
+- entrega: "pozo" | "proxima" — "en pozo"/"en obra"/"para dentro de N años" → pozo; "ya habitable"/"a estrenar"/"entrega inmediata" → proxima. Si seteás entrega, propertyType debe ser development_unit.
+- q: solo matices que no entran arriba (ej. "luminoso", "frente al río"). Si todo quedó en campos estructurados, q puede ser null o "".
 
 Reglas:
 - «Casa en Funes», «casas en Rosario» → city/barrio sí; propertyType null salvo que digan depto, PH, lote, etc.
@@ -142,7 +150,10 @@ Modo seguimiento: ya hay una búsqueda previa (JSON en el mensaje de usuario). E
 - Si contradice un campo anterior, gana el mensaje nuevo.
 - "Más barato" / "más económico": bajá maxPrice ~15–20% si había tope.
 - "Otro barrio" sin nombre: neighborhood null, conservá city si había.
-- "Igual pero con cochera": sumá amenity parking si aplica.`
+- "Igual pero con cochera": sumá amenity parking si aplica.
+- "Ya habitable" / "a estrenar": entrega=proxima y propertyType=development_unit.
+- "En pozo" / "para dentro de dos años": entrega=pozo y propertyType=development_unit.
+- Si el usuario abandona el horizonte («cualquier entrega», «también usados»), entrega null.`
 
       const userContent = previous
         ? `[Búsqueda anterior]\nUsuario había dicho: ${previous.userMessage}\nFiltros inferidos (JSON): ${JSON.stringify(previous.intention)}\n\n[Nuevo mensaje — refiná o corregí]\n${message}`
@@ -218,6 +229,17 @@ function mergeFollowUpFallback(
 
   if (ex.operationType) out.operationType = ex.operationType
   if (ex.propertyType) out.propertyType = ex.propertyType
+  if (ex.entrega) {
+    out.entrega = ex.entrega
+    out.propertyType = 'development_unit'
+  }
+  if (
+    /\b(cualquier\s+entrega|sin\s+filtro\s+de\s+entrega|tambi[eé]n\s+usados?|ya\s+no\s+en\s+pozo)\b/i.test(
+      lower
+    )
+  ) {
+    delete out.entrega
+  }
   if (ex.minPrice !== undefined) out.minPrice = ex.minPrice
   if (ex.maxPrice !== undefined) out.maxPrice = ex.maxPrice
   if (ex.minBedrooms !== undefined) out.minBedrooms = ex.minBedrooms
@@ -287,6 +309,10 @@ function normalizeIntention(raw: Record<string, unknown>): ExtractedIntention {
   if (typeof raw.q === 'string' && raw.q.trim()) {
     out.q = raw.q.trim()
   }
+  if (raw.entrega === 'pozo' || raw.entrega === 'proxima') {
+    out.entrega = raw.entrega
+    out.propertyType = 'development_unit'
+  }
   return out
 }
 
@@ -297,6 +323,10 @@ function fallbackExtract(message: string): ExtractedIntention {
 
   if (extracted.operationType) out.operationType = extracted.operationType
   if (extracted.propertyType) out.propertyType = extracted.propertyType
+  if (extracted.entrega) {
+    out.entrega = extracted.entrega
+    out.propertyType = 'development_unit'
+  }
 
   out.minPrice = extracted.minPrice
   out.maxPrice = extracted.maxPrice

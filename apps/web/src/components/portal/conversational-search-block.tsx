@@ -212,19 +212,26 @@ export function ConversationalSearchBlock({
       const urlFilters = {
         q: data.filters.q,
         operationType: mergedOp,
-        propertyType: data.filters.propertyType,
+        propertyType:
+          data.filters.entrega != null
+            ? 'development_unit'
+            : data.filters.propertyType,
         city: data.filters.city,
         neighborhood: data.filters.neighborhood,
         minPrice: data.filters.minPrice,
         maxPrice: data.filters.maxPrice,
         minBedrooms: data.filters.minBedrooms,
         minSurface: data.filters.minSurface,
+        entrega: data.filters.entrega,
       }
       const path = buildPortalSearchPath(urlFilters, searchPathPage)
       const explain: ExplainMatchFilters = {
         q: data.filters.q,
         operationType: mergedOp,
-        propertyType: data.filters.propertyType,
+        propertyType:
+          data.filters.entrega != null
+            ? 'development_unit'
+            : data.filters.propertyType,
         city: data.filters.city,
         neighborhood: data.filters.neighborhood,
         minPrice: data.filters.minPrice,
@@ -232,6 +239,7 @@ export function ConversationalSearchBlock({
         minBedrooms: data.filters.minBedrooms,
         minSurface: data.filters.minSurface,
         amenities: data.filters.amenities,
+        entrega: data.filters.entrega,
       }
       const submitted = lastSubmittedRef.current.trim()
       if (ENABLE_CONVERSATIONAL_SESSION_CONTEXT) {
@@ -339,6 +347,7 @@ export function ConversationalSearchBlock({
         minBedrooms: sessionPrior.filters.minBedrooms,
         minSurface: sessionPrior.filters.minSurface,
         amenities: sessionPrior.filters.amenities,
+        entrega: sessionPrior.filters.entrega,
       },
     }
   }, [sessionPrior])
@@ -372,6 +381,8 @@ export function ConversationalSearchBlock({
     S.conversationalChipOtherArea,
     S.conversationalChipParking,
     S.conversationalChipMoreBedrooms,
+    S.conversationalChipNearDelivery,
+    S.conversationalChipPozo,
   ] as const
 
   const isHero = variant === 'hero'

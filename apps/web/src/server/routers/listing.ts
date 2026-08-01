@@ -154,6 +154,7 @@ const conversationalPriorFiltersSchema = z.object({
   minBedrooms: z.number().int().min(0).max(50).optional(),
   minSurface: z.number().nonnegative().optional(),
   amenities: z.array(z.string().max(80)).max(25).optional(),
+  entrega: z.enum(['pozo', 'proxima']).optional(),
 })
 
 const searchConversationalInputSchema = z.object({
@@ -185,6 +186,7 @@ function conversationPriorFromInput(
       minBedrooms: f.minBedrooms,
       minSurface: f.minSurface,
       amenities: f.amenities,
+      entrega: f.entrega,
     },
   }
 }
@@ -4070,6 +4072,7 @@ export const listingRouter = createTRPCRouter({
             q: intention.q,
             operationType: intention.operationType,
             propertyType: intention.propertyType,
+            entrega: intention.entrega,
             amenities: intention.amenities,
             minSurface: intention.minSurface,
             minBedrooms: intention.minBedrooms,
@@ -4082,7 +4085,10 @@ export const listingRouter = createTRPCRouter({
         const explainFilters: ExplainMatchFilters = {
           q: qForClient,
           operationType: intention.operationType,
-          propertyType: intention.propertyType,
+          propertyType:
+            intention.entrega != null
+              ? 'development_unit'
+              : intention.propertyType,
           city: intention.city,
           neighborhood: intention.neighborhood,
           minPrice: intention.minPrice,
@@ -4090,6 +4096,7 @@ export const listingRouter = createTRPCRouter({
           minBedrooms: intention.minBedrooms,
           minSurface: intention.minSurface,
           amenities: intention.amenities,
+          entrega: intention.entrega,
         }
         const filters = {
           ...explainFilters,
