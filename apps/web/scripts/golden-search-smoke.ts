@@ -151,6 +151,26 @@ const CASES: { appendix: string; label: string; input: SearchInput }[] = [
     },
   },
   {
+    appendix: 'A#13a',
+    label: 'Entrega pozo (facet)',
+    input: {
+      limit: 24,
+      offset: 0,
+      entrega: 'pozo',
+      propertyType: 'development_unit',
+    },
+  },
+  {
+    appendix: 'A#13b',
+    label: 'Entrega próxima (facet)',
+    input: {
+      limit: 24,
+      offset: 0,
+      entrega: 'proxima',
+      propertyType: 'development_unit',
+    },
+  },
+  {
     appendix: 'A#14',
     label: 'Solo mapa (bbox CABA)',
     input: {

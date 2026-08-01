@@ -16,7 +16,7 @@
 
 - **Hecho (v0):** filtro en `/emprendimientos` + badge de horizonte; parseo de `deliveryDate` (JUNIO 2027, ISO, etc.).
 - **Hecho (v1):** facet `?entrega=pozo|proxima` en `/buscar` (sesión v2 + SQL/ES); el asistente / `q` entiende «ya habitable» vs «en pozo» / «para dentro de N años» (`extractDeliveryHorizonFilterFromQuery`).
-- Pendiente: multi-turno con filtro de sesión persistente entre mensajes sin re-parsear todo el prompt.
+- **Hecho (v2):** multi-turno: `entrega` viaja en `previousContext` / `sessionStorage` del bloque conversacional; chips «Ya habitable» / «En pozo»; golden A#13a/b.
 
 ---
 

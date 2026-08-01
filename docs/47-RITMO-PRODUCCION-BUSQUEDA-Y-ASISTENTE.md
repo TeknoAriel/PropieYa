@@ -50,7 +50,8 @@ Referencias duras: `docs/42-DIRECTIVA-OPERATIVA-PROPIEYA.md`, `docs/43-ANEXO-MAS
 - `searchConversational` acepta `previousContext: { userMessage, filters }` y el LLM (o merge heurístico sin API) **fusiona** el nuevo mensaje con filtros previos.  
 - `sessionStorage` (`propieya.conversational.v1`, TTL 45 min) + banner y chips en `/buscar` dentro de `ConversationalSearchBlock`; “Empezar de cero” limpia contexto.  
 - La home reutiliza el mismo storage al enviar (sin banner, para no ocupar el hero).  
-- **Continuidad en `/buscar`:** la UI (banner, chips, `sessionStorage`, `previousContext` al servidor) está **activa por defecto** en **apps/web**. Para desactivarla, definir `NEXT_PUBLIC_ENABLE_CONVERSATIONAL_SESSION_CONTEXT=0` en Vercel. Si el listado se desvía de la intención, el usuario puede usar «Empezar de cero» en el banner.
+- **Continuidad en `/buscar`:** la UI (banner, chips, `sessionStorage`, `previousContext` al servidor) está **activa por defecto** en **apps/web**. Para desactivarla, definir `NEXT_PUBLIC_ENABLE_CONVERSATIONAL_SESSION_CONTEXT=0` en Vercel. Si el listado se desvía de la intención, el usuario puede usar «Empezar de cero» en el banner.  
+- **Horizonte de entrega en sesión:** `filters.entrega` (`pozo`|`proxima`) se persiste entre turnos y alimenta `listing.search` / URL `?entrega=`.
 
 **Paralelo (producto)**  
 - `docs/46-BACKLOG-EMPRENDIMIENTOS-MULTIPAIS-MONEDA.md` cuando el inventario lo permita.
@@ -75,7 +76,7 @@ Usar en producción o staging con ES activo; anotar **total**, **latencia**, **�
 | 10 | Duplex 3 dormitorios zona norte GBA | dorm + texto + región |
 | 11 | Monoambiente inversión subte | apartment + `q` |
 | 12 | Casa quinta pileta quincho | house + amenities múltiples |
-| 13 | Venta a estrenar pozo | texto emprendimiento (hasta que exista facet dedicado) |
+| 13 | Venta a estrenar / en pozo | facet `entrega=proxima\|pozo` + tipo `development_unit` (A#13a/b en smoke) |
 | 14 | Filtro solo mapa (bbox) sin texto | geo_bounding_box |
 | 15 | Barrio + precio mínimo sin máximo | range parcial |
 | 16 | Búsqueda vacía solo operación venta | volumen alto, orden por fecha |

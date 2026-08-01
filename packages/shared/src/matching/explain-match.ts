@@ -30,6 +30,8 @@ export interface ExplainMatchFilters {
   city?: string
   neighborhood?: string
   amenities?: string[]
+  /** Horizonte de entrega (emprendimientos). */
+  entrega?: 'pozo' | 'proxima'
   /** Rectángulo mapa (WGS84). */
   bbox?: { south: number; north: number; west: number; east: number }
   /** Polígono dibujado en mapa (solo texto de resumen; no confundir con `polygon` de geo). */
@@ -368,6 +370,7 @@ function residualInputFromExplain(f: ExplainMatchFilters) {
     q: f.q,
     operationType: f.operationType,
     propertyType: f.propertyType,
+    entrega: f.entrega,
     amenities: f.amenities,
     minSurface: f.minSurface,
     maxSurface: f.maxSurface,
@@ -401,6 +404,8 @@ export function summarizeSearchFilters(filters: ExplainMatchFilters): string {
     const pt = row.propertyType as PropertyType
     parts.push(PROPERTY_TYPE_LABELS[pt] ?? row.propertyType)
   }
+  if (filters.entrega === 'pozo') parts.push('en pozo / obra')
+  if (filters.entrega === 'proxima') parts.push('entrega próxima')
   if (filters.city?.trim()) parts.push(`en ${filters.city.trim()}`)
   if (filters.neighborhood?.trim()) parts.push(`barrio ${filters.neighborhood.trim()}`)
   if (row.minPrice !== undefined || row.maxPrice !== undefined) {

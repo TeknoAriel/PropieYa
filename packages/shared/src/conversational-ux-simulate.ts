@@ -19,6 +19,10 @@ export function simulateFallbackPreliminary(message: string): ConversationalFlat
 
   if (extracted.operationType) out.operationType = extracted.operationType
   if (extracted.propertyType) out.propertyType = extracted.propertyType
+  if (extracted.entrega) {
+    out.entrega = extracted.entrega
+    out.propertyType = 'development_unit'
+  }
 
   out.minPrice = extracted.minPrice
   out.maxPrice = extracted.maxPrice
