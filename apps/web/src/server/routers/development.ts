@@ -1,10 +1,11 @@
 import { z } from 'zod'
-import { and, eq, gte, lte, sql } from 'drizzle-orm'
+import { and, eq, gte, ilike, lte, or, sql } from 'drizzle-orm'
 
-import { listings, listingsSelectPublic } from '@propieya/database'
+import { listings } from '@propieya/database'
 import type { Context } from '../trpc'
 import {
   buildDevelopmentProjectDetail,
+  developmentDeliveryFilterMatchPhrases,
   developmentHorizonMatchesFilter,
   findDevelopmentProjectBySlug,
   groupListingsIntoDevelopmentProjects,
@@ -54,6 +55,30 @@ type DevelopmentFilters = {
   minPrice?: number
   maxPrice?: number
   minBedrooms?: number
+  /** Prefiltro SQL por frases de horizonte (reduce payload antes del agrupado). */
+  entrega?: DevelopmentDeliveryFilter
+}
+
+/** Columnas mínimas para agrupar proyectos (evita SELECT * público pesado). */
+const developmentListSelect = {
+  id: listings.id,
+  title: listings.title,
+  description: listings.description,
+  operationType: listings.operationType,
+  priceAmount: listings.priceAmount,
+  priceCurrency: listings.priceCurrency,
+  surfaceTotal: listings.surfaceTotal,
+  surfaceCovered: listings.surfaceCovered,
+  bedrooms: listings.bedrooms,
+  bathrooms: listings.bathrooms,
+  address: listings.address,
+  features: listings.features,
+  primaryImageUrl: listings.primaryImageUrl,
+  externalId: listings.externalId,
+} as const
+
+function sanitizeIlikeFragment(raw: string): string {
+  return raw.trim().slice(0, 80).replace(/[%_\\]/g, ' ').replace(/\s+/g, ' ')
 }
 
 async function fetchDevelopmentUnitRows(
@@ -81,9 +106,20 @@ async function fetchDevelopmentUnitRows(
     const city = filters.ciudad.trim()
     conditions.push(sql`lower(${listings.address}->>'city') = lower(${city})`)
   }
+  if (filters.entrega === 'pozo' || filters.entrega === 'proxima') {
+    const phraseOrs = developmentDeliveryFilterMatchPhrases(filters.entrega).flatMap(
+      (phrase) => {
+        const pat = `%${sanitizeIlikeFragment(phrase)}%`
+        return [ilike(listings.title, pat), ilike(listings.description, pat)]
+      }
+    )
+    if (phraseOrs.length > 0) {
+      conditions.push(or(...phraseOrs)!)
+    }
+  }
 
   const rows = await db
-    .select(listingsSelectPublic)
+    .select(developmentListSelect)
     .from(listings)
     .where(and(...conditions))
     .limit(2000)
@@ -113,7 +149,10 @@ function rowsForProject(
 export const developmentRouter = createTRPCRouter({
   listProjects: publicProcedure.input(listInput).query(async ({ ctx, input }) => {
     const { entrega, page, pageSize, ...rowFilters } = input
-    const rows = await fetchDevelopmentUnitRows(ctx.db, rowFilters)
+    const rows = await fetchDevelopmentUnitRows(ctx.db, {
+      ...rowFilters,
+      entrega,
+    })
     let all = groupListingsIntoDevelopmentProjects(rows)
     if (entrega) {
       const filter = entrega as DevelopmentDeliveryFilter

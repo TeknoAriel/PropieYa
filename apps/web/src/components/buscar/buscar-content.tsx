@@ -747,16 +747,19 @@ export function BuscarContent({
   const secondaryToolsDetailsRef = useRef<HTMLDetailsElement>(null)
 
   const facetFlagDefinitions = useMemo(() => getFacetFlagDefinitions(), [])
+  const facetFlagById = useMemo(() => {
+    const m = new Map(facetFlagDefinitions.map((f) => [f.id, f]))
+    return m
+  }, [facetFlagDefinitions])
   const refineFacetDefinitions = useMemo(
     () => getFacetFlagsForBuscarRefineLayer(),
     []
   )
   const advancedAmenityFields = useMemo(() => {
-    const byId = new Map(facetFlagDefinitions.map((f) => [f.id, f]))
-    return ADVANCED_AMENITY_FLAG_ORDER.map((id) => byId.get(id)).filter(
+    return ADVANCED_AMENITY_FLAG_ORDER.map((id) => facetFlagById.get(id)).filter(
       (f): f is NonNullable<typeof f> => Boolean(f)
     )
-  }, [facetFlagDefinitions])
+  }, [facetFlagById])
   /** Lista única para capa 3: nicho + resto del catálogo, sin duplicar IDs. */
   const deepFacetCheckboxList = useMemo(() => {
     const seen = new Set<string>()
@@ -897,8 +900,6 @@ export function BuscarContent({
       ),
     [propertyType, forcedOperation, operationType]
   )
-
-  const facetFlagCatalog = useMemo(() => getFacetFlagDefinitions(), [])
 
   const coreSearchFilters = useMemo(
     () => ({
@@ -2806,7 +2807,7 @@ export function BuscarContent({
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {quickFacetIds!.map((fid) => {
-                        const def = facetFlagCatalog.find((f) => f.id === fid)
+                        const def = facetFlagById.get(fid)
                         if (!def) return null
                         const on = selectedAmenityFacets.includes(fid)
                         return (
@@ -3283,7 +3284,7 @@ export function BuscarContent({
                           {(contextualBlock.quickFacetIds ?? [])
                             .slice(0, 6)
                             .map((fid) => {
-                              const def = facetFlagCatalog.find((f) => f.id === fid)
+                              const def = facetFlagById.get(fid)
                               if (!def) return null
                               const on = selectedAmenityFacets.includes(fid)
                               return (
