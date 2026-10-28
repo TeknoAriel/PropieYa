@@ -118,6 +118,7 @@ const OP_MAP: Record<string, OperationType> = {
   sale: 'sale',
   alquiler: 'rent',
   rent: 'rent',
+  rental: 'rent',
   temporal: 'temporary_rent',
   temporary_rent: 'temporary_rent',
 }

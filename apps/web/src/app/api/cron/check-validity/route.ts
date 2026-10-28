@@ -7,10 +7,11 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 
-import { and, eq, gt, inArray, lt, lte } from 'drizzle-orm'
+import { and, eq, gt, inArray, lt, lte, ne } from 'drizzle-orm'
 
 import {
   db,
+  heartbeatImportCatalogValidity,
   listings,
   organizations,
   recordListingTransitionForKiteprop,
@@ -32,7 +33,7 @@ import { emitUpgradeLifecycleNotification } from '@/lib/notifications/upgrade-li
 import { removeListingFromSearch } from '@/lib/search/sync'
 
 export const runtime = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 120
 
 const EXPIRING_SOON_MS =
   LISTING_VALIDITY.EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000
@@ -82,7 +83,10 @@ export async function GET(req: NextRequest) {
     const now = new Date()
     const expiringSoonThreshold = new Date(now.getTime() + EXPIRING_SOON_MS)
 
-    // 1. Suspender: expiring_soon o active con expiresAt < now
+    // Import: vigencia = presencia en el feed, no el calendario de 30 días.
+    const importValidity = await heartbeatImportCatalogValidity({ now })
+
+    // 1. Suspender: expiring_soon o active con expiresAt < now (solo avisos no import)
     const toSuspend = await db
       .select({
         id: listings.id,
@@ -93,7 +97,8 @@ export async function GET(req: NextRequest) {
       .where(
         and(
           inArray(listings.status, ['active', 'expiring_soon']),
-          lt(listings.expiresAt, now)
+          lt(listings.expiresAt, now),
+          ne(listings.source, 'import')
         )
       )
 
@@ -141,7 +146,8 @@ export async function GET(req: NextRequest) {
         and(
           eq(listings.status, 'active'),
           lte(listings.expiresAt, expiringSoonThreshold),
-          gt(listings.expiresAt, now)
+          gt(listings.expiresAt, now),
+          ne(listings.source, 'import')
         )
       )
 
@@ -331,9 +337,21 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    let searchReindex:
+      | { ok: boolean; total: number; indexed: number; errors: number }
+      | undefined
+    if (importValidity.reactivated > 0) {
+      const { reindexActiveListings } = await import(
+        '@/lib/search/reindex-active-listings'
+      )
+      searchReindex = await reindexActiveListings()
+    }
+
     return NextResponse.json({
       suspended,
       expiringSoon,
+      importValidity,
+      searchReindex,
       lifecycleWebhookFlush: webhookFlush,
       upgradeReminders,
     })

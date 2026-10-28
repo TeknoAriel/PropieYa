@@ -109,7 +109,10 @@ function SimilarSection({
 }) {
   const { returnToQuery } = useListingFlowReturn(listingId)
 
-  const { data = [], isLoading } = trpc.listing.similar.useQuery({ id: listingId })
+  const { data = [], isLoading } = trpc.listing.similar.useQuery(
+    { id: listingId },
+    { staleTime: 2 * 60 * 1000, gcTime: 10 * 60 * 1000 }
+  )
   const recordSearchResultClick =
     trpc.listing.recordSearchResultClick.useMutation()
 
@@ -357,7 +360,11 @@ export default function PropiedadPage() {
 
   const { data, isLoading } = trpc.listing.getById.useQuery(
     { id: typeof id === 'string' ? id : ('' as string) },
-    { enabled: typeof id === 'string' && id.length > 0 }
+    {
+      enabled: typeof id === 'string' && id.length > 0,
+      staleTime: 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+    }
   )
 
   const { mutate: recordPublicViewMutate } =

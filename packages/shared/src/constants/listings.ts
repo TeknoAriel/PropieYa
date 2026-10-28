@@ -118,7 +118,7 @@ export const AMENITY_ICONS: Record<Amenity, string> = {
  * Configuración de vigencia
  */
 export const LISTING_VALIDITY = {
-  /** Días de validez para avisos manuales */
+  /** Días de validez para avisos **manuales**. Import no caduca por este calendario: rige el feed. */
   MANUAL_VALIDITY_DAYS: 30,
   /** Días antes del vencimiento para notificar */
   EXPIRING_SOON_DAYS: 3,

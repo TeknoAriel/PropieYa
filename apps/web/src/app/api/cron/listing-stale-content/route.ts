@@ -7,7 +7,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 
-import { and, eq, inArray, isNotNull } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull, ne } from 'drizzle-orm'
 
 import { db, listings, recordListingTransitionForKiteprop } from '@propieya/database'
 import {
@@ -47,7 +47,8 @@ export async function GET(req: NextRequest) {
       .where(
         and(
           inArray(listings.status, ['active', 'expiring_soon']),
-          isNotNull(listings.publishedAt)
+          isNotNull(listings.publishedAt),
+          ne(listings.source, 'import')
         )
       )
 

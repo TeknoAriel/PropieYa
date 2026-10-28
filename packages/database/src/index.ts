@@ -16,6 +16,11 @@ export {
   type YumblinImportSyncAllSourcesOptions,
 } from './yumblin-import-sync'
 export {
+  heartbeatImportCatalogValidity,
+  IMPORT_CALENDAR_REACTIVATABLE_STATUSES,
+  type ImportValidityHeartbeatResult,
+} from './import-listing-validity'
+export {
   runReclassifyDevelopmentUnits,
   type ReclassifyDevelopmentUnitsResult,
 } from './reclassify-development-units'

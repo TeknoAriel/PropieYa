@@ -27,7 +27,10 @@ type FeaturedListingCardData = {
 export function FeaturedListings() {
   const pack = getPortalPack()
   const { data: listingsRaw = [], isLoading, isError } =
-    trpc.listing.getFeatured.useQuery({ limit: 6 })
+    trpc.listing.getFeatured.useQuery(
+      { limit: 6 },
+      { staleTime: 2 * 60 * 1000, gcTime: 10 * 60 * 1000 }
+    )
   const listings = listingsRaw as unknown as FeaturedListingCardData[]
 
   return (

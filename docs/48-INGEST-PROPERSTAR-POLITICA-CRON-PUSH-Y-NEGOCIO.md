@@ -10,7 +10,8 @@
 
 | Concepto | Detalle |
 |----------|---------|
-| **Formato** | Un único **JSON** de catálogo (Properstar vía Kiteprop). URL por defecto en código; override con `YUMBLIN_JSON_URL` / `YUMBLIN_JSON_URLS`. |
+| **Formato** | Un único **JSON** de catálogo (Properstar vía Kiteprop). URL por defecto en código; override con `YUMBLIN_JSON_URL` / `YUMBLIN_JSON_URLS`. Hay un XML Doomos de **comparación** (`docs/44` §4); no se usa como ingest. |
+| **Vigencia import** | Calendario de 30 días = avisos **manuales**. Import permanece activo mientras esté en el feed; `check-validity` / stale-content **no** los suspenden. Un 304 o body igual igual hace heartbeat local (`expires_at`) **sin** re-descargar. |
 | **Identidad del aviso** | `external_id` (o homólogo mapeado en `mapYumblinItem`) + `organization_id` en base. |
 | **Código de tipo de aviso (negocio)** | El feed debe exponer un **código** (string o enum) que el portal preserve para **mapear después** a categorías de producto: destacado, superdestacado, simple, u otras que defina el modelo de negocio. **Hoy:** persistir en `listings.features` bajo una clave estable acordada con Kiteprop (p. ej. `features.import.listingTierCode` o nombre que fijen en el contrato JSON). **Futuro:** columna dedicada + tabla/catálogo de mapeo código → tier visual / orden / pricing sin re-ingestar histórico. |
 
