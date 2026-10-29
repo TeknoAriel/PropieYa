@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest'
 import { buildKitepropListingLifecyclePayloadV1 } from './listing-kiteprop-lifecycle-payload'
 import { DEFAULT_LISTING_PUBLISH_CONFIG } from './listing-publish-config'
 import { assessListingPublishability } from './listing-publishability'
-import { shouldExpireListingForStaleContent } from './listing-stale-content'
+import {
+  hasStaleValidityConfirmForFreshness,
+  isStaleContentRulePaused,
+  shouldExpireListingForStaleContent,
+} from './listing-stale-content'
 
 const base = {
   operationType: 'sale',
@@ -102,6 +106,42 @@ describe('shouldExpireListingForStaleContent', () => {
         createdAt: new Date(),
       }, cfg)
     ).toBe(false)
+  })
+})
+
+describe('pausa de volumen 60d + confirm Kiteprop', () => {
+  it('está pausada antes del 27-dic-2026', () => {
+    expect(
+      isStaleContentRulePaused(
+        new Date('2026-11-15T00:00:00.000Z'),
+        new Date('2026-12-27T00:00:00.000Z')
+      )
+    ).toBe(true)
+  })
+
+  it('se reanuda desde el 27-dic-2026', () => {
+    expect(
+      isStaleContentRulePaused(
+        new Date('2026-12-27T00:00:00.000Z'),
+        new Date('2026-12-27T00:00:00.000Z')
+      )
+    ).toBe(false)
+  })
+
+  it('no re-pide vigencia si ya se pidió para el mismo contenido', () => {
+    const freshness = new Date('2026-01-01T12:00:00.000Z')
+    expect(
+      hasStaleValidityConfirmForFreshness(
+        {
+          staleValidityConfirm: {
+            requestedAt: '2026-02-01T12:00:00.000Z',
+            contentFreshnessAt: freshness.toISOString(),
+            staleDays: 30,
+          },
+        },
+        freshness
+      )
+    ).toBe(true)
   })
 })
 

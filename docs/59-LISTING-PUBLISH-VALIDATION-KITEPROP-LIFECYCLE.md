@@ -9,7 +9,7 @@
 | **`assessListingPublishability`** (`@propieya/shared`) | Reglas mínimas centralizadas (fotos, completitud, precio, ubicación). |
 | **Ingesta** `packages/database/src/yumblin-import-sync.ts` | Decide `draft` / `active` / `rejected`, rebaja `active` si el feed deja de ser publicable, promoción validada de drafts, bajas `withdrawn` con evento. |
 | **tRPC** `apps/web/src/server/routers/listing.ts` (`publish`, `update`, `renew`) | Publicación manual y rebaja por edición si el aviso activo deja de cumplir reglas. |
-| **Cron** `GET /api/cron/listing-stale-content` | Vencimiento por contenido obsoleto → `expired`. |
+| **Cron** `GET /api/cron/listing-stale-content` | **Pausa de volumen hasta 2026-12-27:** no da de baja. **Después:** outbox a Kiteprop `STALE_CONTENT_CONFIRM_REQUESTED` (30 días sin cambios; pedir si sigue vigente). El aviso **sigue publicado**. |
 | **Cron** `GET /api/cron/check-validity` | Vigencia por `expiresAt` → `suspended` + evento `LISTING_VALIDITY_EXPIRED`. |
 | **Outbox** tabla `listing_lifecycle_events` + `flushPendingListingLifecycleWebhooks` | Trazabilidad y envío POST opcional a KiteProp. |
 
