@@ -53,6 +53,8 @@ import {
   serializeBuscarMapGeoToParams,
   getFacetFlagsForBuscarRefineLayer,
   normalizeSearchSessionMVP,
+  formatListingBathsLabel,
+  formatListingRoomsLabel,
   OPERATION_TYPE_LABELS,
   PORTAL_LISTING_UX_COPY as listingUx,
   PORTAL_SEARCH_UX_COPY as S,
@@ -395,14 +397,14 @@ function ListingCard({
 
   const valueSignals = collectListingValueSignals(listing, whyBucketId)
 
-  const roomsLabel =
-    listing.bedrooms === null || listing.bedrooms === 0
-      ? 'Monoambiente'
-      : `${listing.bedrooms} dorm.`
-  const bathBit =
-    listing.bathrooms !== null && listing.bathrooms > 0
-      ? ` · ${listing.bathrooms} baño${listing.bathrooms > 1 ? 's' : ''}`
-      : ''
+  const roomsLabel = formatListingRoomsLabel(
+    listing.propertyType,
+    listing.bedrooms
+  )
+  const bathsLabel = formatListingBathsLabel(
+    listing.propertyType,
+    listing.bathrooms
+  )
 
   const tierCardClass = (() => {
     if (visibilityTier === 'boost') {
@@ -494,11 +496,18 @@ function ListingCard({
               <span>{tipoLabel}</span>
               <span className="text-text-tertiary"> · </span>
               <span>{listing.surfaceTotal} m²</span>
-              <span className="text-text-tertiary"> · </span>
-              <span>
-                {roomsLabel}
-                {bathBit}
-              </span>
+              {roomsLabel ? (
+                <>
+                  <span className="text-text-tertiary"> · </span>
+                  <span>{roomsLabel}</span>
+                </>
+              ) : null}
+              {bathsLabel ? (
+                <>
+                  <span className="text-text-tertiary"> · </span>
+                  <span>{bathsLabel}</span>
+                </>
+              ) : null}
             </p>
 
             {valueSignals.length > 0 ? (
@@ -658,6 +667,7 @@ export function BuscarContent({
   })
 
   const [q, setQ] = useState(searchParams.get('q') ?? '')
+  const [qDebounced, setQDebounced] = useState(q)
   const [operationType, setOperationType] = useState<OperationType | ''>(() => {
     if (forcedOperation) return forcedOperation
     return (searchParams.get('op') as OperationType) ?? ''
@@ -745,6 +755,11 @@ export function BuscarContent({
   /** Huella de sesión v2 para placeholder estable en tRPC. */
   const searchFilterFpRef = useRef<string | null>(null)
   const secondaryToolsDetailsRef = useRef<HTMLDetailsElement>(null)
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setQDebounced(q), 350)
+    return () => window.clearTimeout(t)
+  }, [q])
 
   const facetFlagDefinitions = useMemo(() => getFacetFlagDefinitions(), [])
   const facetFlagById = useMemo(() => {
@@ -903,7 +918,7 @@ export function BuscarContent({
 
   const coreSearchFilters = useMemo(
     () => ({
-      q: q.trim() || undefined,
+      q: qDebounced.trim() || undefined,
       operationType: (forcedOperation ?? operationType) || undefined,
       propertyType: entrega ? 'development_unit' : propertyType || undefined,
       entrega: entrega || undefined,
@@ -952,7 +967,7 @@ export function BuscarContent({
         : {}),
     }),
     [
-      q,
+      qDebounced,
       forcedOperation,
       operationType,
       propertyType,
@@ -995,7 +1010,7 @@ export function BuscarContent({
       entrega: entrega || null,
       city: city.trim() || null,
       neighborhood: neighborhood.trim() || null,
-      q: q.trim() || null,
+      q: qDebounced.trim() || null,
       minPrice: num(minPrice) ?? null,
       maxPrice: num(maxPrice) ?? null,
       minBedrooms: dormRaw !== undefined ? Math.floor(dormRaw) : null,
@@ -1022,7 +1037,7 @@ export function BuscarContent({
     entrega,
     city,
     neighborhood,
-    q,
+    qDebounced,
     minPrice,
     maxPrice,
     minBedrooms,
@@ -1048,6 +1063,8 @@ export function BuscarContent({
         includeAlternativeBuckets,
       },
       {
+        staleTime: 45 * 1000,
+        gcTime: 5 * 60 * 1000,
         placeholderData: (previousData) => {
           if (searchFilterFpRef.current !== v2QueryPlaceholderKey) {
             searchFilterFpRef.current = v2QueryPlaceholderKey

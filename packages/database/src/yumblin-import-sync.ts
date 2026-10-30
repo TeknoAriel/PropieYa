@@ -15,6 +15,7 @@ import {
 import { and, count, eq, inArray, isNull, isNotNull, ne, notInArray, or } from 'drizzle-orm'
 
 import { db } from './client'
+import { heartbeatImportCatalogValidity } from './import-listing-validity'
 import {
   buildKitepropPropertiesListUrl,
   fetchKitepropPropertiesAllPages,
@@ -169,6 +170,11 @@ export interface YumblinImportSyncResult {
     skippedUnchangedBySourceTime: number
     withdrawn: number
   }
+  /**
+   * Heartbeat de vigencia import (304 / body igual / fin de sync completo).
+   * No descarga el feed otra vez; solo UPDATE local.
+   */
+  validityHeartbeat?: { reactivated: number; updated: number }
   /** IDs dados de baja en este sync (para quitar de Elasticsearch). */
   withdrawnListingIds: string[]
   /** Avisos que dejaron de estar publicados por validación en este sync (quitar de ES en pipeline). */
@@ -543,6 +549,15 @@ export async function runYumblinImportSync(
         })
         .where(eq(importFeedSources.id, source.id))
 
+      const validityHeartbeat = ingestAsDraft
+        ? undefined
+        : await heartbeatImportCatalogValidity({
+            organizationId,
+            importFeedSourceId: source.id,
+            includeUnassigned,
+            now,
+          })
+
       return {
         feedUrl,
         organizationId,
@@ -556,6 +571,7 @@ export async function runYumblinImportSync(
           skippedUnchangedBySourceTime: 0,
           withdrawn: 0,
         },
+        validityHeartbeat,
         withdrawnListingIds: [],
         deactivatedListingIds: [],
       }
@@ -581,6 +597,15 @@ export async function runYumblinImportSync(
         })
         .where(eq(importFeedSources.id, source.id))
 
+      const validityHeartbeat = ingestAsDraft
+        ? undefined
+        : await heartbeatImportCatalogValidity({
+            organizationId,
+            importFeedSourceId: source.id,
+            includeUnassigned,
+            now,
+          })
+
       return {
         feedUrl,
         organizationId,
@@ -594,6 +619,7 @@ export async function runYumblinImportSync(
           skippedUnchangedBySourceTime: 0,
           withdrawn: 0,
         },
+        validityHeartbeat,
         withdrawnListingIds: [],
         deactivatedListingIds: [],
       }
@@ -616,6 +642,15 @@ export async function runYumblinImportSync(
         })
         .where(eq(importFeedSources.id, source.id))
 
+      const validityHeartbeat = ingestAsDraft
+        ? undefined
+        : await heartbeatImportCatalogValidity({
+            organizationId,
+            importFeedSourceId: source.id,
+            includeUnassigned,
+            now,
+          })
+
       return {
         feedUrl,
         organizationId,
@@ -629,6 +664,7 @@ export async function runYumblinImportSync(
           skippedUnchangedBySourceTime: 0,
           withdrawn: 0,
         },
+        validityHeartbeat,
         withdrawnListingIds: [],
         deactivatedListingIds: [],
       }
@@ -943,6 +979,8 @@ export async function runYumblinImportSync(
         .set({
           ...baseUpdate,
           lastContentUpdatedAt: now,
+          lastValidatedAt: now,
+          expiresAt: pub.expiresAt,
         })
         .where(eq(listings.id, existing.id))
     } else {
@@ -1185,6 +1223,16 @@ export async function runYumblinImportSync(
     }
   }
 
+  const validityHeartbeat =
+    isPartialImport || ingestAsDraft
+      ? undefined
+      : await heartbeatImportCatalogValidity({
+          organizationId,
+          importFeedSourceId: source.id,
+          includeUnassigned,
+          now,
+        })
+
   const trustedFeedSnapshot =
     !isPartialImport &&
     !withdrawSkippedDueToShrinkGuard &&
@@ -1209,6 +1257,7 @@ export async function runYumblinImportSync(
     publisherId,
     skipped: false,
     counts,
+    ...(validityHeartbeat ? { validityHeartbeat } : {}),
     withdrawnListingIds,
     deactivatedListingIds,
     ...(withdrawSkippedDueToShrinkGuard

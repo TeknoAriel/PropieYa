@@ -1,6 +1,8 @@
 /**
- * Cron: avisos publicados (active / expiring_soon) sin actualización de contenido
- * por más de LISTING_STALE_CONTENT_DAYS → estado `expired` + notificación KiteProp (outbox).
+ * Cron: avisos publicados sin actualización de contenido ≥ LISTING_STALE_CONTENT_DAYS.
+ *
+ * Hasta 2026-12-27 (pausa de volumen, 60 días): no hace nada.
+ * Después: no da de baja el aviso; notifica a Kiteprop para confirmar vigencia.
  *
  * Auth: Authorization: Bearer <CRON_SECRET> (igual que otros crons).
  */
@@ -12,15 +14,22 @@ import { and, eq, inArray, isNotNull } from 'drizzle-orm'
 import { db, listings, recordListingTransitionForKiteprop } from '@propieya/database'
 import {
   getListingPublishConfigFromEnv,
+  hasStaleValidityConfirmForFreshness,
+  isStaleContentRulePaused,
+  nextStaleValidityConfirmMarker,
+  resolveListingContentFreshnessAt,
+  resolveStaleContentPauseUntil,
   shouldExpireListingForStaleContent,
-  staleContentExpiredMessageEs,
+  staleContentConfirmRequestedMessageEs,
 } from '@propieya/shared'
 
 import { flushPendingListingLifecycleWebhooks } from '@/lib/integrations/kiteprop-listing-lifecycle-webhook'
-import { removeListingFromSearch } from '@/lib/search/sync'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
+
+/** Tope diario de pings a Kiteprop cuando se levante la pausa (evita ráfaga). */
+const MAX_CONFIRM_PER_RUN = 100
 
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
@@ -31,7 +40,18 @@ export async function GET(req: NextRequest) {
 
   const config = getListingPublishConfigFromEnv()
   const now = new Date()
-  let expired = 0
+  const pauseUntil = resolveStaleContentPauseUntil()
+
+  if (isStaleContentRulePaused(now, pauseUntil)) {
+    return NextResponse.json({
+      skipped: 'volume_pause_60d',
+      resumeAt: pauseUntil?.toISOString() ?? null,
+      expired: 0,
+      confirmRequested: 0,
+    })
+  }
+
+  let confirmRequested = 0
 
   try {
     const candidates = await db
@@ -42,6 +62,7 @@ export async function GET(req: NextRequest) {
         publishedAt: listings.publishedAt,
         lastContentUpdatedAt: listings.lastContentUpdatedAt,
         createdAt: listings.createdAt,
+        features: listings.features,
       })
       .from(listings)
       .where(
@@ -52,6 +73,7 @@ export async function GET(req: NextRequest) {
       )
 
     for (const row of candidates) {
+      if (confirmRequested >= MAX_CONFIRM_PER_RUN) break
       if (
         !shouldExpireListingForStaleContent(
           now,
@@ -67,14 +89,32 @@ export async function GET(req: NextRequest) {
         continue
       }
 
+      const freshness = resolveListingContentFreshnessAt({
+        lastContentUpdatedAt: row.lastContentUpdatedAt,
+        publishedAt: row.publishedAt,
+        createdAt: row.createdAt,
+      })
+      if (hasStaleValidityConfirmForFreshness(row.features, freshness)) {
+        continue
+      }
+
+      const marker = nextStaleValidityConfirmMarker(
+        now,
+        freshness,
+        config.staleContentDays
+      )
+      const prevFeatures =
+        row.features && typeof row.features === 'object' && !Array.isArray(row.features)
+          ? (row.features as Record<string, unknown>)
+          : {}
+
       const [updated] = await db
         .update(listings)
         .set({
-          status: 'expired',
-          publishedAt: null,
-          expiresAt: null,
-          lastValidatedAt: null,
-          lastContentUpdatedAt: null,
+          features: {
+            ...prevFeatures,
+            staleValidityConfirm: marker,
+          },
           updatedAt: now,
         })
         .where(
@@ -87,22 +127,21 @@ export async function GET(req: NextRequest) {
 
       if (!updated) continue
 
-      expired++
-      await removeListingFromSearch(row.id).catch(() => {})
-
-      const msg = staleContentExpiredMessageEs(config.staleContentDays)
+      confirmRequested++
+      const msg = staleContentConfirmRequestedMessageEs(config.staleContentDays)
       await recordListingTransitionForKiteprop({
         listingId: row.id,
         externalId: row.externalId,
         previousStatus: row.status,
-        newStatus: 'expired',
+        newStatus: row.status,
         source: 'expiration_job',
-        reasonCode: 'STALE_CONTENT_EXPIRED',
+        reasonCode: 'STALE_CONTENT_CONFIRM_REQUESTED',
         reasonMessage: msg,
         details: {
           staleDaysConfigured: config.staleContentDays,
           publishedAt: row.publishedAt?.toISOString() ?? null,
           lastContentUpdatedAt: row.lastContentUpdatedAt?.toISOString() ?? null,
+          keepPublished: true,
         },
       })
     }
@@ -110,7 +149,8 @@ export async function GET(req: NextRequest) {
     const flush = await flushPendingListingLifecycleWebhooks(db, 50)
 
     return NextResponse.json({
-      expired,
+      expired: 0,
+      confirmRequested,
       webhookFlush: flush,
     })
   } catch (err) {

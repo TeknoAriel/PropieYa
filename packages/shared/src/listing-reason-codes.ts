@@ -9,6 +9,7 @@ export const LISTING_REASON_CODES = [
   'INVALID_LOCATION',
   'INVALID_PROPERTY_TYPE',
   'STALE_CONTENT_EXPIRED',
+  'STALE_CONTENT_CONFIRM_REQUESTED',
   'LISTING_VALIDITY_EXPIRED',
   'MANUALLY_UNPUBLISHED',
   'VALIDATION_FAILED',
@@ -30,6 +31,8 @@ export const LISTING_REASON_MESSAGES_ES: Record<ListingReasonCode, string> = {
     'El aviso no fue publicado porque el tipo de propiedad no es válido.',
   STALE_CONTENT_EXPIRED:
     'El aviso se dio de baja porque alcanzó el plazo de publicación sin actualizarse el contenido.',
+  STALE_CONTENT_CONFIRM_REQUESTED:
+    'El aviso lleva 30 días sin modificaciones. Pedimos a Kiteprop confirmar si sigue vigente.',
   LISTING_VALIDITY_EXPIRED:
     'El aviso dejó de estar publicado por vencimiento de la vigencia sin renovación.',
   MANUALLY_UNPUBLISHED: 'El aviso se dio de baja de forma manual o por proceso interno.',
@@ -46,4 +49,10 @@ export function listingReasonMessage(code: ListingReasonCode): string {
 export function staleContentExpiredMessageEs(staleDays: number): string {
   const n = Math.max(1, Math.round(staleDays))
   return `El aviso se dio de baja porque alcanzó los ${n} días de publicación sin actualizarse el contenido.`
+}
+
+/** Pedido a Kiteprop: 30 días sin cambios, ¿el aviso sigue vigente? El portal no lo da de baja. */
+export function staleContentConfirmRequestedMessageEs(staleDays: number): string {
+  const n = Math.max(1, Math.round(staleDays))
+  return `El aviso lleva ${n} días sin modificaciones. Solicitamos confirmar si sigue vigente.`
 }

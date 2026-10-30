@@ -118,7 +118,7 @@ export const AMENITY_ICONS: Record<Amenity, string> = {
  * Configuración de vigencia
  */
 export const LISTING_VALIDITY = {
-  /** Días de validez para avisos manuales */
+  /** Días de validez para avisos **manuales**. Import no caduca por este calendario: rige el feed. */
   MANUAL_VALIDITY_DAYS: 30,
   /** Días antes del vencimiento para notificar */
   EXPIRING_SOON_DAYS: 3,
@@ -129,6 +129,45 @@ export const LISTING_VALIDITY = {
   /** Horas sin sync para suspender avisos de integración */
   API_SUSPEND_HOURS: 72,
 } as const
+
+/**
+ * Tipos donde “ambientes / dormitorios / Monoambiente” tiene sentido.
+ * Terreno, lote, cochera, depósito, oficina y local no se etiquetan como monoambiente.
+ */
+export const LISTING_ROOM_COUNT_PROPERTY_TYPES: readonly PropertyType[] = [
+  'apartment',
+  'house',
+  'ph',
+  'development_unit',
+]
+
+export function listingShowsRoomCount(propertyType: string): boolean {
+  return (LISTING_ROOM_COUNT_PROPERTY_TYPES as readonly string[]).includes(propertyType)
+}
+
+/** `null` = no mostrar (p. ej. terreno/lote). 0 dorm. en vivienda = Monoambiente. */
+export function formatListingRoomsLabel(
+  propertyType: string,
+  bedrooms: number | null | undefined
+): string | null {
+  if (!listingShowsRoomCount(propertyType)) return null
+  if (bedrooms == null || !Number.isFinite(Number(bedrooms)) || bedrooms <= 0) {
+    return 'Monoambiente'
+  }
+  return `${Math.floor(bedrooms)} dorm.`
+}
+
+export function formatListingBathsLabel(
+  propertyType: string,
+  bathrooms: number | null | undefined
+): string | null {
+  if (!listingShowsRoomCount(propertyType)) return null
+  if (bathrooms == null || !Number.isFinite(Number(bathrooms)) || bathrooms <= 0) {
+    return null
+  }
+  const n = Math.floor(bathrooms)
+  return `${n} baño${n === 1 ? '' : 's'}`
+}
 
 /**
  * Límites de media

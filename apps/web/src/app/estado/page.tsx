@@ -115,6 +115,18 @@ export default async function EstadoPage() {
               </dt>
               <dd>{inventory.activeListingsFromImport}</dd>
             </div>
+            <div>
+              <dt className="font-medium text-text-primary">Import suspendidos</dt>
+              <dd>{inventory.importSuspended}</dd>
+            </div>
+            <div>
+              <dt className="font-medium text-text-primary">Import expired</dt>
+              <dd>{inventory.importExpired}</dd>
+            </div>
+            <div>
+              <dt className="font-medium text-text-primary">Import withdrawn</dt>
+              <dd>{inventory.importWithdrawn}</dd>
+            </div>
             <div className="sm:col-span-2">
               <dt className="font-medium text-text-primary">
                 Con <code className="text-xs">external_id</code> (vinculados a feed)

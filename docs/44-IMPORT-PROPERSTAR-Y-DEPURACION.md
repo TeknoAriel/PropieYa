@@ -45,6 +45,19 @@ Listados antiguos del feed viejo que ya no estén en el JSON quedan **`withdrawn
 
 ---
 
-## 4. Vercel
+## 4. Feed comparativo Doomos (XML) — no es el endpoint de ingesta
+
+Misma familia de difusión KiteProp, **otro portal**:
+
+`https://static.kiteprop.com/kp/difusions/4d245d4eb5f792632a0a9a623f286bc0a276199b/doomos.xml`
+
+- Raíz `<Doomos><ad>` (no es OpenNavent / Zonaprop).
+- Misma clave de aviso (`code` / `KP…`) que el JSON Properstar (`public_code`).
+- El XML suele traer **más** avisos (p. ej. Brasil) y operación en `<type>sale|rental</type>`; el JSON trae `for_sale` / `for_rent` / `last_update` e `amenities`.
+- **El portal sigue ingiriendo solo el JSON Properstar.** No bajar JSON y XML en el mismo cron: duplicaría ~100 MB de origen.
+
+---
+
+## 5. Vercel
 
 En el proyecto **web** (Production): `YUMBLIN_JSON_URL`, `IMPORT_WITHDRAW_SCOPE`, `CRON_SECRET`, `DATABASE_URL`, etc., como en `docs/37-PRODUCCION-SPRINTS-E-IMPORTACION.md`.

@@ -20,6 +20,8 @@ export function publicationIssueMessage(issue: ListingPublishabilityIssue): stri
       return 'El tipo de propiedad no está soportado para publicar este aviso.'
     case 'STALE_CONTENT_EXPIRED':
       return 'Este aviso venció por desactualización. Actualizalo y publicalo de nuevo.'
+    case 'STALE_CONTENT_CONFIRM_REQUESTED':
+      return 'Lleva 30 días sin cambios. Pedimos a Kiteprop confirmar si sigue vigente.'
     case 'LISTING_VALIDITY_EXPIRED':
       return 'La vigencia venció. Renová el aviso para volver a publicarlo.'
     default:

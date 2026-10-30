@@ -20,6 +20,8 @@ import { ListingSearchPostBanner } from '@/components/property/listing-search-po
 import { ListingVisibilityStrip } from '@/components/property/listing-visibility-strip'
 import { PropertyLocationMap } from '@/components/property/property-location-map'
 import {
+  formatListingBathsLabel,
+  formatListingRoomsLabel,
   formatPrice,
   OPERATION_TYPE_LABELS,
   PORTAL_LISTING_UX_COPY as L,
@@ -109,7 +111,10 @@ function SimilarSection({
 }) {
   const { returnToQuery } = useListingFlowReturn(listingId)
 
-  const { data = [], isLoading } = trpc.listing.similar.useQuery({ id: listingId })
+  const { data = [], isLoading } = trpc.listing.similar.useQuery(
+    { id: listingId },
+    { staleTime: 2 * 60 * 1000, gcTime: 10 * 60 * 1000 }
+  )
   const recordSearchResultClick =
     trpc.listing.recordSearchResultClick.useMutation()
 
@@ -166,14 +171,14 @@ function SimilarSection({
             const cy = addr?.city?.trim()
             const locLine =
               nb && cy ? `${nb} · ${cy}` : cy || nb || '—'
-            const roomsLabel =
-              item.bedrooms === null || item.bedrooms === 0
-                ? 'Monoambiente'
-                : `${item.bedrooms} dorm.`
-            const bathBit =
-              item.bathrooms !== null && item.bathrooms > 0
-                ? ` · ${item.bathrooms} baño${item.bathrooms > 1 ? 's' : ''}`
-                : ''
+            const roomsLabel = formatListingRoomsLabel(
+              item.propertyType,
+              item.bedrooms
+            )
+            const bathsLabel = formatListingBathsLabel(
+              item.propertyType,
+              item.bathrooms
+            )
 
             const itemNb = (nb ?? '').toLowerCase()
             const similarTags: string[] = []
@@ -249,11 +254,18 @@ function SimilarSection({
                       <span>{tipo}</span>
                       <span className="text-text-tertiary"> · </span>
                       <span>{item.surfaceTotal} m²</span>
-                      <span className="text-text-tertiary"> · </span>
-                      <span>
-                        {roomsLabel}
-                        {bathBit}
-                      </span>
+                      {roomsLabel ? (
+                        <>
+                          <span className="text-text-tertiary"> · </span>
+                          <span>{roomsLabel}</span>
+                        </>
+                      ) : null}
+                      {bathsLabel ? (
+                        <>
+                          <span className="text-text-tertiary"> · </span>
+                          <span>{bathsLabel}</span>
+                        </>
+                      ) : null}
                     </p>
                     <p className="text-sm font-medium leading-snug text-text-primary line-clamp-2">
                       {item.title}
@@ -357,7 +369,11 @@ export default function PropiedadPage() {
 
   const { data, isLoading } = trpc.listing.getById.useQuery(
     { id: typeof id === 'string' ? id : ('' as string) },
-    { enabled: typeof id === 'string' && id.length > 0 }
+    {
+      enabled: typeof id === 'string' && id.length > 0,
+      staleTime: 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+    }
   )
 
   const { mutate: recordPublicViewMutate } =
@@ -517,14 +533,14 @@ export default function PropiedadPage() {
   const cyTrim = addressCity !== '—' ? addressCity.trim() : ''
   const locationLine =
     nbTrim && cyTrim ? `${nbTrim} · ${cyTrim}` : cyTrim || nbTrim || '—'
-  const roomsLabel =
-    listing.bedrooms === null || listing.bedrooms === 0
-      ? 'Monoambiente'
-      : `${listing.bedrooms} dorm.`
-  const bathBit =
-    listing.bathrooms !== null && listing.bathrooms > 0
-      ? ` · ${listing.bathrooms} baño${listing.bathrooms > 1 ? 's' : ''}`
-      : ''
+  const roomsLabel = formatListingRoomsLabel(
+    listing.propertyType,
+    listing.bedrooms
+  )
+  const bathsLabel = formatListingBathsLabel(
+    listing.propertyType,
+    listing.bathrooms
+  )
 
   const features = listing.features ?? {}
   const portalVisibilityUi = resolvePortalVisibilityForPublicUi(features)
@@ -622,11 +638,18 @@ export default function PropiedadPage() {
                 <span>{tipoLabel}</span>
                 <span className="text-text-tertiary"> · </span>
                 <span>{listing.surfaceTotal} m²</span>
-                <span className="text-text-tertiary"> · </span>
-                <span>
-                  {roomsLabel}
-                  {bathBit}
-                </span>
+                {roomsLabel ? (
+                  <>
+                    <span className="text-text-tertiary"> · </span>
+                    <span>{roomsLabel}</span>
+                  </>
+                ) : null}
+                {bathsLabel ? (
+                  <>
+                    <span className="text-text-tertiary"> · </span>
+                    <span>{bathsLabel}</span>
+                  </>
+                ) : null}
               </p>
               <h1 className="text-lg font-semibold leading-snug text-text-primary line-clamp-3 md:text-xl">
                 {listing.title}

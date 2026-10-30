@@ -115,6 +115,7 @@ import { sqlPointInPolygonLngLat } from '../../lib/search/point-in-polygon-sql'
 import { type ConversationPrior } from '../../lib/llm'
 import { runConversationalSearchOrchestrator } from '../../lib/conversational-search'
 import { getListingLocalityCatalog } from '../../lib/listing-locality-catalog'
+import { getOrLoadTtl, TtlLruCache } from '../../lib/ttl-lru-cache'
 import { recordPortalStatsEvent } from '../../lib/analytics/record-portal-stats-event'
 import { checkRateLimit } from '../../lib/rate-limit'
 import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc'
@@ -316,6 +317,10 @@ const ORDER_PUBLIC_RECENCY = [
   desc(listings.updatedAt),
   desc(listings.createdAt),
 ]
+
+/** Caché por instancia serverless: featured estable; searchV2 corta para no martillar Neon/ES. */
+const featuredQueryCache = new TtlLruCache<unknown[]>(2 * 60 * 1000, 12)
+const searchV2QueryCache = new TtlLruCache<ListingSearchV2Result>(45 * 1000, 80)
 
 type ListingSearchSqlPrep = {
   merged: ReturnType<typeof mergePublicSearchFromQuery>
@@ -3598,12 +3603,18 @@ export const listingRouter = createTRPCRouter({
       })
     )
     .query(async ({ input, ctx }) => {
-      return ctx.db
-        .select(listingsSelectPublic)
-        .from(listings)
-        .where(eq(listings.status, 'active'))
-        .orderBy(...ORDER_PUBLIC_RECENCY)
-        .limit(input.limit)
+      const { value } = await getOrLoadTtl(
+        featuredQueryCache,
+        String(input.limit),
+        () =>
+          ctx.db
+            .select(listingsSelectPublic)
+            .from(listings)
+            .where(eq(listings.status, 'active'))
+            .orderBy(...ORDER_PUBLIC_RECENCY)
+            .limit(input.limit)
+      )
+      return value
     }),
 
   /** Catálogo de facets (flags/enums/ranges) para UI y clientes; alineado a `sanitizeListingSearchFacets`. */
@@ -3973,7 +3984,7 @@ export const listingRouter = createTRPCRouter({
     .query(async ({ input, ctx }) => {
       const perfStart = Date.now()
       const limitPerBucket = input.limitPerBucket ?? 24
-      let out = await runListingSearchV2({
+      const cacheKey = JSON.stringify({
         session: input.session,
         limitPerBucket,
         exactPageCursor: input.exactPageCursor ?? null,
@@ -3981,17 +3992,33 @@ export const listingRouter = createTRPCRouter({
         includeAlternativeBuckets: input.includeAlternativeBuckets ?? false,
       })
 
-      const fallback = await trySearchV2SqlFallback(
-        ctx.db,
-        input.session,
-        limitPerBucket,
-        input.exactEsOffset ?? 0,
-        out
+      let usedSqlFallback = false
+      const { value: out, cacheHit } = await getOrLoadTtl(
+        searchV2QueryCache,
+        cacheKey,
+        async () => {
+          let next = await runListingSearchV2({
+            session: input.session,
+            limitPerBucket,
+            exactPageCursor: input.exactPageCursor ?? null,
+            exactEsOffset: input.exactEsOffset ?? 0,
+            includeAlternativeBuckets: input.includeAlternativeBuckets ?? false,
+          })
+
+          const fallback = await trySearchV2SqlFallback(
+            ctx.db,
+            input.session,
+            limitPerBucket,
+            input.exactEsOffset ?? 0,
+            next
+          )
+          if (fallback) {
+            usedSqlFallback = true
+            next = fallback
+          }
+          return attachPortalVisibilityToSearchV2Result(ctx.db, next)
+        }
       )
-      if (fallback) {
-        out = fallback
-      }
-      out = await attachPortalVisibilityToSearchV2Result(ctx.db, out)
 
       if (process.env.LOG_SEARCH_MS === '1') {
         console.info(
@@ -4001,7 +4028,8 @@ export const listingRouter = createTRPCRouter({
             strong: out.totalsByBucket.strong,
             near: out.totalsByBucket.near,
             widened: out.totalsByBucket.widened,
-            sqlFallback: Boolean(fallback),
+            sqlFallback: usedSqlFallback,
+            cacheHit,
           })
         )
       }
@@ -4010,7 +4038,11 @@ export const listingRouter = createTRPCRouter({
         userId: ctx.session?.userId ?? null,
         payload: {
           total: out.strictCatalogTotal,
-          source: fallback ? 'search_v2_sql_fallback' : 'search_v2',
+          source: cacheHit
+            ? 'search_v2_cache'
+            : usedSqlFallback
+              ? 'search_v2_sql_fallback'
+              : 'search_v2',
         },
       })
       return out

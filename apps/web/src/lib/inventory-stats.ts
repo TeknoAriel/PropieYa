@@ -9,6 +9,10 @@ export type PublicInventoryStats = {
   activeListings: number
   listingsFromImportSource: number
   activeListingsFromImport: number
+  /** Import no visible por calendario/stale (deberían reactivarse si siguen en el feed). */
+  importSuspended: number
+  importExpired: number
+  importWithdrawn: number
   listingsWithExternalId: number
   feedUrlConfigured: boolean
   /** URL del feed si está en env; si no, texto guía. */
@@ -30,6 +34,9 @@ export async function getPublicInventoryStats(): Promise<PublicInventoryStats> {
     [activeRow],
     [importRow],
     [activeImportRow],
+    [suspendedImportRow],
+    [expiredImportRow],
+    [withdrawnImportRow],
     [extRow],
   ] = await Promise.all([
     db.select({ c: count() }).from(organizations),
@@ -51,6 +58,24 @@ export async function getPublicInventoryStats(): Promise<PublicInventoryStats> {
     db
       .select({ c: count() })
       .from(listings)
+      .where(
+        and(eq(listings.status, 'suspended'), eq(listings.source, 'import'))
+      ),
+    db
+      .select({ c: count() })
+      .from(listings)
+      .where(
+        and(eq(listings.status, 'expired'), eq(listings.source, 'import'))
+      ),
+    db
+      .select({ c: count() })
+      .from(listings)
+      .where(
+        and(eq(listings.status, 'withdrawn'), eq(listings.source, 'import'))
+      ),
+    db
+      .select({ c: count() })
+      .from(listings)
       .where(isNotNull(listings.externalId)),
   ])
 
@@ -65,6 +90,9 @@ export async function getPublicInventoryStats(): Promise<PublicInventoryStats> {
     activeListings: Number(activeRow?.c ?? 0),
     listingsFromImportSource: Number(importRow?.c ?? 0),
     activeListingsFromImport: Number(activeImportRow?.c ?? 0),
+    importSuspended: Number(suspendedImportRow?.c ?? 0),
+    importExpired: Number(expiredImportRow?.c ?? 0),
+    importWithdrawn: Number(withdrawnImportRow?.c ?? 0),
     listingsWithExternalId: Number(extRow?.c ?? 0),
     feedUrlConfigured: Boolean(trimmedFeed),
     feedUrlHint,
