@@ -131,6 +131,45 @@ export const LISTING_VALIDITY = {
 } as const
 
 /**
+ * Tipos donde “ambientes / dormitorios / Monoambiente” tiene sentido.
+ * Terreno, lote, cochera, depósito, oficina y local no se etiquetan como monoambiente.
+ */
+export const LISTING_ROOM_COUNT_PROPERTY_TYPES: readonly PropertyType[] = [
+  'apartment',
+  'house',
+  'ph',
+  'development_unit',
+]
+
+export function listingShowsRoomCount(propertyType: string): boolean {
+  return (LISTING_ROOM_COUNT_PROPERTY_TYPES as readonly string[]).includes(propertyType)
+}
+
+/** `null` = no mostrar (p. ej. terreno/lote). 0 dorm. en vivienda = Monoambiente. */
+export function formatListingRoomsLabel(
+  propertyType: string,
+  bedrooms: number | null | undefined
+): string | null {
+  if (!listingShowsRoomCount(propertyType)) return null
+  if (bedrooms == null || !Number.isFinite(Number(bedrooms)) || bedrooms <= 0) {
+    return 'Monoambiente'
+  }
+  return `${Math.floor(bedrooms)} dorm.`
+}
+
+export function formatListingBathsLabel(
+  propertyType: string,
+  bathrooms: number | null | undefined
+): string | null {
+  if (!listingShowsRoomCount(propertyType)) return null
+  if (bathrooms == null || !Number.isFinite(Number(bathrooms)) || bathrooms <= 0) {
+    return null
+  }
+  const n = Math.floor(bathrooms)
+  return `${n} baño${n === 1 ? '' : 's'}`
+}
+
+/**
  * Límites de media
  */
 export const MEDIA_LIMITS = {

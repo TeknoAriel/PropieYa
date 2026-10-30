@@ -6,8 +6,8 @@ import Link from 'next/link'
 import { trpc } from '@/lib/trpc'
 
 import { Button, Card, Badge, Skeleton, ArrowRight } from '@propieya/ui'
-import { formatPrice } from '@propieya/shared'
-import type { Currency, OperationType } from '@propieya/shared'
+import { formatListingBathsLabel, formatListingRoomsLabel, formatPrice } from '@propieya/shared'
+import type { Currency, OperationType, PropertyType } from '@propieya/shared'
 
 import { getPortalPack } from '@/lib/portal-copy'
 
@@ -15,6 +15,7 @@ type FeaturedListingCardData = {
   id: string
   title: string
   operationType: OperationType
+  propertyType: PropertyType
   priceAmount: number
   priceCurrency: Currency
   address?: { neighborhood?: string; city?: string } | null
@@ -95,6 +96,8 @@ function ListingCard({ listing }: { listing: FeaturedListingCardData }) {
   const operationLabel = listing.operationType === 'sale' ? 'Venta' : 'Alquiler'
   const neighborhood = listing.address?.neighborhood ?? '—'
   const city = listing.address?.city ?? '—'
+  const roomsLabel = formatListingRoomsLabel(listing.propertyType, listing.bedrooms)
+  const bathsLabel = formatListingBathsLabel(listing.propertyType, listing.bathrooms)
 
   return (
     <Link href={`/propiedad/${listing.id}`} className="block h-full">
@@ -136,15 +139,8 @@ function ListingCard({ listing }: { listing: FeaturedListingCardData }) {
 
           <div className="mt-2 flex items-center gap-4 text-sm text-text-tertiary">
             <span>{listing.surfaceTotal} m²</span>
-            {listing.bedrooms !== null && listing.bedrooms > 0 && (
-              <span>{listing.bedrooms} dorm.</span>
-            )}
-            {listing.bathrooms !== null && (
-              <span>
-                {listing.bathrooms} baño
-                {listing.bathrooms > 1 ? 's' : ''}
-              </span>
-            )}
+            {roomsLabel ? <span>{roomsLabel}</span> : null}
+            {bathsLabel ? <span>{bathsLabel}</span> : null}
           </div>
         </div>
       </Card>

@@ -53,6 +53,8 @@ import {
   serializeBuscarMapGeoToParams,
   getFacetFlagsForBuscarRefineLayer,
   normalizeSearchSessionMVP,
+  formatListingBathsLabel,
+  formatListingRoomsLabel,
   OPERATION_TYPE_LABELS,
   PORTAL_LISTING_UX_COPY as listingUx,
   PORTAL_SEARCH_UX_COPY as S,
@@ -395,14 +397,14 @@ function ListingCard({
 
   const valueSignals = collectListingValueSignals(listing, whyBucketId)
 
-  const roomsLabel =
-    listing.bedrooms === null || listing.bedrooms === 0
-      ? 'Monoambiente'
-      : `${listing.bedrooms} dorm.`
-  const bathBit =
-    listing.bathrooms !== null && listing.bathrooms > 0
-      ? ` · ${listing.bathrooms} baño${listing.bathrooms > 1 ? 's' : ''}`
-      : ''
+  const roomsLabel = formatListingRoomsLabel(
+    listing.propertyType,
+    listing.bedrooms
+  )
+  const bathsLabel = formatListingBathsLabel(
+    listing.propertyType,
+    listing.bathrooms
+  )
 
   const tierCardClass = (() => {
     if (visibilityTier === 'boost') {
@@ -494,11 +496,18 @@ function ListingCard({
               <span>{tipoLabel}</span>
               <span className="text-text-tertiary"> · </span>
               <span>{listing.surfaceTotal} m²</span>
-              <span className="text-text-tertiary"> · </span>
-              <span>
-                {roomsLabel}
-                {bathBit}
-              </span>
+              {roomsLabel ? (
+                <>
+                  <span className="text-text-tertiary"> · </span>
+                  <span>{roomsLabel}</span>
+                </>
+              ) : null}
+              {bathsLabel ? (
+                <>
+                  <span className="text-text-tertiary"> · </span>
+                  <span>{bathsLabel}</span>
+                </>
+              ) : null}
             </p>
 
             {valueSignals.length > 0 ? (
